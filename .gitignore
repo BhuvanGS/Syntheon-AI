@@ -9,4 +9,4 @@ node_modules/
 .env*.local
 .DS_Storerecordings/*.webm
 db.json
-.env
+.env.local  
