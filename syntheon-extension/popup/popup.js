@@ -51,7 +51,7 @@ class SyntheonPopup {
         this.platformName.textContent = stored.botState.platform;
         this.sendBotButton.disabled   = false; // allow click to clear
         this.sendBotText.textContent  = 'Bot Active — Click to Reset';
-        this.updateStatus('Bot is in the meeting ✓', 'success');
+        this.updateStatus('Syntheon - AI will join shortly', 'success');
         return;
       }
 
@@ -126,7 +126,7 @@ class SyntheonPopup {
 
       this.sendBotButton.disabled  = false; // allow reset click
       this.sendBotText.textContent = 'Bot Active — Click to Reset';
-      this.updateStatus('Bot is in the meeting ✓', 'success');
+      this.updateStatus('Syntheon - AI will join shortly', 'success');
 
     } catch (error) {
       console.error('Failed to send bot:', error);

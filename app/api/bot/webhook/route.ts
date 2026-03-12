@@ -9,14 +9,17 @@ export async function POST(req: NextRequest) {
     const payload = await req.json();
     console.log('Webhook received:', payload.type, JSON.stringify(payload.data));
 
-    // Only process when bot finishes
     if (payload.type !== 'status_update') return NextResponse.json({ ok: true });
-    if (payload.data?.new_status !== 'done') return NextResponse.json({ ok: true });
+    if (payload.data?.new_status !== 'finished') return NextResponse.json({ ok: true });
 
-    const botId = payload.data?.bot_id;
-    if (!botId) return NextResponse.json({ ok: true });
+    const botId = payload.bot_id;
+    console.log('Meeting finished, botId:', botId);
 
-    // Find the meeting with this botId
+    if (!botId) {
+      console.error('No botId in payload:', JSON.stringify(payload));
+      return NextResponse.json({ ok: true });
+    }
+
     const meetings = getMeetings();
     const meeting  = meetings.find((m: any) => m.botId === botId);
 
@@ -25,26 +28,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    console.log('Meeting ended, fetching transcript for bot:', botId);
+    console.log('Fetching transcript for bot:', botId);
+    const botData = await getBotTranscript(botId);
+    console.log('Bot data keys:', Object.keys(botData));
+    console.log('Raw transcript type:', typeof botData.transcript);
+    console.log('Raw transcript sample:', JSON.stringify(botData.transcript)?.slice(0, 500));
 
-    // Fetch full transcript from Skribby
-    const botData   = await getBotTranscript(botId);
-    const transcript = botData.transcription
-      ?.map((t: any) => t.text)
-      .join(' ') ?? '';
+    // ── Fix: use botData.transcript not botData.transcription ──
+    const rawTranscript = botData.transcript;
+    const transcript = Array.isArray(rawTranscript)
+  ? rawTranscript.map((t: any) => t.transcript).join(' ')
+  : typeof rawTranscript === 'string'
+  ? rawTranscript
+  : '';
 
     console.log('Transcript length:', transcript.length);
+    console.log('Transcript preview:', transcript.slice(0, 200));
 
     if (!transcript.trim()) {
+      console.error('Empty transcript — check Skribby dashboard');
       updateMeetingStatus(meeting.id, 'failed');
       return NextResponse.json({ ok: true });
     }
 
-    // Extract spec blocks via Groq
     const specs = await extractSpecBlocks(transcript, meeting.id);
     console.log(`Extracted ${specs.length} spec blocks`);
 
-    // Update meeting in db
     updateMeetingSpecs(meeting.id, transcript, specs.length);
     saveSpecs(specs);
 

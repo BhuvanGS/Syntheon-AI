@@ -21,7 +21,7 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
   return (
     <aside className="w-64 bg-sidebar border-r border-sidebar-border flex flex-col p-6">
       <div className="mb-12">
-        <h2 className="text-2xl font-playfair font-bold text-sidebar-foreground">MeetingHub</h2>
+        <h2 className="text-2xl font-playfair font-bold text-sidebar-foreground">Syntheon - AI</h2>
       </div>
       
       <nav className="space-y-2 flex-1">
