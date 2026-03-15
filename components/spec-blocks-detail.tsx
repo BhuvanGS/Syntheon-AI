@@ -12,6 +12,7 @@ interface SpecBlock {
   confidence: number;
   meeting_id: string;
   timestamp:  string;
+  note?:      string;
 }
 
 interface Meeting {
@@ -44,6 +45,8 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
   const [meetingData, setMeetingData]   = useState<Meeting | null>(null);
   const [specActions, setSpecActions]   = useState<Record<string, 'idle' | 'added' | 'rejected'>>({});
   const [shipResult, setShipResult]     = useState<ShipResult>({ status: 'idle' });
+  const [notes, setNotes]               = useState<Record<string, string>>({});
+  const [editingNote, setEditingNote]   = useState<string | null>(null);
 
   useEffect(() => {
     fetchSpecs();
@@ -64,6 +67,12 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
       if (!res.ok) throw new Error('Failed to fetch specs');
       const data = await res.json();
       setSpecs(data);
+
+      const existingNotes: Record<string, string> = {};
+      data.forEach((s: any) => {
+        if (s.note) existingNotes[s.id] = s.note;
+      });
+      setNotes(existingNotes);
       setError(null);
     } catch {
       setError('Could not load spec blocks');
@@ -85,6 +94,20 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
     } catch {}
   }
 
+  async function saveNote(specId: string, note: string) {
+    try {
+      await fetch(`/api/meetings/${meetingId}/specs`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ specId, note })
+      });
+      setNotes(prev => ({ ...prev, [specId]: note }));
+      setEditingNote(null);
+    } catch {
+      console.error('Failed to save note');
+    }
+  }
+
   function setSpecAction(specId: string, action: 'idle' | 'added' | 'rejected') {
     setSpecActions(prev => ({ ...prev, [specId]: action }));
   }
@@ -100,7 +123,7 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
       const planRes = await fetch('/api/ship/plan', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ specs: addedSpecs, meetingTitle })
+        body:    JSON.stringify({ specs: addedSpecs, meetingTitle, notes })
       });
 
       const planData = await planRes.json();
@@ -313,11 +336,18 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
                 </button>
 
                 <button
+                  onClick={() => setEditingNote(editingNote === spec.id ? null : spec.id)}
                   disabled={shipResult.status !== 'idle'}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-muted text-foreground hover:bg-muted/80 transition-all duration-200 disabled:opacity-40"
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 disabled:opacity-40 ${
+                    editingNote === spec.id
+                      ? 'bg-muted text-foreground'
+                      : notes[spec.id]
+                      ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                      : 'bg-muted text-foreground hover:bg-muted/80'
+                  }`}
                 >
                   <Edit2 className="w-4 h-4" />
-                  Modify
+                  {editingNote === spec.id ? 'Cancel' : notes[spec.id] ? 'Edit Note' : 'Modify'}
                 </button>
 
                 <button
@@ -333,6 +363,47 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
                   {action === 'rejected' ? 'Undo' : 'Reject'}
                 </button>
               </div>
+
+              {editingNote === spec.id && (
+                <div className="mt-4 pt-4 border-t border-border">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                    Add a note for the AI
+                  </p>
+                  <textarea
+                    defaultValue={notes[spec.id] || ''}
+                    placeholder="e.g. Use React instead of vanilla JS, add dark mode support..."
+                    className="w-full p-3 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    rows={3}
+                    id={`note-${spec.id}`}
+                  />
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      onClick={() => {
+                        const el = document.getElementById(`note-${spec.id}`) as HTMLTextAreaElement;
+                        saveNote(spec.id, el.value);
+                      }}
+                      className="px-4 py-1.5 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:opacity-90 transition-all"
+                    >
+                      Save Note
+                    </button>
+                    <button
+                      onClick={() => setEditingNote(null)}
+                      className="px-4 py-1.5 rounded-lg text-sm font-medium bg-muted text-foreground hover:bg-muted/80 transition-all"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {notes[spec.id] && editingNote !== spec.id && (
+                <div className="mt-3 pt-3 border-t border-border">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Note</p>
+                  <p className="text-sm text-foreground bg-background rounded-lg px-3 py-2 border border-border">
+                    {notes[spec.id]}
+                  </p>
+                </div>
+              )}
             </div>
           );
         })}
