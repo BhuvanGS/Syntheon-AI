@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, X, Edit2, Loader2, Rocket, ExternalLink } from 'lucide-react';
+import { CheckCircle, X, Edit2, Loader2, Rocket, ExternalLink, Plus } from 'lucide-react';
 
 interface SpecBlock {
   id:         string;
@@ -14,15 +14,15 @@ interface SpecBlock {
   timestamp:  string;
 }
 
-interface ShipState {
-  status:            'idle' | 'planning' | 'planned' | 'executing' | 'done' | 'error';
-  plan?:             any;
+interface ShipResult {
+  status:             'idle' | 'planning' | 'planned' | 'executing' | 'done' | 'error';
+  plan?:              any;
   linearTicketBundle?: any;
-  featureRequest?:   string;
-  issue?:            any;
-  pullRequest?:      any;
-  committedFiles?:   string[];
-  error?:            string;
+  featureRequest?:    string;
+  issue?:             any;
+  pullRequest?:       any;
+  committedFiles?:    string[];
+  error?:             string;
 }
 
 interface SpecBlocksDetailProps {
@@ -30,12 +30,16 @@ interface SpecBlocksDetailProps {
 }
 
 export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
-  const [specs, setSpecs]             = useState<SpecBlock[]>([]);
-  const [loading, setLoading]         = useState(true);
-  const [error, setError]             = useState<string | null>(null);
-  const [rejected, setRejected]       = useState<Set<string>>(new Set());
+  const [specs, setSpecs]               = useState<SpecBlock[]>([]);
+  const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState<string | null>(null);
   const [meetingTitle, setMeetingTitle] = useState('Meeting');
-  const [shipStates, setShipStates]   = useState<Record<string, ShipState>>({});
+
+  // Per-spec state: 'idle' | 'added' | 'rejected'
+  const [specActions, setSpecActions]   = useState<Record<string, 'idle' | 'added' | 'rejected'>>({});
+
+  // Global ship state for the whole meeting
+  const [shipResult, setShipResult]     = useState<ShipResult>({ status: 'idle' });
 
   useEffect(() => {
     fetchSpecs();
@@ -50,7 +54,7 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
       const data = await res.json();
       setSpecs(data);
       setError(null);
-    } catch (err) {
+    } catch {
       setError('Could not load spec blocks');
     } finally {
       setLoading(false);
@@ -67,88 +71,82 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
     } catch {}
   }
 
-  function setShipState(specId: string, state: Partial<ShipState>) {
-    setShipStates(prev => ({
-      ...prev,
-      [specId]: { ...prev[specId], ...state }
-    }));
+  function setSpecAction(specId: string, action: 'idle' | 'added' | 'rejected') {
+    setSpecActions(prev => ({ ...prev, [specId]: action }));
   }
 
-  async function handleShip(spec: SpecBlock) {
-    setShipState(spec.id, { status: 'planning', error: undefined });
+  const addedSpecs  = specs.filter(s => specActions[s.id] === 'added');
+  const canShip     = addedSpecs.length > 0 && shipResult.status === 'idle';
+
+  async function handleApproveAndShip() {
+    if (addedSpecs.length === 0) return;
+
+    setShipResult({ status: 'planning' });
 
     try {
-      // Step 1: Generate plan + Linear tickets
+      // Step 1: Generate plan for ALL added specs in ONE prompt
       const planRes = await fetch('/api/ship/plan', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
-          specTitle: spec.title,
-          specType:  spec.type,
-          meetingId: spec.meeting_id
+          specs:        addedSpecs,
+          meetingTitle
         })
       });
 
       const planData = await planRes.json();
       if (!planData.success) throw new Error(planData.error);
 
-      setShipState(spec.id, {
-        status:              'planned',
-        plan:                planData.plan,
-        linearTicketBundle:  planData.linearTicketBundle,
-        featureRequest:      planData.featureRequest
+      setShipResult({
+        status:             'planned',
+        plan:               planData.plan,
+        linearTicketBundle: planData.linearTicketBundle,
+        featureRequest:     planData.featureRequest
       });
 
     } catch (err) {
-      setShipState(spec.id, {
+      setShipResult({
         status: 'error',
         error:  err instanceof Error ? err.message : 'Failed to generate plan'
       });
     }
   }
 
-  async function handleExecute(spec: SpecBlock) {
-    const shipState = shipStates[spec.id];
-    if (!shipState?.plan) return;
+  async function handleExecute() {
+    if (!shipResult.plan) return;
 
-    setShipState(spec.id, { status: 'executing' });
+    setShipResult(prev => ({ ...prev, status: 'executing' }));
 
     try {
       const execRes = await fetch('/api/ship/execute', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
-          featureRequest:     shipState.featureRequest,
-          plan:               shipState.plan,
-          linearTicketBundle: shipState.linearTicketBundle
+          featureRequest:     shipResult.featureRequest,
+          plan:               shipResult.plan,
+          linearTicketBundle: shipResult.linearTicketBundle
         })
       });
 
       const execData = await execRes.json();
       if (!execData.success) throw new Error(execData.error);
 
-      setShipState(spec.id, {
-        status:         'done',
-        issue:          execData.issue,
-        pullRequest:    execData.pullRequest,
-        committedFiles: execData.committedFiles,
+      setShipResult(prev => ({
+        ...prev,
+        status:             'done',
+        issue:              execData.issue,
+        pullRequest:        execData.pullRequest,
+        committedFiles:     execData.committedFiles,
         linearTicketBundle: execData.linearTicketBundle
-      });
+      }));
 
     } catch (err) {
-      setShipState(spec.id, {
+      setShipResult(prev => ({
+        ...prev,
         status: 'error',
-        error:  err instanceof Error ? err.message : 'Failed to execute plan'
-      });
+        error:  err instanceof Error ? err.message : 'Failed to execute'
+      }));
     }
-  }
-
-  function toggleReject(specId: string) {
-    setRejected(prev => {
-      const next = new Set(prev);
-      next.has(specId) ? next.delete(specId) : next.add(specId);
-      return next;
-    });
   }
 
   function getTypeColor(type: string) {
@@ -161,64 +159,53 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-6 h-6 animate-spin text-primary mr-3" />
-        <span className="text-muted-foreground">Loading spec blocks...</span>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="flex items-center justify-center py-20">
+      <Loader2 className="w-6 h-6 animate-spin text-primary mr-3" />
+      <span className="text-muted-foreground">Loading spec blocks...</span>
+    </div>
+  );
 
-  if (error) {
-    return (
-      <div className="bg-card rounded-2xl p-8 border border-border text-center">
-        <p className="text-destructive">{error}</p>
-        <Button onClick={fetchSpecs} className="mt-4">Retry</Button>
-      </div>
-    );
-  }
+  if (error) return (
+    <div className="bg-card rounded-2xl p-8 border border-border text-center">
+      <p className="text-destructive">{error}</p>
+      <Button onClick={fetchSpecs} className="mt-4">Retry</Button>
+    </div>
+  );
 
-  if (specs.length === 0) {
-    return (
-      <div className="max-w-5xl">
-        <h1 className="text-4xl font-playfair font-bold text-foreground mb-2">{meetingTitle}</h1>
-        <div className="bg-card rounded-2xl p-12 border border-border text-center mt-8">
-          <p className="text-2xl font-playfair font-bold text-foreground mb-2">No spec blocks yet</p>
-          <p className="text-muted-foreground">This meeting hasn't been processed yet.</p>
-        </div>
+  if (specs.length === 0) return (
+    <div className="max-w-5xl">
+      <h1 className="text-4xl font-playfair font-bold text-foreground mb-2">{meetingTitle}</h1>
+      <div className="bg-card rounded-2xl p-12 border border-border text-center mt-8">
+        <p className="text-2xl font-playfair font-bold mb-2">No spec blocks yet</p>
+        <p className="text-muted-foreground">This meeting hasn't been processed yet.</p>
       </div>
-    );
-  }
-
-  const shippedCount  = Object.values(shipStates).filter(s => s.status === 'done').length;
-  const rejectedCount = rejected.size;
+    </div>
+  );
 
   return (
     <div className="max-w-5xl">
       <h1 className="text-4xl font-playfair font-bold text-foreground mb-2">{meetingTitle}</h1>
       <p className="text-muted-foreground mb-8">
-        {specs.length} specifications extracted from this meeting
+        {specs.length} specifications extracted — {addedSpecs.length} added to app
       </p>
 
-      <div className="space-y-4">
+      {/* Spec blocks */}
+      <div className="space-y-4 mb-8">
         {specs.map((spec) => {
-          const ship     = shipStates[spec.id] || { status: 'idle' };
-          const isShipped = ship.status === 'done';
-          const isRejected = rejected.has(spec.id);
+          const action = specActions[spec.id] || 'idle';
 
           return (
             <div
               key={spec.id}
               className={`bg-card rounded-2xl p-6 border transition-all duration-200 ${
-                isShipped
+                action === 'added'
                   ? 'border-primary/50 bg-primary/5'
-                  : isRejected
+                  : action === 'rejected'
                   ? 'border-destructive/30 bg-destructive/5 opacity-60'
                   : 'border-border'
               }`}
             >
-              {/* Header */}
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
@@ -226,6 +213,11 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
                     <Badge className={getTypeColor(spec.type)}>
                       {spec.type.charAt(0).toUpperCase() + spec.type.slice(1)}
                     </Badge>
+                    {action === 'added' && (
+                      <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full font-medium">
+                        Added to App
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
                     <span>{new Date(spec.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
@@ -234,138 +226,42 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
                 </div>
               </div>
 
-              {/* Plan preview — shown after planning */}
-              {(ship.status === 'planned' || ship.status === 'executing') && ship.plan && (
-                <div className="mb-4 bg-background rounded-xl p-4 border border-border">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">AI Plan Preview</p>
-                  <p className="text-sm font-medium text-foreground mb-2">Branch: <code className="text-primary">{ship.plan.branch_name}</code></p>
-                  <p className="text-sm text-muted-foreground mb-2">Files: {ship.plan.files.map((f: any) => f.path).join(', ')}</p>
-                  {ship.linearTicketBundle && (
-                    <div className="mt-2">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Linear Tickets</p>
-                      <a href={ship.linearTicketBundle.parentIssue.url} target="_blank" rel="noopener noreferrer"
-                        className="text-sm text-primary hover:underline flex items-center gap-1">
-                        {ship.linearTicketBundle.parentIssue.identifier} — {ship.linearTicketBundle.parentIssue.title}
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
-                      {ship.linearTicketBundle.subtaskIssues.map((s: any) => (
-                        <a key={s.id} href={s.url} target="_blank" rel="noopener noreferrer"
-                          className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 mt-1">
-                          ↳ {s.identifier} — {s.title}
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+              <div className="flex gap-3 pt-4 border-t border-border">
+                {/* Add to App */}
+                <button
+                  onClick={() => setSpecAction(spec.id, action === 'added' ? 'idle' : 'added')}
+                  disabled={shipResult.status !== 'idle'}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 disabled:opacity-40 ${
+                    action === 'added'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-primary/10 text-primary hover:bg-primary/20'
+                  }`}
+                >
+                  {action === 'added' ? <CheckCircle className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                  {action === 'added' ? 'Added' : 'Add to App'}
+                </button>
 
-              {/* Done state */}
-              {ship.status === 'done' && (
-                <div className="mb-4 bg-primary/5 rounded-xl p-4 border border-primary/20">
-                  <p className="text-xs font-medium text-primary uppercase tracking-wide mb-2">Shipped ✓</p>
-                  <div className="flex gap-4 flex-wrap">
-                    {ship.issue && (
-                      <a href={ship.issue.html_url} target="_blank" rel="noopener noreferrer"
-                        className="text-sm text-primary hover:underline flex items-center gap-1">
-                        Issue #{ship.issue.number} <ExternalLink className="w-3 h-3" />
-                      </a>
-                    )}
-                    {ship.pullRequest && (
-                      <a href={ship.pullRequest.html_url} target="_blank" rel="noopener noreferrer"
-                        className="text-sm text-primary hover:underline flex items-center gap-1">
-                        PR #{ship.pullRequest.number} <ExternalLink className="w-3 h-3" />
-                      </a>
-                    )}
-                  </div>
-                  {ship.committedFiles && ship.committedFiles.length > 0 && (
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Files: {ship.committedFiles.join(', ')}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {/* Error state */}
-              {ship.status === 'error' && (
-                <div className="mb-4 bg-destructive/5 rounded-xl p-3 border border-destructive/20">
-                  <p className="text-sm text-destructive">{ship.error}</p>
-                </div>
-              )}
-
-              {/* Action buttons */}
-              <div className="flex gap-3 pt-4 border-t border-border flex-wrap">
-                {/* Ship button */}
-                {ship.status === 'idle' && (
-                  <button
-                    onClick={() => handleShip(spec)}
-                    disabled={isRejected}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-all duration-200 disabled:opacity-40"
-                  >
-                    <Rocket className="w-4 h-4" />
-                    Approve & Ship
-                  </button>
-                )}
-
-                {ship.status === 'planning' && (
-                  <button disabled className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-primary/10 text-primary opacity-70">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Generating Plan...
-                  </button>
-                )}
-
-                {ship.status === 'planned' && (
-                  <button
-                    onClick={() => handleExecute(spec)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-primary text-primary-foreground hover:opacity-90 transition-all duration-200"
-                  >
-                    <Rocket className="w-4 h-4" />
-                    Execute Plan
-                  </button>
-                )}
-
-                {ship.status === 'executing' && (
-                  <button disabled className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-primary text-primary-foreground opacity-70">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Executing...
-                  </button>
-                )}
-
-                {ship.status === 'done' && (
-                  <button disabled className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-primary text-primary-foreground opacity-70">
-                    <CheckCircle className="w-4 h-4" />
-                    Shipped
-                  </button>
-                )}
-
-                {ship.status === 'error' && (
-                  <button
-                    onClick={() => handleShip(spec)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-all"
-                  >
-                    <Rocket className="w-4 h-4" />
-                    Retry
-                  </button>
-                )}
-
-                {/* Modify button */}
-                <button className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-muted text-foreground hover:bg-muted/80 transition-all duration-200">
+                {/* Modify */}
+                <button
+                  disabled={shipResult.status !== 'idle'}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-muted text-foreground hover:bg-muted/80 transition-all duration-200 disabled:opacity-40"
+                >
                   <Edit2 className="w-4 h-4" />
                   Modify
                 </button>
 
-                {/* Reject button */}
+                {/* Reject */}
                 <button
-                  onClick={() => toggleReject(spec.id)}
-                  disabled={isShipped}
+                  onClick={() => setSpecAction(spec.id, action === 'rejected' ? 'idle' : 'rejected')}
+                  disabled={shipResult.status !== 'idle'}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 disabled:opacity-40 ${
-                    isRejected
+                    action === 'rejected'
                       ? 'bg-destructive/20 text-destructive'
                       : 'bg-destructive/10 text-destructive hover:bg-destructive/20'
                   }`}
                 >
                   <X className="w-4 h-4" />
-                  {isRejected ? 'Undo Reject' : 'Reject'}
+                  {action === 'rejected' ? 'Undo' : 'Reject'}
                 </button>
               </div>
             </div>
@@ -373,19 +269,149 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
         })}
       </div>
 
+      {/* Global ship panel */}
+      <div className="bg-card rounded-2xl p-6 border border-border sticky bottom-6">
+
+        {/* Plan preview */}
+        {(shipResult.status === 'planned' || shipResult.status === 'executing') && shipResult.plan && (
+          <div className="mb-4 bg-background rounded-xl p-4 border border-border">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Plan Preview</p>
+            <p className="text-sm font-medium mb-2">Branch: <code className="text-primary">{shipResult.plan.branch_name}</code></p>
+            <p className="text-sm text-muted-foreground mb-2">
+              Files: {shipResult.plan.files.map((f: any) => f.path).join(', ')}
+            </p>
+            {shipResult.linearTicketBundle && (
+              <div className="mt-3">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Linear Tickets</p>
+                <a href={shipResult.linearTicketBundle.parentIssue.url} target="_blank" rel="noopener noreferrer"
+                  className="text-sm text-primary hover:underline flex items-center gap-1">
+                  {shipResult.linearTicketBundle.parentIssue.identifier} — {shipResult.linearTicketBundle.parentIssue.title}
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+                {shipResult.linearTicketBundle.subtaskIssues.map((s: any) => (
+                  <a key={s.id} href={s.url} target="_blank" rel="noopener noreferrer"
+                    className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 mt-1">
+                    ↳ {s.identifier} — {s.title}
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Done state */}
+        {shipResult.status === 'done' && (
+          <div className="mb-4 bg-primary/5 rounded-xl p-4 border border-primary/20">
+            <p className="text-xs font-medium text-primary uppercase tracking-wide mb-2">Shipped ✓</p>
+            <div className="flex gap-4 flex-wrap">
+              {shipResult.issue && (
+                <a href={shipResult.issue.html_url} target="_blank" rel="noopener noreferrer"
+                  className="text-sm text-primary hover:underline flex items-center gap-1">
+                  Issue #{shipResult.issue.number} <ExternalLink className="w-3 h-3" />
+                </a>
+              )}
+              {shipResult.pullRequest && (
+                <a href={shipResult.pullRequest.html_url} target="_blank" rel="noopener noreferrer"
+                  className="text-sm text-primary hover:underline flex items-center gap-1">
+                  PR #{shipResult.pullRequest.number} <ExternalLink className="w-3 h-3" />
+                </a>
+              )}
+            </div>
+            {shipResult.committedFiles && (
+              <p className="text-xs text-muted-foreground mt-2">
+                Files committed: {shipResult.committedFiles.join(', ')}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Error state */}
+        {shipResult.status === 'error' && (
+          <div className="mb-4 bg-destructive/5 rounded-xl p-3 border border-destructive/20">
+            <p className="text-sm text-destructive">{shipResult.error}</p>
+          </div>
+        )}
+
+        {/* Action buttons */}
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            {addedSpecs.length > 0
+              ? `${addedSpecs.length} spec${addedSpecs.length > 1 ? 's' : ''} ready to ship`
+              : 'Add specs to the app to ship'}
+          </p>
+
+          <div className="flex gap-3">
+            {shipResult.status === 'idle' && (
+              <button
+                onClick={handleApproveAndShip}
+                disabled={!canShip}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium bg-primary text-primary-foreground hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Rocket className="w-4 h-4" />
+                Approve & Ship
+              </button>
+            )}
+
+            {shipResult.status === 'planning' && (
+              <button disabled className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium bg-primary text-primary-foreground opacity-70">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Generating Plan...
+              </button>
+            )}
+
+            {shipResult.status === 'planned' && (
+              <button
+                onClick={handleExecute}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium bg-primary text-primary-foreground hover:opacity-90 transition-all"
+              >
+                <Rocket className="w-4 h-4" />
+                Execute Plan
+              </button>
+            )}
+
+            {shipResult.status === 'executing' && (
+              <button disabled className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium bg-primary text-primary-foreground opacity-70">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Executing...
+              </button>
+            )}
+
+            {shipResult.status === 'done' && (
+              <button disabled className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium bg-primary text-primary-foreground opacity-70">
+                <CheckCircle className="w-4 h-4" />
+                Shipped
+              </button>
+            )}
+
+            {shipResult.status === 'error' && (
+              <button
+                onClick={handleApproveAndShip}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium bg-primary text-primary-foreground hover:opacity-90 transition-all"
+              >
+                <Rocket className="w-4 h-4" />
+                Retry
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Summary */}
-      <div className="mt-12 grid grid-cols-3 gap-4">
+      <div className="mt-6 grid grid-cols-3 gap-4">
         <div className="bg-card rounded-2xl p-6 border border-border">
           <p className="text-muted-foreground text-sm mb-2">Total Specs</p>
           <p className="text-3xl font-bold text-foreground">{specs.length}</p>
         </div>
         <div className="bg-card rounded-2xl p-6 border border-primary/30 bg-primary/5">
-          <p className="text-muted-foreground text-sm mb-2">Shipped</p>
-          <p className="text-3xl font-bold text-primary">{shippedCount}</p>
+          <p className="text-muted-foreground text-sm mb-2">Added to App</p>
+          <p className="text-3xl font-bold text-primary">{addedSpecs.length}</p>
         </div>
         <div className="bg-card rounded-2xl p-6 border border-border">
           <p className="text-muted-foreground text-sm mb-2">Rejected</p>
-          <p className="text-3xl font-bold text-destructive">{rejectedCount}</p>
+          <p className="text-3xl font-bold text-destructive">
+            {specs.filter(s => specActions[s.id] === 'rejected').length}
+          </p>
         </div>
       </div>
     </div>

@@ -3,24 +3,34 @@ import { NextRequest, NextResponse } from 'next/server';
 import { generatePlan } from '@/lib/shipai/ai';
 import { createLinearTicketBundle } from '@/lib/shipai/linear';
 
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
   try {
-    const { specTitle, specType, meetingId } = await req.json();
+    const { specs, meetingTitle } = await req.json();
 
-    if (!specTitle) {
-      return NextResponse.json({ error: 'specTitle is required' }, { status: 400 });
+    if (!specs || specs.length === 0) {
+      return NextResponse.json({ error: 'specs array is required' }, { status: 400 });
     }
 
-    // Build feature request from spec block
-    const featureRequest = `${specType?.toUpperCase() || 'FEATURE'}: ${specTitle}\n\nThis was extracted from a Syntheon meeting (ID: ${meetingId}). Generate implementation plan.`;
+    // Build ONE feature request from ALL approved specs
+    const specList = specs
+      .map((s: any, i: number) => `${i + 1}. [${s.type.toUpperCase()}] ${s.title}`)
+      .join('\n');
 
-    console.log('Generating plan for:', featureRequest);
+    const featureRequest = `Build a complete application for: "${meetingTitle}"
 
-    // Step 1: Generate AI plan
+The following specifications were approved from the meeting:
+
+${specList}
+
+Build the entire application implementing ALL of the above specifications in one cohesive codebase.`;
+
+    console.log('Generating plan for', specs.length, 'specs...');
+
     const plan = await generatePlan(featureRequest);
-    console.log('Plan generated:', plan.branch_name);
+    console.log('Plan generated:', plan.branch_name, '— files:', plan.files.length);
 
-    // Step 2: Create Linear tickets
     const linearTicketBundle = await createLinearTicketBundle(plan);
     console.log('Linear tickets created:', linearTicketBundle.parentIssue.identifier);
 

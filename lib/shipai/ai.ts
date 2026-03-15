@@ -19,12 +19,12 @@ export interface PlanFile {
 }
 
 export interface DevPlan {
-  issue_title:      string;
-  issue_body:       string;
-  branch_name:      string;
-  pr_title:         string;
-  linear_subtasks:  LinearSubtask[];
-  files:            PlanFile[];
+  issue_title:     string;
+  issue_body:      string;
+  branch_name:     string;
+  pr_title:        string;
+  linear_subtasks: LinearSubtask[];
+  files:           PlanFile[];
 }
 
 function validatePlan(plan: any): asserts plan is DevPlan {
@@ -37,7 +37,7 @@ function validatePlan(plan: any): asserts plan is DevPlan {
   }
   for (const subtask of plan.linear_subtasks) {
     if (!subtask.title || !subtask.description) {
-      throw new Error(`Each subtask must have title and description. Got: ${JSON.stringify(subtask)}`);
+      throw new Error(`Each subtask must have title and description`);
     }
   }
   if (!Array.isArray(plan.files) || plan.files.length === 0) {
@@ -45,7 +45,7 @@ function validatePlan(plan: any): asserts plan is DevPlan {
   }
   for (const file of plan.files) {
     if (!file.path || typeof file.content !== 'string') {
-      throw new Error(`Each file must have path and content. Got: ${JSON.stringify(file)}`);
+      throw new Error(`Each file must have path and content`);
     }
   }
 }
@@ -53,34 +53,38 @@ function validatePlan(plan: any): asserts plan is DevPlan {
 export async function generatePlan(featureRequest: string): Promise<DevPlan> {
   const systemPrompt = loadSystemPrompt();
 
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
     method:  'POST',
     headers: {
-      'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-      'Content-Type':  'application/json',
+      'x-api-key':         process.env.ANTHROPIC_API_KEY!,
+      'anthropic-version': '2023-06-01',
+      'Content-Type':      'application/json',
     },
     body: JSON.stringify({
-      model:       'gpt-4o',
+      model:      'claude-sonnet-4-20250514',
+      max_tokens: 8000,
+      system:     systemPrompt,
       messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user',   content: featureRequest }
+        { role: 'user', content: featureRequest }
       ],
-      temperature: 0.3,
     })
   });
 
-  if (!res.ok) throw new Error(`OpenAI API error: ${res.status}`);
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(`Claude API error: ${res.status} — ${JSON.stringify(err)}`);
+  }
 
-  const data     = await res.json();
-  const raw      = data.choices[0].message.content.trim();
-  const match    = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
-  const jsonStr  = match ? match[1].trim() : raw;
+  const data    = await res.json();
+  const raw     = data.content[0].text.trim();
+  const match   = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const jsonStr = match ? match[1].trim() : raw;
 
   let plan: any;
   try {
     plan = JSON.parse(jsonStr);
-  } catch (err) {
-    throw new Error(`Failed to parse AI response as JSON: ${raw}`);
+  } catch {
+    throw new Error(`Failed to parse Claude response as JSON: ${raw.slice(0, 300)}`);
   }
 
   validatePlan(plan);
