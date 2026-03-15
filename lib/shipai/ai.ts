@@ -53,30 +53,29 @@ function validatePlan(plan: any): asserts plan is DevPlan {
 export async function generatePlan(featureRequest: string): Promise<DevPlan> {
   const systemPrompt = loadSystemPrompt();
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method:  'POST',
     headers: {
-      'x-api-key':         process.env.ANTHROPIC_API_KEY!,
-      'anthropic-version': '2023-06-01',
-      'Content-Type':      'application/json',
+      'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+      'Content-Type':  'application/json',
     },
     body: JSON.stringify({
-      model:      'claude-sonnet-4-20250514',
-      max_tokens: 8000,
-      system:     systemPrompt,
+      model:       'llama-3.3-70b-versatile',
       messages: [
-        { role: 'user', content: featureRequest }
+        { role: 'system', content: systemPrompt },
+        { role: 'user',   content: featureRequest }
       ],
+      temperature: 0.3,
     })
   });
 
   if (!res.ok) {
     const err = await res.json();
-    throw new Error(`Claude API error: ${res.status} — ${JSON.stringify(err)}`);
+    throw new Error(`Groq API error: ${res.status} — ${JSON.stringify(err)}`);
   }
 
   const data    = await res.json();
-  const raw     = data.content[0].text.trim();
+  const raw     = data.choices[0].message.content.trim();
   const match   = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
   const jsonStr = match ? match[1].trim() : raw;
 
@@ -84,7 +83,7 @@ export async function generatePlan(featureRequest: string): Promise<DevPlan> {
   try {
     plan = JSON.parse(jsonStr);
   } catch {
-    throw new Error(`Failed to parse Claude response as JSON: ${raw.slice(0, 300)}`);
+    throw new Error(`Failed to parse response as JSON: ${raw.slice(0, 300)}`);
   }
 
   validatePlan(plan);
