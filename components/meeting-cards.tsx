@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Clock, Loader2 } from 'lucide-react';
+import { CheckCircle, Clock, Loader2, Trash2 } from 'lucide-react';
 
 interface Meeting {
   id:            string;
@@ -23,11 +23,10 @@ export function MeetingCards({ onSelectMeeting }: MeetingCardsProps) {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   useEffect(() => {
     fetchMeetings();
-
-    // Poll every 10s so new recordings appear without refresh
     const interval = setInterval(fetchMeetings, 10000);
     return () => clearInterval(interval);
   }, []);
@@ -41,42 +40,47 @@ export function MeetingCards({ onSelectMeeting }: MeetingCardsProps) {
       setError(null);
     } catch (err) {
       setError('Could not load meetings');
-      console.error(err);
     } finally {
       setLoading(false);
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-6 h-6 animate-spin text-primary mr-3" />
-        <span className="text-muted-foreground">Loading meetings...</span>
-      </div>
-    );
+  async function deleteMeeting(e: React.MouseEvent, meetingId: string) {
+    e.stopPropagation(); // prevent opening the meeting
+    if (!confirm('Delete this meeting and all its spec blocks?')) return;
+
+    setDeleting(meetingId);
+    try {
+      const res = await fetch(`/api/meetings/${meetingId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete');
+      setMeetings(prev => prev.filter(m => m.id !== meetingId));
+    } catch {
+      alert('Failed to delete meeting');
+    } finally {
+      setDeleting(null);
+    }
   }
 
-  if (error) {
-    return (
-      <div className="bg-card rounded-2xl p-8 border border-border text-center">
-        <p className="text-destructive">{error}</p>
-        <Button onClick={fetchMeetings} className="mt-4">Retry</Button>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="flex items-center justify-center py-20">
+      <Loader2 className="w-6 h-6 animate-spin text-primary mr-3" />
+      <span className="text-muted-foreground">Loading meetings...</span>
+    </div>
+  );
 
-  if (meetings.length === 0) {
-    return (
-      <div className="bg-card rounded-2xl p-12 border border-border text-center">
-        <p className="text-2xl font-playfair font-bold text-foreground mb-2">
-          No meetings yet
-        </p>
-        <p className="text-muted-foreground">
-          Start recording a meeting with the Syntheon extension to see it here.
-        </p>
-      </div>
-    );
-  }
+  if (error) return (
+    <div className="bg-card rounded-2xl p-8 border border-border text-center">
+      <p className="text-destructive">{error}</p>
+      <Button onClick={fetchMeetings} className="mt-4">Retry</Button>
+    </div>
+  );
+
+  if (meetings.length === 0) return (
+    <div className="bg-card rounded-2xl p-12 border border-border text-center">
+      <p className="text-2xl font-playfair font-bold text-foreground mb-2">No meetings yet</p>
+      <p className="text-muted-foreground">Start recording a meeting with the Syntheon extension.</p>
+    </div>
+  );
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -114,7 +118,7 @@ export function MeetingCards({ onSelectMeeting }: MeetingCardsProps) {
               ) : (
                 <Clock className="w-3 h-3 mr-1" />
               )}
-              {meeting.status === 'completed' ? 'Done' : 
+              {meeting.status === 'completed' ? 'Done' :
                meeting.status === 'failed'    ? 'Failed' : 'Processing'}
             </Badge>
           </div>
@@ -122,9 +126,7 @@ export function MeetingCards({ onSelectMeeting }: MeetingCardsProps) {
           <div className="bg-background rounded-lg p-4 mb-4">
             <div className="text-center">
               <p className="text-3xl font-bold text-primary">{meeting.specsDetected}</p>
-              <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">
-                Specs Detected
-              </p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">Specs Detected</p>
             </div>
           </div>
 
@@ -136,15 +138,27 @@ export function MeetingCards({ onSelectMeeting }: MeetingCardsProps) {
                 year:  'numeric'
               })}
             </p>
-            <Button
-              onClick={(e) => {
-                e.stopPropagation();
-                onSelectMeeting(meeting.id);
-              }}
-              className="bg-primary hover:bg-primary text-primary-foreground font-medium rounded-lg px-4 py-1.5 text-sm"
-            >
-              View Specs
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelectMeeting(meeting.id);
+                }}
+                className="bg-primary hover:bg-primary text-primary-foreground font-medium rounded-lg px-4 py-1.5 text-sm"
+              >
+                View Specs
+              </Button>
+              <button
+                onClick={(e) => deleteMeeting(e, meeting.id)}
+                disabled={deleting === meeting.id}
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200 disabled:opacity-40"
+              >
+                {deleting === meeting.id
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : <Trash2 className="w-4 h-4" />
+                }
+              </button>
+            </div>
           </div>
         </div>
       ))}

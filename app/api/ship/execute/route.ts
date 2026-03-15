@@ -2,12 +2,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createGithubIssue, createBranch, commitFile, createPullRequest } from '@/lib/shipai/github';
 import { moveLinearTicketBundleToPrStage } from '@/lib/shipai/linear';
+import { loadDB, saveDB, updateMeetingBranch } from '@/lib/db';
 
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
-    const { featureRequest, plan, linearTicketBundle } = await req.json();
+    const { featureRequest, plan, linearTicketBundle, meetingId } = await req.json();
 
     if (!plan) return NextResponse.json({ error: 'plan is required' }, { status: 400 });
 
@@ -21,7 +22,7 @@ export async function POST(req: NextRequest) {
     await createBranch(plan.branch_name);
     console.log('Branch created:', plan.branch_name);
 
-    // Step 3: Commit files
+    // Step 3: Commit all files
     const committedFiles = [];
     for (const file of plan.files) {
       await commitFile(file.path, file.content, plan.branch_name);
@@ -40,8 +41,14 @@ export async function POST(req: NextRequest) {
       console.log('Linear tickets moved to PR stage');
     }
 
+    // Step 6: Save branch name to meeting in db
+    if (meetingId) {
+      updateMeetingBranch(meetingId, plan.branch_name);
+      console.log('Branch name saved to meeting:', meetingId, plan.branch_name);
+    }
+
     return NextResponse.json({
-      success:        true,
+      success:            true,
       issue,
       pullRequest,
       committedFiles,
@@ -51,7 +58,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('Ship execute error:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to execute plan' },
+      { error: error instanceof Error ? error.message : 'Failed to execute' },
       { status: 500 }
     );
   }

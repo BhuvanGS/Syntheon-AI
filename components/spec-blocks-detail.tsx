@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, X, Edit2, Loader2, Rocket, ExternalLink, Plus } from 'lucide-react';
+import { CheckCircle, X, Edit2, Loader2, Rocket, ExternalLink, Plus, Monitor } from 'lucide-react';
 
 interface SpecBlock {
   id:         string;
@@ -14,15 +14,22 @@ interface SpecBlock {
   timestamp:  string;
 }
 
+interface Meeting {
+  id:          string;
+  projectName: string;
+  branchName?: string;
+  deployUrl?:  string;
+}
+
 interface ShipResult {
-  status:             'idle' | 'planning' | 'planned' | 'executing' | 'done' | 'error';
-  plan?:              any;
+  status:              'idle' | 'planning' | 'planned' | 'executing' | 'done' | 'error';
+  plan?:               any;
   linearTicketBundle?: any;
-  featureRequest?:    string;
-  issue?:             any;
-  pullRequest?:       any;
-  committedFiles?:    string[];
-  error?:             string;
+  featureRequest?:     string;
+  issue?:              any;
+  pullRequest?:        any;
+  committedFiles?:     string[];
+  error?:              string;
 }
 
 interface SpecBlocksDetailProps {
@@ -34,17 +41,21 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState<string | null>(null);
   const [meetingTitle, setMeetingTitle] = useState('Meeting');
-
-  // Per-spec state: 'idle' | 'added' | 'rejected'
+  const [meetingData, setMeetingData]   = useState<Meeting | null>(null);
   const [specActions, setSpecActions]   = useState<Record<string, 'idle' | 'added' | 'rejected'>>({});
-
-  // Global ship state for the whole meeting
   const [shipResult, setShipResult]     = useState<ShipResult>({ status: 'idle' });
 
   useEffect(() => {
     fetchSpecs();
-    fetchMeetingTitle();
+    fetchMeetingData();
   }, [meetingId]);
+
+  useEffect(() => {
+    if (shipResult.status !== 'done') return;
+    if (meetingData?.deployUrl) return;
+    const interval = setInterval(fetchMeetingData, 10000);
+    return () => clearInterval(interval);
+  }, [shipResult.status, meetingData?.deployUrl]);
 
   async function fetchSpecs() {
     try {
@@ -61,13 +72,16 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
     }
   }
 
-  async function fetchMeetingTitle() {
+  async function fetchMeetingData() {
     try {
       const res  = await fetch('/api/meetings');
       if (!res.ok) return;
       const data = await res.json();
       const meeting = data.find((m: any) => m.id === meetingId);
-      if (meeting) setMeetingTitle(meeting.projectName);
+      if (meeting) {
+        setMeetingTitle(meeting.projectName);
+        setMeetingData(meeting);
+      }
     } catch {}
   }
 
@@ -75,23 +89,18 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
     setSpecActions(prev => ({ ...prev, [specId]: action }));
   }
 
-  const addedSpecs  = specs.filter(s => specActions[s.id] === 'added');
-  const canShip     = addedSpecs.length > 0 && shipResult.status === 'idle';
+  const addedSpecs = specs.filter(s => specActions[s.id] === 'added');
+  const canShip    = addedSpecs.length > 0 && shipResult.status === 'idle';
 
   async function handleApproveAndShip() {
     if (addedSpecs.length === 0) return;
-
     setShipResult({ status: 'planning' });
 
     try {
-      // Step 1: Generate plan for ALL added specs in ONE prompt
       const planRes = await fetch('/api/ship/plan', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-          specs:        addedSpecs,
-          meetingTitle
-        })
+        body:    JSON.stringify({ specs: addedSpecs, meetingTitle })
       });
 
       const planData = await planRes.json();
@@ -114,7 +123,6 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
 
   async function handleExecute() {
     if (!shipResult.plan) return;
-
     setShipResult(prev => ({ ...prev, status: 'executing' }));
 
     try {
@@ -124,7 +132,8 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
         body:    JSON.stringify({
           featureRequest:     shipResult.featureRequest,
           plan:               shipResult.plan,
-          linearTicketBundle: shipResult.linearTicketBundle
+          linearTicketBundle: shipResult.linearTicketBundle,
+          meetingId
         })
       });
 
@@ -140,6 +149,8 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
         linearTicketBundle: execData.linearTicketBundle
       }));
 
+      fetchMeetingData();
+
     } catch (err) {
       setShipResult(prev => ({
         ...prev,
@@ -147,6 +158,11 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
         error:  err instanceof Error ? err.message : 'Failed to execute'
       }));
     }
+  }
+
+  function toggleReject(specId: string) {
+    const current = specActions[specId] || 'idle';
+    setSpecAction(specId, current === 'rejected' ? 'idle' : 'rejected');
   }
 
   function getTypeColor(type: string) {
@@ -178,19 +194,68 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
       <h1 className="text-4xl font-playfair font-bold text-foreground mb-2">{meetingTitle}</h1>
       <div className="bg-card rounded-2xl p-12 border border-border text-center mt-8">
         <p className="text-2xl font-playfair font-bold mb-2">No spec blocks yet</p>
-        <p className="text-muted-foreground">This meeting hasn't been processed yet.</p>
+        <p className="text-muted-foreground">This meeting has not been processed yet.</p>
       </div>
     </div>
   );
+
+  const shippedCount  = shipResult.status === 'done' ? addedSpecs.length : 0;
+  const rejectedCount = specs.filter(s => specActions[s.id] === 'rejected').length;
 
   return (
     <div className="max-w-5xl">
       <h1 className="text-4xl font-playfair font-bold text-foreground mb-2">{meetingTitle}</h1>
       <p className="text-muted-foreground mb-8">
-        {specs.length} specifications extracted — {addedSpecs.length} added to app
+        {specs.length} specifications extracted - {addedSpecs.length} added to app
       </p>
 
-      {/* Spec blocks */}
+      {meetingData?.deployUrl && (
+        <div className="mb-8 bg-card rounded-2xl border border-primary/30 overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+            <div className="flex items-center gap-2">
+              <Monitor className="w-4 h-4 text-primary" />
+              <p className="font-medium text-foreground">Live Preview</p>
+              <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">Deployed</span>
+            </div>
+            <a
+              href={meetingData.deployUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
+            >
+              Open in new tab <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
+          <iframe
+            src={meetingData.deployUrl}
+            className="w-full h-[500px]"
+            title="Live App Preview"
+          />
+        </div>
+      )}
+
+      {shipResult.status === 'done' && !meetingData?.deployUrl && (
+        <div className="mb-8 bg-card rounded-2xl border border-border p-6 flex items-center gap-4">
+          <Loader2 className="w-5 h-5 animate-spin text-primary flex-shrink-0" />
+          <div>
+            <p className="font-medium text-foreground">Waiting for deployment...</p>
+            <p className="text-sm text-muted-foreground">
+              Merge the PR on GitHub to trigger deploy. Preview appears here automatically.
+            </p>
+            {shipResult.pullRequest && (
+              <a
+                href={shipResult.pullRequest.html_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-primary hover:underline flex items-center gap-1 mt-2"
+              >
+                Review and merge PR #{shipResult.pullRequest.number} <ExternalLink className="w-3 h-3" />
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="space-y-4 mb-8">
         {specs.map((spec) => {
           const action = specActions[spec.id] || 'idle';
@@ -208,7 +273,7 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
+                  <div className="flex items-center gap-3 mb-2 flex-wrap">
                     <h3 className="text-lg font-playfair font-bold text-foreground">{spec.title}</h3>
                     <Badge className={getTypeColor(spec.type)}>
                       {spec.type.charAt(0).toUpperCase() + spec.type.slice(1)}
@@ -220,14 +285,20 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
                     )}
                   </div>
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <span>{new Date(spec.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                    <span>
+                      {new Date(spec.timestamp).toLocaleDateString('en-US', {
+                        month:  'short',
+                        day:    'numeric',
+                        hour:   '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
                     <span>Confidence: {Math.round(spec.confidence * 100)}%</span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex gap-3 pt-4 border-t border-border">
-                {/* Add to App */}
+              <div className="flex gap-3 pt-4 border-t border-border flex-wrap">
                 <button
                   onClick={() => setSpecAction(spec.id, action === 'added' ? 'idle' : 'added')}
                   disabled={shipResult.status !== 'idle'}
@@ -241,7 +312,6 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
                   {action === 'added' ? 'Added' : 'Add to App'}
                 </button>
 
-                {/* Modify */}
                 <button
                   disabled={shipResult.status !== 'idle'}
                   className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-muted text-foreground hover:bg-muted/80 transition-all duration-200 disabled:opacity-40"
@@ -250,9 +320,8 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
                   Modify
                 </button>
 
-                {/* Reject */}
                 <button
-                  onClick={() => setSpecAction(spec.id, action === 'rejected' ? 'idle' : 'rejected')}
+                  onClick={() => toggleReject(spec.id)}
                   disabled={shipResult.status !== 'idle'}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 disabled:opacity-40 ${
                     action === 'rejected'
@@ -269,29 +338,40 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
         })}
       </div>
 
-      {/* Global ship panel */}
-      <div className="bg-card rounded-2xl p-6 border border-border sticky bottom-6">
+      <div className="bg-card rounded-2xl p-6 border border-border sticky bottom-6 shadow-lg">
 
-        {/* Plan preview */}
         {(shipResult.status === 'planned' || shipResult.status === 'executing') && shipResult.plan && (
           <div className="mb-4 bg-background rounded-xl p-4 border border-border">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Plan Preview</p>
-            <p className="text-sm font-medium mb-2">Branch: <code className="text-primary">{shipResult.plan.branch_name}</code></p>
+            <p className="text-sm font-medium mb-2">
+              Branch: <code className="text-primary">{shipResult.plan.branch_name}</code>
+            </p>
             <p className="text-sm text-muted-foreground mb-2">
               Files: {shipResult.plan.files.map((f: any) => f.path).join(', ')}
             </p>
             {shipResult.linearTicketBundle && (
               <div className="mt-3">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Linear Tickets</p>
-                <a href={shipResult.linearTicketBundle.parentIssue.url} target="_blank" rel="noopener noreferrer"
-                  className="text-sm text-primary hover:underline flex items-center gap-1">
-                  {shipResult.linearTicketBundle.parentIssue.identifier} — {shipResult.linearTicketBundle.parentIssue.title}
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                  Linear Tickets
+                </p>
+                <a
+                  href={shipResult.linearTicketBundle.parentIssue.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-primary hover:underline flex items-center gap-1"
+                >
+                  {shipResult.linearTicketBundle.parentIssue.identifier} - {shipResult.linearTicketBundle.parentIssue.title}
                   <ExternalLink className="w-3 h-3" />
                 </a>
                 {shipResult.linearTicketBundle.subtaskIssues.map((s: any) => (
-                  <a key={s.id} href={s.url} target="_blank" rel="noopener noreferrer"
-                    className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 mt-1">
-                    ↳ {s.identifier} — {s.title}
+                  <a
+                    key={s.id}
+                    href={s.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 mt-1"
+                  >
+                    {s.identifier} - {s.title}
                     <ExternalLink className="w-3 h-3" />
                   </a>
                 ))}
@@ -300,40 +380,45 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
           </div>
         )}
 
-        {/* Done state */}
         {shipResult.status === 'done' && (
           <div className="mb-4 bg-primary/5 rounded-xl p-4 border border-primary/20">
-            <p className="text-xs font-medium text-primary uppercase tracking-wide mb-2">Shipped ✓</p>
+            <p className="text-xs font-medium text-primary uppercase tracking-wide mb-2">Shipped</p>
             <div className="flex gap-4 flex-wrap">
               {shipResult.issue && (
-                <a href={shipResult.issue.html_url} target="_blank" rel="noopener noreferrer"
-                  className="text-sm text-primary hover:underline flex items-center gap-1">
+                <a
+                  href={shipResult.issue.html_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-primary hover:underline flex items-center gap-1"
+                >
                   Issue #{shipResult.issue.number} <ExternalLink className="w-3 h-3" />
                 </a>
               )}
               {shipResult.pullRequest && (
-                <a href={shipResult.pullRequest.html_url} target="_blank" rel="noopener noreferrer"
-                  className="text-sm text-primary hover:underline flex items-center gap-1">
+                <a
+                  href={shipResult.pullRequest.html_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-primary hover:underline flex items-center gap-1"
+                >
                   PR #{shipResult.pullRequest.number} <ExternalLink className="w-3 h-3" />
                 </a>
               )}
             </div>
             {shipResult.committedFiles && (
               <p className="text-xs text-muted-foreground mt-2">
-                Files committed: {shipResult.committedFiles.join(', ')}
+                Files: {shipResult.committedFiles.filter(f => !f.includes('.github')).join(', ')}
               </p>
             )}
           </div>
         )}
 
-        {/* Error state */}
         {shipResult.status === 'error' && (
           <div className="mb-4 bg-destructive/5 rounded-xl p-3 border border-destructive/20">
             <p className="text-sm text-destructive">{shipResult.error}</p>
           </div>
         )}
 
-        {/* Action buttons */}
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
             {addedSpecs.length > 0
@@ -349,7 +434,7 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
                 className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium bg-primary text-primary-foreground hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Rocket className="w-4 h-4" />
-                Approve & Ship
+                Approve and Ship
               </button>
             )}
 
@@ -397,21 +482,18 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
         </div>
       </div>
 
-      {/* Summary */}
       <div className="mt-6 grid grid-cols-3 gap-4">
         <div className="bg-card rounded-2xl p-6 border border-border">
           <p className="text-muted-foreground text-sm mb-2">Total Specs</p>
           <p className="text-3xl font-bold text-foreground">{specs.length}</p>
         </div>
         <div className="bg-card rounded-2xl p-6 border border-primary/30 bg-primary/5">
-          <p className="text-muted-foreground text-sm mb-2">Added to App</p>
-          <p className="text-3xl font-bold text-primary">{addedSpecs.length}</p>
+          <p className="text-muted-foreground text-sm mb-2">Shipped</p>
+          <p className="text-3xl font-bold text-primary">{shippedCount}</p>
         </div>
         <div className="bg-card rounded-2xl p-6 border border-border">
           <p className="text-muted-foreground text-sm mb-2">Rejected</p>
-          <p className="text-3xl font-bold text-destructive">
-            {specs.filter(s => specActions[s.id] === 'rejected').length}
-          </p>
+          <p className="text-3xl font-bold text-destructive">{rejectedCount}</p>
         </div>
       </div>
     </div>

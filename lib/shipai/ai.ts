@@ -50,6 +50,36 @@ function validatePlan(plan: any): asserts plan is DevPlan {
   }
 }
 
+const GITHUB_PAGES_WORKFLOW = `name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: \${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v4
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+      - id: deployment
+        uses: actions/deploy-pages@v4`;
+
 export async function generatePlan(featureRequest: string): Promise<DevPlan> {
   const systemPrompt = loadSystemPrompt();
 
@@ -87,5 +117,12 @@ export async function generatePlan(featureRequest: string): Promise<DevPlan> {
   }
 
   validatePlan(plan);
+
+  // Inject GitHub Pages workflow into every generated plan
+  plan.files.push({
+    path:    '.github/workflows/deploy.yml',
+    content: GITHUB_PAGES_WORKFLOW
+  });
+
   return plan;
 }
