@@ -19,6 +19,7 @@ export interface Meeting {
   branchName?:   string;
   deployUrl?:    string;
   projectId?:    string; // ← links meeting to a project
+  updatedAt?: string;
 }
 
 export interface SpecBlock {
@@ -112,7 +113,11 @@ export function updateMeetingBranch(id: string, branchName: string): void {
 export function updateMeetingDeployUrl(id: string, deployUrl: string): void {
   const db      = loadDB();
   const meeting = db.meetings.find(m => m.id === id);
-  if (meeting) { meeting.deployUrl = deployUrl; saveDB(db); }
+  if (meeting) {
+    meeting.deployUrl  = deployUrl;
+    (meeting as any).updatedAt = new Date().toISOString();
+    saveDB(db);
+  }
 }
 
 // ─── Specs ──────────────────────────────────────────────────────
@@ -127,7 +132,14 @@ export function getSpecsByMeetingId(meetingId: string): SpecBlock[] {
 }
 
 export function getSpecsByProjectId(projectId: string): SpecBlock[] {
-  return loadDB().specs.filter(s => s.projectId === projectId);
+  const db      = loadDB();
+  const project = db.projects.find(p => p.id === projectId);
+  if (!project) return [];
+
+  return db.specs.filter(s =>
+    s.projectId === projectId ||
+    project.meetings.includes(s.meeting_id)
+  );
 }
 
 // ─── Projects ───────────────────────────────────────────────────
@@ -187,3 +199,4 @@ export function addFilesToProject(projectId: string, files: string[]): void {
     saveDB(db);
   }
 }
+

@@ -103,6 +103,8 @@ export async function generatePlan(featureRequest: string): Promise<DevPlan> {
         { role: 'user',   content: featureRequest }
       ],
       temperature: 0.3,
+
+      
     })
   });
 
@@ -118,10 +120,22 @@ export async function generatePlan(featureRequest: string): Promise<DevPlan> {
 
   let plan: any;
   try {
-    plan = JSON.parse(jsonStr);
-  } catch {
-    throw new Error(`Failed to parse response as JSON: ${raw.slice(0, 300)}`);
+  // Try direct parse first
+  plan = JSON.parse(jsonStr);
+} catch {
+  // Try to find and extract just the JSON object
+  const jsonStart = raw.indexOf('{');
+  const jsonEnd   = raw.lastIndexOf('}');
+  if (jsonStart !== -1 && jsonEnd !== -1) {
+    try {
+      plan = JSON.parse(raw.slice(jsonStart, jsonEnd + 1));
+    } catch {
+      throw new Error(`Coder returned invalid JSON: ${raw.slice(0, 300)}`);
+    }
+  } else {
+    throw new Error(`Coder returned invalid JSON: ${raw.slice(0, 300)}`);
   }
+}
 
   validatePlan(plan);
 
@@ -260,6 +274,7 @@ ${systemPrompt}`;
         { role: 'user', content: prompt }
       ],
       temperature: 0.3,
+      max_tokens: 8000
     })
   });
 

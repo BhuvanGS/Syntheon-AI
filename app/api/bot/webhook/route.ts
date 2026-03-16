@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBotTranscript } from '@/lib/skribby';
 import { extractSpecBlocks } from '@/lib/groq';
-import { getMeetings, updateMeetingStatus, updateMeetingSpecs, saveSpecs } from '@/lib/db';
+import { getMeetings, updateMeetingStatus, updateMeetingSpecs, saveSpecs, loadDB, saveDB, addSpecsToProject } from '@/lib/db';
 
 export async function POST(req: NextRequest) {
   try {
@@ -30,17 +30,15 @@ export async function POST(req: NextRequest) {
 
     console.log('Fetching transcript for bot:', botId);
     const botData = await getBotTranscript(botId);
-    console.log('Bot data keys:', Object.keys(botData));
     console.log('Raw transcript type:', typeof botData.transcript);
     console.log('Raw transcript sample:', JSON.stringify(botData.transcript)?.slice(0, 500));
 
-    // ── Fix: use botData.transcript not botData.transcription ──
     const rawTranscript = botData.transcript;
     const transcript = Array.isArray(rawTranscript)
-  ? rawTranscript.map((t: any) => t.transcript).join(' ')
-  : typeof rawTranscript === 'string'
-  ? rawTranscript
-  : '';
+      ? rawTranscript.map((t: any) => t.transcript).join(' ')
+      : typeof rawTranscript === 'string'
+      ? rawTranscript
+      : '';
 
     console.log('Transcript length:', transcript.length);
     console.log('Transcript preview:', transcript.slice(0, 200));
@@ -51,11 +49,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
+    // Extract specs
     const specs = await extractSpecBlocks(transcript, meeting.id);
     console.log(`Extracted ${specs.length} spec blocks`);
 
+    // Save meeting updates and specs
     updateMeetingSpecs(meeting.id, transcript, specs.length);
     saveSpecs(specs);
+
+    // Link specs to project if meeting belongs to one
+    if (meeting.projectId) {
+      addSpecsToProject(meeting.projectId, specs.map((s: any) => s.id));
+      console.log('Specs linked to project:', meeting.projectId);
+    }
 
     return NextResponse.json({ ok: true });
 

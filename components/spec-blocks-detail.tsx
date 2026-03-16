@@ -21,6 +21,8 @@ interface Meeting {
   branchName?: string;
   deployUrl?:  string;
   projectId?:  string;
+  date?:       string;
+  updatedAt?:  string;
 }
 
 interface Project {
@@ -340,7 +342,7 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
             </a>
           </div>
           <iframe
-            src={meetingData.deployUrl}
+            src={`${meetingData.deployUrl}?v=${new Date(meetingData.updatedAt || meetingData.date || Date.now()).getTime()}`}
             className="w-full h-[500px]"
             title="Live App Preview"
           />
