@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, X, Edit2, Loader2, Rocket, ExternalLink, Plus, Monitor } from 'lucide-react';
+import { CheckCircle, X, Edit2, Loader2, Rocket, ExternalLink, Plus, Monitor, Video } from 'lucide-react';
 
 interface SpecBlock {
   id:         string;
@@ -20,6 +20,15 @@ interface Meeting {
   projectName: string;
   branchName?: string;
   deployUrl?:  string;
+  projectId?:  string;
+}
+
+interface Project {
+  id:       string;
+  name:     string;
+  meetings: string[];
+  files:    string[];
+  context:  string;
 }
 
 interface ShipResult {
@@ -33,6 +42,12 @@ interface ShipResult {
   error?:              string;
 }
 
+interface ContinueMeetingState {
+  status:  'idle' | 'input' | 'sending' | 'sent' | 'error';
+  error?:  string;
+  botId?:  string;
+}
+
 interface SpecBlocksDetailProps {
   meetingId: string;
 }
@@ -43,10 +58,13 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
   const [error, setError]               = useState<string | null>(null);
   const [meetingTitle, setMeetingTitle] = useState('Meeting');
   const [meetingData, setMeetingData]   = useState<Meeting | null>(null);
+  const [project, setProject]           = useState<Project | null>(null);
   const [specActions, setSpecActions]   = useState<Record<string, 'idle' | 'added' | 'rejected'>>({});
   const [shipResult, setShipResult]     = useState<ShipResult>({ status: 'idle' });
   const [notes, setNotes]               = useState<Record<string, string>>({});
   const [editingNote, setEditingNote]   = useState<string | null>(null);
+  const [continueMeeting, setContinueMeeting] = useState<ContinueMeetingState>({ status: 'idle' });
+  const [followUpUrl, setFollowUpUrl]   = useState('');
 
   useEffect(() => {
     fetchSpecs();
@@ -59,6 +77,13 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
     const interval = setInterval(fetchMeetingData, 10000);
     return () => clearInterval(interval);
   }, [shipResult.status, meetingData?.deployUrl]);
+
+  // Fetch project after meeting data loads
+  useEffect(() => {
+    if (meetingData?.projectId) {
+      fetchProject(meetingData.projectId);
+    }
+  }, [meetingData?.projectId]);
 
   async function fetchSpecs() {
     try {
@@ -94,6 +119,15 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
     } catch {}
   }
 
+  async function fetchProject(projectId: string) {
+    try {
+      const res  = await fetch(`/api/projects?meetingId=${meetingId}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data) setProject(data);
+    } catch {}
+  }
+
   async function saveNote(specId: string, note: string) {
     try {
       await fetch(`/api/meetings/${meetingId}/specs`, {
@@ -105,6 +139,35 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
       setEditingNote(null);
     } catch {
       console.error('Failed to save note');
+    }
+  }
+
+  async function handleContinueMeeting() {
+    if (!followUpUrl.trim()) return;
+
+    setContinueMeeting({ status: 'sending' });
+
+    try {
+      const res = await fetch('/api/bot/continue', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          meetingUrl: followUpUrl.trim(),
+          projectId:  project?.id ?? meetingData?.projectId
+        })
+      });
+
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+
+      setContinueMeeting({ status: 'sent', botId: data.botId });
+      setFollowUpUrl('');
+
+    } catch (err) {
+      setContinueMeeting({
+        status: 'error',
+        error:  err instanceof Error ? err.message : 'Failed to send bot'
+      });
     }
   }
 
@@ -123,7 +186,12 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
       const planRes = await fetch('/api/ship/plan', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ specs: addedSpecs, meetingTitle, notes })
+        body:    JSON.stringify({
+          specs:       addedSpecs,
+          meetingTitle,
+          notes,
+          projectId:   project?.id ?? meetingData?.projectId
+        })
       });
 
       const planData = await planRes.json();
@@ -156,7 +224,11 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
           featureRequest:     shipResult.featureRequest,
           plan:               shipResult.plan,
           linearTicketBundle: shipResult.linearTicketBundle,
-          meetingId
+          meetingId,
+          projectId:          project?.id ?? meetingData?.projectId,
+          specs:              addedSpecs,
+          meetingTitle,
+          isFollowUp:         !!(project?.id ?? meetingData?.projectId)
         })
       });
 
@@ -224,14 +296,32 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
 
   const shippedCount  = shipResult.status === 'done' ? addedSpecs.length : 0;
   const rejectedCount = specs.filter(s => specActions[s.id] === 'rejected').length;
+  const isFollowUp    = !!(project?.id ?? meetingData?.projectId);
 
   return (
     <div className="max-w-5xl">
-      <h1 className="text-4xl font-playfair font-bold text-foreground mb-2">{meetingTitle}</h1>
+      <div className="flex items-start justify-between mb-2">
+        <h1 className="text-4xl font-playfair font-bold text-foreground">{meetingTitle}</h1>
+        {isFollowUp && (
+          <span className="text-xs bg-primary/20 text-primary px-3 py-1 rounded-full font-medium mt-2">
+            Follow-up meeting
+          </span>
+        )}
+      </div>
+      {project && (
+        <p className="text-sm text-muted-foreground mb-1">
+          Project: <span className="text-foreground font-medium">{project.name}</span>
+          <span className="mx-2">-</span>
+          {project.meetings.length} meeting{project.meetings.length > 1 ? 's' : ''}
+          <span className="mx-2">-</span>
+          {project.files.length} files in repo
+        </p>
+      )}
       <p className="text-muted-foreground mb-8">
         {specs.length} specifications extracted - {addedSpecs.length} added to app
       </p>
 
+      {/* Live Preview */}
       {meetingData?.deployUrl && (
         <div className="mb-8 bg-card rounded-2xl border border-primary/30 overflow-hidden">
           <div className="flex items-center justify-between px-6 py-4 border-b border-border">
@@ -257,6 +347,7 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
         </div>
       )}
 
+      {/* Waiting for deploy */}
       {shipResult.status === 'done' && !meetingData?.deployUrl && (
         <div className="mb-8 bg-card rounded-2xl border border-border p-6 flex items-center gap-4">
           <Loader2 className="w-5 h-5 animate-spin text-primary flex-shrink-0" />
@@ -279,6 +370,7 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
         </div>
       )}
 
+      {/* Spec blocks */}
       <div className="space-y-4 mb-8">
         {specs.map((spec) => {
           const action = specActions[spec.id] || 'idle';
@@ -409,11 +501,14 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
         })}
       </div>
 
+      {/* Global ship panel */}
       <div className="bg-card rounded-2xl p-6 border border-border sticky bottom-6 shadow-lg">
 
         {(shipResult.status === 'planned' || shipResult.status === 'executing') && shipResult.plan && (
           <div className="mb-4 bg-background rounded-xl p-4 border border-border">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Plan Preview</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+              {isFollowUp ? 'Follow-up Plan Preview' : 'Plan Preview'}
+            </p>
             <p className="text-sm font-medium mb-2">
               Branch: <code className="text-primary">{shipResult.plan.branch_name}</code>
             </p>
@@ -490,6 +585,61 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
           </div>
         )}
 
+        {/* Continue Meeting section */}
+        {(continueMeeting.status === 'input' || continueMeeting.status === 'sending') && (
+          <div className="mb-4 bg-background rounded-xl p-4 border border-border">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+              Continue this project in a new meeting
+            </p>
+            <p className="text-xs text-muted-foreground mb-3">
+              The bot will join with full context of this project and all previous specs.
+            </p>
+            <input
+              type="text"
+              value={followUpUrl}
+              onChange={e => setFollowUpUrl(e.target.value)}
+              placeholder="https://meet.google.com/xxx-xxxx-xxx"
+              className="w-full p-3 rounded-lg border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 mb-3"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={handleContinueMeeting}
+                disabled={!followUpUrl.trim() || continueMeeting.status === 'sending'}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:opacity-90 transition-all disabled:opacity-40"
+              >
+                {continueMeeting.status === 'sending'
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : <Video className="w-4 h-4" />
+                }
+                {continueMeeting.status === 'sending' ? 'Sending bot...' : 'Send Bot'}
+              </button>
+              <button
+                onClick={() => setContinueMeeting({ status: 'idle' })}
+                className="px-4 py-2 rounded-lg text-sm font-medium bg-muted text-foreground hover:bg-muted/80 transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {continueMeeting.status === 'sent' && (
+          <div className="mb-4 bg-primary/5 rounded-xl p-3 border border-primary/20">
+            <p className="text-sm text-primary font-medium">
+              Bot is in the follow-up meeting with full project context.
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              New specs will appear on the dashboard when the meeting ends.
+            </p>
+          </div>
+        )}
+
+        {continueMeeting.status === 'error' && (
+          <div className="mb-4 bg-destructive/5 rounded-xl p-3 border border-destructive/20">
+            <p className="text-sm text-destructive">{continueMeeting.error}</p>
+          </div>
+        )}
+
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
             {addedSpecs.length > 0
@@ -498,6 +648,17 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
           </p>
 
           <div className="flex gap-3">
+            {/* Continue Meeting button */}
+            {shipResult.status === 'idle' && continueMeeting.status === 'idle' && (
+              <button
+                onClick={() => setContinueMeeting({ status: 'input' })}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium bg-muted text-foreground hover:bg-muted/80 transition-all border border-border"
+              >
+                <Video className="w-4 h-4" />
+                Continue Meeting
+              </button>
+            )}
+
             {shipResult.status === 'idle' && (
               <button
                 onClick={handleApproveAndShip}
@@ -505,7 +666,7 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
                 className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium bg-primary text-primary-foreground hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Rocket className="w-4 h-4" />
-                Approve and Ship
+                {isFollowUp ? 'Ship Changes' : 'Approve and Ship'}
               </button>
             )}
 
@@ -553,6 +714,7 @@ export function SpecBlocksDetail({ meetingId }: SpecBlocksDetailProps) {
         </div>
       </div>
 
+      {/* Summary */}
       <div className="mt-6 grid grid-cols-3 gap-4">
         <div className="bg-card rounded-2xl p-6 border border-border">
           <p className="text-muted-foreground text-sm mb-2">Total Specs</p>
