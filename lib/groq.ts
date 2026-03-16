@@ -34,14 +34,14 @@ Respond ONLY with a valid JSON array. No markdown, no explanation, no code fence
 ${transcript}
 
 Return a JSON array where each item has:
-- id: unique string (e.g. "spec-1", "spec-2")
-- title: short clear title of the idea/feature/constraint
+- id: unique string using this format: "${meetingId}-spec-1", "${meetingId}-spec-2", etc.
+- title: short clear title of idea/feature/constraint
 - type: one of "feature", "idea", "constraint", "improvement"
 - confidence: number between 0 and 1
 - meeting_id: "${meetingId}"
 - timestamp: current ISO timestamp
 
-Return ONLY the JSON array, nothing else.`
+Return ONLY JSON array, nothing else.`
       }
     ],
     temperature: 0.3,
