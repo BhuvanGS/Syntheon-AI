@@ -103,6 +103,7 @@ export async function generatePlan(featureRequest: string): Promise<DevPlan> {
         { role: 'user',   content: featureRequest }
       ],
       temperature: 0.3,
+      max_tokens: 8000
 
       
     })
