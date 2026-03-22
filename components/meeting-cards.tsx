@@ -6,13 +6,13 @@ import { Button } from '@/components/ui/button';
 import { CheckCircle, Clock, Loader2, Trash2 } from 'lucide-react';
 
 interface Meeting {
-  id:            string;
-  projectName:   string;
-  meetingId:     string;
+  id: string;
+  projectName: string;
+  meetingId: string;
   specsDetected: number;
-  status:        'completed' | 'processing' | 'failed';
-  date:          string;
-  platform:      string;
+  status: 'completed' | 'processing' | 'failed';
+  date: string;
+  platform: string;
 }
 
 interface MeetingCardsProps {
@@ -21,8 +21,8 @@ interface MeetingCardsProps {
 
 export function MeetingCards({ onSelectMeeting }: MeetingCardsProps) {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
 
   useEffect(() => {
@@ -33,7 +33,7 @@ export function MeetingCards({ onSelectMeeting }: MeetingCardsProps) {
 
   async function fetchMeetings() {
     try {
-      const res  = await fetch('/api/meetings');
+      const res = await fetch('/api/meetings');
       if (!res.ok) throw new Error('Failed to fetch meetings');
       const data = await res.json();
       setMeetings(data);
@@ -92,12 +92,12 @@ export function MeetingCards({ onSelectMeeting }: MeetingCardsProps) {
         >
           <div className="flex justify-between items-start mb-4">
             <div className="flex-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-                {meeting.meetingId}
-              </p>
-              <h3 className="text-lg font-playfair font-bold text-foreground group-hover:text-primary transition-colors">
+              <h3 className="text-lg font-playfair font-bold text-foreground group-hover:text-primary transition-colors mb-1">
                 {meeting.projectName}
               </h3>
+              <p className="text-xs text-muted-foreground font-mono">
+                {meeting.meetingId}
+              </p>
               {meeting.platform !== 'unknown' && (
                 <p className="text-xs text-muted-foreground mt-1 capitalize">
                   {meeting.platform.replace('-', ' ')}
@@ -105,13 +105,12 @@ export function MeetingCards({ onSelectMeeting }: MeetingCardsProps) {
               )}
             </div>
             <Badge
-              className={`ml-2 ${
-                meeting.status === 'completed'
+              className={`ml-2 ${meeting.status === 'completed'
                   ? 'bg-primary/20 text-primary'
                   : meeting.status === 'failed'
-                  ? 'bg-destructive/20 text-destructive'
-                  : 'bg-secondary text-secondary-foreground'
-              }`}
+                    ? 'bg-destructive/20 text-destructive'
+                    : 'bg-secondary text-secondary-foreground'
+                }`}
             >
               {meeting.status === 'completed' ? (
                 <CheckCircle className="w-3 h-3 mr-1" />
@@ -119,7 +118,7 @@ export function MeetingCards({ onSelectMeeting }: MeetingCardsProps) {
                 <Clock className="w-3 h-3 mr-1" />
               )}
               {meeting.status === 'completed' ? 'Done' :
-               meeting.status === 'failed'    ? 'Failed' : 'Processing'}
+                meeting.status === 'failed' ? 'Failed' : 'Processing'}
             </Badge>
           </div>
 
@@ -134,8 +133,8 @@ export function MeetingCards({ onSelectMeeting }: MeetingCardsProps) {
             <p className="text-xs text-muted-foreground">
               {new Date(meeting.date).toLocaleDateString('en-US', {
                 month: 'short',
-                day:   'numeric',
-                year:  'numeric'
+                day: 'numeric',
+                year: 'numeric'
               })}
             </p>
             <div className="flex gap-2">

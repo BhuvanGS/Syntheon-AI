@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     const meetingId = `meet-${Date.now()}`;
     saveMeeting({
       id:            meetingId,
-      projectName:   `${project.name} (Follow-up)`,
+      projectName: `${project.name} — Follow-up ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
       meetingId:     meetingId,
       platform:      detectPlatform(meetingUrl),
       transcript:    '',

@@ -15,7 +15,7 @@ export interface SpecBlock {
 export async function extractSpecBlocks(
   transcript: string,
   meetingId:  string
-): Promise<SpecBlock[]> {
+): Promise<{ specs: SpecBlock[], title: string }> {
 
   const response = await groq.chat.completions.create({
     model: "llama-3.3-70b-versatile",
@@ -24,39 +24,47 @@ export async function extractSpecBlocks(
         role: "system",
         content: `You are an AI that extracts structured specification blocks from meeting transcripts.
 Extract every idea, feature, constraint, or improvement discussed.
-Capture ALL ideas — humans will decide what to implement.
-Respond ONLY with a valid JSON array. No markdown, no explanation, no code fences.`
+Also generate a short human-readable title for this meeting (max 5 words).
+Respond ONLY with valid JSON. No markdown, no explanation, no code fences.`
       },
       {
         role: "user",
-        content: `Extract spec blocks from this transcript:
+        content: `Extract spec blocks and generate a title from this transcript:
 
 ${transcript}
 
-Return a JSON array where each item has:
-- id: unique string using this format: "${meetingId}-spec-1", "${meetingId}-spec-2", etc.
-- title: short clear title of idea/feature/constraint
-- type: one of "feature", "idea", "constraint", "improvement"
-- confidence: number between 0 and 1
-- meeting_id: "${meetingId}"
-- timestamp: current ISO timestamp
+Return JSON in this exact format:
+{
+  "title": "Calculator App Discussion",
+  "specs": [
+    {
+      "id": "${meetingId}-spec-1",
+      "title": "short clear title",
+      "type": "feature",
+      "confidence": 0.92,
+      "meeting_id": "${meetingId}",
+      "timestamp": "2026-03-22T09:00:00.000Z"
+    }
+  ]
+}
 
-Return ONLY JSON array, nothing else.`
+Return ONLY the JSON object, nothing else.`
       }
     ],
     temperature: 0.3,
     max_tokens:  2000
   });
 
-  const raw = response.choices[0].message.content?.trim() ?? "";
+  const raw   = response.choices[0].message.content?.trim() ?? "";
+  const clean = raw.replace(/```json|```/g, "").trim();
 
   try {
-    const clean = raw.replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(clean);
-
-    if (!Array.isArray(parsed)) throw new Error("Groq response is not an array");
-
-    return parsed as SpecBlock[];
+    if (!Array.isArray(parsed.specs)) throw new Error("specs must be an array");
+    return {
+      title: parsed.title || "Untitled Meeting",
+      specs: parsed.specs as SpecBlock[]
+    };
   } catch (err) {
     console.error("Failed to parse Groq response:", raw);
     throw new Error("Groq returned invalid JSON");
