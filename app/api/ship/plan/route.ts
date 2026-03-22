@@ -1,5 +1,6 @@
 // app/api/ship/plan/route.ts
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import { generatePlan, planFollowUpChanges, generateFollowUpPlan } from '@/lib/shipai/ai';
 import { createLinearTicketBundle } from '@/lib/shipai/linear';
 import { getProjectById, getSpecsByProjectId } from '@/lib/db';
@@ -9,6 +10,9 @@ export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
+    const { userId } = await auth();
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
     const { specs, meetingTitle, notes = {}, projectId } = await req.json();
 
     if (!specs || specs.length === 0) {
@@ -22,65 +26,41 @@ export async function POST(req: NextRequest) {
 
     let plan;
 
-    // ── Follow-up ship (MCT) ─────────────────────────────────────
     if (projectId) {
-      console.log('Follow-up ship detected for project:', projectId);
+      // ── Follow-up ship (MCT) ──────────────────────────────────
+      console.log('Follow-up ship for project:', projectId);
 
-      const project = getProjectById(projectId);
+      const project = await getProjectById(projectId);
       if (!project) throw new Error(`Project ${projectId} not found`);
 
-      // Get all previous specs for context
-      const previousSpecs = getSpecsByProjectId(projectId)
-        .map(s => s.title);
-
+      const previousSpecs = (await getSpecsByProjectId(projectId)).map(s => s.title);
       console.log('Previous specs:', previousSpecs.length);
-      console.log('Fetching file tree from GitHub...');
 
-      // Step 1 — Fetch file tree (just names)
-      const repoInfo  = getRepoInfo();
-      const fileTree  = await getRepoFileTree(repoInfo);
+      const repoInfo = getRepoInfo();
+      const fileTree = await getRepoFileTree(repoInfo);
+      console.log('File tree:', fileTree.length, 'files');
 
-      console.log('File tree fetched:', fileTree.length, 'files');
-
-      // Step 2 — Ask planner which files need to change
       const plannerResult = await planFollowUpChanges(
-        {
-          name:    project.name,
-          context: project.context,
-          files:   fileTree,
-          specs:   previousSpecs
-        },
+        { name: project.name, context: project.context, files: fileTree, specs: previousSpecs },
         newSpecList,
         notes
       );
 
-      console.log('Planner result:', plannerResult.reasoning);
-      console.log('Files to modify:', plannerResult.filesToModify);
-      console.log('Files to create:', plannerResult.filesToCreate);
+      console.log('Planner:', plannerResult.reasoning);
 
-      // Step 3 — Fetch only relevant file contents
       const relevantFiles = plannerResult.filesToModify.filter(f => fileTree.includes(f));
       const existingFiles = await getFileContents(relevantFiles, repoInfo);
 
-      console.log('Fetched', Object.keys(existingFiles).length, 'file contents');
-
-      // Step 4 — Generate follow-up plan with context
       plan = await generateFollowUpPlan(
-        {
-          name:    project.name,
-          context: project.context,
-          specs:   previousSpecs
-        },
+        { name: project.name, context: project.context, specs: previousSpecs },
         newSpecList,
         existingFiles,
         plannerResult.filesToCreate,
         notes
       );
 
-      console.log('Follow-up plan generated:', plan.branch_name);
-
     } else {
-      // ── First ship ─────────────────────────────────────────────
+      // ── First ship ────────────────────────────────────────────
       console.log('First ship for:', meetingTitle);
 
       const featureRequest = `Build a complete application for: "${meetingTitle}"
@@ -92,19 +72,18 @@ ${newSpecList.map((s: string, i: number) => `${i + 1}. ${s}`).join('\n')}
 Build the entire application implementing ALL of the above specifications in one cohesive codebase.`;
 
       plan = await generatePlan(featureRequest);
-      console.log('First ship plan generated:', plan.branch_name);
+      console.log('Plan generated:', plan.branch_name);
     }
 
-    // Create Linear tickets for both first ship and follow-up
     const linearTicketBundle = await createLinearTicketBundle(plan);
     console.log('Linear tickets created:', linearTicketBundle.parentIssue.identifier);
 
     return NextResponse.json({
-      success: true,
-      featureRequest: newSpecList.join('\n'),
+      success:         true,
+      featureRequest:  newSpecList.join('\n'),
       plan,
       linearTicketBundle,
-      isFollowUp: !!projectId
+      isFollowUp:      !!projectId
     });
 
   } catch (error) {

@@ -1,10 +1,14 @@
 // app/api/bot/continue/route.ts
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import { createBot } from '@/lib/skribby';
 import { saveMeeting, getProjectById } from '@/lib/db';
 
 export async function POST(req: NextRequest) {
   try {
+    const { userId } = await auth();
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
     const { meetingUrl, projectId } = await req.json();
 
     if (!meetingUrl) {
@@ -15,7 +19,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'projectId is required' }, { status: 400 });
     }
 
-    const project = getProjectById(projectId);
+    const project = await getProjectById(projectId);
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
@@ -25,11 +29,13 @@ export async function POST(req: NextRequest) {
 
     console.log('Follow-up bot created:', bot.id, 'for project:', projectId);
 
-    // Save new meeting linked to project
     const meetingId = `meet-${Date.now()}`;
-    saveMeeting({
+    const date      = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+    await saveMeeting({
       id:            meetingId,
-      projectName: `${project.name} — Follow-up ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
+      user_id:       userId,
+      projectName:   `${project.name} — Follow-up ${date}`,
       meetingId:     meetingId,
       platform:      detectPlatform(meetingUrl),
       transcript:    '',
@@ -38,15 +44,10 @@ export async function POST(req: NextRequest) {
       date:          new Date().toISOString(),
       filePath:      '',
       botId:         bot.id,
-      projectId:     projectId
+      projectId:     projectId,
     });
 
-    return NextResponse.json({
-      success:   true,
-      botId:     bot.id,
-      meetingId,
-      projectId
-    });
+    return NextResponse.json({ success: true, botId: bot.id, meetingId, projectId });
 
   } catch (error) {
     console.error('Failed to create follow-up bot:', error);

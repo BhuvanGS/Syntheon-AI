@@ -1,16 +1,22 @@
+// app/api/meetings/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { loadDB, saveDB } from '@/lib/db';
+import { auth } from '@clerk/nextjs/server';
+import { deleteMeeting, deleteSpecsByMeetingId } from '@/lib/db';
 
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { userId } = await auth();
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
     const { id } = await params;
-    const db      = loadDB();
-    db.meetings = db.meetings.filter((m: any) => m.id !== id);
-    db.specs    = db.specs.filter((s: any) => s.meeting_id !== id);
-    saveDB(db);
+
+    // Delete specs first then meeting (cascade handles it but being explicit)
+    await deleteSpecsByMeetingId(id);
+    await deleteMeeting(id);
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Failed to delete meeting:', error);

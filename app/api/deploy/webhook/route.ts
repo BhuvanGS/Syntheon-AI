@@ -1,6 +1,7 @@
 // app/api/deploy/webhook/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { loadDB, saveDB } from '@/lib/db';
+import { getMeetingByBotId, updateMeetingDeployUrl, getMeetingById } from '@/lib/db';
+import { supabaseAdmin } from '@/lib/supabase';
 
 async function getGithubPagesUrl(owner: string, repo: string): Promise<string | null> {
   try {
@@ -11,15 +12,10 @@ async function getGithubPagesUrl(owner: string, repo: string): Promise<string | 
         'X-GitHub-Api-Version': '2022-11-28',
       }
     });
-
     if (!res.ok) return null;
-
     const data = await res.json();
-    console.log('GitHub Pages URL:', data.html_url);
     return data.html_url ?? null;
-
-  } catch (err) {
-    console.error('Failed to fetch Pages URL:', err);
+  } catch {
     return null;
   }
 }
@@ -29,7 +25,6 @@ export async function POST(req: NextRequest) {
     const payload = await req.json();
     console.log('GitHub webhook ref:', payload.ref);
 
-    // Only handle pushes to main
     if (payload.ref !== 'refs/heads/main' || !payload.repository) {
       return NextResponse.json({ ok: true });
     }
@@ -39,9 +34,7 @@ export async function POST(req: NextRequest) {
 
     console.log('Push to main detected for:', owner, repo);
 
-    // Fetch the actual Pages URL from GitHub API
     const deployUrl = await getGithubPagesUrl(owner, repo);
-
     if (!deployUrl) {
       console.error('Could not fetch GitHub Pages URL');
       return NextResponse.json({ ok: true });
@@ -49,19 +42,25 @@ export async function POST(req: NextRequest) {
 
     console.log('Deploy URL fetched:', deployUrl);
 
-    // Find most recent meeting with a branchName but no deployUrl
-    const db      = loadDB();
-    const meeting = db.meetings.find((m: any) => m.branchName && !m.deployUrl);
+    // Find most recent meeting with branchName but no deployUrl
+    const { data: meetings } = await supabaseAdmin
+      .from('meetings')
+      .select('*')
+      .not('branch_name', 'is', null)
+      .is('deploy_url', null)
+      .order('date', { ascending: false })
+      .limit(1);
+
+    const meeting = meetings?.[0];
 
     if (!meeting) {
       console.log('No meeting found needing deploy URL');
       return NextResponse.json({ ok: true });
     }
 
-    meeting.deployUrl = deployUrl;
-    saveDB(db);
-
+    await updateMeetingDeployUrl(meeting.id, deployUrl);
     console.log('Deploy URL saved for meeting:', meeting.id, deployUrl);
+
     return NextResponse.json({ ok: true });
 
   } catch (error) {

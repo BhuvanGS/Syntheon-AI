@@ -2,7 +2,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBotTranscript } from '@/lib/skribby';
 import { extractSpecBlocks } from '@/lib/groq';
-import { getMeetings, updateMeetingStatus, updateMeetingSpecs, saveSpecs, loadDB, saveDB, addSpecsToProject } from '@/lib/db';
+import {
+  getMeetingByBotId,
+  updateMeetingStatus,
+  updateMeetingSpecs,
+  updateMeetingName,
+  saveSpecs,
+  addSpecsToProject,
+  getProjectById,
+  updateProject
+} from '@/lib/db';
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,8 +29,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    const meetings = getMeetings();
-    const meeting  = meetings.find((m: any) => m.botId === botId);
+    const meeting = await getMeetingByBotId(botId);
 
     if (!meeting) {
       console.error('No meeting found for botId:', botId);
@@ -30,8 +38,6 @@ export async function POST(req: NextRequest) {
 
     console.log('Fetching transcript for bot:', botId);
     const botData = await getBotTranscript(botId);
-    console.log('Raw transcript type:', typeof botData.transcript);
-    console.log('Raw transcript sample:', JSON.stringify(botData.transcript)?.slice(0, 500));
 
     const rawTranscript = botData.transcript;
     const transcript = Array.isArray(rawTranscript)
@@ -41,44 +47,41 @@ export async function POST(req: NextRequest) {
       : '';
 
     console.log('Transcript length:', transcript.length);
-    console.log('Transcript preview:', transcript.slice(0, 200));
 
     if (!transcript.trim()) {
-      console.error('Empty transcript — check Skribby dashboard');
-      updateMeetingStatus(meeting.id, 'failed');
+      console.error('Empty transcript');
+      await updateMeetingStatus(meeting.id, 'failed');
       return NextResponse.json({ ok: true });
     }
 
-    // Extract specs AND generate title in one Groq call
+    // Extract specs AND title in one Groq call
     const { specs, title } = await extractSpecBlocks(transcript, meeting.id);
     console.log(`Extracted ${specs.length} spec blocks`);
-    console.log('AI generated title:', title);
+    console.log('AI title:', title);
 
-    // Update meeting with AI title + transcript + spec count
-    updateMeetingSpecs(meeting.id, transcript, specs.length);
+    // Attach user_id to specs
+    const specsWithUser = specs.map((s: any) => ({
+      ...s,
+      user_id:    meeting.user_id,
+      project_id: meeting.projectId ?? null,
+    }));
 
-    // Save AI-generated title to meeting
-    const db      = loadDB();
-    const mtg     = db.meetings.find((m: any) => m.id === meeting.id);
-    if (mtg) {
-      mtg.projectName = title;
-      saveDB(db);
-    }
+    // Update meeting
+    await updateMeetingSpecs(meeting.id, transcript, specs.length);
+    await updateMeetingName(meeting.id, title);
 
     // Save specs
-    saveSpecs(specs);
+    await saveSpecs(specsWithUser);
 
-    // Link specs to project if meeting belongs to one
+    // Link specs to project
     if (meeting.projectId) {
-      addSpecsToProject(meeting.projectId, specs.map((s: any) => s.id));
+      await addSpecsToProject(meeting.projectId, specs.map((s: any) => s.id));
       console.log('Specs linked to project:', meeting.projectId);
 
-      // Also update project name with AI title if it's the first meeting
-      const db2      = loadDB();
-      const project  = db2.projects.find((p: any) => p.id === meeting.projectId);
+      // Update project name if first meeting
+      const project = await getProjectById(meeting.projectId);
       if (project && project.meetings[0] === meeting.id) {
-        project.name = title;
-        saveDB(db2);
+        await updateProject(meeting.projectId, { name: title });
       }
     }
 
