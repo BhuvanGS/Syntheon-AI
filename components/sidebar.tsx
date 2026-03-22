@@ -1,8 +1,8 @@
 'use client';
 
-import { LayoutDashboard, Calendar, BarChart3, Kanban, Settings } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { LayoutDashboard, Calendar, BarChart3, Kanban, Settings, Sprout } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 interface SidebarProps {
   currentView: string;
@@ -11,49 +11,133 @@ interface SidebarProps {
 
 export function Sidebar({ currentView, onViewChange }: SidebarProps) {
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'meetings', label: 'Meetings', icon: Calendar },
-    { id: 'specs', label: 'Spec Blocks', icon: BarChart3 },
-    { id: 'kanban', label: 'Kanban', icon: Kanban },
-    { id: 'settings', label: 'Settings', icon: Settings },
+    { id: 'dashboard', label: 'Dashboard',   icon: LayoutDashboard },
+    { id: 'meetings',  label: 'Meetings',    icon: Calendar         },
+    { id: 'specs',     label: 'Spec Blocks', icon: BarChart3        },
+    { id: 'kanban',    label: 'Kanban',      icon: Kanban           },
+    { id: 'settings',  label: 'Settings',    icon: Settings         },
   ];
 
   return (
-    <aside className="w-64 bg-sidebar border-r border-sidebar-border flex flex-col p-6">
-      <div className="mb-12">
-        <h2 className="text-2xl font-playfair font-bold text-sidebar-foreground">Syntheon - AI</h2>
-      </div>
-      
-      <nav className="space-y-2 flex-1">
+    <aside
+      style={{
+        width:      '240px',
+        minWidth:   '240px',
+        background: 'var(--sidebar-bg, #f5f0e8)',
+        borderRight:'1px solid var(--sidebar-border, #e8dfd0)',
+        display:    'flex',
+        flexDirection: 'column',
+        padding:    '1.5rem 1rem',
+        height:     '100vh',
+      }}
+    >
+      {/* Logo */}
+      <Link
+        href="/"
+        style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '2.5rem', padding: '0 0.5rem' }}
+      >
+        <img
+          src="/logo.png"
+          alt="Syntheon"
+          style={{ width: '32px', height: '32px', objectFit: 'contain' }}
+          onError={(e) => {
+            (e.target as HTMLImageElement).style.display = 'none';
+          }}
+        />
+        <span
+          style={{
+            fontFamily: "'DM Serif Display', serif",
+            fontSize:   '1.2rem',
+            fontWeight: '400',
+            color:      '#3d5a3e',
+            letterSpacing: '0.01em',
+          }}
+        >
+          Syntheon
+        </span>
+      </Link>
+
+      {/* Nav */}
+      <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
         {menuItems.map((item) => {
-          const Icon = item.icon;
+          const Icon    = item.icon;
           const isActive = currentView === item.id;
-          
+
           return (
             <button
               key={item.id}
               onClick={() => onViewChange(item.id)}
-              className={cn(
-                'w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200',
-                isActive
-                  ? 'bg-primary text-primary-foreground shadow-md'
-                  : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-              )}
+              style={{
+                display:        'flex',
+                alignItems:     'center',
+                gap:            '10px',
+                padding:        '10px 14px',
+                borderRadius:   '10px',
+                border:         'none',
+                cursor:         'pointer',
+                width:          '100%',
+                textAlign:      'left',
+                fontFamily:     "'DM Sans', sans-serif",
+                fontSize:       '14px',
+                fontWeight:     isActive ? '500' : '400',
+                transition:     'all 0.15s ease',
+                background:     isActive ? '#3d5a3e' : 'transparent',
+                color:          isActive ? '#eaf2e8' : '#5a5a52',
+              }}
+              onMouseEnter={e => {
+                if (!isActive) {
+                  (e.currentTarget as HTMLButtonElement).style.background = '#eaf2e8';
+                  (e.currentTarget as HTMLButtonElement).style.color = '#3d5a3e';
+                }
+              }}
+              onMouseLeave={e => {
+                if (!isActive) {
+                  (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+                  (e.currentTarget as HTMLButtonElement).style.color = '#5a5a52';
+                }
+              }}
             >
-              <Icon className="w-5 h-5" />
-              <span className="font-medium">{item.label}</span>
+              <Icon
+                style={{
+                  width:  '17px',
+                  height: '17px',
+                  flexShrink: 0,
+                  color:  isActive ? '#eaf2e8' : '#8aab7e',
+                }}
+              />
+              {item.label}
             </button>
           );
         })}
       </nav>
 
-      <div className="border-t border-sidebar-border pt-6">
-        <div className="flex items-center gap-3 px-4 py-3">
-          <div className="w-10 h-10 rounded-full bg-primary/20"></div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-sidebar-foreground truncate">User</p>
-            <p className="text-xs text-muted-foreground truncate">user@example.com</p>
-          </div>
+      {/* Divider */}
+      <div style={{ borderTop: '1px solid #e8dfd0', margin: '1rem 0' }} />
+
+      {/* User */}
+      <div style={{ padding: '0 0.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div
+          style={{
+            width:          '36px',
+            height:         '36px',
+            borderRadius:   '50%',
+            background:     '#eaf2e8',
+            border:         '1.5px solid #c8dbc4',
+            display:        'flex',
+            alignItems:     'center',
+            justifyContent: 'center',
+            flexShrink:     0,
+          }}
+        >
+          <Sprout style={{ width: '16px', height: '16px', color: '#5c7c5d' }} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontSize: '13px', fontWeight: '500', color: '#3d5a3e', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            My Workspace
+          </p>
+          <p style={{ fontSize: '11px', color: '#8a8a80', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            syntheon.ai
+          </p>
         </div>
       </div>
     </aside>
