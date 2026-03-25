@@ -5,10 +5,10 @@ import { auth } from '@clerk/nextjs/server';
 import crypto from 'crypto';
 
 import { createBot } from '@/lib/skribby';
-import { saveMeeting } from '@/lib/db';
+import { saveMeeting, getActiveMeetingByUrl } from '@/lib/db';
 import { supabaseAdmin } from '@/lib/supabase';
 
-// 🔐 Resolve user from API key
+// 🔐 API key → user resolver
 async function getUserFromApiKey(apiKey: string) {
   const hash = crypto.createHash('sha256').update(apiKey).digest('hex');
 
@@ -27,19 +27,18 @@ export async function POST(req: NextRequest) {
 
     let userId: string | null = null;
 
-    // 🔥 1. API KEY FLOW (extension)
+    // 🔥 API key auth (extension)
     if (authHeader?.startsWith('Bearer syn_')) {
       const apiKey = authHeader.replace('Bearer ', '');
       userId = await getUserFromApiKey(apiKey);
     }
 
-    // 🔥 2. CLERK FLOW (web app)
+    // 🔥 Clerk auth (dashboard)
     if (!userId) {
       const session = await auth();
       userId = session.userId;
     }
 
-    // ❌ No auth at all
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -52,26 +51,52 @@ export async function POST(req: NextRequest) {
 
     const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/bot/webhook`;
 
+    const meetingId = `meet-${Date.now()}`;
+
+    // 🔥 STEP 1: INSERT FIRST (DB LOCK)
+    try {
+      await saveMeeting({
+        id:            meetingId,
+        user_id:       userId,
+        projectName:   tabTitle || 'Untitled Meeting',
+        meetingId:     meetingId,
+        meeting_url:   meetingUrl,
+        platform:      detectPlatform(meetingUrl),
+        transcript:    '',
+        specsDetected: 0,
+        status:        'processing',
+        date:          new Date().toISOString(),
+        filePath:      '',
+        botId:         undefined, // 🔥 no bot yet
+      });
+
+    } catch (err: any) {
+      console.log('Duplicate meeting detected (DB constraint)');
+
+      const existing = await getActiveMeetingByUrl(meetingUrl, userId);
+
+      if (existing) {
+        return NextResponse.json({
+          success: true,
+          botId: existing.botId,
+          meetingId: existing.id,
+          reused: true
+        });
+      }
+
+      throw err;
+    }
+
+    // 🔥 STEP 2: ONLY ONE REQUEST REACHES HERE
     const bot = await createBot(meetingUrl, webhookUrl);
 
     console.log('Bot created:', bot.id, 'status:', bot.status);
 
-    const meetingId = `meet-${Date.now()}`;
-
-    // 🔗 CRITICAL: bot → user mapping
-    await saveMeeting({
-      id:            meetingId,
-      user_id:       userId,
-      projectName:   tabTitle || 'Untitled Meeting',
-      meetingId:     meetingId,
-      platform:      detectPlatform(meetingUrl),
-      transcript:    '',
-      specsDetected: 0,
-      status:        'processing',
-      date:          new Date().toISOString(),
-      filePath:      '',
-      botId:         bot.id,
-    });
+    // 🔥 STEP 3: UPDATE BOT ID
+    await supabaseAdmin
+      .from('meetings')
+      .update({ bot_id: bot.id })
+      .eq('id', meetingId);
 
     return NextResponse.json({
       success: true,
@@ -89,7 +114,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// 🔍 Detect meeting platform
+// 🔍 Detect platform
 function detectPlatform(url: string) {
   if (url.includes('meet.google.com')) return 'google-meet';
   if (url.includes('teams.microsoft.com')) return 'teams';
