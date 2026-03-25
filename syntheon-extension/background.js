@@ -23,16 +23,36 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 async function sendBot(meetingUrl, tabTitle) {
   console.log('Sending bot to:', meetingUrl);
 
-  const res = await fetch('http://localhost:3000/api/bot/create', {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ meetingUrl, tabTitle })
-  });
+  // 🔥 GET API KEY
+  const { apiKey } = await chrome.storage.local.get(['apiKey']);
 
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error || 'Failed to send bot');
+  if (!apiKey) {
+    throw new Error('API key not set. Open settings.');
   }
 
-  return res.json(); // { success, botId, meetingId }
+  const res = await fetch('http://localhost:3000/api/bot/create', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}` // 🔥 THIS WAS MISSING
+    },
+    body: JSON.stringify({ meetingUrl, tabTitle })
+  });
+
+  // 🔥 SAFER PARSING
+  const text = await res.text();
+
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    console.error('Non-JSON response:', text);
+    throw new Error('Server returned invalid response');
+  }
+
+  if (!res.ok) {
+    throw new Error(data.error || 'Failed to send bot');
+  }
+
+  return data;
 }

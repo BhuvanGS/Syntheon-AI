@@ -10,6 +10,7 @@ const isPublicRoute = createRouteMatcher([
   '/api/bot/webhook(.*)',  // Skribby webhook must be public
   '/api/deploy/webhook(.*)', // GitHub webhook must be public
   '/api/auth/webhook(.*)',
+  '/api/bot/create',
 ]);
 
 export default clerkMiddleware(async (auth, request) => {

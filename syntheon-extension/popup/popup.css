@@ -365,6 +365,55 @@ body {
   letter-spacing: 0.05em;
 }
 
+/* ─── Settings Panel ─────────────────────────────────────── */
+.hidden { display: none; }
+
+.settings-panel {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #111827;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.settings-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: #d1d5db;
+  font-weight: 600;
+}
+
+.settings-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.settings-input {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #374151;
+  background: #0f172a;
+  color: #f9fafb;
+}
+
+.settings-save-btn {
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #5c7c5d;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+.settings-help {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #9ca3af;
+}
+
 /* ─── Dark mode ───────────────────────────────────────────── */
 @media (prefers-color-scheme: dark) {
   :root {
