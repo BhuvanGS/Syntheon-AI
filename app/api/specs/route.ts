@@ -12,9 +12,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(specs);
   } catch (error) {
     console.error('Failed to fetch specs:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch specs' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to fetch specs' }, { status: 500 });
   }
 }

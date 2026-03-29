@@ -1,80 +1,100 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Syntheon AI</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
 
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Syntheon AI</title>
-  <link rel="stylesheet" href="popup.css">
-</head>
-
-<body>
-  <div class="popup-container">
-    <header class="popup-header">
-      <div class="logo">
-        <img src="../icons/icon48.png" alt="Syntheon AI" class="logo-icon">
-        <h1>Syntheon AI</h1>
-      </div>
-    </header>
-
-    <main class="popup-main">
-      <div class="status-section">
-        <div class="status-indicator">
-          <div class="status-dot idle" id="statusDot"></div>
-          <span id="statusText">Detecting meeting...</span>
+  <body>
+    <div class="popup-container">
+      <header class="popup-header">
+        <div class="logo">
+          <img src="../icons/icon48.png" alt="Syntheon AI" class="logo-icon" />
+          <h1>Syntheon AI</h1>
         </div>
-      </div>
+      </header>
 
-      <div class="meeting-info">
-        <div class="meeting-platform">
-          <span class="platform-label">Platform</span>
-          <span id="platformName">—</span>
-        </div>
-        <div class="meeting-url" id="meetingUrl">—</div>
-      </div>
-
-      <div class="controls-section">
-        <button id="sendBotButton" class="record-button" disabled>
-          <div class="record-icon">
-            <div class="record-circle"></div>
+      <main class="popup-main">
+        <div class="status-section">
+          <div class="status-indicator">
+            <div class="status-dot idle" id="statusDot"></div>
+            <span id="statusText">Detecting meeting...</span>
           </div>
-          <span id="sendBotText">Send Bot to Meeting</span>
-        </button>
+        </div>
 
-        <div class="secondary-controls">
-          <button id="recordingsButton" class="control-button">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="3" width="18" height="18" rx="2" />
-              <path d="M9 9h6M9 12h6M9 15h4" />
-            </svg>
-            View Dashboard
+        <div class="meeting-info">
+          <div class="meeting-platform">
+            <span class="platform-label">Platform</span>
+            <span id="platformName">—</span>
+          </div>
+          <div class="meeting-url" id="meetingUrl">—</div>
+        </div>
+
+        <div class="controls-section">
+          <button id="sendBotButton" class="record-button" disabled>
+            <div class="record-icon">
+              <div class="record-circle"></div>
+            </div>
+            <span id="sendBotText">Send Bot to Meeting</span>
           </button>
 
-          <button id="settingsButton" class="control-button">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="3" />
-              <path d="M12 1v6m0 6v6m4.22-13.22l4.24 4.24M1.54 1.54l4.24 4.24M20.46 20.46l-4.24-4.24M1.54 20.46l4.24-4.24" />
-            </svg>
-            Settings
-          </button>
+          <div class="secondary-controls">
+            <button id="recordingsButton" class="control-button">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <path d="M9 9h6M9 12h6M9 15h4" />
+              </svg>
+              View Dashboard
+            </button>
+
+            <button id="settingsButton" class="control-button">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <circle cx="12" cy="12" r="3" />
+                <path
+                  d="M12 1v6m0 6v6m4.22-13.22l4.24 4.24M1.54 1.54l4.24 4.24M20.46 20.46l-4.24-4.24M1.54 20.46l4.24-4.24"
+                />
+              </svg>
+              Settings
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div id="settingsPanel" class="settings-panel hidden">
-        <label for="apiKeyInput" class="settings-label">Syntheon API Key</label>
-        <div class="settings-row">
-          <input id="apiKeyInput" class="settings-input" type="password" placeholder="syn_..." autocomplete="off" />
-          <button id="saveApiKey" class="settings-save-btn">Save</button>
+        <div id="settingsPanel" class="settings-panel hidden">
+          <label for="apiKeyInput" class="settings-label">Syntheon API Key</label>
+          <div class="settings-row">
+            <input
+              id="apiKeyInput"
+              class="settings-input"
+              type="password"
+              placeholder="syn_..."
+              autocomplete="off"
+            />
+            <button id="saveApiKey" class="settings-save-btn">Save</button>
+          </div>
+          <p class="settings-help">Paste the API key from your dashboard.</p>
         </div>
-        <p class="settings-help">Paste the API key from your dashboard.</p>
-      </div>
-    </main>
+      </main>
 
-    <footer class="popup-footer">
-      <div class="version">v1.0.0 — Powered by Skribby</div>
-    </footer>
-  </div>
-  <script src="popup.js"></script>
-</body>
-
+      <footer class="popup-footer">
+        <div class="version">v1.0.0 — Powered by Skribby</div>
+      </footer>
+    </div>
+    <script src="popup.js"></script>
+  </body>
 </html>

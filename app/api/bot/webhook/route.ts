@@ -25,10 +25,7 @@ export async function POST(req: NextRequest) {
     // ✅ NEW: Verify signature
     if (!process.env.SKRIBBY_WEBHOOK_SECRET) {
       console.error('SKRIBBY_WEBHOOK_SECRET not configured');
-      return NextResponse.json(
-        { error: 'Webhook not configured' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Webhook not configured' }, { status: 500 });
     }
 
     const isValid = verifyWebhookSignature({
@@ -39,15 +36,12 @@ export async function POST(req: NextRequest) {
 
     if (!isValid) {
       console.warn('❌ Webhook signature verification failed');
-      return NextResponse.json(
-        { error: 'Invalid signature' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
 
     // ✅ NEW: Parse JSON after verification
     const payload = JSON.parse(rawPayload);
-    
+
     console.log('✅ Webhook signature verified');
 
     // Rest of your existing code stays the same...
@@ -76,8 +70,8 @@ export async function POST(req: NextRequest) {
     const transcript = Array.isArray(rawTranscript)
       ? rawTranscript.map((t: any) => t.transcript).join(' ')
       : typeof rawTranscript === 'string'
-      ? rawTranscript
-      : '';
+        ? rawTranscript
+        : '';
 
     console.log('Transcript length:', transcript.length);
 
@@ -101,7 +95,10 @@ export async function POST(req: NextRequest) {
     await saveSpecs(specsWithUser);
 
     if (meeting.projectId) {
-      await addSpecsToProject(meeting.projectId, specs.map((s: any) => s.id));
+      await addSpecsToProject(
+        meeting.projectId,
+        specs.map((s: any) => s.id)
+      );
       console.log('Specs linked to project:', meeting.projectId);
 
       const project = await getProjectById(meeting.projectId);
@@ -111,7 +108,6 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ ok: true });
-
   } catch (error) {
     console.error('Webhook error:', error);
     return NextResponse.json({ error: 'Webhook failed' }, { status: 500 });

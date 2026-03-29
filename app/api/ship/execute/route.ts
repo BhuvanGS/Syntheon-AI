@@ -1,8 +1,16 @@
 // app/api/ship/execute/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { createGithubIssue, createBranch, commitFile, createPullRequest, getRepoInfo } from '@/lib/shipai/github';
+import {
+  createGithubIssue,
+  createBranch,
+  commitFile,
+  createPullRequest,
+  getRepoInfo,
+} from '@/lib/shipai/github';
 import { moveLinearTicketBundleToPrStage } from '@/lib/shipai/linear';
+import { supabaseAdmin } from '@/lib/supabase';
+import { getIntegrationByUserId, getLinearAccessToken } from '@/lib/services/integrations';
 import {
   updateMeetingBranch,
   saveProject,
@@ -30,7 +38,7 @@ export async function POST(req: NextRequest) {
       projectId,
       specs,
       meetingTitle,
-      isFollowUp
+      isFollowUp,
     } = await req.json();
 
     if (!plan) return NextResponse.json({ error: 'plan is required' }, { status: 400 });
@@ -60,7 +68,14 @@ export async function POST(req: NextRequest) {
     // Step 5: Move Linear tickets to PR stage
     let updatedBundle = linearTicketBundle;
     if (linearTicketBundle) {
-      updatedBundle = await moveLinearTicketBundleToPrStage(linearTicketBundle);
+      const integration = await getIntegrationByUserId(userId);
+      const linearAccessToken = getLinearAccessToken(integration);
+
+      updatedBundle = await moveLinearTicketBundleToPrStage(
+        linearTicketBundle,
+        linearAccessToken ? { accessToken: linearAccessToken } : {}
+      );
+
       console.log('Linear tickets moved to PR stage');
     }
 
@@ -71,11 +86,11 @@ export async function POST(req: NextRequest) {
     }
 
     // Step 7: Create or update project
-    const repoInfo         = getRepoInfo();
-    const specTitles       = specs?.map((s: any) => s.title) ?? [];
-    const specIds          = specs?.map((s: any) => s.id) ?? [];
-    const nonWorkflowFiles = committedFiles.filter(f => !f.includes('.github'));
-    const baseUrl          = `https://${repoInfo.owner}.github.io/${repoInfo.repo}/`;
+    const repoInfo = getRepoInfo();
+    const specTitles = specs?.map((s: any) => s.title) ?? [];
+    const specIds = specs?.map((s: any) => s.id) ?? [];
+    const nonWorkflowFiles = committedFiles.filter((f) => !f.includes('.github'));
+    const baseUrl = `https://${repoInfo.owner}.github.io/${repoInfo.repo}/`;
 
     if (isFollowUp && projectId) {
       // Update existing project
@@ -87,37 +102,35 @@ export async function POST(req: NextRequest) {
       const project = await getProjectById(projectId);
       if (project) {
         await updateProject(projectId, {
-          context: `${project.context}. Follow-up: ${specTitles.join(', ')}`
+          context: `${project.context}. Follow-up: ${specTitles.join(', ')}`,
         });
       }
-
     } else if (meetingId) {
       // Check if project already exists for this meeting
       const existingProject = await getProjectByMeetingId(meetingId);
 
       if (!existingProject) {
-        const newProjectId   = `project-${Date.now()}`;
-        const repo           = `${repoInfo.owner}/${repoInfo.repo}`;
+        const newProjectId = `project-${Date.now()}`;
+        const repo = `${repoInfo.owner}/${repoInfo.repo}`;
         const projectDeployUrl = baseUrl;
 
         await saveProject({
-          id:          newProjectId,
-          user_id:     userId,
-          name:        meetingTitle || plan.issue_title,
+          id: newProjectId,
+          user_id: userId,
+          name: meetingTitle || plan.issue_title,
           repo,
-          deployUrl:   projectDeployUrl,
-          branchBase:  'main',
-          meetings:    meetingId ? [meetingId] : [],
+          deployUrl: projectDeployUrl,
+          branchBase: 'main',
+          meetings: meetingId ? [meetingId] : [],
           specIds,
-          files:       nonWorkflowFiles,
-          context:     specTitles.join(', '),
-          createdAt:   new Date().toISOString(),
-          updatedAt:   new Date().toISOString(),
+          files: nonWorkflowFiles,
+          context: specTitles.join(', '),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         });
 
         // Link meeting to project
         if (meetingId) {
-          const { supabaseAdmin } = await import('@/lib/supabase');
           await supabaseAdmin
             .from('meetings')
             .update({ project_id: newProjectId })
@@ -129,13 +142,12 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({
-      success:            true,
+      success: true,
       issue,
       pullRequest,
       committedFiles,
-      linearTicketBundle: updatedBundle
+      linearTicketBundle: updatedBundle,
     });
-
   } catch (error) {
     console.error('Ship execute error:', error);
     return NextResponse.json(

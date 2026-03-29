@@ -9,32 +9,39 @@ function loadSystemPrompt(): string {
 }
 
 export interface LinearSubtask {
-  title:       string;
+  title: string;
   description: string;
 }
 
 export interface PlanFile {
-  path:    string;
+  path: string;
   content: string;
 }
 
 export interface DevPlan {
-  issue_title:     string;
-  issue_body:      string;
-  branch_name:     string;
-  pr_title:        string;
+  issue_title: string;
+  issue_body: string;
+  branch_name: string;
+  pr_title: string;
   linear_subtasks: LinearSubtask[];
-  files:           PlanFile[];
+  files: PlanFile[];
 }
 
 export interface PlannerResponse {
   filesToModify: string[];
   filesToCreate: string[];
-  reasoning:     string;
+  reasoning: string;
 }
 
 function validatePlan(plan: any): asserts plan is DevPlan {
-  const required = ['issue_title', 'issue_body', 'branch_name', 'pr_title', 'linear_subtasks', 'files'];
+  const required = [
+    'issue_title',
+    'issue_body',
+    'branch_name',
+    'pr_title',
+    'linear_subtasks',
+    'files',
+  ];
   for (const key of required) {
     if (!plan[key]) throw new Error(`AI response missing required field: "${key}"`);
   }
@@ -91,22 +98,20 @@ export async function generatePlan(featureRequest: string): Promise<DevPlan> {
   const systemPrompt = loadSystemPrompt();
 
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method:  'POST',
+    method: 'POST',
     headers: {
-      'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
-      'Content-Type':  'application/json',
+      Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model:       'openai/gpt-oss-120b',
+      model: 'openai/gpt-oss-120b',
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user',   content: featureRequest }
+        { role: 'user', content: featureRequest },
       ],
       temperature: 0.3,
-      max_tokens: 8000
-
-      
-    })
+      max_tokens: 8000,
+    }),
   });
 
   if (!res.ok) {
@@ -114,36 +119,36 @@ export async function generatePlan(featureRequest: string): Promise<DevPlan> {
     throw new Error(`Groq API error: ${res.status} — ${JSON.stringify(err)}`);
   }
 
-  const data    = await res.json();
-  const raw     = data.choices[0].message.content.trim();
-  const match   = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const data = await res.json();
+  const raw = data.choices[0].message.content.trim();
+  const match = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
   const jsonStr = match ? match[1].trim() : raw;
 
   let plan: any;
   try {
-  // Try direct parse first
-  plan = JSON.parse(jsonStr);
-} catch {
-  // Try to find and extract just the JSON object
-  const jsonStart = raw.indexOf('{');
-  const jsonEnd   = raw.lastIndexOf('}');
-  if (jsonStart !== -1 && jsonEnd !== -1) {
-    try {
-      plan = JSON.parse(raw.slice(jsonStart, jsonEnd + 1));
-    } catch {
+    // Try direct parse first
+    plan = JSON.parse(jsonStr);
+  } catch {
+    // Try to find and extract just the JSON object
+    const jsonStart = raw.indexOf('{');
+    const jsonEnd = raw.lastIndexOf('}');
+    if (jsonStart !== -1 && jsonEnd !== -1) {
+      try {
+        plan = JSON.parse(raw.slice(jsonStart, jsonEnd + 1));
+      } catch {
+        throw new Error(`Coder returned invalid JSON: ${raw.slice(0, 300)}`);
+      }
+    } else {
       throw new Error(`Coder returned invalid JSON: ${raw.slice(0, 300)}`);
     }
-  } else {
-    throw new Error(`Coder returned invalid JSON: ${raw.slice(0, 300)}`);
   }
-}
 
   validatePlan(plan);
 
   // Inject GitHub Pages workflow
   plan.files.push({
-    path:    '.github/workflows/deploy.yml',
-    content: GITHUB_PAGES_WORKFLOW
+    path: '.github/workflows/deploy.yml',
+    content: GITHUB_PAGES_WORKFLOW,
   });
 
   return plan;
@@ -152,15 +157,14 @@ export async function generatePlan(featureRequest: string): Promise<DevPlan> {
 // ─── Step 1: Planner — decides which files need to change ───────
 export async function planFollowUpChanges(
   projectContext: {
-    name:     string;
-    context:  string;
-    files:    string[];
-    specs:    string[];
+    name: string;
+    context: string;
+    files: string[];
+    specs: string[];
   },
   newSpecs: string[],
-  notes:    Record<string, string> = {}
+  notes: Record<string, string> = {}
 ): Promise<PlannerResponse> {
-
   const notesList = Object.values(notes).filter(Boolean);
 
   const prompt = `You are a senior software engineer analyzing an existing project.
@@ -172,11 +176,11 @@ Previously built specs:
 ${projectContext.specs.map((s, i) => `  ${i + 1}. ${s}`).join('\n')}
 
 Files currently in the repo:
-${projectContext.files.map(f => `  - ${f}`).join('\n')}
+${projectContext.files.map((f) => `  - ${f}`).join('\n')}
 
 NEW SPECS TO IMPLEMENT:
 ${newSpecs.map((s, i) => `  ${i + 1}. ${s}`).join('\n')}
-${notesList.length > 0 ? `\nAdditional notes:\n${notesList.map(n => `  - ${n}`).join('\n')}` : ''}
+${notesList.length > 0 ? `\nAdditional notes:\n${notesList.map((n) => `  - ${n}`).join('\n')}` : ''}
 
 TASK:
 Analyze which files need to be modified and which new files need to be created.
@@ -191,16 +195,16 @@ Respond ONLY with valid JSON in this format:
 }`;
 
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method:  'POST',
+    method: 'POST',
     headers: {
-      'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
-      'Content-Type':  'application/json',
+      Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model:       'openai/gpt-oss-120b',
-      messages:    [{ role: 'user', content: prompt }],
+      model: 'openai/gpt-oss-120b',
+      messages: [{ role: 'user', content: prompt }],
       temperature: 0.1, // low temperature for precise planning
-    })
+    }),
   });
 
   if (!res.ok) {
@@ -208,9 +212,9 @@ Respond ONLY with valid JSON in this format:
     throw new Error(`Groq planner error: ${res.status} — ${JSON.stringify(err)}`);
   }
 
-  const data    = await res.json();
-  const raw     = data.choices[0].message.content.trim();
-  const match   = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const data = await res.json();
+  const raw = data.choices[0].message.content.trim();
+  const match = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
   const jsonStr = match ? match[1].trim() : raw;
 
   try {
@@ -223,17 +227,16 @@ Respond ONLY with valid JSON in this format:
 // ─── Step 2: Coder — generates changes based on existing files ──
 export async function generateFollowUpPlan(
   projectContext: {
-    name:    string;
+    name: string;
     context: string;
-    specs:   string[];
+    specs: string[];
   },
-  newSpecs:        string[],
-  existingFiles:   Record<string, string>,
-  filesToCreate:   string[],
-  notes:           Record<string, string> = {}
+  newSpecs: string[],
+  existingFiles: Record<string, string>,
+  filesToCreate: string[],
+  notes: Record<string, string> = {}
 ): Promise<DevPlan> {
-
-  const notesList  = Object.values(notes).filter(Boolean);
+  const notesList = Object.values(notes).filter(Boolean);
   const systemPrompt = loadSystemPrompt();
 
   const existingFilesContent = Object.entries(existingFiles)
@@ -252,7 +255,7 @@ ${existingFilesContent}
 
 NEW SPECS TO ADD:
 ${newSpecs.map((s, i) => `${i + 1}. ${s}`).join('\n')}
-${notesList.length > 0 ? `\nNotes:\n${notesList.map(n => `- ${n}`).join('\n')}` : ''}
+${notesList.length > 0 ? `\nNotes:\n${notesList.map((n) => `- ${n}`).join('\n')}` : ''}
 ${filesToCreate.length > 0 ? `\nNew files to create: ${filesToCreate.join(', ')}` : ''}
 
 IMPORTANT RULES:
@@ -264,19 +267,17 @@ IMPORTANT RULES:
 ${systemPrompt}`;
 
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method:  'POST',
+    method: 'POST',
     headers: {
-      'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
-      'Content-Type':  'application/json',
+      Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model:       'openai/gpt-oss-120b',
-      messages: [
-        { role: 'user', content: prompt }
-      ],
+      model: 'openai/gpt-oss-120b',
+      messages: [{ role: 'user', content: prompt }],
       temperature: 0.3,
-      max_tokens: 8000
-    })
+      max_tokens: 8000,
+    }),
   });
 
   if (!res.ok) {
@@ -284,9 +285,9 @@ ${systemPrompt}`;
     throw new Error(`Groq coder error: ${res.status} — ${JSON.stringify(err)}`);
   }
 
-  const data    = await res.json();
-  const raw     = data.choices[0].message.content.trim();
-  const match   = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const data = await res.json();
+  const raw = data.choices[0].message.content.trim();
+  const match = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
   const jsonStr = match ? match[1].trim() : raw;
 
   let plan: any;

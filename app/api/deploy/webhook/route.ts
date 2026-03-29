@@ -7,10 +7,10 @@ async function getGithubPagesUrl(owner: string, repo: string): Promise<string | 
   try {
     const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/pages`, {
       headers: {
-        'Authorization':        `Bearer ${process.env.GITHUB_TOKEN}`,
-        'Accept':               'application/vnd.github+json',
+        Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+        Accept: 'application/vnd.github+json',
         'X-GitHub-Api-Version': '2022-11-28',
-      }
+      },
     });
     if (!res.ok) return null;
     const data = await res.json();
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     }
 
     const owner = payload.repository.owner.login;
-    const repo  = payload.repository.name;
+    const repo = payload.repository.name;
 
     console.log('Push to main detected for:', owner, repo);
 
@@ -62,7 +62,6 @@ export async function POST(req: NextRequest) {
     console.log('Deploy URL saved for meeting:', meeting.id, deployUrl);
 
     return NextResponse.json({ ok: true });
-
   } catch (error) {
     console.error('Deploy webhook error:', error);
     return NextResponse.json({ error: 'Webhook failed' }, { status: 500 });

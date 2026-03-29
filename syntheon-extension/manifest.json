@@ -3,12 +3,7 @@
   "name": "Syntheon AI Meeting Assistant",
   "version": "1.0.0",
   "description": "AI-powered meeting bot for Google Meet, Zoom, and Teams",
-  "permissions": [
-    "activeTab",
-    "tabs",
-    "storage",
-    "scripting"
-  ],
+  "permissions": ["activeTab", "tabs", "storage", "scripting"],
   "host_permissions": [
     "https://meet.google.com/*",
     "https://zoom.us/*",

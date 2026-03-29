@@ -9,17 +9,11 @@ export function verifyWebhookSignature(options: {
   const { secret, payload, signature } = options;
 
   // Create HMAC-SHA256
-  const expectedSignature = crypto
-    .createHmac('sha256', secret)
-    .update(payload)
-    .digest('hex');
+  const expectedSignature = crypto.createHmac('sha256', secret).update(payload).digest('hex');
 
   // Constant-time comparison (prevents timing attacks)
   try {
-    return crypto.timingSafeEqual(
-      Buffer.from(signature),
-      Buffer.from(expectedSignature)
-    );
+    return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature));
   } catch {
     return false;
   }

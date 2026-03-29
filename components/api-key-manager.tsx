@@ -2,7 +2,17 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Loader2, Copy, Key, RefreshCw, Shield, AlertCircle, Eye, EyeOff, Check } from 'lucide-react';
+import {
+  Loader2,
+  Copy,
+  Key,
+  RefreshCw,
+  Shield,
+  AlertCircle,
+  Eye,
+  EyeOff,
+  Check,
+} from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 export function ApiKeyManager() {
@@ -48,7 +58,7 @@ export function ApiKeyManager() {
       setMaskedKey(maskApiKey(data.apiKey));
       setHasExistingKey(true);
       setShowKey(false); // Start with masked view
-      
+
       toast({
         title: '✅ API Key Generated',
         description: 'Your new API key has been created. Save it securely!',
@@ -69,20 +79,20 @@ export function ApiKeyManager() {
     if (!confirm('Are you sure? This will invalidate your previous API key.')) {
       return;
     }
-    
+
     await generateKey();
   };
 
   const copyToClipboard = async () => {
     if (!apiKey) return;
-    
+
     try {
       await navigator.clipboard.writeText(apiKey); // Always copy the full key
       setCopied(true);
-      
+
       // Reset copied state after 2 seconds
       setTimeout(() => setCopied(false), 2000);
-      
+
       toast({
         title: '✅ Copied!',
         description: 'API key copied to clipboard',
@@ -257,7 +267,7 @@ export function ApiKeyManager() {
                     </Button>
                   </div>
                 </div>
-                
+
                 <div
                   style={{
                     background: '#ffffff',
@@ -274,7 +284,7 @@ export function ApiKeyManager() {
                 >
                   {showKey ? apiKey : maskedKey}
                 </div>
-                
+
                 <div
                   style={{
                     display: 'flex',
@@ -286,7 +296,11 @@ export function ApiKeyManager() {
                   }}
                 >
                   <AlertCircle size={14} />
-                  <span>{showKey ? 'Keep your API key secure and never share it publicly!' : 'Click Show to reveal the full API key'}</span>
+                  <span>
+                    {showKey
+                      ? 'Keep your API key secure and never share it publicly!'
+                      : 'Click Show to reveal the full API key'}
+                  </span>
                 </div>
               </div>
 

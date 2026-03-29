@@ -3,11 +3,10 @@
 // ─── Message Handler ───────────────────────────────────────────────────────────
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   switch (request.action) {
-
     case 'sendBot':
       sendBot(request.meetingUrl, request.tabTitle)
-        .then(data => sendResponse({ success: true, ...data }))
-        .catch(err => sendResponse({ success: false, error: err.message }));
+        .then((data) => sendResponse({ success: true, ...data }))
+        .catch((err) => sendResponse({ success: false, error: err.message }));
       return true;
 
     case 'getTabInfo':
@@ -34,9 +33,9 @@ async function sendBot(meetingUrl, tabTitle) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}` // 🔥 THIS WAS MISSING
+      Authorization: `Bearer ${apiKey}`, // 🔥 THIS WAS MISSING
     },
-    body: JSON.stringify({ meetingUrl, tabTitle })
+    body: JSON.stringify({ meetingUrl, tabTitle }),
   });
 
   // 🔥 SAFER PARSING

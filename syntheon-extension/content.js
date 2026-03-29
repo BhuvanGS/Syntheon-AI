@@ -124,9 +124,15 @@ class SyntheonContentScript {
   // ─── Meeting Detection ──────────────────────────────────────
   setupMeetingDetection() {
     switch (this.platform) {
-      case 'google-meet': this.detectGoogleMeetState(); break;
-      case 'zoom':        this.detectZoomState();       break;
-      case 'teams':       this.detectTeamsState();      break;
+      case 'google-meet':
+        this.detectGoogleMeetState();
+        break;
+      case 'zoom':
+        this.detectZoomState();
+        break;
+      case 'teams':
+        this.detectTeamsState();
+        break;
     }
   }
 
@@ -169,18 +175,18 @@ class SyntheonContentScript {
     chrome.runtime.sendMessage({
       action: 'meetingStarted',
       platform: this.platform,
-      meetingInfo: this.getMeetingInfo()
+      meetingInfo: this.getMeetingInfo(),
     });
   }
 
   // ─── Meeting Info ───────────────────────────────────────────
   getMeetingInfo() {
     return {
-      platform:  this.platform,
-      url:       window.location.href,
-      title:     document.title,
+      platform: this.platform,
+      url: window.location.href,
+      title: document.title,
       meetingId: this.extractMeetingId(),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
   }
 
@@ -188,8 +194,8 @@ class SyntheonContentScript {
     const url = window.location.href;
     const patterns = {
       'google-meet': /meet\.google\.com\/([a-z\-]+)/,
-      'zoom':        /zoom\.us\/j\/(\d+)/,
-      'teams':       /teams\.microsoft\.com\/.*\/meeting\/([a-zA-Z0-9\-]+)/
+      zoom: /zoom\.us\/j\/(\d+)/,
+      teams: /teams\.microsoft\.com\/.*\/meeting\/([a-zA-Z0-9\-]+)/,
     };
     const match = url.match(patterns[this.platform]);
     return match ? match[1] : null;

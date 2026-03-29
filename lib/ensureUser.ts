@@ -17,12 +17,10 @@ export async function ensureUser(userId: string, email: string) {
   }
 
   // 🔥 ONLY insert if ID doesn't exist
-  const { error: insertError } = await supabaseAdmin
-    .from('users')
-    .insert({
-      id: userId,
-      email: email,
-    });
+  const { error: insertError } = await supabaseAdmin.from('users').insert({
+    id: userId,
+    email: email,
+  });
 
   if (insertError) {
     console.error('ensureUser insert failed:', insertError);

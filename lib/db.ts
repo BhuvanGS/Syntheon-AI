@@ -132,11 +132,7 @@ export async function getMeetings(userId: string): Promise<Meeting[]> {
 }
 
 export async function getMeetingById(id: string): Promise<Meeting | undefined> {
-  const { data, error } = await supabaseAdmin
-    .from('meetings')
-    .select('*')
-    .eq('id', id)
-    .single();
+  const { data, error } = await supabaseAdmin.from('meetings').select('*').eq('id', id).single();
   if (error) return undefined;
   return rowToMeeting(data);
 }
@@ -152,14 +148,15 @@ export async function getMeetingByBotId(botId: string): Promise<Meeting | undefi
 }
 
 export async function updateMeetingStatus(id: string, status: Meeting['status']): Promise<void> {
-  const { error } = await supabaseAdmin
-    .from('meetings')
-    .update({ status })
-    .eq('id', id);
+  const { error } = await supabaseAdmin.from('meetings').update({ status }).eq('id', id);
   if (error) throw error;
 }
 
-export async function updateMeetingSpecs(id: string, transcript: string, specsDetected: number): Promise<void> {
+export async function updateMeetingSpecs(
+  id: string,
+  transcript: string,
+  specsDetected: number
+): Promise<void> {
   const { error } = await supabaseAdmin
     .from('meetings')
     .update({ transcript, specs_detected: specsDetected, status: 'completed' })
@@ -192,10 +189,7 @@ export async function updateMeetingName(id: string, projectName: string): Promis
 }
 
 export async function deleteMeeting(id: string): Promise<void> {
-  const { error } = await supabaseAdmin
-    .from('meetings')
-    .delete()
-    .eq('id', id);
+  const { error } = await supabaseAdmin.from('meetings').delete().eq('id', id);
   if (error) throw error;
 }
 
@@ -241,7 +235,7 @@ export async function getRecentMeetingByUrl(meetingUrl: string, userId: string) 
 export async function saveSpecs(specs: SpecBlock[]): Promise<void> {
   if (specs.length === 0) return;
   const { error } = await supabaseAdmin.from('specs').insert(
-    specs.map(s => ({
+    specs.map((s) => ({
       id: s.id,
       user_id: s.user_id,
       meeting_id: s.meeting_id,
@@ -287,18 +281,12 @@ export async function getAllSpecs(userId: string): Promise<SpecBlock[]> {
 }
 
 export async function updateSpecNote(specId: string, note: string): Promise<void> {
-  const { error } = await supabaseAdmin
-    .from('specs')
-    .update({ note })
-    .eq('id', specId);
+  const { error } = await supabaseAdmin.from('specs').update({ note }).eq('id', specId);
   if (error) throw error;
 }
 
 export async function deleteSpecsByMeetingId(meetingId: string): Promise<void> {
-  const { error } = await supabaseAdmin
-    .from('specs')
-    .delete()
-    .eq('meeting_id', meetingId);
+  const { error } = await supabaseAdmin.from('specs').delete().eq('meeting_id', meetingId);
   if (error) throw error;
 }
 
@@ -330,11 +318,7 @@ export async function getProjects(userId: string): Promise<Project[]> {
 }
 
 export async function getProjectById(id: string): Promise<Project | undefined> {
-  const { data, error } = await supabaseAdmin
-    .from('projects')
-    .select('*')
-    .eq('id', id)
-    .single();
+  const { data, error } = await supabaseAdmin.from('projects').select('*').eq('id', id).single();
   if (error) return undefined;
   return rowToProject(data);
 }
@@ -358,10 +342,7 @@ export async function updateProject(id: string, updates: Partial<Project>): Prom
   if (updates.specIds) row.spec_ids = updates.specIds;
   if (updates.meetings) row.meetings = updates.meetings;
 
-  const { error } = await supabaseAdmin
-    .from('projects')
-    .update(row)
-    .eq('id', id);
+  const { error } = await supabaseAdmin.from('projects').update(row).eq('id', id);
   if (error) throw error;
 }
 
@@ -379,10 +360,7 @@ export async function addSpecsToProject(projectId: string, specIds: string[]): P
   await updateProject(projectId, { specIds: merged });
 
   // Also update project_id on each spec
-  await supabaseAdmin
-    .from('specs')
-    .update({ project_id: projectId })
-    .in('id', specIds);
+  await supabaseAdmin.from('specs').update({ project_id: projectId }).in('id', specIds);
 }
 
 export async function addFilesToProject(projectId: string, files: string[]): Promise<void> {
@@ -392,7 +370,11 @@ export async function addFilesToProject(projectId: string, files: string[]): Pro
   await updateProject(projectId, { files: merged });
 }
 
-export async function updateMeetingSpecs2(id: string, transcript: string, specsDetected: number): Promise<void> {
+export async function updateMeetingSpecs2(
+  id: string,
+  transcript: string,
+  specsDetected: number
+): Promise<void> {
   await updateMeetingSpecs(id, transcript, specsDetected);
 }
 

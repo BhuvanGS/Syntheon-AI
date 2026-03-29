@@ -115,7 +115,7 @@ class SyntheonPopup {
 
   isMeetingUrl(url) {
     if (!url) return false;
-    return ['meet.google.com', 'zoom.us', 'teams.microsoft.com'].some(p => url.includes(p));
+    return ['meet.google.com', 'zoom.us', 'teams.microsoft.com'].some((p) => url.includes(p));
   }
 
   formatUrl(url) {
@@ -150,7 +150,7 @@ class SyntheonPopup {
       const res = await chrome.runtime.sendMessage({
         action: 'sendBot',
         meetingUrl: this.meetingUrl,
-        tabTitle: this.tabTitle
+        tabTitle: this.tabTitle,
       });
 
       console.log('sendBot response:', res);
@@ -162,14 +162,13 @@ class SyntheonPopup {
           botId: res.botId,
           meetingId: res.meetingId,
           meetingUrl: this.meetingUrl,
-          platform: this.getPlatformName(this.meetingUrl)
-        }
+          platform: this.getPlatformName(this.meetingUrl),
+        },
       });
 
       this.sendBotButton.disabled = false;
       this.sendBotText.textContent = 'Bot Active — Click to Reset';
       this.updateStatus('Syntheon - AI will join shortly', 'success');
-
     } catch (error) {
       console.error('Failed to send bot:', error);
       this.updateStatus(error.message || 'Failed to send bot', 'error');
@@ -187,7 +186,7 @@ class SyntheonPopup {
       idle: '#6b7280',
       success: '#5c7c5d',
       error: '#f59e0b',
-      recording: '#c0534a'
+      recording: '#c0534a',
     };
 
     this.statusDot.style.background = colors[type] || '#6b7280';

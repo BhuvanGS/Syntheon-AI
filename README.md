@@ -5,6 +5,7 @@ An intelligent meeting management platform that transforms conversations into so
 ## 🚀 Features
 
 ### Web Application
+
 - **Dashboard**: Central hub for managing meetings, projects, and extracted specifications
 - **Meeting Management**: View and organize meetings with detailed transcripts and metadata
 - **Spec Blocks**: Automatically extracted specifications, features, and action items from meetings
@@ -14,6 +15,7 @@ An intelligent meeting management platform that transforms conversations into so
 - **Meeting Context Transfer (MCT)**: Follow-up meetings build on existing project context
 
 ### Browser Extension
+
 - **Multi-Platform Support**: Works with Google Meet, Zoom, and Microsoft Teams
 - **Bot Integration**: Sends AI bot to meetings for automatic recording
 - **Real-time Transcription**: Captures and transcribes meeting audio
@@ -22,6 +24,7 @@ An intelligent meeting management platform that transforms conversations into so
 ## 🛠 Tech Stack
 
 ### Frontend
+
 - **Next.js 16.1.6** - React framework with App Router
 - **React 19.2.4** - UI library with hooks
 - **TypeScript 5.7.3** - Type-safe development
@@ -31,6 +34,7 @@ An intelligent meeting management platform that transforms conversations into so
 - **D3.js** - Data visualization for pipeline graphics
 
 ### Backend & Services
+
 - **Skribby SDK** - Meeting bot and transcription service
 - **Groq SDK** - AI model integration for spec extraction
 - **Supabase** - Database and authentication
@@ -39,6 +43,7 @@ An intelligent meeting management platform that transforms conversations into so
 - **Linear API** - Project management integration
 
 ### Browser Extension
+
 - **Manifest V3** - Modern Chrome extension API
 - **Content Scripts** - Injects functionality into meeting platforms
 - **Background Service Worker** - Handles background tasks and communication
@@ -46,6 +51,7 @@ An intelligent meeting management platform that transforms conversations into so
 ## 📋 Pages & Routes
 
 ### Main Pages
+
 - **Landing Page** (`/`) - Marketing and feature overview
 - **Dashboard** (`/dashboard`) - Main application interface
 - **Pricing** (`/pricing`) - Subscription plans and billing
@@ -53,6 +59,7 @@ An intelligent meeting management platform that transforms conversations into so
 - **Legal** (`/legal`) - Privacy policy, terms, DPA, refund policy
 
 ### API Routes
+
 - **Bot Webhook** (`/api/bot/webhook`) - Receives meeting status updates
 - **Ship Plan** (`/api/ship/plan`) - Generates development plans
 - **Ship Execute** (`/api/ship/execute`) - Executes code generation
@@ -61,6 +68,7 @@ An intelligent meeting management platform that transforms conversations into so
 ## 🚀 Installation
 
 ### Prerequisites
+
 - Node.js 18+
 - npm or pnpm
 - Google Chrome (for browser extension)
@@ -70,12 +78,14 @@ An intelligent meeting management platform that transforms conversations into so
 ### Web Application Setup
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/your-username/Syntheon-AI.git
    cd Syntheon-AI
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    # or
@@ -83,29 +93,32 @@ An intelligent meeting management platform that transforms conversations into so
    ```
 
 3. **Set up environment variables**
+
    ```bash
    cp .env.local.example .env.local
    ```
-   
+
    Add your API keys:
+
    ```env
    # AI Services
    GROQ_API_KEY=your_groq_api_key_here
    SKRIBBY_API_KEY=your_skribby_api_key_here
-   
+
    # Authentication
    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
    CLERK_SECRET_KEY=your_clerk_secret_key
-   
+
    # Database
    NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-   
+
    # Analytics
    NEXT_PUBLIC_VERCEL_ANALYTICS_ID=your_vercel_analytics_id
    ```
 
 4. **Run the development server**
+
    ```bash
    npm run dev
    # or
@@ -161,35 +174,39 @@ An intelligent meeting management platform that transforms conversations into so
 
 ### Environment Variables
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `GROQ_API_KEY` | Groq API key for AI processing | Yes |
-| `SKRIBBY_API_KEY` | Skribby API key for meeting bots | Yes |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk public key for auth | Yes |
-| `CLERK_SECRET_KEY` | Clerk secret key for auth | Yes |
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase database URL | Yes |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key | Yes |
-| `NEXT_PUBLIC_VERCEL_ANALYTICS_ID` | Vercel analytics ID | Optional |
+| Variable                            | Description                      | Required |
+| ----------------------------------- | -------------------------------- | -------- |
+| `GROQ_API_KEY`                      | Groq API key for AI processing   | Yes      |
+| `SKRIBBY_API_KEY`                   | Skribby API key for meeting bots | Yes      |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk public key for auth        | Yes      |
+| `CLERK_SECRET_KEY`                  | Clerk secret key for auth        | Yes      |
+| `NEXT_PUBLIC_SUPABASE_URL`          | Supabase database URL            | Yes      |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY`     | Supabase anonymous key           | Yes      |
+| `NEXT_PUBLIC_VERCEL_ANALYTICS_ID`   | Vercel analytics ID              | Optional |
 
 ### Service Setup
 
 #### Skribby Setup
+
 1. Sign up at [Skribby](https://platform.skribby.io)
 2. Create a new project
 3. Generate an API key
 4. Add webhook URL: `https://your-domain.com/api/bot/webhook`
 
 #### Groq Setup
+
 1. Sign up at [Groq](https://groq.com)
 2. Create an API key
 3. Add key to your `.env.local` file
 
 #### GitHub Integration
+
 1. Create a GitHub App or Personal Access Token
 2. Configure repository permissions
 3. Add webhook for deployment notifications
 
 #### Linear Integration
+
 1. Create a Linear API token
 2. Configure workspace access
 3. Set up project templates
@@ -259,21 +276,25 @@ Syntheon-AI/
 ### Common Issues
 
 **Extension not loading**
+
 - Ensure Developer mode is enabled in Chrome
 - Check that extension path is correct
 - Verify manifest.json syntax and permissions
 
 **Bot not joining meetings**
+
 - Verify Skribby API key is valid
 - Check webhook URL configuration
 - Ensure meeting platform is supported
 
 **Code generation failing**
+
 - Check Groq API quota and usage limits
 - Verify GitHub repository permissions
 - Ensure Linear workspace is properly configured
 
 **Deployment issues**
+
 - Check GitHub Pages settings
 - Verify build process completes successfully
 - Ensure environment variables are correctly set

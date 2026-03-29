@@ -7,7 +7,7 @@ const isPublicRoute = createRouteMatcher([
   '/legal',
   '/sign-in(.*)',
   '/sign-up(.*)',
-  '/api/bot/webhook(.*)',  // Skribby webhook must be public
+  '/api/bot/webhook(.*)', // Skribby webhook must be public
   '/api/deploy/webhook(.*)', // GitHub webhook must be public
   '/api/auth/webhook(.*)',
   '/api/bot/create',
