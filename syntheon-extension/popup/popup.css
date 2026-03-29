@@ -223,7 +223,7 @@ body {
   justify-content: center;
   gap: 12px;
   padding: 15px;
-  background: var(--matcha-deep);
+  background: var(--matcha-mid);
   color: var(--beige-warm);
   border: none;
   border-radius: 10px;
@@ -246,9 +246,9 @@ body {
 }
 
 .record-button:hover {
-  background: var(--matcha-mid);
+  background: var(--matcha-soft);
   transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(61, 90, 62, 0.28);
+  box-shadow: 0 6px 18px rgba(138, 171, 126, 0.28);
 }
 
 .record-button:active {
@@ -319,6 +319,61 @@ body {
   color: var(--matcha-deep);
 }
 
+/* Settings button specific styling */
+#settingsButton {
+  background: var(--matcha-mid) !important;
+  color: var(--beige-warm) !important;
+  border-color: var(--matcha-soft) !important;
+}
+
+#settingsButton:hover {
+  background: var(--matcha-deep) !important;
+  border-color: var(--matcha-mid) !important;
+}
+
+/* Additional overrides to ensure no blue colors */
+#settingsButton.control-button {
+  background: var(--matcha-mid) !important;
+  color: var(--beige-warm) !important;
+  border: 1px solid var(--matcha-soft) !important;
+}
+
+button#settingsButton {
+  background: var(--matcha-mid) !important;
+  color: var(--beige-warm) !important;
+  border-color: var(--matcha-soft) !important;
+}
+
+/* Most aggressive override - target all possible selectors */
+body button#settingsButton,
+.popup-container button#settingsButton,
+.secondary-controls button#settingsButton,
+.control-button#settingsButton {
+  background: var(--beige-warm) !important;
+  color: var(--ink-soft) !important;
+  border: 1px solid var(--beige-mid) !important;
+}
+
+body button#settingsButton:hover,
+.popup-container button#settingsButton:hover,
+.secondary-controls button#settingsButton:hover,
+.control-button#settingsButton:hover {
+  background: var(--matcha-mist) !important;
+  border-color: var(--matcha-pale) !important;
+  color: var(--matcha-deep) !important;
+}
+
+/* Fix SVG icon colors */
+#settingsButton svg {
+  stroke: var(--ink-soft) !important;
+  color: var(--ink-soft) !important;
+}
+
+#settingsButton:hover svg {
+  stroke: var(--matcha-deep) !important;
+  color: var(--matcha-deep) !important;
+}
+
 /* ─── Stats ───────────────────────────────────────────────── */
 .stats-section {
   display: grid;
@@ -372,15 +427,15 @@ body {
   margin-top: 12px;
   padding: 12px;
   border-radius: 12px;
-  background: #111827;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--beige-warm);
+  border: 1px solid var(--beige-mid);
 }
 
 .settings-label {
   display: block;
   margin-bottom: 8px;
   font-size: 12px;
-  color: #d1d5db;
+  color: var(--ink);
   font-weight: 600;
 }
 
@@ -394,24 +449,32 @@ body {
   flex: 1;
   padding: 10px 12px;
   border-radius: 10px;
-  border: 1px solid #374151;
-  background: #0f172a;
-  color: #f9fafb;
+  border: 1px solid var(--beige-mid);
+  background: var(--cream);
+  color: var(--ink);
+  font-family: 'DM Sans', sans-serif;
 }
 
 .settings-save-btn {
   padding: 10px 14px;
   border-radius: 10px;
-  background: #5c7c5d;
-  color: white;
+  background: var(--matcha-mid);
+  color: var(--beige-warm);
   border: none;
   cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.settings-save-btn:hover {
+  background: var(--matcha-deep);
 }
 
 .settings-help {
   margin-top: 6px;
   font-size: 11px;
-  color: #9ca3af;
+  color: var(--ink-faint);
 }
 
 /* ─── Dark mode ───────────────────────────────────────────── */

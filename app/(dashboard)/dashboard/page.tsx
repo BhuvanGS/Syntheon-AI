@@ -12,6 +12,7 @@ import { Settings } from '@/components/setting';
 import { Github } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { GitHubConnectButton } from '@/components/github-connect-button';
+import { ApiKeyManager } from '@/components/api-key-manager';
 
 type ViewType = 'dashboard' | 'meetings' | 'specs' | 'kanban' | 'settings' | 'spec-detail';
 
@@ -481,6 +482,9 @@ export default function Home() {
                 </div>
               )}
             </div>
+
+            {/* API Key Manager */}
+            <ApiKeyManager />
 
             {/* Linear Card - Coming Soon */}
             <div
