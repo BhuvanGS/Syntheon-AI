@@ -1,4 +1,3 @@
-// app/api/bot/webhook/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { getBotTranscript } from '@/lib/skribby';
 import { extractSpecBlocks } from '@/lib/groq';
@@ -10,14 +9,48 @@ import {
   saveSpecs,
   addSpecsToProject,
   getProjectById,
-  updateProject
+  updateProject,
 } from '@/lib/db';
+import { verifyWebhookSignature } from '@/lib/webhook'; // NEW
 
 export async function POST(req: NextRequest) {
   try {
-    const payload = await req.json();
-    console.log('Webhook received:', payload.type, JSON.stringify(payload.data));
+    const rawPayload = await req.text();
+    const signature = req.headers.get('x-webhook-signature');
 
+    console.log('📋 Raw Payload:', rawPayload);
+    console.log('🔑 Signature Header:', signature);
+    console.log('🔐 Secret:', process.env.SKRIBBY_WEBHOOK_SECRET);
+
+    // ✅ NEW: Verify signature
+    if (!process.env.SKRIBBY_WEBHOOK_SECRET) {
+      console.error('SKRIBBY_WEBHOOK_SECRET not configured');
+      return NextResponse.json(
+        { error: 'Webhook not configured' },
+        { status: 500 }
+      );
+    }
+
+    const isValid = verifyWebhookSignature({
+      secret: process.env.SKRIBBY_WEBHOOK_SECRET,
+      payload: rawPayload,
+      signature: signature || '',
+    });
+
+    if (!isValid) {
+      console.warn('❌ Webhook signature verification failed');
+      return NextResponse.json(
+        { error: 'Invalid signature' },
+        { status: 401 }
+      );
+    }
+
+    // ✅ NEW: Parse JSON after verification
+    const payload = JSON.parse(rawPayload);
+    
+    console.log('✅ Webhook signature verified');
+
+    // Rest of your existing code stays the same...
     if (payload.type !== 'status_update') return NextResponse.json({ ok: true });
     if (payload.data?.new_status !== 'finished') return NextResponse.json({ ok: true });
 
@@ -54,31 +87,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    // Extract specs AND title in one Groq call
     const { specs, title } = await extractSpecBlocks(transcript, meeting.id);
     console.log(`Extracted ${specs.length} spec blocks`);
-    console.log('AI title:', title);
 
-    // Attach user_id to specs
     const specsWithUser = specs.map((s: any) => ({
       ...s,
-      user_id:    meeting.user_id,
+      user_id: meeting.user_id,
       project_id: meeting.projectId ?? null,
     }));
 
-    // Update meeting
     await updateMeetingSpecs(meeting.id, transcript, specs.length);
     await updateMeetingName(meeting.id, title);
-
-    // Save specs
     await saveSpecs(specsWithUser);
 
-    // Link specs to project
     if (meeting.projectId) {
       await addSpecsToProject(meeting.projectId, specs.map((s: any) => s.id));
       console.log('Specs linked to project:', meeting.projectId);
 
-      // Update project name if first meeting
       const project = await getProjectById(meeting.projectId);
       if (project && project.meetings[0] === meeting.id) {
         await updateProject(meeting.projectId, { name: title });

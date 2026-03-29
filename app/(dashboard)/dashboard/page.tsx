@@ -1,41 +1,76 @@
+// app/(dashboard)/dashboard/settings/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Sidebar } from '@/components/sidebar';
 import { MeetingCards } from '@/components/meeting-cards';
 import { SpecBlocksDetail } from '@/components/spec-blocks-detail';
 import { Kanban } from '@/components/kanban';
 import { AllSpecs } from '@/components/all-specs';
 import { Settings } from '@/components/setting';
+import { Github } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
+import { GitHubConnectButton } from '@/components/github-connect-button';
 
 type ViewType = 'dashboard' | 'meetings' | 'specs' | 'kanban' | 'settings' | 'spec-detail';
 
 const pageStyle: React.CSSProperties = {
-  padding:    '2rem 2.5rem',
-  overflowY:  'auto',
-  height:     '100%',
+  padding: '2rem 2.5rem',
+  overflowY: 'auto',
+  height: '100%',
   background: '#faf8f4',
 };
 
 const headingStyle: React.CSSProperties = {
-  fontFamily:    "'DM Serif Display', serif",
-  fontSize:      '2.2rem',
-  fontWeight:    '400',
-  color:         '#2c2c28',
-  marginBottom:  '0.25rem',
+  fontFamily: "'DM Serif Display', serif",
+  fontSize: '2.2rem',
+  fontWeight: '400',
+  color: '#2c2c28',
+  marginBottom: '0.25rem',
 };
 
 const subStyle: React.CSSProperties = {
-  fontSize:     '14px',
-  color:        '#8a8a80',
-  fontWeight:   '300',
+  fontSize: '14px',
+  color: '#8a8a80',
+  fontWeight: '300',
   marginBottom: '2rem',
-  fontFamily:   "'DM Sans', sans-serif",
+  fontFamily: "'DM Sans', sans-serif",
 };
 
 export default function Home() {
-  const [currentView, setCurrentView]       = useState<ViewType>('dashboard');
+  const searchParams = useSearchParams();
+  const [githubConnected, setGithubConnected] = useState(false);
+  const [githubUser, setGithubUser] = useState<string | null>(null);
+  const [currentView, setCurrentView] = useState<ViewType>('dashboard');
   const [selectedMeeting, setSelectedMeeting] = useState<string | null>(null);
+
+  // Check for OAuth callback messages
+  useEffect(() => {
+    const githubConnectedParam = searchParams.get('github_connected');
+    const githubError = searchParams.get('github_error');
+    const githubUserParam = searchParams.get('github_user');
+
+    if (githubConnectedParam === 'true') {
+      setGithubConnected(true);
+      setGithubUser(githubUserParam);
+      setCurrentView('settings');
+      toast({
+        title: '✅ GitHub Connected!',
+        description: `Connected as @${githubUserParam}`,
+      });
+    }
+
+    if (githubError) {
+      setCurrentView('settings');
+      const detail = searchParams.get('github_error_detail');
+      toast({
+        title: '❌ Connection Failed',
+        description: detail || githubError,
+        variant: 'destructive',
+      });
+    }
+  }, [searchParams]);
 
   function handleViewChange(view: ViewType) {
     setCurrentView(view);
@@ -52,35 +87,57 @@ export default function Home() {
       <Sidebar currentView={currentView} onViewChange={handleViewChange} />
 
       <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-
         {/* Top bar */}
-        <div style={{
-          height:       '56px',
-          borderBottom: '1px solid #e8dfd0',
-          background:   '#faf8f4',
-          display:      'flex',
-          alignItems:   'center',
-          padding:      '0 2.5rem',
-          justifyContent: 'space-between',
-          flexShrink:   0,
-        }}>
-          <p style={{ fontSize: '13px', color: '#8a8a80', fontFamily: "'DM Sans', sans-serif", fontWeight: '300' }}>
-            {currentView === 'dashboard'  && 'Overview of your meetings and specs'}
-            {currentView === 'meetings'   && 'All your recorded meetings'}
-            {currentView === 'specs'      && 'All extracted specifications'}
-            {currentView === 'kanban'     && 'Track your pipeline'}
-            {currentView === 'settings'   && 'Configure your workspace'}
+        <div
+          style={{
+            height: '56px',
+            borderBottom: '1px solid #e8dfd0',
+            background: '#faf8f4',
+            display: 'flex',
+            alignItems: 'center',
+            padding: '0 2.5rem',
+            justifyContent: 'space-between',
+            flexShrink: 0,
+          }}
+        >
+          <p
+            style={{
+              fontSize: '13px',
+              color: '#8a8a80',
+              fontFamily: "'DM Sans', sans-serif",
+              fontWeight: '300',
+            }}
+          >
+            {currentView === 'dashboard' && 'Overview of your meetings and specs'}
+            {currentView === 'meetings' && 'All your recorded meetings'}
+            {currentView === 'specs' && 'All extracted specifications'}
+            {currentView === 'kanban' && 'Track your pipeline'}
+            {currentView === 'settings' && 'Configure your workspace'}
             {currentView === 'spec-detail' && 'Spec blocks for this meeting'}
           </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#8aab7e' }} />
-            <span style={{ fontSize: '12px', color: '#8aab7e', fontFamily: "'DM Sans', sans-serif" }}>Live</span>
+            <div
+              style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: '#8aab7e',
+              }}
+            />
+            <span
+              style={{
+                fontSize: '12px',
+                color: '#8aab7e',
+                fontFamily: "'DM Sans', sans-serif",
+              }}
+            >
+              Live
+            </span>
           </div>
         </div>
 
         {/* Content */}
         <div style={{ flex: 1, overflow: 'hidden' }}>
-
           {currentView === 'dashboard' && (
             <div style={pageStyle}>
               <h1 style={headingStyle}>Dashboard</h1>
@@ -102,18 +159,18 @@ export default function Home() {
               <button
                 onClick={() => handleViewChange('meetings')}
                 style={{
-                  background:   'none',
-                  border:       'none',
-                  cursor:       'pointer',
-                  fontSize:     '14px',
-                  color:        '#5c7c5d',
-                  fontFamily:   "'DM Sans', sans-serif",
-                  fontWeight:   '500',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  color: '#5c7c5d',
+                  fontFamily: "'DM Sans', sans-serif",
+                  fontWeight: '500',
                   marginBottom: '1.5rem',
-                  display:      'flex',
-                  alignItems:   'center',
-                  gap:          '6px',
-                  padding:      0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: 0,
                 }}
               >
                 ← Back to Meetings
@@ -141,11 +198,340 @@ export default function Home() {
           {currentView === 'settings' && (
             <div style={pageStyle}>
               <h1 style={headingStyle}>Settings</h1>
-              <p style={subStyle}>Configure your Syntheon workspace</p>
-              <Settings />
+            <p style={subStyle}>Manage your integrations and preferences</p>
+
+            {/* GitHub Integration Card */}
+            <div
+              style={{
+                background: '#ffffff',
+                border: '1px solid #e8dfd0',
+                borderRadius: '12px',
+                padding: '2rem',
+                marginBottom: '2rem',
+              }}
+            >
+              {/* Header */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'space-between',
+                  marginBottom: '1.5rem',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
+                  <div
+                    style={{
+                      width: '48px',
+                      height: '48px',
+                      background: '#f0f4ff',
+                      borderRadius: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Github size={24} color="#5c7c5d" />
+                  </div>
+                  <div>
+                    <h2
+                      style={{
+                        fontFamily: "'DM Serif Display', serif",
+                        fontSize: '1.4rem',
+                        fontWeight: '400',
+                        color: '#2c2c28',
+                        marginBottom: '0.25rem',
+                      }}
+                    >
+                      GitHub
+                    </h2>
+                    <p
+                      style={{
+                        fontSize: '14px',
+                        color: '#8a8a80',
+                        fontFamily: "'DM Sans', sans-serif",
+                      }}
+                    >
+                      Connect your GitHub account to create branches, commits, and pull requests
+                    </p>
+                  </div>
+                </div>
+
+                {githubConnected && (
+                  <div
+                    style={{
+                      background: '#e8f5e9',
+                      color: '#2e7d32',
+                      padding: '0.5rem 1rem',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontFamily: "'DM Sans', sans-serif",
+                      fontWeight: '500',
+                    }}
+                  >
+                    ✓ Connected
+                  </div>
+                )}
+              </div>
+
+              {/* Content */}
+              {githubConnected ? (
+                <div>
+                  {/* Connected State */}
+                  <div
+                    style={{
+                      background: '#f1f8f5',
+                      border: '1px solid #c8e6c9',
+                      borderRadius: '8px',
+                      padding: '1rem',
+                      marginBottom: '1.5rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '1rem',
+                    }}
+                  >
+                    <div
+                      style={{
+                        color: '#2e7d32',
+                        fontSize: '20px',
+                      }}
+                    >
+                      ✓
+                    </div>
+                    <div>
+                      <p
+                        style={{
+                          fontSize: '14px',
+                          color: '#1b5e20',
+                          fontFamily: "'DM Sans', sans-serif",
+                          fontWeight: '500',
+                          marginBottom: '0.25rem',
+                        }}
+                      >
+                        Connected as{' '}
+                        <code
+                          style={{
+                            background: '#ffffff',
+                            padding: '0.25rem 0.5rem',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            border: '1px solid #c8e6c9',
+                          }}
+                        >
+                          @{githubUser}
+                        </code>
+                      </p>
+                      <p
+                        style={{
+                          fontSize: '12px',
+                          color: '#558b2f',
+                          fontFamily: "'DM Sans', sans-serif",
+                        }}
+                      >
+                        Your GitHub account is linked to Syntheon
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Permissions */}
+                  <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #e8dfd0' }}>
+                    <p
+                      style={{
+                        fontSize: '12px',
+                        color: '#8a8a80',
+                        fontWeight: '500',
+                        marginBottom: '0.75rem',
+                        fontFamily: "'DM Sans', sans-serif",
+                      }}
+                    >
+                      Permissions granted:
+                    </p>
+                    <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                      {[
+                        'Create and manage repositories',
+                        'Create branches and commits',
+                        'Create pull requests',
+                        'Create and manage issues',
+                      ].map((perm, i) => (
+                        <li
+                          key={i}
+                          style={{
+                            fontSize: '13px',
+                            color: '#8a8a80',
+                            fontFamily: "'DM Sans', sans-serif",
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            marginBottom: '0.5rem',
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: '4px',
+                              height: '4px',
+                              background: '#8aab7e',
+                              borderRadius: '50%',
+                              display: 'inline-block',
+                              flexShrink: 0,
+                            }}
+                          />
+                          {perm}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  {/* Not Connected State */}
+                  <div
+                    style={{
+                      background: '#fff3e0',
+                      border: '1px solid #ffe0b2',
+                      borderRadius: '8px',
+                      padding: '1rem',
+                      marginBottom: '1.5rem',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '1rem',
+                    }}
+                  >
+                    <div style={{ color: '#f57c00', fontSize: '20px', marginTop: '0.25rem' }}>
+                      ⚠
+                    </div>
+                    <div>
+                      <p
+                        style={{
+                          fontSize: '14px',
+                          color: '#e65100',
+                          fontFamily: "'DM Sans', sans-serif",
+                          fontWeight: '500',
+                          marginBottom: '0.25rem',
+                        }}
+                      >
+                        GitHub not connected
+                      </p>
+                      <p
+                        style={{
+                          fontSize: '12px',
+                          color: '#d84315',
+                          fontFamily: "'DM Sans', sans-serif",
+                        }}
+                      >
+                        You'll need to connect GitHub to use the "Ship" feature
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Connect Button */}
+                  <GitHubConnectButton
+                    onSuccess={() => {
+                      setGithubConnected(true);
+                    }}
+                  />
+
+                  {/* Permissions */}
+                  <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #e8dfd0' }}>
+                    <p
+                      style={{
+                        fontSize: '12px',
+                        color: '#8a8a80',
+                        fontWeight: '500',
+                        marginBottom: '0.75rem',
+                        fontFamily: "'DM Sans', sans-serif",
+                      }}
+                    >
+                      We'll request these permissions:
+                    </p>
+                    <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                      {[
+                        'Create and manage repositories',
+                        'Create branches and commits',
+                        'Create pull requests',
+                        'Create and manage issues',
+                      ].map((perm, i) => (
+                        <li
+                          key={i}
+                          style={{
+                            fontSize: '13px',
+                            color: '#8a8a80',
+                            fontFamily: "'DM Sans', sans-serif",
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            marginBottom: '0.5rem',
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: '4px',
+                              height: '4px',
+                              background: '#8aab7e',
+                              borderRadius: '50%',
+                              display: 'inline-block',
+                              flexShrink: 0,
+                            }}
+                          />
+                          {perm}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Linear Card - Coming Soon */}
+            <div
+              style={{
+                background: '#ffffff',
+                border: '1px solid #e8dfd0',
+                borderRadius: '12px',
+                padding: '2rem',
+                opacity: 0.5,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <h2
+                    style={{
+                      fontFamily: "'DM Serif Display', serif",
+                      fontSize: '1.4rem',
+                      fontWeight: '400',
+                      color: '#2c2c28',
+                      marginBottom: '0.25rem',
+                    }}
+                  >
+                    Linear
+                  </h2>
+                  <p
+                    style={{
+                      fontSize: '14px',
+                      color: '#8a8a80',
+                      fontFamily: "'DM Sans', sans-serif",
+                    }}
+                  >
+                    Connect Linear to create tasks automatically
+                  </p>
+                </div>
+                <div
+                  style={{
+                    background: '#f5f5f5',
+                    color: '#8a8a80',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontWeight: '500',
+                  }}
+                >
+                  Coming Soon
+                </div>
+              </div>
+            </div>
             </div>
           )}
-
         </div>
       </main>
     </div>
