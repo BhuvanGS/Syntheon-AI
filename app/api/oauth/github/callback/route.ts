@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
       .from('users')
       .select('*')
       .eq('id', userId);
-
+console.log(currentUser + "Current")
     console.log("USER AFTER ENSURE:", checkUser);
 
     const { searchParams } = new URL(req.url);
