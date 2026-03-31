@@ -1,7 +1,7 @@
 // app/(dashboard)/dashboard/settings/page.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Sidebar } from '@/components/sidebar';
 import { MeetingCards } from '@/components/meeting-cards';
@@ -40,7 +40,7 @@ const subStyle: React.CSSProperties = {
   fontFamily: "'DM Sans', sans-serif",
 };
 
-export default function Home() {
+function DashboardContent() {
   const searchParams = useSearchParams();
   const [githubConnected, setGithubConnected] = useState(false);
   const [githubUser, setGithubUser] = useState<string | null>(null);
@@ -745,5 +745,13 @@ export default function Home() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <DashboardContent />
+    </Suspense>
   );
 }
