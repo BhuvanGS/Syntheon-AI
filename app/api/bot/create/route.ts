@@ -56,20 +56,19 @@ export async function POST(req: NextRequest) {
     // 🔥 STEP 1: INSERT FIRST (DB LOCK)
     try {
       await saveMeeting({
-        id:            meetingId,
-        user_id:       userId,
-        projectName:   tabTitle || 'Untitled Meeting',
-        meetingId:     meetingId,
-        meeting_url:   meetingUrl,
-        platform:      detectPlatform(meetingUrl),
-        transcript:    '',
+        id: meetingId,
+        user_id: userId,
+        projectName: tabTitle || 'Untitled Meeting',
+        meetingId: meetingId,
+        meeting_url: meetingUrl,
+        platform: detectPlatform(meetingUrl),
+        transcript: '',
         specsDetected: 0,
-        status:        'processing',
-        date:          new Date().toISOString(),
-        filePath:      '',
-        botId:         undefined, // 🔥 no bot yet
+        status: 'processing',
+        date: new Date().toISOString(),
+        filePath: '',
+        botId: undefined, // 🔥 no bot yet
       });
-
     } catch (err: any) {
       console.log('Duplicate meeting detected (DB constraint)');
 
@@ -80,7 +79,7 @@ export async function POST(req: NextRequest) {
           success: true,
           botId: existing.botId,
           meetingId: existing.id,
-          reused: true
+          reused: true,
         });
       }
 
@@ -93,17 +92,13 @@ export async function POST(req: NextRequest) {
     console.log('Bot created:', bot.id, 'status:', bot.status);
 
     // 🔥 STEP 3: UPDATE BOT ID
-    await supabaseAdmin
-      .from('meetings')
-      .update({ bot_id: bot.id })
-      .eq('id', meetingId);
+    await supabaseAdmin.from('meetings').update({ bot_id: bot.id }).eq('id', meetingId);
 
     return NextResponse.json({
       success: true,
       botId: bot.id,
-      meetingId
+      meetingId,
     });
-
   } catch (error) {
     console.error('Failed to create bot:', error);
 

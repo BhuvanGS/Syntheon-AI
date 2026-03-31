@@ -17,13 +17,13 @@ export async function GET() {
       .eq('user_id', userId)
       .single();
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 is "not found" error
+    if (error && error.code !== 'PGRST116') {
+      // PGRST116 is "not found" error
       console.error('Failed to check API key:', error);
       return NextResponse.json({ error: 'Failed to check key' }, { status: 500 });
     }
 
     return NextResponse.json({ hasKey: !!data });
-
   } catch (error) {
     console.error('Check key error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

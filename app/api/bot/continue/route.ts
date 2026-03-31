@@ -38,9 +38,9 @@ export async function POST(req: NextRequest) {
     console.log('Follow-up bot created:', bot.id, 'for project:', projectId);
 
     const meetingId = `meet-${Date.now()}`;
-    const date      = new Date().toLocaleDateString('en-US', {
+    const date = new Date().toLocaleDateString('en-US', {
       month: 'short',
-      day: 'numeric'
+      day: 'numeric',
     });
 
     let meeting;
@@ -48,21 +48,20 @@ export async function POST(req: NextRequest) {
     try {
       // 🔥 Attempt insert (DB handles uniqueness)
       meeting = await saveMeeting({
-        id:            meetingId,
-        user_id:       userId,
-        projectName:   `${project.name} — Follow-up ${date}`,
-        meetingId:     meetingId,
-        meeting_url:   meetingUrl,
-        platform:      detectPlatform(meetingUrl),
-        transcript:    '',
+        id: meetingId,
+        user_id: userId,
+        projectName: `${project.name} — Follow-up ${date}`,
+        meetingId: meetingId,
+        meeting_url: meetingUrl,
+        platform: detectPlatform(meetingUrl),
+        transcript: '',
         specsDetected: 0,
-        status:        'processing',
-        date:          new Date().toISOString(),
-        filePath:      '',
-        botId:         bot.id,
-        projectId:     projectId,
+        status: 'processing',
+        date: new Date().toISOString(),
+        filePath: '',
+        botId: bot.id,
+        projectId: projectId,
       });
-
     } catch (err: any) {
       console.log('Duplicate follow-up detected (DB constraint)');
 
@@ -75,7 +74,7 @@ export async function POST(req: NextRequest) {
           botId: existing.botId,
           meetingId: existing.id,
           reused: true,
-          projectId: existing.projectId
+          projectId: existing.projectId,
         });
       }
 
@@ -86,9 +85,8 @@ export async function POST(req: NextRequest) {
       success: true,
       botId: bot.id,
       meetingId,
-      projectId
+      projectId,
     });
-
   } catch (error) {
     console.error('Failed to create follow-up bot:', error);
 

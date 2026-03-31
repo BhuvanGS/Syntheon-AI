@@ -3,9 +3,9 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { Webhook } from 'svix';
 
 export async function POST(req: NextRequest) {
-  const payload   = await req.text();
-  const headers   = Object.fromEntries(req.headers);
-  const wh        = new Webhook(process.env.CLERK_WEBHOOK_SECRET!);
+  const payload = await req.text();
+  const headers = Object.fromEntries(req.headers);
+  const wh = new Webhook(process.env.CLERK_WEBHOOK_SECRET!);
 
   let event: any;
   try {
@@ -20,8 +20,8 @@ export async function POST(req: NextRequest) {
     await supabaseAdmin.from('users').insert({
       id,
       email: email_addresses[0].email_address,
-      name:  `${first_name ?? ''} ${last_name ?? ''}`.trim() || 'User',
-      plan:  'starter',
+      name: `${first_name ?? ''} ${last_name ?? ''}`.trim() || 'User',
+      plan: 'starter',
     });
 
     console.log('User created in Supabase:', id);

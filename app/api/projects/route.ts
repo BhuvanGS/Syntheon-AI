@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
-    const meetingId        = searchParams.get('meetingId');
+    const meetingId = searchParams.get('meetingId');
 
     if (meetingId) {
       const project = await getProjectByMeetingId(meetingId);
@@ -18,12 +18,8 @@ export async function GET(req: NextRequest) {
 
     const projects = await getProjects(userId);
     return NextResponse.json(projects);
-
   } catch (error) {
     console.error('Failed to fetch projects:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch projects' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to fetch projects' }, { status: 500 });
   }
 }

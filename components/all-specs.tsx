@@ -5,17 +5,17 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2 } from 'lucide-react';
 
 interface SpecBlock {
-  id:         string;
-  title:      string;
-  type:       'feature' | 'idea' | 'constraint' | 'improvement';
+  id: string;
+  title: string;
+  type: 'feature' | 'idea' | 'constraint' | 'improvement';
   confidence: number;
   meeting_id: string;
-  timestamp:  string;
-  note?:      string;
+  timestamp: string;
+  note?: string;
 }
 
 interface Meeting {
-  id:          string;
+  id: string;
   projectName: string;
 }
 
@@ -24,10 +24,10 @@ interface AllSpecsProps {
 }
 
 export function AllSpecs({ onSelectMeeting }: AllSpecsProps) {
-  const [specs, setSpecs]       = useState<SpecBlock[]>([]);
+  const [specs, setSpecs] = useState<SpecBlock[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [filter, setFilter]     = useState<string>('all');
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<string>('all');
 
   useEffect(() => {
     fetchAll();
@@ -37,11 +37,11 @@ export function AllSpecs({ onSelectMeeting }: AllSpecsProps) {
     try {
       const [meetingsRes, allSpecs] = await Promise.all([
         fetch('/api/meetings'),
-        fetch('/api/specs')
+        fetch('/api/specs'),
       ]);
 
       const meetingsData = await meetingsRes.json();
-      const specsData    = await allSpecs.json();
+      const specsData = await allSpecs.json();
 
       setMeetings(meetingsData);
       setSpecs(specsData);
@@ -53,42 +53,47 @@ export function AllSpecs({ onSelectMeeting }: AllSpecsProps) {
   }
 
   function getMeetingName(meetingId: string) {
-    return meetings.find(m => m.id === meetingId)?.projectName || meetingId;
+    return meetings.find((m) => m.id === meetingId)?.projectName || meetingId;
   }
 
   function getTypeColor(type: string) {
     switch (type) {
-      case 'feature':     return 'bg-primary/20 text-primary';
-      case 'idea':        return 'bg-secondary text-secondary-foreground';
-      case 'constraint':  return 'bg-accent/20 text-accent';
-      case 'improvement': return 'bg-yellow-100 text-yellow-800';
-      default:            return 'bg-muted text-muted-foreground';
+      case 'feature':
+        return 'bg-primary/20 text-primary';
+      case 'idea':
+        return 'bg-secondary text-secondary-foreground';
+      case 'constraint':
+        return 'bg-accent/20 text-accent';
+      case 'improvement':
+        return 'bg-yellow-100 text-yellow-800';
+      default:
+        return 'bg-muted text-muted-foreground';
     }
   }
 
-  const filtered = filter === 'all'
-    ? specs
-    : specs.filter(s => s.type === filter);
+  const filtered = filter === 'all' ? specs : specs.filter((s) => s.type === filter);
 
-  if (loading) return (
-    <div className="flex items-center justify-center py-20">
-      <Loader2 className="w-6 h-6 animate-spin text-primary mr-3" />
-      <span className="text-muted-foreground">Loading spec blocks...</span>
-    </div>
-  );
+  if (loading)
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-6 h-6 animate-spin text-primary mr-3" />
+        <span className="text-muted-foreground">Loading spec blocks...</span>
+      </div>
+    );
 
-  if (specs.length === 0) return (
-    <div className="bg-card rounded-2xl p-12 border border-border text-center">
-      <p className="text-2xl font-playfair font-bold text-foreground mb-2">No spec blocks yet</p>
-      <p className="text-muted-foreground">Record a meeting to extract spec blocks.</p>
-    </div>
-  );
+  if (specs.length === 0)
+    return (
+      <div className="bg-card rounded-2xl p-12 border border-border text-center">
+        <p className="text-2xl font-playfair font-bold text-foreground mb-2">No spec blocks yet</p>
+        <p className="text-muted-foreground">Record a meeting to extract spec blocks.</p>
+      </div>
+    );
 
   return (
     <div>
       {/* Filter bar */}
       <div className="flex gap-2 mb-6 flex-wrap">
-        {['all', 'feature', 'idea', 'constraint', 'improvement'].map(f => (
+        {['all', 'feature', 'idea', 'constraint', 'improvement'].map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
@@ -100,7 +105,7 @@ export function AllSpecs({ onSelectMeeting }: AllSpecsProps) {
           >
             {f.charAt(0).toUpperCase() + f.slice(1)}
             {f === 'all' && ` (${specs.length})`}
-            {f !== 'all' && ` (${specs.filter(s => s.type === f).length})`}
+            {f !== 'all' && ` (${specs.filter((s) => s.type === f).length})`}
           </button>
         ))}
       </div>
@@ -146,10 +151,10 @@ export function AllSpecs({ onSelectMeeting }: AllSpecsProps) {
 
       {/* Summary */}
       <div className="mt-8 grid grid-cols-4 gap-4">
-        {['feature', 'idea', 'constraint', 'improvement'].map(type => (
+        {['feature', 'idea', 'constraint', 'improvement'].map((type) => (
           <div key={type} className="bg-card rounded-2xl p-4 border border-border text-center">
             <p className="text-2xl font-bold text-primary">
-              {specs.filter(s => s.type === type).length}
+              {specs.filter((s) => s.type === type).length}
             </p>
             <p className="text-xs text-muted-foreground mt-1 capitalize">{type}s</p>
           </div>

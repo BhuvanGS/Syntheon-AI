@@ -15,23 +15,18 @@ export async function POST(req: NextRequest) {
     const rawKey = `syn_${crypto.randomBytes(32).toString('hex')}`;
 
     // 🔐 Hash before storing
-    const keyHash = crypto
-      .createHash('sha256')
-      .update(rawKey)
-      .digest('hex');
+    const keyHash = crypto.createHash('sha256').update(rawKey).digest('hex');
 
     // 💾 Upsert → ensures ONE key per user (no duplicates)
-    const { error } = await supabaseAdmin
-      .from('api_keys')
-      .upsert(
-        {
-          user_id: userId,
-          key_hash: keyHash,
-        },
-        {
-          onConflict: 'user_id',
-        }
-      );
+    const { error } = await supabaseAdmin.from('api_keys').upsert(
+      {
+        user_id: userId,
+        key_hash: keyHash,
+      },
+      {
+        onConflict: 'user_id',
+      }
+    );
 
     if (error) {
       console.error('API key save failed:', error);
@@ -40,12 +35,8 @@ export async function POST(req: NextRequest) {
 
     // ⚠️ Return raw key ONLY ONCE
     return NextResponse.json({ apiKey: rawKey });
-
   } catch (err) {
     console.error('Generate key error:', err);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

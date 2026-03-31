@@ -2,9 +2,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { generatePlan, planFollowUpChanges, generateFollowUpPlan } from '@/lib/shipai/ai';
-import { createLinearTicketBundle } from '@/lib/shipai/linear';
+import {
+  createLinearTicketBundle,
+  createLinearTicketBundleWithAccessToken,
+} from '@/lib/shipai/linear';
 import { getProjectById, getSpecsByProjectId } from '@/lib/db';
 import { getRepoFileTree, getFileContents, getRepoInfo } from '@/lib/shipai/github';
+import {
+  getIntegrationByUserId,
+  getLinearAccessToken,
+  getLinearTeamId,
+} from '@/lib/services/integrations';
 
 export const maxDuration = 60;
 
@@ -33,7 +41,7 @@ export async function POST(req: NextRequest) {
       const project = await getProjectById(projectId);
       if (!project) throw new Error(`Project ${projectId} not found`);
 
-      const previousSpecs = (await getSpecsByProjectId(projectId)).map(s => s.title);
+      const previousSpecs = (await getSpecsByProjectId(projectId)).map((s) => s.title);
       console.log('Previous specs:', previousSpecs.length);
 
       const repoInfo = getRepoInfo();
@@ -48,7 +56,7 @@ export async function POST(req: NextRequest) {
 
       console.log('Planner:', plannerResult.reasoning);
 
-      const relevantFiles = plannerResult.filesToModify.filter(f => fileTree.includes(f));
+      const relevantFiles = plannerResult.filesToModify.filter((f) => fileTree.includes(f));
       const existingFiles = await getFileContents(relevantFiles, repoInfo);
 
       plan = await generateFollowUpPlan(
@@ -58,7 +66,6 @@ export async function POST(req: NextRequest) {
         plannerResult.filesToCreate,
         notes
       );
-
     } else {
       // ── First ship ────────────────────────────────────────────
       console.log('First ship for:', meetingTitle);
@@ -75,17 +82,24 @@ Build the entire application implementing ALL of the above specifications in one
       console.log('Plan generated:', plan.branch_name);
     }
 
-    const linearTicketBundle = await createLinearTicketBundle(plan);
+    const integration = await getIntegrationByUserId(userId);
+    const linearAccessToken = getLinearAccessToken(integration);
+    const linearTeamId = getLinearTeamId(integration) || process.env.LINEAR_TEAM_ID;
+
+    const linearTicketBundle =
+      linearAccessToken && linearTeamId
+        ? await createLinearTicketBundleWithAccessToken(plan, linearAccessToken, linearTeamId)
+        : await createLinearTicketBundle(plan);
+
     console.log('Linear tickets created:', linearTicketBundle.parentIssue.identifier);
 
     return NextResponse.json({
-      success:         true,
-      featureRequest:  newSpecList.join('\n'),
+      success: true,
+      featureRequest: newSpecList.join('\n'),
       plan,
       linearTicketBundle,
-      isFollowUp:      !!projectId
+      isFollowUp: !!projectId,
     });
-
   } catch (error) {
     console.error('Ship plan error:', error);
     return NextResponse.json(

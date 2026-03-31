@@ -11,7 +11,7 @@ This directory contains icons for the Syntheon AI browser extension.
 ## Optional Platform Icons
 
 - `google-meet.png` - Google Meet platform icon (20x20px)
-- `zoom.png` - Zoom platform icon (20x20px)  
+- `zoom.png` - Zoom platform icon (20x20px)
 - `teams.png` - Microsoft Teams platform icon (20x20px)
 
 ## Design Guidelines
