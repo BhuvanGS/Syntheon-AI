@@ -1,4 +1,5 @@
 // background.js — Syntheon AI Meeting Assistant
+importScripts('config.js');
 
 // ─── Message Handler ───────────────────────────────────────────────────────────
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -29,7 +30,7 @@ async function sendBot(meetingUrl, tabTitle) {
     throw new Error('API key not set. Open settings.');
   }
 
-  const res = await fetch('http://localhost:3000/api/bot/create', {
+  const res = await fetch(getApiUrl('/api/bot/create'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

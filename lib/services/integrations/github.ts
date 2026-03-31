@@ -21,3 +21,18 @@ export async function saveGithubIntegration(params: {
     throw error;
   }
 }
+
+export async function deleteGithubIntegration(userId: string) {
+  const { error } = await supabaseAdmin
+    .from('integrations')
+    .update({
+      github_token: null,
+      github_owner: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('user_id', userId);
+
+  if (error) {
+    throw error;
+  }
+}

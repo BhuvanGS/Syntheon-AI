@@ -17,11 +17,13 @@ export async function POST() {
       return NextResponse.json({ error: 'OAuth not configured' }, { status: 500 });
     }
 
-    const redirectUri = process.env.GITHUB_OAUTH_REDIRECT_URI;
-    if (!redirectUri) {
-      console.error('GITHUB_OAUTH_REDIRECT_URI not set');
-      return NextResponse.json({ error: 'OAuth not configured' }, { status: 500 });
+    // Build redirect URI from NEXT_PUBLIC_APP_URL
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL;
+    if (!baseUrl) {
+      console.error('NEXT_PUBLIC_APP_URL not set');
+      return NextResponse.json({ error: 'App URL not configured' }, { status: 500 });
     }
+    const redirectUri = `${baseUrl.replace(/\/$/, '')}/api/oauth/github/callback`;
 
     const authorizationUrl = buildOAuthAuthorizationUrl({
       authorizeEndpoint: 'https://github.com/login/oauth/authorize',

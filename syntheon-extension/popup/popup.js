@@ -64,7 +64,7 @@ class SyntheonPopup {
     });
 
     this.recordingsButton?.addEventListener('click', () => {
-      chrome.tabs.create({ url: 'http://localhost:3000' });
+      chrome.tabs.create({ url: EXTENSION_CONFIG.API_BASE_URL });
     });
   }
 

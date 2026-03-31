@@ -1,14 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth, currentUser } from '@clerk/nextjs/server';
 import crypto from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase';
+import { ensureUser } from '@/lib/ensureUser';
 
 export async function POST(req: NextRequest) {
   try {
     const { userId } = await auth();
+    const user = await currentUser();
 
-    if (!userId) {
+    if (!userId || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // 🔥 Ensure user exists in Supabase before saving API key
+    const email = user.emailAddresses[0]?.emailAddress;
+    if (email) {
+      await ensureUser(userId, email);
     }
 
     // 🔥 Generate raw API key (shown only once)

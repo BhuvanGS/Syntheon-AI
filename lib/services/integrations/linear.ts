@@ -64,3 +64,20 @@ export async function saveLinearIntegration(userId: string, payload: LinearInteg
 
   throw lastError;
 }
+
+export async function deleteLinearIntegration(userId: string) {
+  const { error } = await supabaseAdmin
+    .from('integrations')
+    .update({
+      linear_token: null,
+      linear_team_id: null,
+      linear_initial_state_id: null,
+      linear_pr_state_id: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('user_id', userId);
+
+  if (error) {
+    throw error;
+  }
+}

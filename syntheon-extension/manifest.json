@@ -8,7 +8,9 @@
     "https://meet.google.com/*",
     "https://zoom.us/*",
     "https://teams.microsoft.com/*",
-    "http://localhost:3000/*"
+    "http://localhost:3000/*",
+    "https://*.vercel.app/*",
+    "https://*.ngrok-free.dev/*"
   ],
   "background": {
     "service_worker": "background.js"

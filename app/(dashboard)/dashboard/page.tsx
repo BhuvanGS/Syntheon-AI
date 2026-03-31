@@ -153,6 +153,46 @@ function DashboardContent() {
     setCurrentView('spec-detail');
   }
 
+  async function handleDisconnectGithub() {
+    try {
+      const res = await fetch('/api/integrations/github/disconnect', { method: 'POST' });
+      if (!res.ok) throw new Error('Failed to disconnect');
+
+      setGithubConnected(false);
+      setGithubUser(null);
+      toast({
+        title: 'GitHub Disconnected',
+        description: 'Your GitHub account has been unlinked.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to disconnect GitHub. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  }
+
+  async function handleDisconnectLinear() {
+    try {
+      const res = await fetch('/api/integrations/linear/disconnect', { method: 'POST' });
+      if (!res.ok) throw new Error('Failed to disconnect');
+
+      setLinearConnected(false);
+      setLinearTeam(null);
+      toast({
+        title: 'Linear Disconnected',
+        description: 'Your Linear account has been unlinked.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to disconnect Linear. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  }
+
   return (
     <div style={{ display: 'flex', height: '100vh', background: '#faf8f4' }}>
       <Sidebar currentView={currentView} onViewChange={handleViewChange} />
@@ -457,6 +497,23 @@ function DashboardContent() {
                           </li>
                         ))}
                       </ul>
+                      <button
+                        onClick={handleDisconnectGithub}
+                        style={{
+                          marginTop: '1rem',
+                          padding: '0.5rem 1rem',
+                          background: '#ffebee',
+                          color: '#c62828',
+                          border: '1px solid #ef9a9a',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          fontFamily: "'DM Sans', sans-serif",
+                          fontWeight: '500',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Disconnect GitHub
+                      </button>
                     </div>
                   </div>
                 ) : (
@@ -646,49 +703,68 @@ function DashboardContent() {
                 </div>
 
                 {linearConnected ? (
-                  <div
-                    style={{
-                      background: '#f1f8f5',
-                      border: '1px solid #c8e6c9',
-                      borderRadius: '8px',
-                      padding: '1rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '1rem',
-                    }}
-                  >
+                  <div>
                     <div
                       style={{
-                        color: '#2e7d32',
-                        fontSize: '20px',
+                        background: '#f1f8f5',
+                        border: '1px solid #c8e6c9',
+                        borderRadius: '8px',
+                        padding: '1rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '1rem',
                       }}
                     >
-                      ✓
-                    </div>
-                    <div>
-                      <p
+                      <div
                         style={{
-                          fontSize: '14px',
-                          color: '#1b5e20',
-                          fontFamily: "'DM Sans', sans-serif",
-                          fontWeight: '500',
-                          marginBottom: '0.25rem',
+                          color: '#2e7d32',
+                          fontSize: '20px',
                         }}
                       >
-                        Linear account connected
-                      </p>
-                      <p
-                        style={{
-                          fontSize: '12px',
-                          color: '#558b2f',
-                          fontFamily: "'DM Sans', sans-serif",
-                        }}
-                      >
-                        {linearTeam
-                          ? `Default team: ${linearTeam}`
-                          : 'Default team selected from your workspace'}
-                      </p>
+                        ✓
+                      </div>
+                      <div>
+                        <p
+                          style={{
+                            fontSize: '14px',
+                            color: '#1b5e20',
+                            fontFamily: "'DM Sans', sans-serif",
+                            fontWeight: '500',
+                            marginBottom: '0.25rem',
+                          }}
+                        >
+                          Linear account connected
+                        </p>
+                        <p
+                          style={{
+                            fontSize: '12px',
+                            color: '#558b2f',
+                            fontFamily: "'DM Sans', sans-serif",
+                          }}
+                        >
+                          {linearTeam
+                            ? `Default team: ${linearTeam}`
+                            : 'Default team selected from your workspace'}
+                        </p>
+                      </div>
                     </div>
+                    <button
+                      onClick={handleDisconnectLinear}
+                      style={{
+                        marginTop: '1rem',
+                        padding: '0.5rem 1rem',
+                        background: '#ffebee',
+                        color: '#c62828',
+                        border: '1px solid #ef9a9a',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        fontFamily: "'DM Sans', sans-serif",
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Disconnect Linear
+                    </button>
                   </div>
                 ) : (
                   <div>
