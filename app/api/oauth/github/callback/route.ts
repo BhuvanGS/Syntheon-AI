@@ -16,15 +16,6 @@ export async function GET(req: NextRequest) {
     const userId = session.userId;
     const email = user.emailAddresses[0].emailAddress;
     await ensureUser(userId, email);
-<<<<<<< HEAD
-    const { data: checkUser } = await supabaseAdmin
-      .from('users')
-      .select('*')
-      .eq('id', userId);
-console.log(currentUser + "Current")
-    console.log("USER AFTER ENSURE:", checkUser);
-=======
->>>>>>> refactor-codebase
 
     const { searchParams } = new URL(req.url);
     const code = searchParams.get('code');
