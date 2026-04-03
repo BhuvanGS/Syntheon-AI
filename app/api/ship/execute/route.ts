@@ -10,7 +10,7 @@ import {
 } from '@/lib/shipai/github';
 import { moveLinearTicketBundleToPrStage } from '@/lib/shipai/linear';
 import { supabaseAdmin } from '@/lib/supabase';
-import { getIntegrationByUserId, getLinearAccessToken } from '@/lib/services/integrations';
+import { getIntegrationByUserId, getLinearAccessToken, getGithubToken, getGithubOwner } from '@/lib/services/integrations';
 import {
   updateMeetingBranch,
   saveProject,
@@ -43,32 +43,40 @@ export async function POST(req: NextRequest) {
 
     if (!plan) return NextResponse.json({ error: 'plan is required' }, { status: 400 });
 
+    // Get user's GitHub integration
+    const integration = await getIntegrationByUserId(userId);
+    const githubToken = getGithubToken(integration);
+    const githubOwner = getGithubOwner(integration);
+    
+    if (!githubToken) {
+      return NextResponse.json({ error: 'GitHub not connected' }, { status: 400 });
+    }
+
     console.log('Executing plan:', plan.branch_name);
 
     // Step 1: Create GitHub issue
-    const issue = await createGithubIssue(plan.issue_title, plan.issue_body);
+    const issue = await createGithubIssue(plan.issue_title, plan.issue_body, githubToken);
     console.log('Issue created:', issue.number);
 
     // Step 2: Create branch
-    await createBranch(plan.branch_name);
+    await createBranch(plan.branch_name, githubToken);
     console.log('Branch created:', plan.branch_name);
 
     // Step 3: Commit all files
     const committedFiles = [];
     for (const file of plan.files) {
-      await commitFile(file.path, file.content, plan.branch_name);
+      await commitFile(file.path, file.content, plan.branch_name, githubToken);
       committedFiles.push(file.path);
       console.log('Committed:', file.path);
     }
 
     // Step 4: Open PR
-    const pullRequest = await createPullRequest(plan.pr_title, plan.branch_name);
+    const pullRequest = await createPullRequest(plan.pr_title, plan.branch_name, githubToken);
     console.log('PR opened:', pullRequest.number);
 
     // Step 5: Move Linear tickets to PR stage
     let updatedBundle = linearTicketBundle;
     if (linearTicketBundle) {
-      const integration = await getIntegrationByUserId(userId);
       const linearAccessToken = getLinearAccessToken(integration);
 
       updatedBundle = await moveLinearTicketBundleToPrStage(
@@ -86,7 +94,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Step 7: Create or update project
-    const repoInfo = getRepoInfo();
+    const repoInfo = getRepoInfo(githubOwner);
     const specTitles = specs?.map((s: any) => s.title) ?? [];
     const specIds = specs?.map((s: any) => s.id) ?? [];
     const nonWorkflowFiles = committedFiles.filter((f) => !f.includes('.github'));

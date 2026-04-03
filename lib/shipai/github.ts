@@ -2,63 +2,80 @@
 
 const BASE = 'https://api.github.com';
 
-function headers() {
+function headers(token?: string) {
+  const authToken = token || process.env.GITHUB_TOKEN;
   return {
-    Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+    Authorization: `Bearer ${authToken}`,
     Accept: 'application/vnd.github+json',
     'X-GitHub-Api-Version': '2022-11-28',
     'Content-Type': 'application/json',
   };
 }
 
-function repoPath(overrides: { owner?: string; repo?: string } = {}) {
+function repoPath(overrides: { owner?: string; repo?: string; token?: string } = {}) {
   const owner = overrides.owner || process.env.GITHUB_OWNER;
   const repo = overrides.repo || process.env.GITHUB_REPO;
   return `${BASE}/repos/${owner}/${repo}`;
 }
 
-async function githubFetch(url: string, options: RequestInit = {}) {
+async function githubFetch(url: string, options: RequestInit & { token?: string } = {}) {
+  const { token, ...fetchOptions } = options;
   const res = await fetch(url, {
-    ...options,
-    headers: { ...headers(), ...(options.headers as any) },
+    ...fetchOptions,
+    headers: { ...headers(token), ...(fetchOptions.headers as any) },
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
+    console.error('GitHub API error details:', JSON.stringify(err, null, 2));
     throw new Error(`GitHub API error (${res.status}): ${err.message || res.statusText}`);
   }
   return res.json();
 }
 
-async function getDefaultBranchSha(overrides = {}) {
-  const repo = await githubFetch(repoPath(overrides));
+async function getDefaultBranchSha(overrides: { owner?: string; repo?: string; token?: string } = {}) {
+  const repo = await githubFetch(repoPath(overrides), { token: overrides.token });
   const defaultBranch = repo.default_branch;
-  const ref = await githubFetch(`${repoPath(overrides)}/git/refs/heads/${defaultBranch}`);
+  const ref = await githubFetch(`${repoPath(overrides)}/git/refs/heads/${defaultBranch}`, { token: overrides.token });
   return ref.object.sha;
 }
 
-export async function createGithubIssue(title: string, body: string, overrides = {}) {
-  return githubFetch(`${repoPath(overrides)}/issues`, {
+export async function createGithubIssue(title: string, body: string, token?: string, overrides: { owner?: string; repo?: string } = {}) {
+  return githubFetch(`${repoPath({ ...overrides, token })}/issues`, {
     method: 'POST',
     body: JSON.stringify({ title, body }),
+    token,
   });
 }
 
-export async function createBranch(branchName: string, overrides = {}) {
-  const sha = await getDefaultBranchSha(overrides);
-  return githubFetch(`${repoPath(overrides)}/git/refs`, {
-    method: 'POST',
-    body: JSON.stringify({ ref: `refs/heads/${branchName}`, sha }),
-  });
+export async function createBranch(branchName: string, token?: string, overrides: { owner?: string; repo?: string } = {}) {
+  const sha = await getDefaultBranchSha({ ...overrides, token });
+  
+  // Try to create the branch
+  try {
+    return await githubFetch(`${repoPath({ ...overrides, token })}/git/refs`, {
+      method: 'POST',
+      body: JSON.stringify({ ref: `refs/heads/${branchName}`, sha }),
+      token,
+    });
+  } catch (error: any) {
+    // If branch already exists (422), return success
+    if (error.message?.includes('422') || error.message?.includes('Reference already exists')) {
+      console.log(`Branch ${branchName} already exists, using existing branch`);
+      return { ref: `refs/heads/${branchName}` };
+    }
+    throw error;
+  }
 }
 
 async function getFileSha(
   filePath: string,
   branch: string,
-  overrides = {}
+  token?: string,
+  overrides: { owner?: string; repo?: string } = {}
 ): Promise<string | null> {
   try {
-    const res = await fetch(`${repoPath(overrides)}/contents/${filePath}?ref=${branch}`, {
-      headers: headers(),
+    const res = await fetch(`${repoPath({ ...overrides, token })}/contents/${filePath}?ref=${branch}`, {
+      headers: headers(token),
     });
     if (res.status === 404) return null;
     const data = await res.json();
@@ -72,47 +89,71 @@ export async function commitFile(
   filePath: string,
   content: string,
   branch: string,
-  overrides: any = {}
+  token?: string,
+  overrides: { owner?: string; repo?: string; commitMessage?: string } = {}
 ) {
   const encodedContent = Buffer.from(content, 'utf-8').toString('base64');
-  const existingSha = await getFileSha(filePath, branch, overrides);
+  const existingSha = await getFileSha(filePath, branch, token, overrides);
   const commitMessage = overrides.commitMessage || `feat: add ${filePath}`;
 
   const payload: any = { message: commitMessage, content: encodedContent, branch };
   if (existingSha) payload.sha = existingSha;
 
-  return githubFetch(`${repoPath(overrides)}/contents/${filePath}`, {
+  return githubFetch(`${repoPath({ ...overrides, token })}/contents/${filePath}`, {
     method: 'PUT',
     body: JSON.stringify(payload),
+    token,
   });
 }
 
-export async function createPullRequest(title: string, branch: string, overrides = {}) {
-  const repo = await githubFetch(repoPath(overrides));
-  return githubFetch(`${repoPath(overrides)}/pulls`, {
+export async function createPullRequest(title: string, branch: string, token?: string, overrides: { owner?: string; repo?: string } = {}) {
+  const owner = overrides.owner || process.env.GITHUB_OWNER;
+  const repo = overrides.repo || process.env.GITHUB_REPO;
+  
+  // Get repo info to find default branch
+  const repoInfo = await githubFetch(`${BASE}/repos/${owner}/${repo}`, { token });
+  
+  // First check if a PR already exists for this branch
+  try {
+    const existingPrs = await githubFetch(
+      `${BASE}/repos/${owner}/${repo}/pulls?head=${owner}:${branch}&state=open`,
+      { token }
+    );
+    
+    if (existingPrs && existingPrs.length > 0) {
+      console.log(`PR already exists for branch ${branch}: #${existingPrs[0].number}`);
+      return existingPrs[0];
+    }
+  } catch (error) {
+    console.log('Could not check for existing PRs, continuing with creation');
+  }
+  
+  // Create new PR
+  return githubFetch(`${BASE}/repos/${owner}/${repo}/pulls`, {
     method: 'POST',
     body: JSON.stringify({
       title,
       head: branch,
-      base: repo.default_branch,
+      base: repoInfo.default_branch,
       body: `## Summary\n\nThis pull request was automatically generated by **Syntheon AI**.\n\n**Branch:** \`${branch}\``,
     }),
+    token,
   });
 }
 
 // ─── NEW: Fetch file tree from GitHub ──────────────────────────
 export async function getRepoFileTree(
-  overrides: { owner?: string; repo?: string } = {}
+  overrides: { owner?: string; repo?: string; token?: string } = {}
 ): Promise<string[]> {
   try {
     // Get default branch
-    const repo = await githubFetch(repoPath(overrides));
+    const repo = await githubFetch(repoPath(overrides), { token: overrides.token });
     const defaultBranch = repo.default_branch;
 
     // Get the full recursive tree
-    const ref = await githubFetch(`${repoPath(overrides)}/git/refs/heads/${defaultBranch}`);
+    const ref = await githubFetch(`${repoPath(overrides)}/git/refs/heads/${defaultBranch}`, { token: overrides.token });
     const sha = ref.object.sha;
-    const tree = await githubFetch(`${repoPath(overrides)}/git/trees/${sha}?recursive=1`);
+    const tree = await githubFetch(`${repoPath(overrides)}/git/trees/${sha}?recursive=1`, { token: overrides.token });
 
     // Return only file paths, excluding .github folder
     return tree.tree
@@ -127,7 +168,7 @@ export async function getRepoFileTree(
 // ─── NEW: Fetch specific file contents from GitHub ─────────────
 export async function getFileContents(
   filePaths: string[],
-  overrides: { owner?: string; repo?: string } = {}
+  overrides: { owner?: string; repo?: string; token?: string } = {}
 ): Promise<Record<string, string>> {
   const contents: Record<string, string> = {};
 
@@ -135,7 +176,7 @@ export async function getFileContents(
     filePaths.map(async (filePath) => {
       try {
         const res = await fetch(`${repoPath(overrides)}/contents/${filePath}`, {
-          headers: headers(),
+          headers: headers(overrides.token),
         });
         if (!res.ok) return;
         const data = await res.json();
@@ -151,9 +192,9 @@ export async function getFileContents(
 }
 
 // ─── NEW: Get repo owner and name from env ─────────────────────
-export function getRepoInfo() {
+export function getRepoInfo(overrideOwner?: string | null) {
   return {
-    owner: process.env.GITHUB_OWNER!,
+    owner: overrideOwner || process.env.GITHUB_OWNER!,
     repo: process.env.GITHUB_REPO!,
   };
 }
