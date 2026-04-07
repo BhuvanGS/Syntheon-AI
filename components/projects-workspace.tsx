@@ -5,8 +5,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ManualTicketDialog } from '@/components/manual-ticket-dialog';
+import { ProjectTicketImportDialog } from '@/components/project-ticket-import-dialog';
 import { ProjectMeetingDialog } from '@/components/project-meeting-dialog';
-import { FolderKanban, Plus, Video, Ticket, ArrowRight, Sparkles } from 'lucide-react';
+import { FolderKanban, Plus, Video, Ticket, ArrowRight, Sparkles, Download } from 'lucide-react';
 
 interface Project {
   id: string;
@@ -63,6 +64,7 @@ export function ProjectsWorkspace({
 }: ProjectsWorkspaceProps) {
   const [isMeetingDialogOpen, setIsMeetingDialogOpen] = useState(false);
   const [isTicketDialogOpen, setIsTicketDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   const selectedProject = useMemo(
     () => projects.find((project) => project.id === selectedProjectId) ?? null,
@@ -77,6 +79,16 @@ export function ProjectsWorkspace({
   const projectTickets = useMemo(
     () => tickets.filter((ticket) => ticket.projectId === selectedProject?.id),
     [tickets, selectedProject?.id]
+  );
+
+  const projectMeetingIdSet = useMemo(
+    () => new Set(projectMeetings.map((meeting) => meeting.id)),
+    [projectMeetings]
+  );
+
+  const meetingNameById = useMemo(
+    () => new Map(meetings.map((meeting) => [meeting.id, meeting.projectName])),
+    [meetings]
   );
 
   const totalTickets = projectTickets.length;
@@ -201,6 +213,14 @@ export function ProjectsWorkspace({
           <Button onClick={() => setIsMeetingDialogOpen(true)} className="rounded-full gap-2">
             <Video className="h-4 w-4" />
             Start meeting
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setIsImportDialogOpen(true)}
+            className="rounded-full gap-2 bg-white"
+          >
+            <Download className="h-4 w-4" />
+            Import tickets
           </Button>
           <Button
             variant="secondary"
@@ -337,16 +357,26 @@ export function ProjectsWorkspace({
             <div className="rounded-2xl border border-dashed border-border bg-[#faf8f4] p-8 text-center">
               <p className="font-medium text-foreground mb-2">No tickets yet</p>
               <p className="text-sm text-muted-foreground mb-5">
-                Create a meeting first, then write manual tickets against it.
+                Import tickets from any meeting to populate this project.
               </p>
-              <Button
-                onClick={() => setIsTicketDialogOpen(true)}
-                className="rounded-full gap-2"
-                disabled={projectMeetings.length === 0}
-              >
-                <Ticket className="h-4 w-4" />
-                New ticket
-              </Button>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <Button
+                  onClick={() => setIsImportDialogOpen(true)}
+                  className="rounded-full gap-2"
+                  disabled={meetings.length === 0}
+                >
+                  <Download className="h-4 w-4" />
+                  Import tickets from meeting
+                </Button>
+                <Button
+                  onClick={() => setIsMeetingDialogOpen(true)}
+                  variant="outline"
+                  className="rounded-full gap-2 bg-white"
+                >
+                  <Video className="h-4 w-4" />
+                  Start meeting
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -372,6 +402,11 @@ export function ProjectsWorkspace({
                       {ticket.status.replace('_', ' ')}
                     </Badge>
                   </div>
+                  {!projectMeetingIdSet.has(ticket.meeting_id) && (
+                    <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-primary">
+                      Imported • {meetingNameById.get(ticket.meeting_id) || 'Meeting'}
+                    </p>
+                  )}
                   <p className="text-sm text-muted-foreground line-clamp-3">
                     {ticket.description || 'No description provided.'}
                   </p>
@@ -402,6 +437,15 @@ export function ProjectsWorkspace({
         }))}
         defaultMeetingId={projectMeetings[0]?.id}
         defaultProjectId={selectedProject.id}
+        onCreated={onRefresh}
+      />
+
+      <ProjectTicketImportDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        projectId={selectedProject.id}
+        meetings={meetings}
+        tickets={tickets}
         onCreated={onRefresh}
       />
     </div>
