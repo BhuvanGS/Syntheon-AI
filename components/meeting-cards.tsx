@@ -3,14 +3,14 @@
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Clock, Loader2, Trash2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Clock, Loader2 } from 'lucide-react';
 
 interface Meeting {
   id: string;
   projectName: string;
   meetingId: string;
   specsDetected: number;
-  status: 'completed' | 'processing' | 'failed';
+  status: 'completed' | 'processing' | 'failed' | 'not_admitted';
   date: string;
   platform: string;
 }
@@ -24,7 +24,6 @@ export function MeetingCards({ onSelectMeeting, onCreateTicket }: MeetingCardsPr
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState<string | null>(null);
 
   useEffect(() => {
     fetchMeetings();
@@ -43,22 +42,6 @@ export function MeetingCards({ onSelectMeeting, onCreateTicket }: MeetingCardsPr
       setError('Could not load meetings');
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function deleteMeeting(e: React.MouseEvent, meetingId: string) {
-    e.stopPropagation(); // prevent opening the meeting
-    if (!confirm('Delete this meeting and all its tickets?')) return;
-
-    setDeleting(meetingId);
-    try {
-      const res = await fetch(`/api/meetings/${meetingId}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Failed to delete');
-      setMeetings((prev) => prev.filter((m) => m.id !== meetingId));
-    } catch {
-      alert('Failed to delete meeting');
-    } finally {
-      setDeleting(null);
     }
   }
 
@@ -116,11 +99,20 @@ export function MeetingCards({ onSelectMeeting, onCreateTicket }: MeetingCardsPr
                   ? 'bg-primary/20 text-primary'
                   : meeting.status === 'failed'
                     ? 'bg-destructive/20 text-destructive'
-                    : 'bg-secondary text-secondary-foreground'
+                    : meeting.status === 'not_admitted'
+                      ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                      : 'bg-secondary text-secondary-foreground'
               }`}
+              title={
+                meeting.status === 'not_admitted'
+                  ? 'Syntheon AI not admitted to meeting'
+                  : undefined
+              }
             >
               {meeting.status === 'completed' ? (
                 <CheckCircle className="w-3 h-3 mr-1" />
+              ) : meeting.status === 'not_admitted' ? (
+                <AlertTriangle className="w-3 h-3 mr-1" />
               ) : (
                 <Clock className="w-3 h-3 mr-1" />
               )}
@@ -128,7 +120,9 @@ export function MeetingCards({ onSelectMeeting, onCreateTicket }: MeetingCardsPr
                 ? 'Done'
                 : meeting.status === 'failed'
                   ? 'Failed'
-                  : 'Processing'}
+                  : meeting.status === 'not_admitted'
+                    ? '!'
+                    : 'Processing'}
             </Badge>
           </div>
 
@@ -171,17 +165,6 @@ export function MeetingCards({ onSelectMeeting, onCreateTicket }: MeetingCardsPr
               >
                 View Tickets
               </Button>
-              <button
-                onClick={(e) => deleteMeeting(e, meeting.id)}
-                disabled={deleting === meeting.id}
-                className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200 disabled:opacity-40"
-              >
-                {deleting === meeting.id ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Trash2 className="w-4 h-4" />
-                )}
-              </button>
             </div>
           </div>
         </div>

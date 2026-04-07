@@ -1,7 +1,7 @@
 // app/(dashboard)/dashboard/settings/page.tsx
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useCallback, useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Sidebar } from '@/components/sidebar';
 import { MeetingCards } from '@/components/meeting-cards';
@@ -43,7 +43,7 @@ interface Meeting {
   meetingId: string;
   projectId?: string | null;
   specsDetected: number;
-  status: 'completed' | 'processing' | 'failed';
+  status: 'completed' | 'processing' | 'failed' | 'not_admitted';
   date: string;
   platform: string;
   deployUrl?: string | null;
@@ -241,6 +241,23 @@ function DashboardContent() {
     setIsMeetingTicketOpen(true);
   }
 
+  async function handleDeleteMeeting(meetingId: string) {
+    const res = await fetch(`/api/meetings/${meetingId}`, {
+      method: 'DELETE',
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data?.error || 'Failed to delete meeting');
+    }
+
+    await refreshWorkspace();
+    setSelectedMeeting(null);
+    setCurrentView('meetings');
+
+    toast({ title: 'Meeting deleted', description: 'The meeting was removed from Supabase.' });
+  }
+
   function handleProjectSelect(projectId: string) {
     setSelectedProjectId(projectId);
     setCurrentView('project-detail');
@@ -266,7 +283,7 @@ function DashboardContent() {
     toast({ title: 'Project deleted', description: 'The project was removed from Supabase.' });
   }
 
-  async function refreshWorkspace() {
+  const refreshWorkspace = useCallback(async () => {
     try {
       const [projectsRes, meetingsRes, ticketsRes] = await Promise.all([
         fetch('/api/projects'),
@@ -280,7 +297,7 @@ function DashboardContent() {
     } catch (error) {
       console.error('Failed to refresh workspace data:', error);
     }
-  }
+  }, []);
 
   async function handleCreateProject(payload: {
     name: string;
@@ -775,7 +792,11 @@ function DashboardContent() {
               >
                 ← Back to Meetings
               </button>
-              <TicketDetail meetingId={selectedMeeting} onSelectMeeting={handleMeetingSelect} />
+              <TicketDetail
+                meetingId={selectedMeeting}
+                onSelectMeeting={handleMeetingSelect}
+                onDeleteMeeting={handleDeleteMeeting}
+              />
             </div>
           )}
 

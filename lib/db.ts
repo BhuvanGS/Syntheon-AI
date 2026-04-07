@@ -10,7 +10,7 @@ export interface Meeting {
   platform: string;
   transcript: string;
   specsDetected: number;
-  status: 'completed' | 'processing' | 'failed';
+  status: 'completed' | 'processing' | 'failed' | 'not_admitted';
   date: string;
   filePath: string;
   botId?: string;
@@ -421,7 +421,9 @@ export async function saveTickets(tickets: Ticket[]): Promise<void> {
   if (error) throw error;
 }
 
-function ticketFingerprint(ticket: Pick<Ticket, 'meeting_id' | 'title' | 'description' | 'status' | 'assignee'>) {
+function ticketFingerprint(
+  ticket: Pick<Ticket, 'meeting_id' | 'title' | 'description' | 'status' | 'assignee'>
+) {
   return [
     ticket.meeting_id,
     ticket.title.trim().toLowerCase(),

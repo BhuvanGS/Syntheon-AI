@@ -30,12 +30,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
+    const isFollowUpMeeting = (project.meetings?.length ?? 0) > 0;
+
     const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/bot/webhook`;
 
     // ⚠️ Bot created first (acceptable for now)
     const bot = await createBot(meetingUrl, webhookUrl);
 
-    console.log('Follow-up bot created:', bot.id, 'for project:', projectId);
+    console.log(
+      isFollowUpMeeting ? 'Follow-up bot created:' : 'First meeting bot created:',
+      bot.id,
+      'for project:',
+      projectId
+    );
 
     const meetingId = `meet-${Date.now()}`;
     const date = new Date().toLocaleDateString('en-US', {
@@ -43,14 +50,14 @@ export async function POST(req: NextRequest) {
       day: 'numeric',
     });
 
-    let meeting;
-
     try {
       // 🔥 Attempt insert (DB handles uniqueness)
-      meeting = await saveMeeting({
+      await saveMeeting({
         id: meetingId,
         user_id: userId,
-        projectName: `${project.name} — Follow-up ${date}`,
+        projectName: isFollowUpMeeting
+          ? `${project.name} — Follow-up ${date}`
+          : `${project.name} — First meeting`,
         meetingId: meetingId,
         meeting_url: meetingUrl,
         platform: detectPlatform(meetingUrl),
@@ -88,6 +95,7 @@ export async function POST(req: NextRequest) {
       botId: bot.id,
       meetingId,
       projectId,
+      meetingType: isFollowUpMeeting ? 'follow-up' : 'first',
     });
   } catch (error) {
     console.error('Failed to create follow-up bot:', error);

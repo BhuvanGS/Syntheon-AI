@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,7 +15,16 @@ import {
 import { ManualTicketDialog } from '@/components/manual-ticket-dialog';
 import { ProjectTicketImportDialog } from '@/components/project-ticket-import-dialog';
 import { ProjectMeetingDialog } from '@/components/project-meeting-dialog';
-import { FolderKanban, Plus, Video, Ticket, ArrowRight, Sparkles, Download, Trash2 } from 'lucide-react';
+import {
+  FolderKanban,
+  Plus,
+  Video,
+  Ticket,
+  ArrowRight,
+  Sparkles,
+  Download,
+  Trash2,
+} from 'lucide-react';
 
 interface Project {
   id: string;
@@ -34,7 +43,7 @@ interface Meeting {
   projectName: string;
   meetingId: string;
   projectId?: string | null;
-  status: 'completed' | 'processing' | 'failed';
+  status: 'completed' | 'processing' | 'failed' | 'not_admitted';
   date: string;
   platform: string;
 }
@@ -106,6 +115,24 @@ export function ProjectsWorkspace({
   const readyTickets = projectTickets.filter(
     (ticket) => ticket.status === 'in_progress' || ticket.status === 'done'
   ).length;
+
+  useEffect(() => {
+    if (!selectedProject) return;
+
+    let active = true;
+    const refresh = async () => {
+      if (!active) return;
+      await onRefresh();
+    };
+
+    const interval = setInterval(refresh, 5000);
+    refresh();
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [onRefresh, selectedProject?.id]);
 
   if (!selectedProject) {
     return (
@@ -291,10 +318,17 @@ export function ProjectsWorkspace({
                       className={
                         meeting.status === 'completed'
                           ? 'bg-green-100 text-green-800'
-                          : 'bg-primary/10 text-primary'
+                          : meeting.status === 'not_admitted'
+                            ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                            : 'bg-primary/10 text-primary'
+                      }
+                      title={
+                        meeting.status === 'not_admitted'
+                          ? 'Syntheon AI not admitted to meeting'
+                          : undefined
                       }
                     >
-                      {meeting.status}
+                      {meeting.status === 'not_admitted' ? '!' : meeting.status}
                     </Badge>
                   </div>
                 </button>
@@ -485,7 +519,12 @@ export function ProjectsWorkspace({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" onClick={() => setProjectToDelete(null)} className="rounded-full">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setProjectToDelete(null)}
+              className="rounded-full"
+            >
               Cancel
             </Button>
             <Button

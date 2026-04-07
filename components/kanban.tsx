@@ -8,7 +8,7 @@ interface Meeting {
   projectName: string;
   meetingId: string;
   specsDetected: number;
-  status: 'completed' | 'processing' | 'failed';
+  status: 'completed' | 'processing' | 'failed' | 'not_admitted';
   date: string;
   platform: string;
   deployUrl?: string;

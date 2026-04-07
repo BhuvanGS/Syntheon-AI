@@ -78,6 +78,23 @@ export async function POST(req: NextRequest) {
 
     // Rest of your existing code stays the same...
     if (payload.type !== 'status_update') return NextResponse.json({ ok: true });
+    if (payload.data?.new_status === 'not_admitted') {
+      const botId = payload.bot_id;
+
+      if (!botId) {
+        console.error('No botId in payload:', JSON.stringify(payload));
+        return NextResponse.json({ ok: true });
+      }
+
+      const meeting = await getMeetingByBotId(botId);
+      if (!meeting) {
+        console.error('No meeting found for botId:', botId);
+        return NextResponse.json({ ok: true });
+      }
+
+      await updateMeetingStatus(meeting.id, 'not_admitted');
+      return NextResponse.json({ ok: true });
+    }
     if (payload.data?.new_status !== 'finished') return NextResponse.json({ ok: true });
 
     const botId = payload.bot_id;

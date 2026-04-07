@@ -17,7 +17,7 @@ interface Meeting {
   id: string;
   projectName: string;
   meetingId: string;
-  status: 'completed' | 'processing' | 'failed';
+  status: 'completed' | 'processing' | 'failed' | 'not_admitted';
   date: string;
   platform: string;
 }
@@ -102,7 +102,9 @@ export function ProjectTicketImportDialog({
         {meetings.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-white p-8 text-center">
             <p className="font-medium text-foreground mb-2">No meetings available</p>
-            <p className="text-sm text-muted-foreground">Record or sync a meeting first, then import its tickets.</p>
+            <p className="text-sm text-muted-foreground">
+              Record or sync a meeting first, then import its tickets.
+            </p>
           </div>
         ) : (
           <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
@@ -131,7 +133,8 @@ export function ProjectTicketImportDialog({
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {meeting.platform} • {new Date(meeting.date).toLocaleDateString()} • {meeting.status}
+                      {meeting.platform} • {new Date(meeting.date).toLocaleDateString()} •{' '}
+                      {meeting.status}
                     </p>
                   </div>
 
@@ -156,7 +159,12 @@ export function ProjectTicketImportDialog({
         )}
 
         <DialogFooter className="pt-2">
-          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="rounded-full">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => onOpenChange(false)}
+            className="rounded-full"
+          >
             Close
           </Button>
         </DialogFooter>

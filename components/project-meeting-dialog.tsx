@@ -28,11 +28,13 @@ export function ProjectMeetingDialog({
 }: ProjectMeetingDialogProps) {
   const [meetingUrl, setMeetingUrl] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [hasJoined, setHasJoined] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setMeetingUrl('');
     setSubmitting(false);
+    setHasJoined(false);
   }, [open]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -53,7 +55,7 @@ export function ProjectMeetingDialog({
       }
 
       await onCreated?.();
-      onOpenChange(false);
+      setHasJoined(true);
     } finally {
       setSubmitting(false);
     }
@@ -75,37 +77,62 @@ export function ProjectMeetingDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Meeting URL</label>
-            <Input
-              value={meetingUrl}
-              onChange={(e) => setMeetingUrl(e.target.value)}
-              placeholder="https://meet.google.com/..."
-              className="bg-white"
-              autoFocus
-            />
-          </div>
+        {!hasJoined ? (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Meeting URL</label>
+              <Input
+                value={meetingUrl}
+                onChange={(e) => setMeetingUrl(e.target.value)}
+                placeholder="https://meet.google.com/..."
+                className="bg-white"
+                autoFocus
+              />
+            </div>
 
-          <DialogFooter className="pt-2">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => onOpenChange(false)}
-              className="rounded-full"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={submitting || !meetingUrl.trim()}
-              className="rounded-full gap-2"
-            >
-              <Video className="h-4 w-4" />
-              {submitting ? 'Starting...' : 'Start meeting'}
-            </Button>
-          </DialogFooter>
-        </form>
+            <DialogFooter className="pt-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => onOpenChange(false)}
+                className="rounded-full"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={submitting || !meetingUrl.trim()}
+                className="rounded-full gap-2"
+              >
+                <Video className="h-4 w-4" />
+                {submitting ? 'Starting...' : 'Start meeting'}
+              </Button>
+            </DialogFooter>
+          </form>
+        ) : (
+          <div className="space-y-4 rounded-2xl border border-primary/10 bg-primary/5 p-6 text-center">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Sparkles className="h-7 w-7" />
+            </div>
+            <div className="space-y-2">
+              <p className="font-playfair text-2xl text-foreground">
+                Syntheon - AI will shortly join the meeting
+              </p>
+              <p className="text-sm text-muted-foreground">
+                You can close this popup now or wait for the meeting to connect.
+              </p>
+            </div>
+            <DialogFooter className="pt-2 justify-center">
+              <Button
+                type="button"
+                onClick={() => onOpenChange(false)}
+                className="rounded-full gap-2"
+              >
+                Done
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

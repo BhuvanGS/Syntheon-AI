@@ -2,7 +2,16 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, ExternalLink, Loader2, Plus, Rocket, Video } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { CheckCircle, ExternalLink, Loader2, Plus, Rocket, Trash2, Video } from 'lucide-react';
 import { ManualTicketDialog } from '@/components/manual-ticket-dialog';
 
 interface Ticket {
@@ -36,9 +45,10 @@ interface Project {
 interface TicketDetailProps {
   meetingId: string;
   onSelectMeeting: (meetingId: string) => void;
+  onDeleteMeeting?: (meetingId: string) => Promise<void> | void;
 }
 
-export function TicketDetail({ meetingId, onSelectMeeting }: TicketDetailProps) {
+export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: TicketDetailProps) {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [meetingTitle, setMeetingTitle] = useState('Meeting');
@@ -57,6 +67,7 @@ export function TicketDetail({ meetingId, onSelectMeeting }: TicketDetailProps) 
   const [refreshKey, setRefreshKey] = useState(Date.now());
   const [savingTicketId, setSavingTicketId] = useState<string | null>(null);
   const [isManualTicketOpen, setIsManualTicketOpen] = useState(false);
+  const [meetingToDelete, setMeetingToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     fetchTickets();
@@ -86,6 +97,12 @@ export function TicketDetail({ meetingId, onSelectMeeting }: TicketDetailProps) 
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleDeleteMeeting() {
+    if (!meetingToDelete || !onDeleteMeeting) return;
+    await onDeleteMeeting(meetingToDelete);
+    setMeetingToDelete(null);
   }
 
   async function fetchMeetingData() {
@@ -247,13 +264,24 @@ export function TicketDetail({ meetingId, onSelectMeeting }: TicketDetailProps) 
           )}
         </div>
 
-        <button
-          onClick={() => setIsManualTicketOpen(true)}
-          className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/15 transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          New ticket
-        </button>
+        <div className="flex items-center gap-3 flex-wrap">
+          <button
+            onClick={() => setIsManualTicketOpen(true)}
+            className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/15 transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            New ticket
+          </button>
+          {onDeleteMeeting && (
+            <button
+              onClick={() => setMeetingToDelete(meetingId)}
+              className="inline-flex items-center gap-2 rounded-full border border-destructive/20 bg-destructive/5 px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete meeting
+            </button>
+          )}
+        </div>
       </div>
 
       {project && (
@@ -515,6 +543,43 @@ export function TicketDetail({ meetingId, onSelectMeeting }: TicketDetailProps) 
           onCreated={fetchTickets}
         />
       </div>
+
+      <Dialog
+        open={Boolean(meetingToDelete)}
+        onOpenChange={(open) => {
+          if (!open) setMeetingToDelete(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-xl border-border bg-[#f9f6f1] shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-playfair text-2xl text-foreground">
+              Delete this meeting?
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              This will remove the meeting from Supabase and unlink its tickets from the meeting.
+              This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setMeetingToDelete(null)}
+              className="rounded-full"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleDeleteMeeting}
+              className="rounded-full"
+            >
+              Delete meeting
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
