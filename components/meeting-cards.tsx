@@ -135,7 +135,7 @@ export function MeetingCards({ onSelectMeeting }: MeetingCardsProps) {
             <div className="text-center">
               <p className="text-3xl font-bold text-primary">{meeting.specsDetected}</p>
               <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">
-                Specs Detected
+                Tickets Detected
               </p>
             </div>
           </div>
@@ -156,7 +156,7 @@ export function MeetingCards({ onSelectMeeting }: MeetingCardsProps) {
                 }}
                 className="bg-primary hover:bg-primary text-primary-foreground font-medium rounded-lg px-4 py-1.5 text-sm"
               >
-                View Specs
+                View Tickets
               </Button>
               <button
                 onClick={(e) => deleteMeeting(e, meeting.id)}

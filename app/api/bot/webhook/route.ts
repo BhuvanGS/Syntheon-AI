@@ -1,39 +1,62 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBotTranscript } from '@/lib/skribby';
-import { extractSpecBlocks } from '@/lib/groq';
+import { extractTickets } from '@/lib/groq';
 import {
   getMeetingByBotId,
   updateMeetingStatus,
   updateMeetingSpecs,
   updateMeetingName,
-  saveSpecs,
-  addSpecsToProject,
+  saveTickets,
+  addTicketsToProject,
   getProjectById,
   updateProject,
 } from '@/lib/db';
-import { verifyWebhookSignature } from '@/lib/webhook'; // NEW
+import { verifyWebhookSignature } from '@/lib/webhook'; 
 
 export async function POST(req: NextRequest) {
   try {
+    const token = req.nextUrl.searchParams.get('token');
+    const webhookSigningSecret = process.env.SKRIBBY_WEBHOOK_SECRET;
+    const webhookAccessToken = process.env.WEBHOOK_ACCESS_TOKEN ?? process.env.SKRIBBY_WEBHOOK_SECRET;
     const rawPayload = await req.text();
-    const signature = req.headers.get('x-webhook-signature');
+    const signature =
+      req.headers.get('x-webhook-signature') ??
+      req.headers.get('x-skribby-signature') ??
+      req.headers.get('webhook-signature') ??
+      req.headers.get('x-signature');
 
     console.log('📋 Raw Payload:', rawPayload);
     console.log('🔑 Signature Header:', signature);
-    console.log('🔐 Secret:', process.env.SKRIBBY_WEBHOOK_SECRET);
+    console.log('🪪 Token present:', Boolean(token));
 
-    // ✅ NEW: Verify signature (optional in dev if header not present)
-    if (!process.env.SKRIBBY_WEBHOOK_SECRET) {
-      console.error('SKRIBBY_WEBHOOK_SECRET not configured');
+    if (!webhookAccessToken && !webhookSigningSecret) {
+      console.error('WEBHOOK_ACCESS_TOKEN and SKRIBBY_WEBHOOK_SECRET not configured');
       return NextResponse.json({ error: 'Webhook not configured' }, { status: 500 });
     }
 
-    // Skip verification if no signature header (e.g., dev/testing)
-    if (!signature) {
-      console.warn('⚠️ No webhook signature header, skipping verification');
+    if (token && webhookAccessToken && token === webhookAccessToken) {
+      console.log('✅ Webhook token accepted');
+    } else if (token) {
+      console.warn('❌ Invalid webhook token');
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    } else if (!signature) {
+      const allowUnsignedWebhooks =
+        process.env.NODE_ENV !== 'production' && process.env.SKRIBBY_ALLOW_UNSIGNED_WEBHOOKS === 'true';
+
+      if (!allowUnsignedWebhooks) {
+        console.warn('❌ Missing webhook signature header');
+        return NextResponse.json({ error: 'Missing signature' }, { status: 401 });
+      }
+
+      console.warn('⚠️ No webhook signature header, allowing unsigned webhook only in local development');
     } else {
+      if (!webhookSigningSecret) {
+        console.error('SKRIBBY_WEBHOOK_SECRET not configured for signature verification');
+        return NextResponse.json({ error: 'Webhook not configured' }, { status: 500 });
+      }
+
       const isValid = verifyWebhookSignature({
-        secret: process.env.SKRIBBY_WEBHOOK_SECRET,
+        secret: webhookSigningSecret,
         payload: rawPayload,
         signature: signature,
       });
@@ -86,25 +109,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    const { specs, title } = await extractSpecBlocks(transcript, meeting.id);
-    console.log(`Extracted ${specs.length} spec blocks`);
+    const { tickets, title } = await extractTickets(transcript, meeting.id);
+    console.log(`Extracted ${tickets.length} tickets`);
 
-    const specsWithUser = specs.map((s: any) => ({
-      ...s,
+    const ticketsWithUser = tickets.map((ticket: any) => ({
+      ...ticket,
       user_id: meeting.user_id,
+      projectId: meeting.projectId ?? null,
       project_id: meeting.projectId ?? null,
     }));
 
-    await updateMeetingSpecs(meeting.id, transcript, specs.length);
+    await updateMeetingSpecs(meeting.id, transcript, tickets.length);
     await updateMeetingName(meeting.id, title);
-    await saveSpecs(specsWithUser);
+    await saveTickets(ticketsWithUser);
 
     if (meeting.projectId) {
-      await addSpecsToProject(
+      await addTicketsToProject(
         meeting.projectId,
-        specs.map((s: any) => s.id)
+        tickets.map((ticket: any) => ticket.id)
       );
-      console.log('Specs linked to project:', meeting.projectId);
+      console.log('Tickets linked to project:', meeting.projectId);
 
       const project = await getProjectById(meeting.projectId);
       if (project && project.meetings[0] === meeting.id) {

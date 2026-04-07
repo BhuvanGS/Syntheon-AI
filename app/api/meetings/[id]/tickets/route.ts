@@ -1,7 +1,6 @@
-// app/api/meetings/[id]/specs/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { getTicketsByMeetingId, updateTicketStatus, updateTicketAssignee, updateTicketDependency } from '@/lib/db';
+import { getTicketsByMeetingId, updateTicketAssignee, updateTicketStatus, updateTicketDependency } from '@/lib/db';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -36,6 +35,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (typeof dependencyTicketId !== 'undefined') {
       await updateTicketDependency(ticketId, dependencyTicketId ?? null);
     }
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Failed to update ticket:', error);

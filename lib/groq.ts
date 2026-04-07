@@ -1,4 +1,5 @@
 // lib/groq.ts
+import { randomUUID } from 'crypto';
 import Groq from 'groq-sdk';
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY! });
@@ -12,37 +13,80 @@ export interface SpecBlock {
   timestamp: string;
 }
 
+export interface TicketBlock {
+  id: string;
+  title: string;
+  description: string;
+  status: 'backlog' | 'in_progress' | 'done' | 'blocked';
+  assignee: string | null;
+  assignee_user_id: string | null;
+  project_id: string | null;
+  meeting_id: string;
+  dependency_ticket_id: string | null;
+}
+
+function normalizeTicketStatus(status: string | undefined): TicketBlock['status'] {
+  if (status === 'in_progress' || status === 'done' || status === 'blocked') {
+    return status;
+  }
+  return 'backlog';
+}
+
 export async function extractSpecBlocks(
   transcript: string,
   meetingId: string
 ): Promise<{ specs: SpecBlock[]; title: string }> {
+  const tickets = await extractTickets(transcript, meetingId);
+  return {
+    title: tickets.title,
+    specs: tickets.tickets.map((ticket) => ({
+      id: ticket.id,
+      title: ticket.title,
+      type: 'feature',
+      confidence: 1,
+      meeting_id: ticket.meeting_id,
+      timestamp: new Date().toISOString(),
+    })),
+  };
+}
+
+export async function extractTickets(
+  transcript: string,
+  meetingId: string
+): Promise<{ title: string; tickets: TicketBlock[] }> {
   const response = await groq.chat.completions.create({
     model: 'llama-3.3-70b-versatile',
     messages: [
       {
         role: 'system',
-        content: `You are an AI that extracts structured specification blocks from meeting transcripts.
-Extract every idea, feature, constraint, or improvement discussed.
+        content: `You are an AI that extracts structured Jira-like tickets from meeting transcripts.
+Extract every actionable item discussed and return tickets with a clear title, a concise description, a status, and optional assignee info.
+Use the following statuses only: backlog, in_progress, done, blocked.
+If status is not obvious, use backlog.
+Assignee should be null unless the transcript clearly names a person.
 Also generate a short human-readable title for this meeting (max 5 words).
 Respond ONLY with valid JSON. No markdown, no explanation, no code fences.`,
       },
       {
         role: 'user',
-        content: `Extract spec blocks and generate a title from this transcript:
+        content: `Extract tickets and generate a title from this transcript:
 
 ${transcript}
 
 Return JSON in this exact format:
 {
   "title": "Calculator App Discussion",
-  "specs": [
+  "tickets": [
     {
-      "id": "${meetingId}-spec-1",
+      "id": "${meetingId}-ticket-1",
       "title": "short clear title",
-      "type": "feature",
-      "confidence": 0.92,
+      "description": "concise description of the task",
+      "status": "backlog",
+      "assignee": null,
+      "assignee_user_id": null,
+      "project_id": null,
       "meeting_id": "${meetingId}",
-      "timestamp": "2026-03-22T09:00:00.000Z"
+      "dependency_ticket_id": null
     }
   ]
 }
@@ -59,10 +103,20 @@ Return ONLY the JSON object, nothing else.`,
 
   try {
     const parsed = JSON.parse(clean);
-    if (!Array.isArray(parsed.specs)) throw new Error('specs must be an array');
+    if (!Array.isArray(parsed.tickets)) throw new Error('tickets must be an array');
     return {
       title: parsed.title || 'Untitled Meeting',
-      specs: parsed.specs as SpecBlock[],
+      tickets: parsed.tickets.map((ticket: any) => ({
+        id: randomUUID(),
+        title: ticket.title,
+        description: ticket.description ?? '',
+        status: normalizeTicketStatus(ticket.status),
+        assignee: ticket.assignee ?? null,
+        assignee_user_id: ticket.assignee_user_id ?? null,
+        project_id: ticket.project_id ?? null,
+        meeting_id: ticket.meeting_id ?? meetingId,
+        dependency_ticket_id: ticket.dependency_ticket_id ?? null,
+      })) as TicketBlock[],
     };
   } catch (err) {
     console.error('Failed to parse Groq response:', raw);

@@ -9,6 +9,11 @@ function detectService(url: string): 'gmeet' | 'teams' | 'zoom' {
 }
 
 export async function createBot(meetingUrl: string, webhookUrl: string) {
+  const webhookToken = process.env.WEBHOOK_ACCESS_TOKEN ?? process.env.SKRIBBY_WEBHOOK_SECRET;
+  const signedWebhookUrl = webhookToken
+    ? `${webhookUrl}${webhookUrl.includes('?') ? '&' : '?'}token=${encodeURIComponent(webhookToken)}`
+    : webhookUrl;
+
   const res = await fetch(`${SKRIBBY_API}/bot`, {
     method: 'POST',
     headers: {
@@ -21,7 +26,7 @@ export async function createBot(meetingUrl: string, webhookUrl: string) {
       bot_name: 'Syntheon AI',
       transcription_model: 'whisper',
       video: false,
-      webhook_url: webhookUrl,
+      webhook_url: signedWebhookUrl,
       stop_options: {
         silence_detection: 1, // stop after 1 min silence
         last_person_detection: 1, // stop after 1 min alone

@@ -6,7 +6,7 @@ import {
   createLinearTicketBundle,
   createLinearTicketBundleWithAccessToken,
 } from '@/lib/shipai/linear';
-import { getProjectById, getSpecsByProjectId } from '@/lib/db';
+import { getProjectById, getTicketsByProjectId } from '@/lib/db';
 import { getRepoFileTree, getFileContents, getRepoInfo } from '@/lib/shipai/github';
 import {
   getIntegrationByUserId,
@@ -21,15 +21,20 @@ export async function POST(req: NextRequest) {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { specs, meetingTitle, notes = {}, projectId } = await req.json();
+    const { tickets, specs, meetingTitle, notes = {}, projectId } = await req.json();
 
-    if (!specs || specs.length === 0) {
-      return NextResponse.json({ error: 'specs array is required' }, { status: 400 });
+    const ticketItems = tickets ?? specs ?? [];
+
+    if (!ticketItems || ticketItems.length === 0) {
+      return NextResponse.json({ error: 'tickets array is required' }, { status: 400 });
     }
 
-    const newSpecList = specs.map((s: any) => {
-      const note = notes[s.id] ? ` - Note: ${notes[s.id]}` : '';
-      return `[${s.type.toUpperCase()}] ${s.title}${note}`;
+    const newTicketList = ticketItems.map((ticket: any) => {
+      const note = notes[ticket.id] ? ` - Note: ${notes[ticket.id]}` : '';
+      const status = ticket.status ? ` [${ticket.status.toUpperCase()}]` : '';
+      const assignee = ticket.assignee ? ` @${ticket.assignee}` : '';
+      const desc = ticket.description ? ` - ${ticket.description}` : '';
+      return `${ticket.title}${status}${assignee}${desc}${note}`;
     });
 
     let plan;
@@ -41,16 +46,16 @@ export async function POST(req: NextRequest) {
       const project = await getProjectById(projectId);
       if (!project) throw new Error(`Project ${projectId} not found`);
 
-      const previousSpecs = (await getSpecsByProjectId(projectId)).map((s) => s.title);
-      console.log('Previous specs:', previousSpecs.length);
+      const previousTickets = (await getTicketsByProjectId(projectId)).map((t) => t.title);
+      console.log('Previous tickets:', previousTickets.length);
 
       const repoInfo = getRepoInfo();
       const fileTree = await getRepoFileTree(repoInfo);
       console.log('File tree:', fileTree.length, 'files');
 
       const plannerResult = await planFollowUpChanges(
-        { name: project.name, context: project.context, files: fileTree, specs: previousSpecs },
-        newSpecList,
+        { name: project.name, context: project.context, files: fileTree, specs: previousTickets },
+        newTicketList,
         notes
       );
 
@@ -60,8 +65,8 @@ export async function POST(req: NextRequest) {
       const existingFiles = await getFileContents(relevantFiles, repoInfo);
 
       plan = await generateFollowUpPlan(
-        { name: project.name, context: project.context, specs: previousSpecs },
-        newSpecList,
+        { name: project.name, context: project.context, specs: previousTickets },
+        newTicketList,
         existingFiles,
         plannerResult.filesToCreate,
         notes
@@ -72,11 +77,11 @@ export async function POST(req: NextRequest) {
 
       const featureRequest = `Build a complete application for: "${meetingTitle}"
 
-The following specifications were approved from the meeting:
+The following tickets were approved from the meeting:
 
-${newSpecList.map((s: string, i: number) => `${i + 1}. ${s}`).join('\n')}
+${newTicketList.map((s: string, i: number) => `${i + 1}. ${s}`).join('\n')}
 
-Build the entire application implementing ALL of the above specifications in one cohesive codebase.`;
+Build the entire application implementing ALL of the above tickets in one cohesive codebase.`;
 
       plan = await generatePlan(featureRequest);
       console.log('Plan generated:', plan.branch_name);
@@ -95,7 +100,7 @@ Build the entire application implementing ALL of the above specifications in one
 
     return NextResponse.json({
       success: true,
-      featureRequest: newSpecList.join('\n'),
+      featureRequest: newTicketList.join('\n'),
       plan,
       linearTicketBundle,
       isFollowUp: !!projectId,

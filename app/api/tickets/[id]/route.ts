@@ -1,7 +1,6 @@
-// app/api/meetings/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { deleteMeeting, deleteTicketsByMeetingId, deleteSpecsByMeetingId } from '@/lib/db';
+import { deleteTicketsByMeetingId } from '@/lib/db';
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -9,15 +8,10 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
-
-    // Delete tickets first then meeting (keep specs cleanup for migration compatibility)
     await deleteTicketsByMeetingId(id);
-    await deleteSpecsByMeetingId(id);
-    await deleteMeeting(id);
-
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Failed to delete meeting:', error);
-    return NextResponse.json({ error: 'Failed to delete meeting' }, { status: 500 });
+    console.error('Failed to delete tickets:', error);
+    return NextResponse.json({ error: 'Failed to delete tickets' }, { status: 500 });
   }
 }

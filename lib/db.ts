@@ -33,6 +33,21 @@ export interface SpecBlock {
   parentSpecId?: string;
 }
 
+export interface Ticket {
+  id: string;
+  user_id?: string;
+  meeting_id: string;
+  projectId?: string;
+  title: string;
+  description: string;
+  status: 'backlog' | 'in_progress' | 'done' | 'blocked';
+  assignee?: string | null;
+  assignee_user_id?: string | null;
+  dependency_ticket_id?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Project {
   id: string;
   user_id?: string;
@@ -42,6 +57,7 @@ export interface Project {
   branchBase: string;
   meetings: string[];
   specIds: string[];
+  ticketIds: string[];
   files: string[];
   context: string;
   createdAt: string;
@@ -68,6 +84,23 @@ function rowToMeeting(row: any): Meeting {
   };
 }
 
+function rowToTicket(row: any): Ticket {
+  return {
+    id: row.id,
+    user_id: row.user_id,
+    meeting_id: row.meeting_id,
+    projectId: row.project_id,
+    title: row.title,
+    description: row.description ?? '',
+    status: row.status,
+    assignee: row.assignee ?? null,
+    assignee_user_id: row.assignee_user_id ?? null,
+    dependency_ticket_id: row.dependency_ticket_id ?? null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
 function rowToSpec(row: any): SpecBlock {
   return {
     id: row.id,
@@ -91,7 +124,8 @@ function rowToProject(row: any): Project {
     deployUrl: row.deploy_url,
     branchBase: row.branch_base,
     meetings: row.meetings ?? [],
-    specIds: row.spec_ids ?? [],
+    specIds: row.spec_ids ?? row.ticket_ids ?? [],
+    ticketIds: row.ticket_ids ?? row.spec_ids ?? [],
     files: row.files ?? [],
     context: row.context ?? '',
     createdAt: row.created_at,
@@ -301,6 +335,7 @@ export async function saveProject(project: Project): Promise<void> {
     branch_base: project.branchBase,
     meetings: project.meetings,
     spec_ids: project.specIds,
+    ticket_ids: project.ticketIds ?? project.specIds,
     files: project.files,
     context: project.context,
   });
@@ -340,6 +375,7 @@ export async function updateProject(id: string, updates: Partial<Project>): Prom
   if (updates.context) row.context = updates.context;
   if (updates.files) row.files = updates.files;
   if (updates.specIds) row.spec_ids = updates.specIds;
+  if (updates.ticketIds) row.ticket_ids = updates.ticketIds;
   if (updates.meetings) row.meetings = updates.meetings;
 
   const { error } = await supabaseAdmin.from('projects').update(row).eq('id', id);
@@ -356,11 +392,112 @@ export async function addMeetingToProject(projectId: string, meetingId: string):
 export async function addSpecsToProject(projectId: string, specIds: string[]): Promise<void> {
   const project = await getProjectById(projectId);
   if (!project) return;
-  const merged = [...new Set([...project.specIds, ...specIds])];
-  await updateProject(projectId, { specIds: merged });
+  const merged = [...new Set([...(project.ticketIds ?? project.specIds), ...specIds])];
+  await updateProject(projectId, { specIds: merged, ticketIds: merged });
 
   // Also update project_id on each spec
   await supabaseAdmin.from('specs').update({ project_id: projectId }).in('id', specIds);
+}
+
+export async function saveTickets(tickets: Ticket[]): Promise<void> {
+  if (tickets.length === 0) return;
+  const { error } = await supabaseAdmin.from('tickets').insert(
+    tickets.map((ticket) => ({
+      id: ticket.id,
+      user_id: ticket.user_id,
+      meeting_id: ticket.meeting_id,
+      project_id: ticket.projectId ?? null,
+      title: ticket.title,
+      description: ticket.description,
+      status: ticket.status,
+      assignee: ticket.assignee ?? null,
+      assignee_user_id: ticket.assignee_user_id ?? null,
+      dependency_ticket_id: ticket.dependency_ticket_id ?? null,
+    }))
+  );
+  if (error) throw error;
+}
+
+export async function getTicketsByMeetingId(meetingId: string): Promise<Ticket[]> {
+  const { data, error } = await supabaseAdmin
+    .from('tickets')
+    .select('*')
+    .eq('meeting_id', meetingId)
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map(rowToTicket);
+}
+
+export async function getTicketsByProjectId(projectId: string): Promise<Ticket[]> {
+  const { data, error } = await supabaseAdmin
+    .from('tickets')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map(rowToTicket);
+}
+
+export async function getAllTickets(userId: string): Promise<Ticket[]> {
+  const { data, error } = await supabaseAdmin
+    .from('tickets')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map(rowToTicket);
+}
+
+export async function updateTicketStatus(
+  id: string,
+  status: Ticket['status']
+): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from('tickets')
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+export async function updateTicketAssignee(
+  id: string,
+  assignee: string | null,
+  assigneeUserId: string | null = null
+): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from('tickets')
+    .update({
+      assignee,
+      assignee_user_id: assigneeUserId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+export async function updateTicketDependency(
+  id: string,
+  dependencyTicketId: string | null
+): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from('tickets')
+    .update({ dependency_ticket_id: dependencyTicketId, updated_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+export async function deleteTicketsByMeetingId(meetingId: string): Promise<void> {
+  const { error } = await supabaseAdmin.from('tickets').delete().eq('meeting_id', meetingId);
+  if (error) throw error;
+}
+
+export async function addTicketsToProject(projectId: string, ticketIds: string[]): Promise<void> {
+  const project = await getProjectById(projectId);
+  if (!project) return;
+  const merged = [...new Set([...(project.ticketIds ?? project.specIds), ...ticketIds])];
+  await updateProject(projectId, { specIds: merged, ticketIds: merged });
+
+  await supabaseAdmin.from('tickets').update({ project_id: projectId }).in('id', ticketIds);
 }
 
 export async function addFilesToProject(projectId: string, files: string[]): Promise<void> {

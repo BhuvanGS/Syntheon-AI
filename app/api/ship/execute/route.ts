@@ -16,11 +16,10 @@ import {
   saveProject,
   updateProject,
   addMeetingToProject,
-  addSpecsToProject,
+  addTicketsToProject,
   addFilesToProject,
   getProjectById,
   getProjectByMeetingId,
-  getMeetingById,
 } from '@/lib/db';
 
 export const maxDuration = 60;
@@ -31,11 +30,11 @@ export async function POST(req: NextRequest) {
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const {
-      featureRequest,
       plan,
       linearTicketBundle,
       meetingId,
       projectId,
+      tickets,
       specs,
       meetingTitle,
       isFollowUp,
@@ -95,8 +94,9 @@ export async function POST(req: NextRequest) {
 
     // Step 7: Create or update project
     const repoInfo = getRepoInfo(githubOwner);
-    const specTitles = specs?.map((s: any) => s.title) ?? [];
-    const specIds = specs?.map((s: any) => s.id) ?? [];
+    const ticketItems = tickets ?? specs ?? [];
+    const ticketTitles = ticketItems?.map((t: any) => t.title) ?? [];
+    const ticketIds = ticketItems?.map((t: any) => t.id) ?? [];
     const nonWorkflowFiles = committedFiles.filter((f) => !f.includes('.github'));
     const baseUrl = `https://${repoInfo.owner}.github.io/${repoInfo.repo}/`;
 
@@ -104,13 +104,13 @@ export async function POST(req: NextRequest) {
       // Update existing project
       console.log('Updating existing project:', projectId);
       if (meetingId) await addMeetingToProject(projectId, meetingId);
-      await addSpecsToProject(projectId, specIds);
+      await addTicketsToProject(projectId, ticketIds);
       await addFilesToProject(projectId, nonWorkflowFiles);
 
       const project = await getProjectById(projectId);
       if (project) {
         await updateProject(projectId, {
-          context: `${project.context}. Follow-up: ${specTitles.join(', ')}`,
+          context: `${project.context}. Follow-up: ${ticketTitles.join(', ')}`,
         });
       }
     } else if (meetingId) {
@@ -130,9 +130,10 @@ export async function POST(req: NextRequest) {
           deployUrl: projectDeployUrl,
           branchBase: 'main',
           meetings: meetingId ? [meetingId] : [],
-          specIds,
+          specIds: ticketIds,
+          ticketIds,
           files: nonWorkflowFiles,
-          context: specTitles.join(', '),
+          context: ticketTitles.join(', '),
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         });

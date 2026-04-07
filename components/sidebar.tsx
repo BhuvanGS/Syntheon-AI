@@ -1,6 +1,6 @@
 'use client';
 
-import { LayoutDashboard, Calendar, BarChart3, Kanban, Settings, Sprout } from 'lucide-react';
+import { LayoutDashboard, Calendar, BarChart3, Settings, Sprout } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
@@ -13,8 +13,7 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'meetings', label: 'Meetings', icon: Calendar },
-    { id: 'specs', label: 'Spec Blocks', icon: BarChart3 },
-    { id: 'kanban', label: 'Kanban', icon: Kanban },
+    { id: 'tickets', label: 'Tickets', icon: BarChart3 },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 

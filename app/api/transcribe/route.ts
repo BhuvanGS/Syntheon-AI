@@ -4,13 +4,13 @@ import { auth } from '@clerk/nextjs/server';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { transcribeMeeting } from '@/lib/deepgram';
-import { extractSpecBlocks } from '@/lib/groq';
+import { extractTickets } from '@/lib/groq';
 import {
   saveMeeting,
   updateMeetingStatus,
   updateMeetingSpecs,
   updateMeetingName,
-  saveSpecs,
+  saveTickets,
 } from '@/lib/db';
 
 export const maxDuration = 60;
@@ -60,22 +60,22 @@ export async function POST(req: NextRequest) {
     const transcript = await transcribeMeeting(filePath);
     console.log('Transcript done');
 
-    // Extract specs + title
-    const { specs, title } = await extractSpecBlocks(transcript, meetingId);
-    console.log(`Extracted ${specs.length} spec blocks, title: ${title}`);
+    // Extract tickets + title
+    const { tickets, title } = await extractTickets(transcript, meetingId);
+    console.log(`Extracted ${tickets.length} tickets, title: ${title}`);
 
     // Update meeting
-    await updateMeetingSpecs(meetingId, transcript, specs.length);
+    await updateMeetingSpecs(meetingId, transcript, tickets.length);
     await updateMeetingName(meetingId, title);
 
-    // Save specs with user_id
-    await saveSpecs(specs.map((s: any) => ({ ...s, user_id: userId })));
+    // Save tickets with user_id
+    await saveTickets(tickets.map((ticket: any) => ({ ...ticket, user_id: userId })));
 
     return NextResponse.json({
       success: true,
       meetingId,
-      specsDetected: specs.length,
-      specs,
+      specsDetected: tickets.length,
+      specs: tickets,
     });
   } catch (error) {
     console.error('PIPELINE ERROR:', error);
