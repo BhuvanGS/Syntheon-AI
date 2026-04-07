@@ -449,7 +449,98 @@ function DashboardContent() {
                 )}
               </div>
 
-              <MeetingCards onSelectMeeting={handleMeetingSelect} onCreateTicket={handleMeetingTicketCreate} />
+              <div
+                style={{
+                  background: '#ffffff',
+                  border: '1px solid #e8dfd0',
+                  borderRadius: '12px',
+                  padding: '1.5rem',
+                  marginBottom: '2rem',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', marginBottom: '1.25rem' }}>
+                  <div>
+                    <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: '1.4rem', fontWeight: '400', color: '#2c2c28', marginBottom: '0.25rem' }}>
+                      Meetings
+                    </h2>
+                    <p style={{ fontSize: '13px', color: '#8a8a80', fontFamily: "'DM Sans', sans-serif" }}>
+                      Keep track of your active meetings and jump back in quickly.
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => handleViewChange('meetings')}
+                    style={{
+                      background: '#f4f7f1',
+                      border: '1px solid #d9e4d2',
+                      color: '#3d5a3e',
+                      padding: '0.55rem 1rem',
+                      borderRadius: '999px',
+                      fontSize: '12px',
+                      fontFamily: "'DM Sans', sans-serif",
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    View all meetings
+                  </button>
+                </div>
+
+                {meetings.length === 0 ? (
+                  <div style={{ border: '1px dashed #d9cfbf', borderRadius: '12px', padding: '1.25rem', background: '#fbf9f5', textAlign: 'center' }}>
+                    <p style={{ margin: 0, color: '#5a5a52', fontSize: '14px', fontFamily: "'DM Sans', sans-serif" }}>
+                      No meetings yet. Start one from a project or the meetings tab.
+                    </p>
+                    <button
+                      onClick={() => handleViewChange('meetings')}
+                      style={{
+                        marginTop: '1rem',
+                        background: '#3d5a3e',
+                        color: '#f8fbf7',
+                        border: 'none',
+                        padding: '0.65rem 1rem',
+                        borderRadius: '999px',
+                        fontSize: '12px',
+                        fontFamily: "'DM Sans', sans-serif",
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Go to meetings
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+                    {meetings.slice(0, 4).map((meeting) => (
+                      <button
+                        key={meeting.id}
+                        onClick={() => handleMeetingSelect(meeting.id)}
+                        style={{
+                          textAlign: 'left',
+                          background: '#ffffff',
+                          border: '1px solid #e8dfd0',
+                          borderRadius: '16px',
+                          padding: '1rem',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          boxShadow: '0 1px 0 rgba(61, 90, 62, 0.03)',
+                        }}
+                      >
+                        <p style={{ margin: '0 0 0.35rem', fontFamily: "'DM Serif Display', serif", fontSize: '1.05rem', color: '#2c2c28' }}>
+                          {meeting.projectName}
+                        </p>
+                        <p style={{ margin: '0 0 0.75rem', fontSize: '12px', color: '#8a8a80', fontFamily: "'DM Sans', sans-serif" }}>
+                          {meeting.platform} • {new Date(meeting.date).toLocaleDateString()}
+                        </p>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', fontSize: '12px', color: '#5a5a52', fontFamily: "'DM Sans', sans-serif" }}>
+                          <span>{meeting.status}</span>
+                          <span>Open meeting</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
