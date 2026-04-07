@@ -53,6 +53,14 @@ export function ProjectTicketImportDialog({
     }, {});
   }, [tickets]);
 
+  const importedMeetingIds = useMemo(() => {
+    return new Set(
+      tickets
+        .filter((ticket) => meetings.some((meeting) => meeting.id === ticket.meeting_id))
+        .map((ticket) => ticket.meeting_id)
+    );
+  }, [meetings, tickets]);
+
   async function handleImport(meetingId: string) {
     setImportingMeetingId(meetingId);
     try {
@@ -101,6 +109,7 @@ export function ProjectTicketImportDialog({
             {meetings.map((meeting) => {
               const count = meetingTicketCounts[meeting.id] ?? 0;
               const isImporting = importingMeetingId === meeting.id;
+              const isAlreadyImported = importedMeetingIds.has(meeting.id);
 
               return (
                 <div
@@ -115,6 +124,11 @@ export function ProjectTicketImportDialog({
                       <Badge className="bg-primary/10 text-primary border border-primary/10">
                         {count} tickets
                       </Badge>
+                      {isAlreadyImported && (
+                        <Badge className="bg-green-100 text-green-800 border border-green-200">
+                          Imported
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {meeting.platform} • {new Date(meeting.date).toLocaleDateString()} • {meeting.status}
@@ -124,7 +138,7 @@ export function ProjectTicketImportDialog({
                   <Button
                     type="button"
                     onClick={() => handleImport(meeting.id)}
-                    disabled={isImporting || count === 0}
+                    disabled={isImporting || count === 0 || isAlreadyImported}
                     className="rounded-full gap-2 shrink-0"
                     variant="outline"
                   >
@@ -133,7 +147,7 @@ export function ProjectTicketImportDialog({
                     ) : (
                       <Download className="h-4 w-4" />
                     )}
-                    {isImporting ? 'Importing...' : 'Import'}
+                    {isImporting ? 'Importing...' : isAlreadyImported ? 'Imported' : 'Import'}
                   </Button>
                 </div>
               );

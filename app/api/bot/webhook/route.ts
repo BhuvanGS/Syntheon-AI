@@ -6,7 +6,7 @@ import {
   updateMeetingStatus,
   updateMeetingSpecs,
   updateMeetingName,
-  saveTickets,
+  saveExtractedTickets,
   addTicketsToProject,
   getProjectById,
   updateProject,
@@ -123,14 +123,15 @@ export async function POST(req: NextRequest) {
       project_id: meeting.projectId ?? null,
     }));
 
-    await updateMeetingSpecs(meeting.id, transcript, tickets.length);
+    const insertedTickets = await saveExtractedTickets(ticketsWithUser);
+
+    await updateMeetingSpecs(meeting.id, transcript, insertedTickets.length);
     await updateMeetingName(meeting.id, title);
-    await saveTickets(ticketsWithUser);
 
     if (meeting.projectId) {
       await addTicketsToProject(
         meeting.projectId,
-        tickets.map((ticket: any) => ticket.id)
+        insertedTickets.map((ticket: any) => ticket.id)
       );
       console.log('Tickets linked to project:', meeting.projectId);
 

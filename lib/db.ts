@@ -404,6 +404,41 @@ export async function saveTickets(tickets: Ticket[]): Promise<void> {
   if (error) throw error;
 }
 
+function ticketFingerprint(ticket: Pick<Ticket, 'meeting_id' | 'title' | 'description' | 'status' | 'assignee'>) {
+  return [
+    ticket.meeting_id,
+    ticket.title.trim().toLowerCase(),
+    ticket.description.trim().toLowerCase(),
+    ticket.status,
+    ticket.assignee?.trim().toLowerCase() ?? '',
+  ].join('::');
+}
+
+export async function saveExtractedTickets(tickets: Ticket[]): Promise<Ticket[]> {
+  if (tickets.length === 0) return [];
+
+  const meetingId = tickets[0]?.meeting_id;
+  if (!meetingId) return [];
+
+  const existingTickets = await getTicketsByMeetingId(meetingId);
+  const existingFingerprints = new Set(existingTickets.map(ticketFingerprint));
+  const seenFingerprints = new Set<string>();
+
+  const uniqueTickets = tickets.filter((ticket) => {
+    const fingerprint = ticketFingerprint(ticket);
+    if (existingFingerprints.has(fingerprint) || seenFingerprints.has(fingerprint)) {
+      return false;
+    }
+    seenFingerprints.add(fingerprint);
+    return true;
+  });
+
+  if (uniqueTickets.length === 0) return [];
+
+  await saveTickets(uniqueTickets);
+  return uniqueTickets;
+}
+
 export async function getTicketsByMeetingId(meetingId: string): Promise<Ticket[]> {
   const { data, error } = await supabaseAdmin
     .from('tickets')

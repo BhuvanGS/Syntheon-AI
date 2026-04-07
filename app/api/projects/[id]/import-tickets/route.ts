@@ -5,6 +5,7 @@ import {
   addTicketsToProject,
   getMeetingById,
   getProjectById,
+  getTicketsByProjectId,
   getTicketsByMeetingId,
   saveTickets,
 } from '@/lib/db';
@@ -29,6 +30,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const meeting = await getMeetingById(sourceMeetingId);
     if (!meeting || meeting.user_id !== userId) {
       return NextResponse.json({ error: 'Meeting not found' }, { status: 404 });
+    }
+
+    const projectTickets = await getTicketsByProjectId(project.id);
+    if (projectTickets.some((ticket) => ticket.meeting_id === sourceMeetingId)) {
+      return NextResponse.json({
+        success: true,
+        importedCount: 0,
+        skipped: true,
+        message: 'Tickets from this meeting are already in the project',
+      });
     }
 
     const sourceTickets = await getTicketsByMeetingId(sourceMeetingId);

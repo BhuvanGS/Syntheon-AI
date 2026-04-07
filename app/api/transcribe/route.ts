@@ -10,7 +10,7 @@ import {
   updateMeetingStatus,
   updateMeetingSpecs,
   updateMeetingName,
-  saveTickets,
+  saveExtractedTickets,
 } from '@/lib/db';
 
 export const maxDuration = 60;
@@ -64,17 +64,18 @@ export async function POST(req: NextRequest) {
     const { tickets, title } = await extractTickets(transcript, meetingId);
     console.log(`Extracted ${tickets.length} tickets, title: ${title}`);
 
-    // Update meeting
-    await updateMeetingSpecs(meetingId, transcript, tickets.length);
-    await updateMeetingName(meetingId, title);
+    const insertedTickets = await saveExtractedTickets(
+      tickets.map((ticket: any) => ({ ...ticket, user_id: userId }))
+    );
 
-    // Save tickets with user_id
-    await saveTickets(tickets.map((ticket: any) => ({ ...ticket, user_id: userId })));
+    // Update meeting
+    await updateMeetingSpecs(meetingId, transcript, insertedTickets.length);
+    await updateMeetingName(meetingId, title);
 
     return NextResponse.json({
       success: true,
       meetingId,
-      specsDetected: tickets.length,
+      specsDetected: insertedTickets.length,
       specs: tickets,
     });
   } catch (error) {
