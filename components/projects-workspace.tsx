@@ -4,10 +4,18 @@ import { useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { ManualTicketDialog } from '@/components/manual-ticket-dialog';
 import { ProjectTicketImportDialog } from '@/components/project-ticket-import-dialog';
 import { ProjectMeetingDialog } from '@/components/project-meeting-dialog';
-import { FolderKanban, Plus, Video, Ticket, ArrowRight, Sparkles, Download } from 'lucide-react';
+import { FolderKanban, Plus, Video, Ticket, ArrowRight, Sparkles, Download, Trash2 } from 'lucide-react';
 
 interface Project {
   id: string;
@@ -49,6 +57,7 @@ interface ProjectsWorkspaceProps {
   onSelectProject: (projectId: string) => void;
   onSelectMeeting: (meetingId: string) => void;
   onCreateProject: () => void;
+  onDeleteProject: (projectId: string) => Promise<void> | void;
   onRefresh: () => Promise<void> | void;
 }
 
@@ -60,11 +69,13 @@ export function ProjectsWorkspace({
   onSelectProject,
   onSelectMeeting,
   onCreateProject,
+  onDeleteProject,
   onRefresh,
 }: ProjectsWorkspaceProps) {
   const [isMeetingDialogOpen, setIsMeetingDialogOpen] = useState(false);
   const [isTicketDialogOpen, setIsTicketDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
 
   const selectedProject = useMemo(
     () => projects.find((project) => project.id === selectedProjectId) ?? null,
@@ -230,6 +241,14 @@ export function ProjectsWorkspace({
           >
             <Ticket className="h-4 w-4" />
             New ticket
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={() => setProjectToDelete(selectedProject)}
+            className="rounded-full gap-2"
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete project
           </Button>
         </div>
       </div>
@@ -448,6 +467,42 @@ export function ProjectsWorkspace({
         tickets={tickets}
         onCreated={onRefresh}
       />
+
+      <Dialog
+        open={Boolean(projectToDelete)}
+        onOpenChange={(open) => {
+          if (!open) setProjectToDelete(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-xl border-border bg-[#f9f6f1] shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-playfair text-2xl text-foreground">
+              Delete this project?
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              This will remove the project from Supabase and unlink its meetings and tickets from
+              the project. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="pt-2">
+            <Button type="button" variant="outline" onClick={() => setProjectToDelete(null)} className="rounded-full">
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={async () => {
+                if (!projectToDelete) return;
+                await onDeleteProject(projectToDelete.id);
+                setProjectToDelete(null);
+              }}
+              className="rounded-full"
+            >
+              Delete project
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

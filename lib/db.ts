@@ -385,6 +385,23 @@ export async function addMeetingToProject(projectId: string, meetingId: string):
   await updateProject(projectId, { meetings });
 }
 
+export async function deleteProject(id: string): Promise<void> {
+  const { error: meetingsError } = await supabaseAdmin
+    .from('meetings')
+    .update({ project_id: null })
+    .eq('project_id', id);
+  if (meetingsError) throw meetingsError;
+
+  const { error: ticketsError } = await supabaseAdmin
+    .from('tickets')
+    .update({ project_id: null })
+    .eq('project_id', id);
+  if (ticketsError) throw ticketsError;
+
+  const { error } = await supabaseAdmin.from('projects').delete().eq('id', id);
+  if (error) throw error;
+}
+
 export async function saveTickets(tickets: Ticket[]): Promise<void> {
   if (tickets.length === 0) return;
   const { error } = await supabaseAdmin.from('tickets').insert(

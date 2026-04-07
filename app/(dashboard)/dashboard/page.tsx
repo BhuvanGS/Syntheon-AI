@@ -246,6 +246,26 @@ function DashboardContent() {
     setCurrentView('project-detail');
   }
 
+  async function handleDeleteProject(projectId: string) {
+    const res = await fetch(`/api/projects/${projectId}`, {
+      method: 'DELETE',
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data?.error || 'Failed to delete project');
+    }
+
+    await refreshWorkspace();
+
+    if (selectedProjectId === projectId) {
+      setSelectedProjectId(null);
+      setCurrentView('projects');
+    }
+
+    toast({ title: 'Project deleted', description: 'The project was removed from Supabase.' });
+  }
+
   async function refreshWorkspace() {
     try {
       const [projectsRes, meetingsRes, ticketsRes] = await Promise.all([
@@ -769,6 +789,7 @@ function DashboardContent() {
                 onSelectProject={handleProjectSelect}
                 onSelectMeeting={handleMeetingSelect}
                 onCreateProject={() => setIsProjectCreateOpen(true)}
+                onDeleteProject={handleDeleteProject}
                 onRefresh={refreshWorkspace}
               />
             </div>
