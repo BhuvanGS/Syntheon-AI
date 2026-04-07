@@ -32,14 +32,23 @@ async function githubFetch(url: string, options: RequestInit & { token?: string 
   return res.json();
 }
 
-async function getDefaultBranchSha(overrides: { owner?: string; repo?: string; token?: string } = {}) {
+async function getDefaultBranchSha(
+  overrides: { owner?: string; repo?: string; token?: string } = {}
+) {
   const repo = await githubFetch(repoPath(overrides), { token: overrides.token });
   const defaultBranch = repo.default_branch;
-  const ref = await githubFetch(`${repoPath(overrides)}/git/refs/heads/${defaultBranch}`, { token: overrides.token });
+  const ref = await githubFetch(`${repoPath(overrides)}/git/refs/heads/${defaultBranch}`, {
+    token: overrides.token,
+  });
   return ref.object.sha;
 }
 
-export async function createGithubIssue(title: string, body: string, token?: string, overrides: { owner?: string; repo?: string } = {}) {
+export async function createGithubIssue(
+  title: string,
+  body: string,
+  token?: string,
+  overrides: { owner?: string; repo?: string } = {}
+) {
   return githubFetch(`${repoPath({ ...overrides, token })}/issues`, {
     method: 'POST',
     body: JSON.stringify({ title, body }),
@@ -47,9 +56,13 @@ export async function createGithubIssue(title: string, body: string, token?: str
   });
 }
 
-export async function createBranch(branchName: string, token?: string, overrides: { owner?: string; repo?: string } = {}) {
+export async function createBranch(
+  branchName: string,
+  token?: string,
+  overrides: { owner?: string; repo?: string } = {}
+) {
   const sha = await getDefaultBranchSha({ ...overrides, token });
-  
+
   // Try to create the branch
   try {
     return await githubFetch(`${repoPath({ ...overrides, token })}/git/refs`, {
@@ -74,9 +87,12 @@ async function getFileSha(
   overrides: { owner?: string; repo?: string } = {}
 ): Promise<string | null> {
   try {
-    const res = await fetch(`${repoPath({ ...overrides, token })}/contents/${filePath}?ref=${branch}`, {
-      headers: headers(token),
-    });
+    const res = await fetch(
+      `${repoPath({ ...overrides, token })}/contents/${filePath}?ref=${branch}`,
+      {
+        headers: headers(token),
+      }
+    );
     if (res.status === 404) return null;
     const data = await res.json();
     return data.sha;
@@ -106,20 +122,25 @@ export async function commitFile(
   });
 }
 
-export async function createPullRequest(title: string, branch: string, token?: string, overrides: { owner?: string; repo?: string } = {}) {
+export async function createPullRequest(
+  title: string,
+  branch: string,
+  token?: string,
+  overrides: { owner?: string; repo?: string } = {}
+) {
   const owner = overrides.owner || process.env.GITHUB_OWNER;
   const repo = overrides.repo || process.env.GITHUB_REPO;
-  
+
   // Get repo info to find default branch
   const repoInfo = await githubFetch(`${BASE}/repos/${owner}/${repo}`, { token });
-  
+
   // First check if a PR already exists for this branch
   try {
     const existingPrs = await githubFetch(
       `${BASE}/repos/${owner}/${repo}/pulls?head=${owner}:${branch}&state=open`,
       { token }
     );
-    
+
     if (existingPrs && existingPrs.length > 0) {
       console.log(`PR already exists for branch ${branch}: #${existingPrs[0].number}`);
       return existingPrs[0];
@@ -127,7 +148,7 @@ export async function createPullRequest(title: string, branch: string, token?: s
   } catch (error) {
     console.log('Could not check for existing PRs, continuing with creation');
   }
-  
+
   // Create new PR
   return githubFetch(`${BASE}/repos/${owner}/${repo}/pulls`, {
     method: 'POST',
@@ -151,9 +172,13 @@ export async function getRepoFileTree(
     const defaultBranch = repo.default_branch;
 
     // Get the full recursive tree
-    const ref = await githubFetch(`${repoPath(overrides)}/git/refs/heads/${defaultBranch}`, { token: overrides.token });
+    const ref = await githubFetch(`${repoPath(overrides)}/git/refs/heads/${defaultBranch}`, {
+      token: overrides.token,
+    });
     const sha = ref.object.sha;
-    const tree = await githubFetch(`${repoPath(overrides)}/git/trees/${sha}?recursive=1`, { token: overrides.token });
+    const tree = await githubFetch(`${repoPath(overrides)}/git/trees/${sha}?recursive=1`, {
+      token: overrides.token,
+    });
 
     // Return only file paths, excluding .github folder
     return tree.tree

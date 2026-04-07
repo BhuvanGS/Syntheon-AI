@@ -1,7 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -10,7 +17,12 @@ import { FolderPlus, Sparkles } from 'lucide-react';
 interface ProjectCreateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreate: (payload: { name: string; context: string; deployUrl: string; branchBase: string }) => Promise<void> | void;
+  onCreate: (payload: {
+    name: string;
+    context: string;
+    deployUrl: string;
+    branchBase: string;
+  }) => Promise<void> | void;
 }
 
 export function ProjectCreateDialog({ open, onOpenChange, onCreate }: ProjectCreateDialogProps) {
@@ -55,9 +67,12 @@ export function ProjectCreateDialog({ open, onOpenChange, onCreate }: ProjectCre
             <Sparkles className="h-3.5 w-3.5" />
             Syntheon Projects
           </div>
-          <DialogTitle className="font-playfair text-2xl text-foreground">Create a new project</DialogTitle>
+          <DialogTitle className="font-playfair text-2xl text-foreground">
+            Create a new project
+          </DialogTitle>
           <DialogDescription className="text-muted-foreground">
-            Start a workspace for a product, client, or feature stream. You can add meetings and tickets under it later.
+            Start a workspace for a product, client, or feature stream. You can add meetings and
+            tickets under it later.
           </DialogDescription>
         </DialogHeader>
 
@@ -113,7 +128,11 @@ export function ProjectCreateDialog({ open, onOpenChange, onCreate }: ProjectCre
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={submitting || !name.trim()} className="rounded-full gap-2">
+            <Button
+              type="submit"
+              disabled={submitting || !name.trim()}
+              className="rounded-full gap-2"
+            >
               <FolderPlus className="h-4 w-4" />
               {submitting ? 'Creating...' : 'Create project'}
             </Button>

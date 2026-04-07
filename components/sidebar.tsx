@@ -1,6 +1,14 @@
 'use client';
 
-import { LayoutDashboard, Calendar, BarChart3, Settings, FolderKanban, Plus, Sprout } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Calendar,
+  BarChart3,
+  Settings,
+  FolderKanban,
+  Plus,
+  Sprout,
+} from 'lucide-react';
 import Link from 'next/link';
 
 interface SidebarProps {
@@ -12,7 +20,14 @@ interface SidebarProps {
   onCreateProject: () => void;
 }
 
-export function Sidebar({ currentView, onViewChange, projects, selectedProjectId, onSelectProject, onCreateProject }: SidebarProps) {
+export function Sidebar({
+  currentView,
+  onViewChange,
+  projects,
+  selectedProjectId,
+  onSelectProject,
+  onCreateProject,
+}: SidebarProps) {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'meetings', label: 'Meetings', icon: Calendar },
@@ -121,8 +136,23 @@ export function Sidebar({ currentView, onViewChange, projects, selectedProjectId
         })}
 
         <div style={{ marginTop: '1.5rem', padding: '0 0.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-            <p style={{ fontSize: '11px', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8a8a80', margin: 0 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '0.75rem',
+            }}
+          >
+            <p
+              style={{
+                fontSize: '11px',
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+                color: '#8a8a80',
+                margin: 0,
+              }}
+            >
               Projects
             </p>
             <button
@@ -185,8 +215,14 @@ export function Sidebar({ currentView, onViewChange, projects, selectedProjectId
                       fontFamily: "'DM Sans', sans-serif",
                     }}
                   >
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{project.name}</span>
-                    <FolderKanban style={{ width: '14px', height: '14px', color: '#8aab7e', flexShrink: 0 }} />
+                    <span
+                      style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                    >
+                      {project.name}
+                    </span>
+                    <FolderKanban
+                      style={{ width: '14px', height: '14px', color: '#8aab7e', flexShrink: 0 }}
+                    />
                   </button>
                 );
               })

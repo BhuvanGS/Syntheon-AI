@@ -10,7 +10,12 @@ import {
 } from '@/lib/shipai/github';
 import { moveLinearTicketBundleToPrStage } from '@/lib/shipai/linear';
 import { supabaseAdmin } from '@/lib/supabase';
-import { getIntegrationByUserId, getLinearAccessToken, getGithubToken, getGithubOwner } from '@/lib/services/integrations';
+import {
+  getIntegrationByUserId,
+  getLinearAccessToken,
+  getGithubToken,
+  getGithubOwner,
+} from '@/lib/services/integrations';
 import {
   updateMeetingBranch,
   saveProject,
@@ -29,15 +34,8 @@ export async function POST(req: NextRequest) {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const {
-      plan,
-      linearTicketBundle,
-      meetingId,
-      projectId,
-      tickets,
-      meetingTitle,
-      isFollowUp,
-    } = await req.json();
+    const { plan, linearTicketBundle, meetingId, projectId, tickets, meetingTitle, isFollowUp } =
+      await req.json();
 
     if (!plan) return NextResponse.json({ error: 'plan is required' }, { status: 400 });
 
@@ -45,7 +43,7 @@ export async function POST(req: NextRequest) {
     const integration = await getIntegrationByUserId(userId);
     const githubToken = getGithubToken(integration);
     const githubOwner = getGithubOwner(integration);
-    
+
     if (!githubToken) {
       return NextResponse.json({ error: 'GitHub not connected' }, { status: 400 });
     }

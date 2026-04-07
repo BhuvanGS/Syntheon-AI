@@ -434,10 +434,7 @@ export async function getAllTickets(userId: string): Promise<Ticket[]> {
   return (data ?? []).map(rowToTicket);
 }
 
-export async function updateTicketStatus(
-  id: string,
-  status: Ticket['status']
-): Promise<void> {
+export async function updateTicketStatus(id: string, status: Ticket['status']): Promise<void> {
   const { error } = await supabaseAdmin
     .from('tickets')
     .update({ status, updated_at: new Date().toISOString() })

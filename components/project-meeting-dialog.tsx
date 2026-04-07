@@ -1,7 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Video, Sparkles } from 'lucide-react';
@@ -13,7 +20,12 @@ interface ProjectMeetingDialogProps {
   onCreated?: () => void | Promise<void>;
 }
 
-export function ProjectMeetingDialog({ open, onOpenChange, projectId, onCreated }: ProjectMeetingDialogProps) {
+export function ProjectMeetingDialog({
+  open,
+  onOpenChange,
+  projectId,
+  onCreated,
+}: ProjectMeetingDialogProps) {
   const [meetingUrl, setMeetingUrl] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -55,7 +67,9 @@ export function ProjectMeetingDialog({ open, onOpenChange, projectId, onCreated 
             <Sparkles className="h-3.5 w-3.5" />
             Project meetings
           </div>
-          <DialogTitle className="font-playfair text-2xl text-foreground">Start a meeting under this project</DialogTitle>
+          <DialogTitle className="font-playfair text-2xl text-foreground">
+            Start a meeting under this project
+          </DialogTitle>
           <DialogDescription className="text-muted-foreground">
             Add a meeting URL and Syntheon will attach the recorded session to this project.
           </DialogDescription>
@@ -74,10 +88,19 @@ export function ProjectMeetingDialog({ open, onOpenChange, projectId, onCreated 
           </div>
 
           <DialogFooter className="pt-2">
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="rounded-full">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => onOpenChange(false)}
+              className="rounded-full"
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={submitting || !meetingUrl.trim()} className="rounded-full gap-2">
+            <Button
+              type="submit"
+              disabled={submitting || !meetingUrl.trim()}
+              className="rounded-full gap-2"
+            >
               <Video className="h-4 w-4" />
               {submitting ? 'Starting...' : 'Start meeting'}
             </Button>

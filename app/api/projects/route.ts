@@ -40,7 +40,12 @@ export async function POST(req: NextRequest) {
     }
 
     const projectId = `project-${randomUUID()}`;
-    const repoLabel = `syntheon/${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'project'}`;
+    const repoLabel = `syntheon/${
+      name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '') || 'project'
+    }`;
 
     await saveProject({
       id: projectId,

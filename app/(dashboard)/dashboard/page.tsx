@@ -16,7 +16,14 @@ import { GitHubConnectButton } from '@/components/github-connect-button';
 import { ApiKeyManager } from '@/components/api-key-manager';
 import { LinearConnectButton } from '@/components/linear-connect-button';
 
-type ViewType = 'dashboard' | 'meetings' | 'projects' | 'tickets' | 'settings' | 'ticket-detail' | 'project-detail';
+type ViewType =
+  | 'dashboard'
+  | 'meetings'
+  | 'projects'
+  | 'tickets'
+  | 'settings'
+  | 'ticket-detail'
+  | 'project-detail';
 
 interface Project {
   id: string;
@@ -202,7 +209,9 @@ function DashboardContent() {
       setCurrentView('settings');
       toast({
         title: '✅ Linear Connected!',
-        description: linearTeamParam ? `Connected to ${linearTeamParam}` : 'Linear account linked successfully',
+        description: linearTeamParam
+          ? `Connected to ${linearTeamParam}`
+          : 'Linear account linked successfully',
       });
     }
 
@@ -253,7 +262,12 @@ function DashboardContent() {
     }
   }
 
-  async function handleCreateProject(payload: { name: string; context: string; deployUrl: string; branchBase: string }) {
+  async function handleCreateProject(payload: {
+    name: string;
+    context: string;
+    deployUrl: string;
+    branchBase: string;
+  }) {
     const res = await fetch('/api/projects', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -279,7 +293,10 @@ function DashboardContent() {
 
       setGithubConnected(false);
       setGithubUser(null);
-      toast({ title: 'GitHub Disconnected', description: 'Your GitHub account has been unlinked.' });
+      toast({
+        title: 'GitHub Disconnected',
+        description: 'Your GitHub account has been unlinked.',
+      });
     } catch {
       toast({
         title: 'Error',
@@ -296,7 +313,10 @@ function DashboardContent() {
 
       setLinearConnected(false);
       setLinearTeam(null);
-      toast({ title: 'Linear Disconnected', description: 'Your Linear account has been unlinked.' });
+      toast({
+        title: 'Linear Disconnected',
+        description: 'Your Linear account has been unlinked.',
+      });
     } catch {
       toast({
         title: 'Error',
@@ -330,7 +350,14 @@ function DashboardContent() {
             flexShrink: 0,
           }}
         >
-          <p style={{ fontSize: '13px', color: '#8a8a80', fontFamily: "'DM Sans', sans-serif", fontWeight: '300' }}>
+          <p
+            style={{
+              fontSize: '13px',
+              color: '#8a8a80',
+              fontFamily: "'DM Sans', sans-serif",
+              fontWeight: '300',
+            }}
+          >
             {currentView === 'dashboard' && 'Overview of your meetings and work items'}
             {currentView === 'meetings' && 'All your recorded meetings'}
             {currentView === 'projects' && 'Workspace projects and project tickets'}
@@ -340,8 +367,14 @@ function DashboardContent() {
             {currentView === 'ticket-detail' && 'Tickets for this meeting'}
           </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#8aab7e' }} />
-            <span style={{ fontSize: '12px', color: '#8aab7e', fontFamily: "'DM Sans', sans-serif" }}>Live</span>
+            <div
+              style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#8aab7e' }}
+            />
+            <span
+              style={{ fontSize: '12px', color: '#8aab7e', fontFamily: "'DM Sans', sans-serif" }}
+            >
+              Live
+            </span>
           </div>
         </div>
 
@@ -360,12 +393,34 @@ function DashboardContent() {
                   marginBottom: '2rem',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', marginBottom: '1.25rem' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    justifyContent: 'space-between',
+                    gap: '1rem',
+                    marginBottom: '1.25rem',
+                  }}
+                >
                   <div>
-                    <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: '1.4rem', fontWeight: '400', color: '#2c2c28', marginBottom: '0.25rem' }}>
+                    <h2
+                      style={{
+                        fontFamily: "'DM Serif Display', serif",
+                        fontSize: '1.4rem',
+                        fontWeight: '400',
+                        color: '#2c2c28',
+                        marginBottom: '0.25rem',
+                      }}
+                    >
                       Projects
                     </h2>
-                    <p style={{ fontSize: '13px', color: '#8a8a80', fontFamily: "'DM Sans', sans-serif" }}>
+                    <p
+                      style={{
+                        fontSize: '13px',
+                        color: '#8a8a80',
+                        fontFamily: "'DM Sans', sans-serif",
+                      }}
+                    >
                       Keep track of your active workspaces and jump back in quickly.
                     </p>
                   </div>
@@ -389,8 +444,23 @@ function DashboardContent() {
                 </div>
 
                 {projects.length === 0 ? (
-                  <div style={{ border: '1px dashed #d9cfbf', borderRadius: '12px', padding: '1.25rem', background: '#fbf9f5', textAlign: 'center' }}>
-                    <p style={{ margin: 0, color: '#5a5a52', fontSize: '14px', fontFamily: "'DM Sans', sans-serif" }}>
+                  <div
+                    style={{
+                      border: '1px dashed #d9cfbf',
+                      borderRadius: '12px',
+                      padding: '1.25rem',
+                      background: '#fbf9f5',
+                      textAlign: 'center',
+                    }}
+                  >
+                    <p
+                      style={{
+                        margin: 0,
+                        color: '#5a5a52',
+                        fontSize: '14px',
+                        fontFamily: "'DM Sans', sans-serif",
+                      }}
+                    >
                       No projects yet. Create one to organize meetings and tickets.
                     </p>
                     <button
@@ -412,10 +482,20 @@ function DashboardContent() {
                     </button>
                   </div>
                 ) : (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                      gap: '12px',
+                    }}
+                  >
                     {projects.slice(0, 4).map((project) => {
-                      const projectTickets = tickets.filter((ticket) => ticket.projectId === project.id).length;
-                      const projectMeetings = meetings.filter((meeting) => meeting.projectId === project.id).length;
+                      const projectTickets = tickets.filter(
+                        (ticket) => ticket.projectId === project.id
+                      ).length;
+                      const projectMeetings = meetings.filter(
+                        (meeting) => meeting.projectId === project.id
+                      ).length;
 
                       return (
                         <button
@@ -432,13 +512,37 @@ function DashboardContent() {
                             boxShadow: '0 1px 0 rgba(61, 90, 62, 0.03)',
                           }}
                         >
-                          <p style={{ margin: '0 0 0.35rem', fontFamily: "'DM Serif Display', serif", fontSize: '1.05rem', color: '#2c2c28' }}>
+                          <p
+                            style={{
+                              margin: '0 0 0.35rem',
+                              fontFamily: "'DM Serif Display', serif",
+                              fontSize: '1.05rem',
+                              color: '#2c2c28',
+                            }}
+                          >
                             {project.name}
                           </p>
-                          <p style={{ margin: '0 0 0.75rem', fontSize: '12px', color: '#8a8a80', fontFamily: "'DM Sans', sans-serif" }}>
+                          <p
+                            style={{
+                              margin: '0 0 0.75rem',
+                              fontSize: '12px',
+                              color: '#8a8a80',
+                              fontFamily: "'DM Sans', sans-serif",
+                            }}
+                          >
                             {project.repo}
                           </p>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', fontSize: '12px', color: '#5a5a52', fontFamily: "'DM Sans', sans-serif" }}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: '12px',
+                              fontSize: '12px',
+                              color: '#5a5a52',
+                              fontFamily: "'DM Sans', sans-serif",
+                            }}
+                          >
                             <span>{projectMeetings} meetings</span>
                             <span>{projectTickets} tickets</span>
                           </div>
@@ -458,12 +562,34 @@ function DashboardContent() {
                   marginBottom: '2rem',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', marginBottom: '1.25rem' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    justifyContent: 'space-between',
+                    gap: '1rem',
+                    marginBottom: '1.25rem',
+                  }}
+                >
                   <div>
-                    <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: '1.4rem', fontWeight: '400', color: '#2c2c28', marginBottom: '0.25rem' }}>
+                    <h2
+                      style={{
+                        fontFamily: "'DM Serif Display', serif",
+                        fontSize: '1.4rem',
+                        fontWeight: '400',
+                        color: '#2c2c28',
+                        marginBottom: '0.25rem',
+                      }}
+                    >
                       Meetings
                     </h2>
-                    <p style={{ fontSize: '13px', color: '#8a8a80', fontFamily: "'DM Sans', sans-serif" }}>
+                    <p
+                      style={{
+                        fontSize: '13px',
+                        color: '#8a8a80',
+                        fontFamily: "'DM Sans', sans-serif",
+                      }}
+                    >
                       Keep track of your active meetings and jump back in quickly.
                     </p>
                   </div>
@@ -487,8 +613,23 @@ function DashboardContent() {
                 </div>
 
                 {meetings.length === 0 ? (
-                  <div style={{ border: '1px dashed #d9cfbf', borderRadius: '12px', padding: '1.25rem', background: '#fbf9f5', textAlign: 'center' }}>
-                    <p style={{ margin: 0, color: '#5a5a52', fontSize: '14px', fontFamily: "'DM Sans', sans-serif" }}>
+                  <div
+                    style={{
+                      border: '1px dashed #d9cfbf',
+                      borderRadius: '12px',
+                      padding: '1.25rem',
+                      background: '#fbf9f5',
+                      textAlign: 'center',
+                    }}
+                  >
+                    <p
+                      style={{
+                        margin: 0,
+                        color: '#5a5a52',
+                        fontSize: '14px',
+                        fontFamily: "'DM Sans', sans-serif",
+                      }}
+                    >
                       No meetings yet. Start one from a project or the meetings tab.
                     </p>
                     <button
@@ -510,7 +651,13 @@ function DashboardContent() {
                     </button>
                   </div>
                 ) : (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                      gap: '12px',
+                    }}
+                  >
                     {meetings.slice(0, 4).map((meeting) => (
                       <button
                         key={meeting.id}
@@ -526,13 +673,37 @@ function DashboardContent() {
                           boxShadow: '0 1px 0 rgba(61, 90, 62, 0.03)',
                         }}
                       >
-                        <p style={{ margin: '0 0 0.35rem', fontFamily: "'DM Serif Display', serif", fontSize: '1.05rem', color: '#2c2c28' }}>
+                        <p
+                          style={{
+                            margin: '0 0 0.35rem',
+                            fontFamily: "'DM Serif Display', serif",
+                            fontSize: '1.05rem',
+                            color: '#2c2c28',
+                          }}
+                        >
                           {meeting.projectName}
                         </p>
-                        <p style={{ margin: '0 0 0.75rem', fontSize: '12px', color: '#8a8a80', fontFamily: "'DM Sans', sans-serif" }}>
+                        <p
+                          style={{
+                            margin: '0 0 0.75rem',
+                            fontSize: '12px',
+                            color: '#8a8a80',
+                            fontFamily: "'DM Sans', sans-serif",
+                          }}
+                        >
                           {meeting.platform} • {new Date(meeting.date).toLocaleDateString()}
                         </p>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', fontSize: '12px', color: '#5a5a52', fontFamily: "'DM Sans', sans-serif" }}>
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '12px',
+                            fontSize: '12px',
+                            color: '#5a5a52',
+                            fontFamily: "'DM Sans', sans-serif",
+                          }}
+                        >
                           <span>{meeting.status}</span>
                           <span>Open meeting</span>
                         </div>
@@ -548,7 +719,10 @@ function DashboardContent() {
             <div style={pageStyle}>
               <h1 style={headingStyle}>Meetings</h1>
               <p style={subStyle}>All your recorded meetings</p>
-              <MeetingCards onSelectMeeting={handleMeetingSelect} onCreateTicket={handleMeetingTicketCreate} />
+              <MeetingCards
+                onSelectMeeting={handleMeetingSelect}
+                onCreateTicket={handleMeetingTicketCreate}
+              />
             </div>
           )}
 
@@ -614,19 +788,65 @@ function DashboardContent() {
                   marginBottom: '2rem',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    justifyContent: 'space-between',
+                    marginBottom: '1.5rem',
+                  }}
+                >
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
-                    <div style={{ width: '48px', height: '48px', background: '#f0f4ff', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <div
+                      style={{
+                        width: '48px',
+                        height: '48px',
+                        background: '#f0f4ff',
+                        borderRadius: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
                       <Github size={24} color="#5c7c5d" />
                     </div>
                     <div>
-                      <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: '1.4rem', fontWeight: '400', color: '#2c2c28', marginBottom: '0.25rem' }}>GitHub</h2>
-                      <p style={{ fontSize: '14px', color: '#8a8a80', fontFamily: "'DM Sans', sans-serif" }}>Connect your GitHub account to create branches, commits, and pull requests</p>
+                      <h2
+                        style={{
+                          fontFamily: "'DM Serif Display', serif",
+                          fontSize: '1.4rem',
+                          fontWeight: '400',
+                          color: '#2c2c28',
+                          marginBottom: '0.25rem',
+                        }}
+                      >
+                        GitHub
+                      </h2>
+                      <p
+                        style={{
+                          fontSize: '14px',
+                          color: '#8a8a80',
+                          fontFamily: "'DM Sans', sans-serif",
+                        }}
+                      >
+                        Connect your GitHub account to create branches, commits, and pull requests
+                      </p>
                     </div>
                   </div>
 
                   {githubConnected && (
-                    <div style={{ background: '#e8f5e9', color: '#2e7d32', padding: '0.5rem 1rem', borderRadius: '6px', fontSize: '12px', fontFamily: "'DM Sans', sans-serif", fontWeight: '500' }}>
+                    <div
+                      style={{
+                        background: '#e8f5e9',
+                        color: '#2e7d32',
+                        padding: '0.5rem 1rem',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        fontFamily: "'DM Sans', sans-serif",
+                        fontWeight: '500',
+                      }}
+                    >
                       ✓ Connected
                     </div>
                   )}
@@ -634,16 +854,68 @@ function DashboardContent() {
 
                 {githubConnected ? (
                   <div>
-                    <div style={{ background: '#f1f8f5', border: '1px solid #c8e6c9', borderRadius: '8px', padding: '1rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div
+                      style={{
+                        background: '#f1f8f5',
+                        border: '1px solid #c8e6c9',
+                        borderRadius: '8px',
+                        padding: '1rem',
+                        marginBottom: '1.5rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '1rem',
+                      }}
+                    >
                       <div style={{ color: '#2e7d32', fontSize: '20px' }}>✓</div>
                       <div>
-                        <p style={{ fontSize: '14px', color: '#1b5e20', fontFamily: "'DM Sans', sans-serif", fontWeight: '500', marginBottom: '0.25rem' }}>
-                          Connected as <code style={{ background: '#ffffff', padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '12px', border: '1px solid #c8e6c9' }}>@{githubUser}</code>
+                        <p
+                          style={{
+                            fontSize: '14px',
+                            color: '#1b5e20',
+                            fontFamily: "'DM Sans', sans-serif",
+                            fontWeight: '500',
+                            marginBottom: '0.25rem',
+                          }}
+                        >
+                          Connected as{' '}
+                          <code
+                            style={{
+                              background: '#ffffff',
+                              padding: '0.25rem 0.5rem',
+                              borderRadius: '4px',
+                              fontSize: '12px',
+                              border: '1px solid #c8e6c9',
+                            }}
+                          >
+                            @{githubUser}
+                          </code>
                         </p>
-                        <p style={{ fontSize: '12px', color: '#558b2f', fontFamily: "'DM Sans', sans-serif" }}>Your GitHub account is linked to Syntheon</p>
+                        <p
+                          style={{
+                            fontSize: '12px',
+                            color: '#558b2f',
+                            fontFamily: "'DM Sans', sans-serif",
+                          }}
+                        >
+                          Your GitHub account is linked to Syntheon
+                        </p>
                       </div>
                     </div>
-                    <button onClick={handleDisconnectGithub} style={{ marginTop: '1rem', padding: '0.5rem 1rem', background: '#ffebee', color: '#c62828', border: '1px solid #ef9a9a', borderRadius: '6px', fontSize: '12px', fontFamily: "'DM Sans', sans-serif", fontWeight: '500', cursor: 'pointer' }}>
+                    <button
+                      onClick={handleDisconnectGithub}
+                      style={{
+                        marginTop: '1rem',
+                        padding: '0.5rem 1rem',
+                        background: '#ffebee',
+                        color: '#c62828',
+                        border: '1px solid #ef9a9a',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        fontFamily: "'DM Sans', sans-serif",
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                      }}
+                    >
                       Disconnect GitHub
                     </button>
                   </div>
@@ -663,19 +935,69 @@ function DashboardContent() {
                   marginTop: '2rem',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    justifyContent: 'space-between',
+                    marginBottom: '1.5rem',
+                  }}
+                >
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
-                    <div style={{ width: '48px', height: '48px', background: '#f5f0ff', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontWeight: 700, color: '#5c3b8a', fontSize: '16px', fontFamily: "'DM Sans', sans-serif" }}>
+                    <div
+                      style={{
+                        width: '48px',
+                        height: '48px',
+                        background: '#f5f0ff',
+                        borderRadius: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        fontWeight: 700,
+                        color: '#5c3b8a',
+                        fontSize: '16px',
+                        fontFamily: "'DM Sans', sans-serif",
+                      }}
+                    >
                       L
                     </div>
                     <div>
-                      <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: '1.4rem', fontWeight: '400', color: '#2c2c28', marginBottom: '0.25rem' }}>Linear</h2>
-                      <p style={{ fontSize: '14px', color: '#8a8a80', fontFamily: "'DM Sans', sans-serif" }}>Connect Linear to create and update issue tickets from meeting tickets</p>
+                      <h2
+                        style={{
+                          fontFamily: "'DM Serif Display', serif",
+                          fontSize: '1.4rem',
+                          fontWeight: '400',
+                          color: '#2c2c28',
+                          marginBottom: '0.25rem',
+                        }}
+                      >
+                        Linear
+                      </h2>
+                      <p
+                        style={{
+                          fontSize: '14px',
+                          color: '#8a8a80',
+                          fontFamily: "'DM Sans', sans-serif",
+                        }}
+                      >
+                        Connect Linear to create and update issue tickets from meeting tickets
+                      </p>
                     </div>
                   </div>
 
                   {linearConnected && (
-                    <div style={{ background: '#e8f5e9', color: '#2e7d32', padding: '0.5rem 1rem', borderRadius: '6px', fontSize: '12px', fontFamily: "'DM Sans', sans-serif", fontWeight: '500' }}>
+                    <div
+                      style={{
+                        background: '#e8f5e9',
+                        color: '#2e7d32',
+                        padding: '0.5rem 1rem',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        fontFamily: "'DM Sans', sans-serif",
+                        fontWeight: '500',
+                      }}
+                    >
                       ✓ Connected
                     </div>
                   )}
@@ -683,14 +1005,58 @@ function DashboardContent() {
 
                 {linearConnected ? (
                   <div>
-                    <div style={{ background: '#f1f8f5', border: '1px solid #c8e6c9', borderRadius: '8px', padding: '1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div
+                      style={{
+                        background: '#f1f8f5',
+                        border: '1px solid #c8e6c9',
+                        borderRadius: '8px',
+                        padding: '1rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '1rem',
+                      }}
+                    >
                       <div style={{ color: '#2e7d32', fontSize: '20px' }}>✓</div>
                       <div>
-                        <p style={{ fontSize: '14px', color: '#1b5e20', fontFamily: "'DM Sans', sans-serif", fontWeight: '500', marginBottom: '0.25rem' }}>Linear account connected</p>
-                        <p style={{ fontSize: '12px', color: '#558b2f', fontFamily: "'DM Sans', sans-serif" }}>{linearTeam ? `Default team: ${linearTeam}` : 'Default team selected from your workspace'}</p>
+                        <p
+                          style={{
+                            fontSize: '14px',
+                            color: '#1b5e20',
+                            fontFamily: "'DM Sans', sans-serif",
+                            fontWeight: '500',
+                            marginBottom: '0.25rem',
+                          }}
+                        >
+                          Linear account connected
+                        </p>
+                        <p
+                          style={{
+                            fontSize: '12px',
+                            color: '#558b2f',
+                            fontFamily: "'DM Sans', sans-serif",
+                          }}
+                        >
+                          {linearTeam
+                            ? `Default team: ${linearTeam}`
+                            : 'Default team selected from your workspace'}
+                        </p>
                       </div>
                     </div>
-                    <button onClick={handleDisconnectLinear} style={{ marginTop: '1rem', padding: '0.5rem 1rem', background: '#ffebee', color: '#c62828', border: '1px solid #ef9a9a', borderRadius: '6px', fontSize: '12px', fontFamily: "'DM Sans', sans-serif", fontWeight: '500', cursor: 'pointer' }}>
+                    <button
+                      onClick={handleDisconnectLinear}
+                      style={{
+                        marginTop: '1rem',
+                        padding: '0.5rem 1rem',
+                        background: '#ffebee',
+                        color: '#c62828',
+                        border: '1px solid #ef9a9a',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        fontFamily: "'DM Sans', sans-serif",
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                      }}
+                    >
                       Disconnect Linear
                     </button>
                   </div>

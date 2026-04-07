@@ -1,7 +1,14 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -89,7 +96,9 @@ export function ManualTicketDialog({
             <Sparkles className="h-3.5 w-3.5" />
             Manual ticket writing
           </div>
-          <DialogTitle className="font-playfair text-2xl text-foreground">Create a ticket</DialogTitle>
+          <DialogTitle className="font-playfair text-2xl text-foreground">
+            Create a ticket
+          </DialogTitle>
           <DialogDescription className="text-muted-foreground">
             Write a Jira-style ticket manually and attach it to one of your meetings.
           </DialogDescription>
@@ -164,10 +173,19 @@ export function ManualTicketDialog({
           </div>
 
           <DialogFooter className="pt-2">
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="rounded-full">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => onOpenChange(false)}
+              className="rounded-full"
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={submitting || !title.trim() || !resolvedMeetingId} className="rounded-full gap-2">
+            <Button
+              type="submit"
+              disabled={submitting || !title.trim() || !resolvedMeetingId}
+              className="rounded-full gap-2"
+            >
               <CirclePlus className="h-4 w-4" />
               {submitting ? 'Creating...' : 'Create ticket'}
             </Button>

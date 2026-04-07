@@ -34,9 +34,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const body = await req.json();
     const title = String(body?.title ?? '').trim();
     const description = String(body?.description ?? '').trim();
-    const status = body?.status === 'done' || body?.status === 'in_progress' || body?.status === 'blocked'
-      ? body.status
-      : 'backlog';
+    const status =
+      body?.status === 'done' || body?.status === 'in_progress' || body?.status === 'blocked'
+        ? body.status
+        : 'backlog';
     const assignee = body?.assignee ? String(body.assignee).trim() : null;
     const meeting = await getMeetingById(id);
     const resolvedProjectId = body?.projectId ?? meeting?.projectId ?? null;

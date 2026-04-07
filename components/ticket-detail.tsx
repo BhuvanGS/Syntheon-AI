@@ -2,14 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import {
-  CheckCircle,
-  ExternalLink,
-  Loader2,
-  Plus,
-  Rocket,
-  Video,
-} from 'lucide-react';
+import { CheckCircle, ExternalLink, Loader2, Plus, Rocket, Video } from 'lucide-react';
 import { ManualTicketDialog } from '@/components/manual-ticket-dialog';
 
 interface Ticket {
@@ -51,7 +44,16 @@ export function TicketDetail({ meetingId, onSelectMeeting }: TicketDetailProps) 
   const [meetingTitle, setMeetingTitle] = useState('Meeting');
   const [meetingData, setMeetingData] = useState<Meeting | null>(null);
   const [project, setProject] = useState<Project | null>(null);
-  const [shipResult, setShipResult] = useState<{ status: 'idle' | 'planning' | 'planned' | 'executing' | 'done' | 'error'; plan?: any; linearTicketBundle?: any; featureRequest?: string; issue?: any; pullRequest?: any; committedFiles?: string[]; error?: string; }>({ status: 'idle' });
+  const [shipResult, setShipResult] = useState<{
+    status: 'idle' | 'planning' | 'planned' | 'executing' | 'done' | 'error';
+    plan?: any;
+    linearTicketBundle?: any;
+    featureRequest?: string;
+    issue?: any;
+    pullRequest?: any;
+    committedFiles?: string[];
+    error?: string;
+  }>({ status: 'idle' });
   const [refreshKey, setRefreshKey] = useState(Date.now());
   const [savingTicketId, setSavingTicketId] = useState<string | null>(null);
   const [isManualTicketOpen, setIsManualTicketOpen] = useState(false);
@@ -108,7 +110,10 @@ export function TicketDetail({ meetingId, onSelectMeeting }: TicketDetailProps) 
     } catch {}
   }
 
-  async function updateTicket(ticketId: string, payload: Partial<Pick<Ticket, 'status' | 'assignee' | 'assignee_user_id'>>) {
+  async function updateTicket(
+    ticketId: string,
+    payload: Partial<Pick<Ticket, 'status' | 'assignee' | 'assignee_user_id'>>
+  ) {
     setSavingTicketId(ticketId);
     try {
       const res = await fetch(`/api/meetings/${meetingId}/tickets`, {
@@ -117,7 +122,9 @@ export function TicketDetail({ meetingId, onSelectMeeting }: TicketDetailProps) 
         body: JSON.stringify({ ticketId, ...payload }),
       });
       if (!res.ok) throw new Error('Failed to update ticket');
-      setTickets((prev) => prev.map((ticket) => (ticket.id === ticketId ? { ...ticket, ...payload } : ticket)));
+      setTickets((prev) =>
+        prev.map((ticket) => (ticket.id === ticketId ? { ...ticket, ...payload } : ticket))
+      );
     } finally {
       setSavingTicketId(null);
     }
@@ -308,7 +315,9 @@ export function TicketDetail({ meetingId, onSelectMeeting }: TicketDetailProps) 
             <div className="flex items-start justify-between gap-4 mb-4">
               <div>
                 <div className="flex items-center gap-3 mb-2 flex-wrap">
-                  <h3 className="text-lg font-playfair font-bold text-foreground">{ticket.title}</h3>
+                  <h3 className="text-lg font-playfair font-bold text-foreground">
+                    {ticket.title}
+                  </h3>
                   <Badge
                     className={
                       ticket.status === 'backlog'
@@ -323,9 +332,13 @@ export function TicketDetail({ meetingId, onSelectMeeting }: TicketDetailProps) 
                     {ticket.status.replace('_', ' ')}
                   </Badge>
                 </div>
-                <p className="text-sm text-muted-foreground leading-6">{ticket.description || 'No description provided.'}</p>
+                <p className="text-sm text-muted-foreground leading-6">
+                  {ticket.description || 'No description provided.'}
+                </p>
               </div>
-              {savingTicketId === ticket.id && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
+              {savingTicketId === ticket.id && (
+                <Loader2 className="w-4 h-4 animate-spin text-primary" />
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-4 border-t border-border">
@@ -333,7 +346,9 @@ export function TicketDetail({ meetingId, onSelectMeeting }: TicketDetailProps) 
                 Status
                 <select
                   value={ticket.status}
-                  onChange={(e) => updateTicket(ticket.id, { status: e.target.value as Ticket['status'] })}
+                  onChange={(e) =>
+                    updateTicket(ticket.id, { status: e.target.value as Ticket['status'] })
+                  }
                   className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
                 >
                   <option value="backlog">Backlog</option>
@@ -436,7 +451,10 @@ export function TicketDetail({ meetingId, onSelectMeeting }: TicketDetailProps) 
             )}
 
             {shipResult.status === 'planning' && (
-              <button disabled className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium bg-primary text-primary-foreground opacity-70">
+              <button
+                disabled
+                className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium bg-primary text-primary-foreground opacity-70"
+              >
                 <Loader2 className="w-4 h-4 animate-spin" />
                 Generating Plan...
               </button>
@@ -453,14 +471,20 @@ export function TicketDetail({ meetingId, onSelectMeeting }: TicketDetailProps) 
             )}
 
             {shipResult.status === 'executing' && (
-              <button disabled className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium bg-primary text-primary-foreground opacity-70">
+              <button
+                disabled
+                className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium bg-primary text-primary-foreground opacity-70"
+              >
                 <Loader2 className="w-4 h-4 animate-spin" />
                 Executing...
               </button>
             )}
 
             {shipResult.status === 'done' && (
-              <button disabled className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium bg-primary text-primary-foreground opacity-70">
+              <button
+                disabled
+                className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium bg-primary text-primary-foreground opacity-70"
+              >
                 <CheckCircle className="w-4 h-4" />
                 Shipped
               </button>

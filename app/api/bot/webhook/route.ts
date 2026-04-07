@@ -11,13 +11,14 @@ import {
   getProjectById,
   updateProject,
 } from '@/lib/db';
-import { verifyWebhookSignature } from '@/lib/webhook'; 
+import { verifyWebhookSignature } from '@/lib/webhook';
 
 export async function POST(req: NextRequest) {
   try {
     const token = req.nextUrl.searchParams.get('token');
     const webhookSigningSecret = process.env.SKRIBBY_WEBHOOK_SECRET;
-    const webhookAccessToken = process.env.WEBHOOK_ACCESS_TOKEN ?? process.env.SKRIBBY_WEBHOOK_SECRET;
+    const webhookAccessToken =
+      process.env.WEBHOOK_ACCESS_TOKEN ?? process.env.SKRIBBY_WEBHOOK_SECRET;
     const rawPayload = await req.text();
     const signature =
       req.headers.get('x-webhook-signature') ??
@@ -41,14 +42,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     } else if (!signature) {
       const allowUnsignedWebhooks =
-        process.env.NODE_ENV !== 'production' && process.env.SKRIBBY_ALLOW_UNSIGNED_WEBHOOKS === 'true';
+        process.env.NODE_ENV !== 'production' &&
+        process.env.SKRIBBY_ALLOW_UNSIGNED_WEBHOOKS === 'true';
 
       if (!allowUnsignedWebhooks) {
         console.warn('❌ Missing webhook signature header');
         return NextResponse.json({ error: 'Missing signature' }, { status: 401 });
       }
 
-      console.warn('⚠️ No webhook signature header, allowing unsigned webhook only in local development');
+      console.warn(
+        '⚠️ No webhook signature header, allowing unsigned webhook only in local development'
+      );
     } else {
       if (!webhookSigningSecret) {
         console.error('SKRIBBY_WEBHOOK_SECRET not configured for signature verification');

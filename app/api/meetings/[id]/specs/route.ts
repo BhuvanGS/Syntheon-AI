@@ -1,7 +1,12 @@
 // app/api/meetings/[id]/specs/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { getTicketsByMeetingId, updateTicketStatus, updateTicketAssignee, updateTicketDependency } from '@/lib/db';
+import {
+  getTicketsByMeetingId,
+  updateTicketStatus,
+  updateTicketAssignee,
+  updateTicketDependency,
+} from '@/lib/db';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {

@@ -34,8 +34,14 @@ export function TicketsBoard({ onSelectMeeting }: TicketsBoardProps) {
 
   async function fetchAll() {
     try {
-      const [ticketsRes, meetingsRes] = await Promise.all([fetch('/api/tickets'), fetch('/api/meetings')]);
-      const [ticketsData, meetingsData] = await Promise.all([ticketsRes.json(), meetingsRes.json()]);
+      const [ticketsRes, meetingsRes] = await Promise.all([
+        fetch('/api/tickets'),
+        fetch('/api/meetings'),
+      ]);
+      const [ticketsData, meetingsData] = await Promise.all([
+        ticketsRes.json(),
+        meetingsRes.json(),
+      ]);
       setTickets(ticketsData);
       setMeetings(meetingsData);
     } catch (error) {
@@ -115,7 +121,9 @@ export function TicketsBoard({ onSelectMeeting }: TicketsBoardProps) {
               </Badge>
             </div>
 
-            <div className={`flex flex-col gap-3 min-h-[220px] rounded-2xl p-3 border ${column.color}`}>
+            <div
+              className={`flex flex-col gap-3 min-h-[220px] rounded-2xl p-3 border ${column.color}`}
+            >
               {columnTickets.length === 0 && (
                 <p className="text-xs text-muted-foreground text-center py-8">No tickets here</p>
               )}
@@ -136,7 +144,9 @@ export function TicketsBoard({ onSelectMeeting }: TicketsBoardProps) {
                   </div>
 
                   {ticket.description && (
-                    <p className="text-xs text-muted-foreground leading-5 line-clamp-3">{ticket.description}</p>
+                    <p className="text-xs text-muted-foreground leading-5 line-clamp-3">
+                      {ticket.description}
+                    </p>
                   )}
 
                   <div className="mt-3 flex items-center justify-between gap-2 text-xs">
