@@ -17,9 +17,10 @@ interface Meeting {
 
 interface MeetingCardsProps {
   onSelectMeeting: (meetingId: string) => void;
+  onCreateTicket?: (meetingId: string) => void;
 }
 
-export function MeetingCards({ onSelectMeeting }: MeetingCardsProps) {
+export function MeetingCards({ onSelectMeeting, onCreateTicket }: MeetingCardsProps) {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +48,7 @@ export function MeetingCards({ onSelectMeeting }: MeetingCardsProps) {
 
   async function deleteMeeting(e: React.MouseEvent, meetingId: string) {
     e.stopPropagation(); // prevent opening the meeting
-    if (!confirm('Delete this meeting and all its spec blocks?')) return;
+    if (!confirm('Delete this meeting and all its tickets?')) return;
 
     setDeleting(meetingId);
     try {
@@ -149,6 +150,18 @@ export function MeetingCards({ onSelectMeeting }: MeetingCardsProps) {
               })}
             </p>
             <div className="flex gap-2">
+              {onCreateTicket && (
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onCreateTicket(meeting.id);
+                  }}
+                  variant="outline"
+                  className="border-primary/20 text-primary hover:bg-primary/10 font-medium rounded-lg px-4 py-1.5 text-sm"
+                >
+                  New Ticket
+                </Button>
+              )}
               <Button
                 onClick={(e) => {
                   e.stopPropagation();

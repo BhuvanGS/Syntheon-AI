@@ -6,9 +6,11 @@ import {
   CheckCircle,
   ExternalLink,
   Loader2,
+  Plus,
   Rocket,
   Video,
 } from 'lucide-react';
+import { ManualTicketDialog } from '@/components/manual-ticket-dialog';
 
 interface Ticket {
   id: string;
@@ -52,6 +54,7 @@ export function TicketDetail({ meetingId, onSelectMeeting }: TicketDetailProps) 
   const [shipResult, setShipResult] = useState<{ status: 'idle' | 'planning' | 'planned' | 'executing' | 'done' | 'error'; plan?: any; linearTicketBundle?: any; featureRequest?: string; issue?: any; pullRequest?: any; committedFiles?: string[]; error?: string; }>({ status: 'idle' });
   const [refreshKey, setRefreshKey] = useState(Date.now());
   const [savingTicketId, setSavingTicketId] = useState<string | null>(null);
+  const [isManualTicketOpen, setIsManualTicketOpen] = useState(false);
 
   useEffect(() => {
     fetchTickets();
@@ -227,13 +230,23 @@ export function TicketDetail({ meetingId, onSelectMeeting }: TicketDetailProps) 
 
   return (
     <div className="max-w-5xl">
-      <div className="flex items-start justify-between mb-2">
-        <h1 className="text-4xl font-playfair font-bold text-foreground">{meetingTitle}</h1>
-        {isFollowUp && (
-          <span className="text-xs bg-primary/20 text-primary px-3 py-1 rounded-full font-medium mt-2">
-            Follow-up meeting
-          </span>
-        )}
+      <div className="flex items-start justify-between mb-2 gap-4 flex-wrap">
+        <div>
+          <h1 className="text-4xl font-playfair font-bold text-foreground">{meetingTitle}</h1>
+          {isFollowUp && (
+            <span className="text-xs bg-primary/20 text-primary px-3 py-1 rounded-full font-medium mt-3 inline-flex">
+              Follow-up meeting
+            </span>
+          )}
+        </div>
+
+        <button
+          onClick={() => setIsManualTicketOpen(true)}
+          className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/15 transition-colors"
+        >
+          <Plus className="h-4 w-4" />
+          New ticket
+        </button>
       </div>
 
       {project && (
@@ -469,6 +482,14 @@ export function TicketDetail({ meetingId, onSelectMeeting }: TicketDetailProps) 
           <span>{tickets.length} total tickets</span>
           <span>{blockedCount} blocked</span>
         </div>
+
+        <ManualTicketDialog
+          open={isManualTicketOpen}
+          onOpenChange={setIsManualTicketOpen}
+          meetings={[{ id: meetingId, projectName: meetingTitle }]}
+          defaultMeetingId={meetingId}
+          onCreated={fetchTickets}
+        />
       </div>
     </div>
   );

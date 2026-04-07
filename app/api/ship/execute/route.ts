@@ -35,7 +35,6 @@ export async function POST(req: NextRequest) {
       meetingId,
       projectId,
       tickets,
-      specs,
       meetingTitle,
       isFollowUp,
     } = await req.json();
@@ -94,7 +93,7 @@ export async function POST(req: NextRequest) {
 
     // Step 7: Create or update project
     const repoInfo = getRepoInfo(githubOwner);
-    const ticketItems = tickets ?? specs ?? [];
+    const ticketItems = tickets ?? [];
     const ticketTitles = ticketItems?.map((t: any) => t.title) ?? [];
     const ticketIds = ticketItems?.map((t: any) => t.id) ?? [];
     const nonWorkflowFiles = committedFiles.filter((f) => !f.includes('.github'));
@@ -130,7 +129,6 @@ export async function POST(req: NextRequest) {
           deployUrl: projectDeployUrl,
           branchBase: 'main',
           meetings: meetingId ? [meetingId] : [],
-          specIds: ticketIds,
           ticketIds,
           files: nonWorkflowFiles,
           context: ticketTitles.join(', '),

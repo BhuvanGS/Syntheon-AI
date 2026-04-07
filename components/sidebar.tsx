@@ -1,18 +1,22 @@
 'use client';
 
-import { LayoutDashboard, Calendar, BarChart3, Settings, Sprout } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { LayoutDashboard, Calendar, BarChart3, Settings, FolderKanban, Plus, Sprout } from 'lucide-react';
 import Link from 'next/link';
 
 interface SidebarProps {
   currentView: string;
   onViewChange: (view: any) => void;
+  projects: Array<{ id: string; name: string }>;
+  selectedProjectId?: string | null;
+  onSelectProject: (projectId: string) => void;
+  onCreateProject: () => void;
 }
 
-export function Sidebar({ currentView, onViewChange }: SidebarProps) {
+export function Sidebar({ currentView, onViewChange, projects, selectedProjectId, onSelectProject, onCreateProject }: SidebarProps) {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'meetings', label: 'Meetings', icon: Calendar },
+    { id: 'projects', label: 'Projects', icon: FolderKanban },
     { id: 'tickets', label: 'Tickets', icon: BarChart3 },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
@@ -115,6 +119,80 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
             </button>
           );
         })}
+
+        <div style={{ marginTop: '1.5rem', padding: '0 0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+            <p style={{ fontSize: '11px', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8a8a80', margin: 0 }}>
+              Projects
+            </p>
+            <button
+              onClick={onCreateProject}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                border: 'none',
+                background: 'transparent',
+                color: '#5c7c5d',
+                fontSize: '12px',
+                cursor: 'pointer',
+                padding: 0,
+                fontFamily: "'DM Sans', sans-serif",
+              }}
+            >
+              <Plus style={{ width: '14px', height: '14px' }} />
+              New
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {projects.length === 0 ? (
+              <div
+                style={{
+                  border: '1px dashed #d9cfbf',
+                  borderRadius: '12px',
+                  padding: '12px',
+                  color: '#8a8a80',
+                  fontSize: '12px',
+                  lineHeight: 1.5,
+                  background: '#fbf9f5',
+                }}
+              >
+                Create your first project to organize meetings and tickets.
+              </div>
+            ) : (
+              projects.slice(0, 6).map((project) => {
+                const active = currentView === 'project-detail' && project.id === selectedProjectId;
+
+                return (
+                  <button
+                    key={project.id}
+                    onClick={() => onSelectProject(project.id)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '8px',
+                      width: '100%',
+                      border: '1px solid transparent',
+                      background: active ? '#eaf2e8' : 'transparent',
+                      color: '#5a5a52',
+                      borderRadius: '10px',
+                      padding: '10px 12px',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      fontSize: '13px',
+                      fontFamily: "'DM Sans', sans-serif",
+                    }}
+                  >
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{project.name}</span>
+                    <FolderKanban style={{ width: '14px', height: '14px', color: '#8aab7e', flexShrink: 0 }} />
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
       </nav>
 
       {/* Divider */}

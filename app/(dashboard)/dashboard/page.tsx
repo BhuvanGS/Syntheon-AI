@@ -7,13 +7,50 @@ import { Sidebar } from '@/components/sidebar';
 import { MeetingCards } from '@/components/meeting-cards';
 import { TicketDetail } from '@/components/ticket-detail';
 import { TicketsBoard } from '@/components/tickets-board';
+import { ProjectsWorkspace } from '@/components/projects-workspace';
+import { ProjectCreateDialog } from '@/components/project-create-dialog';
+import { ManualTicketDialog } from '@/components/manual-ticket-dialog';
 import { Github } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { GitHubConnectButton } from '@/components/github-connect-button';
 import { ApiKeyManager } from '@/components/api-key-manager';
 import { LinearConnectButton } from '@/components/linear-connect-button';
 
-type ViewType = 'dashboard' | 'meetings' | 'tickets' | 'settings' | 'ticket-detail';
+type ViewType = 'dashboard' | 'meetings' | 'projects' | 'tickets' | 'settings' | 'ticket-detail' | 'project-detail';
+
+interface Project {
+  id: string;
+  name: string;
+  repo: string;
+  deployUrl?: string | null;
+  meetings: string[];
+  ticketIds: string[];
+  files: string[];
+  context: string;
+  updatedAt?: string;
+}
+
+interface Meeting {
+  id: string;
+  projectName: string;
+  meetingId: string;
+  projectId?: string | null;
+  specsDetected: number;
+  status: 'completed' | 'processing' | 'failed';
+  date: string;
+  platform: string;
+  deployUrl?: string | null;
+}
+
+interface Ticket {
+  id: string;
+  title: string;
+  description: string;
+  status: 'backlog' | 'in_progress' | 'done' | 'blocked';
+  assignee?: string | null;
+  projectId?: string | null;
+  meeting_id: string;
+}
 
 const pageStyle: React.CSSProperties = {
   padding: '2rem 2.5rem',
@@ -40,6 +77,9 @@ const subStyle: React.CSSProperties = {
 
 function DashboardContent() {
   const searchParams = useSearchParams();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [tickets, setTickets] = useState<Ticket[]>([]);
   const [githubConnected, setGithubConnected] = useState(false);
   const [githubUser, setGithubUser] = useState<string | null>(null);
   const [linearConnected, setLinearConnected] = useState(false);
@@ -47,6 +87,10 @@ function DashboardContent() {
   const [integrationStatusLoaded, setIntegrationStatusLoaded] = useState(false);
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
   const [selectedMeeting, setSelectedMeeting] = useState<string | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [isProjectCreateOpen, setIsProjectCreateOpen] = useState(false);
+  const [isMeetingTicketOpen, setIsMeetingTicketOpen] = useState(false);
+  const [meetingTicketMeetingId, setMeetingTicketMeetingId] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -71,6 +115,45 @@ function DashboardContent() {
     }
 
     void loadIntegrationStatus();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadWorkspace() {
+      try {
+        const [projectsRes, meetingsRes, ticketsRes] = await Promise.all([
+          fetch('/api/projects'),
+          fetch('/api/meetings'),
+          fetch('/api/tickets'),
+        ]);
+
+        if (!isMounted) return;
+
+        if (projectsRes.ok) {
+          const projectsData = await projectsRes.json();
+          setProjects(projectsData);
+        }
+
+        if (meetingsRes.ok) {
+          const meetingsData = await meetingsRes.json();
+          setMeetings(meetingsData);
+        }
+
+        if (ticketsRes.ok) {
+          const ticketsData = await ticketsRes.json();
+          setTickets(ticketsData);
+        }
+      } catch (error) {
+        console.error('Failed to load workspace data:', error);
+      }
+    }
+
+    void loadWorkspace();
 
     return () => {
       isMounted = false;
@@ -136,11 +219,57 @@ function DashboardContent() {
   function handleViewChange(view: ViewType) {
     setCurrentView(view);
     if (view !== 'ticket-detail') setSelectedMeeting(null);
+    if (view !== 'project-detail') setSelectedProjectId(null);
   }
 
   function handleMeetingSelect(meetingId: string) {
     setSelectedMeeting(meetingId);
     setCurrentView('ticket-detail');
+  }
+
+  function handleMeetingTicketCreate(meetingId: string) {
+    setMeetingTicketMeetingId(meetingId);
+    setIsMeetingTicketOpen(true);
+  }
+
+  function handleProjectSelect(projectId: string) {
+    setSelectedProjectId(projectId);
+    setCurrentView('project-detail');
+  }
+
+  async function refreshWorkspace() {
+    try {
+      const [projectsRes, meetingsRes, ticketsRes] = await Promise.all([
+        fetch('/api/projects'),
+        fetch('/api/meetings'),
+        fetch('/api/tickets'),
+      ]);
+
+      if (projectsRes.ok) setProjects(await projectsRes.json());
+      if (meetingsRes.ok) setMeetings(await meetingsRes.json());
+      if (ticketsRes.ok) setTickets(await ticketsRes.json());
+    } catch (error) {
+      console.error('Failed to refresh workspace data:', error);
+    }
+  }
+
+  async function handleCreateProject(payload: { name: string; context: string; deployUrl: string; branchBase: string }) {
+    const res = await fetch('/api/projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data?.error || 'Failed to create project');
+    }
+
+    const data = await res.json();
+    await refreshWorkspace();
+    setSelectedProjectId(data.project.id);
+    setCurrentView('project-detail');
+    toast({ title: 'Project created', description: `${data.project.name} is ready.` });
   }
 
   async function handleDisconnectGithub() {
@@ -179,7 +308,14 @@ function DashboardContent() {
 
   return (
     <div style={{ display: 'flex', height: '100vh', background: '#faf8f4' }}>
-      <Sidebar currentView={currentView} onViewChange={handleViewChange} />
+      <Sidebar
+        currentView={currentView}
+        onViewChange={handleViewChange}
+        projects={projects}
+        selectedProjectId={selectedProjectId}
+        onSelectProject={handleProjectSelect}
+        onCreateProject={() => setIsProjectCreateOpen(true)}
+      />
 
       <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         <div
@@ -197,6 +333,8 @@ function DashboardContent() {
           <p style={{ fontSize: '13px', color: '#8a8a80', fontFamily: "'DM Sans', sans-serif", fontWeight: '300' }}>
             {currentView === 'dashboard' && 'Overview of your meetings and work items'}
             {currentView === 'meetings' && 'All your recorded meetings'}
+            {currentView === 'projects' && 'Workspace projects and project tickets'}
+            {currentView === 'project-detail' && 'Project workspace and meeting history'}
             {currentView === 'tickets' && 'All extracted tickets'}
             {currentView === 'settings' && 'Configure your workspace'}
             {currentView === 'ticket-detail' && 'Tickets for this meeting'}
@@ -212,7 +350,106 @@ function DashboardContent() {
             <div style={pageStyle}>
               <h1 style={headingStyle}>Dashboard</h1>
               <p style={subStyle}>Overview of your meetings and work items</p>
-              <MeetingCards onSelectMeeting={handleMeetingSelect} />
+
+              <div
+                style={{
+                  background: '#ffffff',
+                  border: '1px solid #e8dfd0',
+                  borderRadius: '12px',
+                  padding: '1.5rem',
+                  marginBottom: '2rem',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', marginBottom: '1.25rem' }}>
+                  <div>
+                    <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: '1.4rem', fontWeight: '400', color: '#2c2c28', marginBottom: '0.25rem' }}>
+                      Projects
+                    </h2>
+                    <p style={{ fontSize: '13px', color: '#8a8a80', fontFamily: "'DM Sans', sans-serif" }}>
+                      Keep track of your active workspaces and jump back in quickly.
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => handleViewChange('projects')}
+                    style={{
+                      background: '#f4f7f1',
+                      border: '1px solid #d9e4d2',
+                      color: '#3d5a3e',
+                      padding: '0.55rem 1rem',
+                      borderRadius: '999px',
+                      fontSize: '12px',
+                      fontFamily: "'DM Sans', sans-serif",
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    View all projects
+                  </button>
+                </div>
+
+                {projects.length === 0 ? (
+                  <div style={{ border: '1px dashed #d9cfbf', borderRadius: '12px', padding: '1.25rem', background: '#fbf9f5', textAlign: 'center' }}>
+                    <p style={{ margin: 0, color: '#5a5a52', fontSize: '14px', fontFamily: "'DM Sans', sans-serif" }}>
+                      No projects yet. Create one to organize meetings and tickets.
+                    </p>
+                    <button
+                      onClick={() => setIsProjectCreateOpen(true)}
+                      style={{
+                        marginTop: '1rem',
+                        background: '#3d5a3e',
+                        color: '#f8fbf7',
+                        border: 'none',
+                        padding: '0.65rem 1rem',
+                        borderRadius: '999px',
+                        fontSize: '12px',
+                        fontFamily: "'DM Sans', sans-serif",
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Create project
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+                    {projects.slice(0, 4).map((project) => {
+                      const projectTickets = tickets.filter((ticket) => ticket.projectId === project.id).length;
+                      const projectMeetings = meetings.filter((meeting) => meeting.projectId === project.id).length;
+
+                      return (
+                        <button
+                          key={project.id}
+                          onClick={() => handleProjectSelect(project.id)}
+                          style={{
+                            textAlign: 'left',
+                            background: '#ffffff',
+                            border: '1px solid #e8dfd0',
+                            borderRadius: '16px',
+                            padding: '1rem',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            boxShadow: '0 1px 0 rgba(61, 90, 62, 0.03)',
+                          }}
+                        >
+                          <p style={{ margin: '0 0 0.35rem', fontFamily: "'DM Serif Display', serif", fontSize: '1.05rem', color: '#2c2c28' }}>
+                            {project.name}
+                          </p>
+                          <p style={{ margin: '0 0 0.75rem', fontSize: '12px', color: '#8a8a80', fontFamily: "'DM Sans', sans-serif" }}>
+                            {project.repo}
+                          </p>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', fontSize: '12px', color: '#5a5a52', fontFamily: "'DM Sans', sans-serif" }}>
+                            <span>{projectMeetings} meetings</span>
+                            <span>{projectTickets} tickets</span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <MeetingCards onSelectMeeting={handleMeetingSelect} onCreateTicket={handleMeetingTicketCreate} />
             </div>
           )}
 
@@ -220,7 +457,7 @@ function DashboardContent() {
             <div style={pageStyle}>
               <h1 style={headingStyle}>Meetings</h1>
               <p style={subStyle}>All your recorded meetings</p>
-              <MeetingCards onSelectMeeting={handleMeetingSelect} />
+              <MeetingCards onSelectMeeting={handleMeetingSelect} onCreateTicket={handleMeetingTicketCreate} />
             </div>
           )}
 
@@ -254,6 +491,21 @@ function DashboardContent() {
                 ← Back to Meetings
               </button>
               <TicketDetail meetingId={selectedMeeting} onSelectMeeting={handleMeetingSelect} />
+            </div>
+          )}
+
+          {(currentView === 'projects' || currentView === 'project-detail') && (
+            <div style={pageStyle}>
+              <ProjectsWorkspace
+                projects={projects}
+                meetings={meetings}
+                tickets={tickets}
+                selectedProjectId={selectedProjectId}
+                onSelectProject={handleProjectSelect}
+                onSelectMeeting={handleMeetingSelect}
+                onCreateProject={() => setIsProjectCreateOpen(true)}
+                onRefresh={refreshWorkspace}
+              />
             </div>
           )}
 
@@ -359,6 +611,20 @@ function DashboardContent() {
           )}
         </div>
       </main>
+
+      <ProjectCreateDialog
+        open={isProjectCreateOpen}
+        onOpenChange={setIsProjectCreateOpen}
+        onCreate={handleCreateProject}
+      />
+
+      <ManualTicketDialog
+        open={isMeetingTicketOpen}
+        onOpenChange={setIsMeetingTicketOpen}
+        meetings={meetings.map((meeting) => ({ id: meeting.id, projectName: meeting.projectName }))}
+        defaultMeetingId={meetingTicketMeetingId}
+        onCreated={refreshWorkspace}
+      />
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 
 import { createBot } from '@/lib/skribby';
-import { saveMeeting, getProjectById, getActiveMeetingByUrl } from '@/lib/db';
+import { saveMeeting, getProjectById, getActiveMeetingByUrl, addMeetingToProject } from '@/lib/db';
 
 export async function POST(req: NextRequest) {
   try {
@@ -62,6 +62,8 @@ export async function POST(req: NextRequest) {
         botId: bot.id,
         projectId: projectId,
       });
+
+      await addMeetingToProject(projectId, meetingId);
     } catch (err: any) {
       console.log('Duplicate follow-up detected (DB constraint)');
 
