@@ -465,12 +465,18 @@ export async function saveExtractedTickets(tickets: Ticket[]): Promise<Ticket[]>
   return uniqueTickets;
 }
 
-export async function getTicketsByMeetingId(meetingId: string): Promise<Ticket[]> {
-  const { data, error } = await supabaseAdmin
+export async function getTicketsByMeetingId(
+  meetingId: string,
+  options?: { originalOnly?: boolean }
+): Promise<Ticket[]> {
+  let query = supabaseAdmin
     .from('tickets')
     .select('*')
-    .eq('meeting_id', meetingId)
-    .order('created_at', { ascending: true });
+    .eq('meeting_id', meetingId);
+  if (options?.originalOnly) {
+    query = query.is('project_id', null);
+  }
+  const { data, error } = await query.order('created_at', { ascending: true });
   if (error) throw error;
   return (data ?? []).map(rowToTicket);
 }

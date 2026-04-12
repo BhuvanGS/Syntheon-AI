@@ -3,12 +3,14 @@ import { auth } from '@clerk/nextjs/server';
 import { randomUUID } from 'crypto';
 import {
   addTicketsToProject,
+  createDependency,
   getMeetingById,
   getProjectById,
   getTicketsByProjectId,
   getTicketsByMeetingId,
   saveTickets,
 } from '@/lib/db';
+import { inferProjectTicketDependencies } from '@/lib/groq';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -42,7 +44,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       });
     }
 
-    const sourceTickets = await getTicketsByMeetingId(sourceMeetingId);
+    const sourceTickets = await getTicketsByMeetingId(sourceMeetingId, { originalOnly: true });
     if (sourceTickets.length === 0) {
       return NextResponse.json({ error: 'No tickets found for this meeting' }, { status: 400 });
     }
@@ -62,9 +64,42 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       importedTickets.map((ticket) => ticket.id)
     );
 
+    let dependenciesMapped = 0;
+    let dependencyInferenceWarning: string | null = null;
+
+    try {
+      const fullProjectTickets = await getTicketsByProjectId(project.id);
+      const inferredDependencies = await inferProjectTicketDependencies(
+        fullProjectTickets.map((ticket) => ({
+          id: ticket.id,
+          title: ticket.title,
+          description: ticket.description || '',
+          status: ticket.status,
+        }))
+      );
+
+      for (const dep of inferredDependencies) {
+        const result = await createDependency({
+          id: randomUUID(),
+          project_id: project.id,
+          ticket_id: dep.ticket_id,
+          depends_on_ticket_id: dep.depends_on_ticket_id,
+          dependency_type: dep.dependency_type,
+          strength: dep.strength,
+          note: dep.note ?? null,
+        });
+        if (!result.error) dependenciesMapped += 1;
+      }
+    } catch (dependencyErr) {
+      console.error('Dependency auto-mapping failed:', dependencyErr);
+      dependencyInferenceWarning = 'Tickets imported, but dependency auto-mapping could not be completed.';
+    }
+
     return NextResponse.json({
       success: true,
       importedCount: importedTickets.length,
+      dependenciesMapped,
+      dependencyInferenceWarning,
       meeting: {
         id: meeting.id,
         projectName: meeting.projectName,

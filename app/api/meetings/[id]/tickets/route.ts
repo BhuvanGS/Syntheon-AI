@@ -17,7 +17,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
-    const tickets = await getTicketsByMeetingId(id);
+    const tickets = await getTicketsByMeetingId(id, { originalOnly: true });
     return NextResponse.json(tickets);
   } catch (error) {
     console.error('Failed to fetch tickets:', error);

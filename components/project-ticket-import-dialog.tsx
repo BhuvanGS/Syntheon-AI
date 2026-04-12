@@ -17,6 +17,7 @@ interface Meeting {
   id: string;
   projectName: string;
   meetingId: string;
+  specsDetected: number;
   status: 'completed' | 'processing' | 'failed' | 'not_admitted';
   date: string;
   platform: string;
@@ -32,7 +33,8 @@ interface ProjectTicketImportDialogProps {
   onOpenChange: (open: boolean) => void;
   projectId: string;
   meetings: Meeting[];
-  tickets: Ticket[];
+  tickets?: Ticket[];
+  projectTickets: Ticket[];
   onCreated?: () => Promise<void> | void;
 }
 
@@ -42,28 +44,25 @@ export function ProjectTicketImportDialog({
   projectId,
   meetings,
   tickets,
+  projectTickets,
   onCreated,
 }: ProjectTicketImportDialogProps) {
   const [importingMeetingId, setImportingMeetingId] = useState<string | null>(null);
 
   const meetingTicketCounts = useMemo(() => {
-    return tickets.reduce<Record<string, number>>((acc, ticket) => {
-      if (!ticket.meeting_id) return acc;
-      acc[ticket.meeting_id] = (acc[ticket.meeting_id] || 0) + 1;
-      return acc;
-    }, {});
-  }, [tickets]);
+    return Object.fromEntries(meetings.map((m) => [m.id, m.specsDetected ?? 0]));
+  }, [meetings]);
 
   const importedMeetingIds = useMemo(() => {
     return new Set(
-      tickets
+      projectTickets
         .filter(
           (ticket) =>
             ticket.meeting_id && meetings.some((meeting) => meeting.id === ticket.meeting_id)
         )
         .map((ticket) => ticket.meeting_id as string)
     );
-  }, [meetings, tickets]);
+  }, [meetings, projectTickets]);
 
   async function handleImport(meetingId: string) {
     setImportingMeetingId(meetingId);
@@ -74,10 +73,23 @@ export function ProjectTicketImportDialog({
         body: JSON.stringify({ sourceMeetingId: meetingId }),
       });
 
+      const data = await res.json().catch(() => ({}));
+
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
         throw new Error(data?.error || 'Failed to import tickets');
       }
+
+      const importedCount = typeof data?.importedCount === 'number' ? data.importedCount : 0;
+      const dependenciesMapped =
+        typeof data?.dependenciesMapped === 'number' ? data.dependenciesMapped : 0;
+      const warning =
+        typeof data?.dependencyInferenceWarning === 'string' ? data.dependencyInferenceWarning : '';
+
+      const summary = data?.skipped
+        ? data?.message || 'Tickets from this meeting are already in the project.'
+        : `Imported ${importedCount} ticket${importedCount === 1 ? '' : 's'} and auto-mapped ${dependenciesMapped} dependenc${dependenciesMapped === 1 ? 'y' : 'ies'}.`;
+
+      window.alert(warning ? `${summary}\n\n${warning}` : summary);
 
       await onCreated?.();
       onOpenChange(false);
@@ -113,7 +125,7 @@ export function ProjectTicketImportDialog({
         ) : (
           <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
             {meetings.map((meeting) => {
-              const count = meetingTicketCounts[meeting.id] ?? 0;
+              const count = meetingTicketCounts[meeting.id] ?? 0;  // from specsDetected
               const isImporting = importingMeetingId === meeting.id;
               const isAlreadyImported = importedMeetingIds.has(meeting.id);
 

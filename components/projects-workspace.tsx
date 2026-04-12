@@ -46,6 +46,7 @@ interface Meeting {
   id: string;
   projectName: string;
   meetingId: string;
+  specsDetected: number;
   projectId?: string | null;
   status: 'completed' | 'processing' | 'failed' | 'not_admitted';
   date: string;
@@ -637,6 +638,7 @@ export function ProjectsWorkspace({
         projectId={selectedProject.id}
         meetings={meetings}
         tickets={tickets}
+        projectTickets={projectTickets}
         onCreated={onRefresh}
       />
 
