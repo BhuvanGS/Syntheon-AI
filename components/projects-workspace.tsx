@@ -12,6 +12,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { ManualTicketDialog } from '@/components/manual-ticket-dialog';
 import { TicketDependencyPanel } from '@/components/ticket-dependency-panel';
 import { TicketDependencyGraph } from '@/components/ticket-dependency-graph';
@@ -28,7 +35,19 @@ import {
   Pencil,
   Trash2,
   GitBranch,
+  MoreHorizontal,
+  Calendar,
+  LayoutList,
+  KanbanSquare,
+  BarChart3,
+  CheckCircle2,
+  Circle,
+  Clock,
+  AlertCircle,
+  ChevronLeft,
 } from 'lucide-react';
+
+type ProjectTab = 'meetings' | 'tickets' | 'list' | 'kanban' | 'analytics' | 'dependencies';
 
 interface Project {
   id: string;
@@ -86,6 +105,9 @@ export function ProjectsWorkspace({
   onDeleteProject,
   onRefresh,
 }: ProjectsWorkspaceProps) {
+  const [projectTab, setProjectTab] = useState<ProjectTab>('meetings');
+  const [draggedTicketId, setDraggedTicketId] = useState<string | null>(null);
+  const [dragOverColumn, setDragOverColumn] = useState<Ticket['status'] | null>(null);
   const [isMeetingDialogOpen, setIsMeetingDialogOpen] = useState(false);
   const [isTicketDialogOpen, setIsTicketDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -218,6 +240,45 @@ export function ProjectsWorkspace({
     }
   }
 
+  async function handleKanbanDrop(ticketId: string, newStatus: Ticket['status']) {
+    const ticket = projectTickets.find((t) => t.id === ticketId);
+    if (!ticket || ticket.status === newStatus) return;
+
+    let res = await fetch(`/api/tickets/${ticketId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 422 && data?.error === 'hard_blocked') {
+        window.alert(data?.message || 'Blocked by unresolved hard dependencies.');
+        return;
+      }
+      if (res.status === 422 && data?.error === 'soft_blocked') {
+        const proceed = window.confirm(
+          `${data?.message || 'Unresolved soft dependencies.'}\n\nProceed anyway?`
+        );
+        if (proceed) {
+          res = await fetch(`/api/tickets/${ticketId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus, bypassGate: true }),
+          });
+          if (!res.ok) return;
+        } else {
+          return;
+        }
+      }
+    }
+    await onRefresh();
+  }
+
+  useEffect(() => {
+    setProjectTab('meetings');
+  }, [selectedProjectId]);
+
   useEffect(() => {
     if (!selectedProject) return;
 
@@ -325,292 +386,446 @@ export function ProjectsWorkspace({
     );
   }
 
+  const tabs: { id: ProjectTab; label: string; icon: React.ReactNode }[] = [
+    { id: 'meetings', label: 'Meetings', icon: <Calendar className="h-4 w-4" /> },
+    { id: 'tickets', label: 'Tickets', icon: <Ticket className="h-4 w-4" /> },
+    { id: 'list', label: 'List', icon: <LayoutList className="h-4 w-4" /> },
+    { id: 'kanban', label: 'Kanban', icon: <KanbanSquare className="h-4 w-4" /> },
+    { id: 'analytics', label: 'Analytics', icon: <BarChart3 className="h-4 w-4" /> },
+    { id: 'dependencies', label: 'Dependencies', icon: <GitBranch className="h-4 w-4" /> },
+  ];
+
+  const kanbanColumns: { status: Ticket['status']; label: string; color: string }[] = [
+    { status: 'backlog', label: 'Backlog', color: '#8a8a80' },
+    { status: 'in_progress', label: 'In Progress', color: '#3d7abf' },
+    { status: 'done', label: 'Done', color: '#3d8a5e' },
+    { status: 'blocked', label: 'Blocked', color: '#b84040' },
+  ];
+
+  const statusConfig: Record<Ticket['status'], { label: string; color: string; bg: string; icon: React.ReactNode }> = {
+    backlog: { label: 'Backlog', color: '#8a8a80', bg: '#f3f3f0', icon: <Circle className="h-3 w-3" /> },
+    in_progress: { label: 'In Progress', color: '#3d7abf', bg: '#eff5ff', icon: <Clock className="h-3 w-3" /> },
+    done: { label: 'Done', color: '#3d8a5e', bg: '#edf7f1', icon: <CheckCircle2 className="h-3 w-3" /> },
+    blocked: { label: 'Blocked', color: '#b84040', bg: '#fdf0f0', icon: <AlertCircle className="h-3 w-3" /> },
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary mb-3">
-            <FolderKanban className="h-3.5 w-3.5" />
-            Project workspace
+    <div className="flex flex-col h-full">
+      {/* Top bar: back + project name + tabs + 3-dot */}
+      <div
+        style={{
+          borderBottom: '1px solid #e8dfd0',
+          background: '#faf8f4',
+          padding: '0 2rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 0,
+        }}
+      >
+        {/* Row 1: back + title + 3-dot */}
+        <div className="flex items-center justify-between py-3 gap-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => onSelectProject('')}
+              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Projects
+            </button>
+            <span className="text-muted-foreground/40">/</span>
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10">
+                <FolderKanban className="h-4 w-4 text-primary" />
+              </div>
+              <h1 className="font-playfair text-xl font-bold text-foreground">
+                {selectedProject.name}
+              </h1>
+            </div>
           </div>
-          <h1 className="text-4xl font-playfair font-bold text-foreground">
-            {selectedProject.name}
-          </h1>
-          <p className="text-muted-foreground mt-2 max-w-3xl">
-            {selectedProject.context || 'Add context so every meeting and ticket stays aligned.'}
-          </p>
+
+          {/* 3-dot dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="rounded-full h-8 w-8 p-0">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52 bg-[#faf8f4] border-border">
+              <DropdownMenuItem
+                onClick={() => setIsTicketDialogOpen(true)}
+                className="gap-2 cursor-pointer"
+              >
+                <Ticket className="h-4 w-4 text-primary" />
+                New ticket
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={onCreateProject}
+                className="gap-2 cursor-pointer"
+              >
+                <Plus className="h-4 w-4 text-primary" />
+                New project
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => setIsImportDialogOpen(true)}
+                className="gap-2 cursor-pointer"
+              >
+                <Download className="h-4 w-4 text-primary" />
+                Import tickets from meeting
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setIsMeetingDialogOpen(true)}
+                className="gap-2 cursor-pointer"
+              >
+                <Video className="h-4 w-4 text-primary" />
+                Start meeting
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => setProjectToDelete(selectedProject)}
+                className="gap-2 cursor-pointer text-destructive focus:text-destructive"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete project
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <Button
-            variant="outline"
-            onClick={onCreateProject}
-            className="rounded-full gap-2 bg-white"
-          >
-            <Plus className="h-4 w-4" />
-            New project
-          </Button>
-          <Button onClick={() => setIsMeetingDialogOpen(true)} className="rounded-full gap-2">
-            <Video className="h-4 w-4" />
-            Start meeting
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => setIsImportDialogOpen(true)}
-            className="rounded-full gap-2 bg-white"
-          >
-            <Download className="h-4 w-4" />
-            Import tickets
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => setIsTicketDialogOpen(true)}
-            className="rounded-full gap-2"
-          >
-            <Ticket className="h-4 w-4" />
-            New ticket
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={() => setProjectToDelete(selectedProject)}
-            className="rounded-full gap-2"
-          >
-            <Trash2 className="h-4 w-4" />
-            Delete project
-          </Button>
+        {/* Row 2: tab bar */}
+        <div className="flex items-center gap-1 -mb-px">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setProjectTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-all ${
+                projectTab === tab.id
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+              }`}
+            >
+              {tab.icon}
+              {tab.label}
+            </button>
+          ))}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1.5fr_1fr] gap-6">
-        <Card className="border-border bg-card">
-          <CardHeader className="border-b border-border/70">
-            <CardTitle className="font-playfair text-2xl">Project timeline</CardTitle>
-            <CardDescription>Meetings linked to this project, ordered by creation.</CardDescription>
-          </CardHeader>
-          <CardContent className="p-6 space-y-4">
+      {/* Tab content */}
+      <div className="flex-1 overflow-auto p-6 space-y-6">
+
+        {/* ── MEETINGS tab ── */}
+        {projectTab === 'meetings' && (
+          <div className="space-y-4">
+            <h2 className="font-playfair text-2xl font-bold text-foreground">Meetings</h2>
             {projectMeetings.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-border bg-[#faf8f4] p-8 text-center">
+              <div className="rounded-2xl border border-dashed border-border bg-white p-12 text-center">
+                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+                  <Calendar className="h-6 w-6 text-primary" />
+                </div>
                 <p className="font-medium text-foreground mb-2">No meetings yet</p>
-                <p className="text-sm text-muted-foreground mb-5">
-                  Start a project meeting to begin collecting tickets.
-                </p>
+                <p className="text-sm text-muted-foreground mb-5">Start a meeting to begin collecting tickets.</p>
                 <Button onClick={() => setIsMeetingDialogOpen(true)} className="rounded-full gap-2">
                   <Video className="h-4 w-4" />
                   Start first meeting
                 </Button>
               </div>
             ) : (
-              projectMeetings.map((meeting) => (
-                <button
-                  key={meeting.id}
-                  onClick={() => onSelectMeeting(meeting.id)}
-                  className="w-full text-left rounded-2xl border border-border bg-white p-4 hover:border-primary/30 hover:shadow-md transition-all"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="font-playfair text-lg font-bold text-foreground">
-                        {meeting.projectName}
-                      </p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {meeting.platform} • {new Date(meeting.date).toLocaleDateString()}
-                      </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {projectMeetings.map((meeting) => (
+                  <button
+                    key={meeting.id}
+                    onClick={() => onSelectMeeting(meeting.id)}
+                    className="text-left rounded-2xl border border-border bg-white p-5 hover:border-primary/30 hover:shadow-md transition-all"
+                  >
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <p className="font-playfair text-lg font-bold text-foreground">{meeting.projectName}</p>
+                      <Badge
+                        className={
+                          meeting.status === 'completed'
+                            ? 'bg-green-100 text-green-800'
+                            : meeting.status === 'not_admitted'
+                              ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                              : 'bg-primary/10 text-primary'
+                        }
+                      >
+                        {meeting.status === 'not_admitted' ? '!' : meeting.status}
+                      </Badge>
                     </div>
-                    <Badge
-                      className={
-                        meeting.status === 'completed'
-                          ? 'bg-green-100 text-green-800'
-                          : meeting.status === 'not_admitted'
-                            ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                            : 'bg-primary/10 text-primary'
-                      }
-                      title={
-                        meeting.status === 'not_admitted'
-                          ? 'Syntheon AI not admitted to meeting'
-                          : undefined
-                      }
-                    >
-                      {meeting.status === 'not_admitted' ? '!' : meeting.status}
-                    </Badge>
-                  </div>
-                </button>
-              ))
+                    <p className="text-sm text-muted-foreground">
+                      {meeting.platform} • {new Date(meeting.date).toLocaleDateString()}
+                    </p>
+                    <p className="mt-3 text-xs text-primary font-medium">Open meeting →</p>
+                  </button>
+                ))}
+              </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        )}
 
-        <Card className="border-border bg-card">
-          <CardHeader className="border-b border-border/70">
-            <CardTitle className="font-playfair text-2xl">Project summary</CardTitle>
-            <CardDescription>Jira-style control panel for this workspace.</CardDescription>
-          </CardHeader>
-          <CardContent className="p-6 space-y-5">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-2xl bg-[#faf8f4] border border-border p-4">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
-                  Meetings
-                </p>
-                <p className="text-2xl font-playfair font-bold text-foreground">
-                  {projectMeetings.length}
-                </p>
-              </div>
-              <div className="rounded-2xl bg-[#faf8f4] border border-border p-4">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
-                  Tickets
-                </p>
-                <p className="text-2xl font-playfair font-bold text-foreground">{totalTickets}</p>
+        {/* ── TICKETS tab (card grid) ── */}
+        {projectTab === 'tickets' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="font-playfair text-2xl font-bold text-foreground">Tickets</h2>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setIsImportDialogOpen(true)} className="rounded-full gap-2 bg-white" disabled={meetings.length === 0}>
+                  <Download className="h-4 w-4" />
+                  Import
+                </Button>
+                <Button onClick={() => setIsTicketDialogOpen(true)} className="rounded-full gap-2">
+                  <Ticket className="h-4 w-4" />
+                  New ticket
+                </Button>
               </div>
             </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Ready to ship</span>
-                <span className="font-medium text-foreground">{readyTickets}</span>
-              </div>
-              <div className="h-2 rounded-full bg-muted overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-primary"
-                  style={{
-                    width: `${totalTickets ? Math.min(100, (readyTickets / totalTickets) * 100) : 0}%`,
-                  }}
-                />
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-border bg-[#faf8f4] p-4 space-y-2">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Repo</p>
-              <p className="font-medium text-foreground break-all">{selectedProject.repo}</p>
-              {selectedProject.deployUrl && (
-                <p className="text-sm text-muted-foreground break-all">
-                  {selectedProject.deployUrl}
-                </p>
-              )}
-            </div>
-
-            <div className="rounded-2xl border border-border bg-[#faf8f4] p-4 space-y-2">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Files</p>
-              <p className="text-sm text-foreground">
-                {selectedProject.files.length} tracked files
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {selectedProject.ticketIds.length} linked tickets
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card className="border-border bg-card">
-        <CardHeader className="border-b border-border/70">
-          <CardTitle className="font-playfair text-2xl">Project tickets</CardTitle>
-          <CardDescription>
-            All tickets attached to this project, including manual entries.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-6">
-          {projectTickets.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-border bg-[#faf8f4] p-8 text-center">
-              <p className="font-medium text-foreground mb-2">No tickets yet</p>
-              <p className="text-sm text-muted-foreground mb-5">
-                Import tickets from any meeting to populate this project.
-              </p>
-              <div className="flex flex-wrap items-center justify-center gap-3">
-                <Button
-                  onClick={() => setIsImportDialogOpen(true)}
-                  className="rounded-full gap-2"
-                  disabled={meetings.length === 0}
-                >
+            {projectTickets.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-border bg-white p-12 text-center">
+                <p className="font-medium text-foreground mb-2">No tickets yet</p>
+                <p className="text-sm text-muted-foreground mb-5">Import tickets from a meeting or create them manually.</p>
+                <Button onClick={() => setIsImportDialogOpen(true)} className="rounded-full gap-2" disabled={meetings.length === 0}>
                   <Download className="h-4 w-4" />
                   Import tickets from meeting
                 </Button>
-                <Button
-                  onClick={() => setIsMeetingDialogOpen(true)}
-                  variant="outline"
-                  className="rounded-full gap-2 bg-white"
-                >
-                  <Video className="h-4 w-4" />
-                  Start meeting
-                </Button>
               </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {projectTickets.map((ticket) => {
-                const hasMeetingLink = Boolean(ticket.meeting_id);
-
-                return (
-                  <div
-                    key={ticket.id}
-                    onClick={() => {
-                      if (ticket.meeting_id) onSelectMeeting(ticket.meeting_id);
-                    }}
-                    onKeyDown={(e) => {
-                      if (!ticket.meeting_id) return;
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        onSelectMeeting(ticket.meeting_id);
-                      }
-                    }}
-                    role={hasMeetingLink ? 'button' : undefined}
-                    tabIndex={hasMeetingLink ? 0 : -1}
-                    className={`rounded-2xl border border-border bg-white p-4 text-left transition-all ${
-                      hasMeetingLink ? 'hover:border-primary/30 hover:shadow-md' : ''
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <h3 className="font-playfair text-lg font-bold text-foreground">
-                        {ticket.title}
-                      </h3>
-                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {projectTickets.map((ticket) => {
+                  const s = statusConfig[ticket.status];
+                  return (
+                    <div key={ticket.id} className="rounded-2xl border border-border bg-white p-4 flex flex-col gap-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="font-playfair text-base font-bold text-foreground line-clamp-2 flex-1">{ticket.title}</h3>
                         <button
                           type="button"
                           onClick={() => openTicketEditor(ticket)}
-                          className="rounded-full border border-primary/20 bg-primary/5 p-2 text-primary hover:bg-primary/10"
-                          aria-label="Update ticket"
-                          disabled={savingTicketId === ticket.id}
+                          className="rounded-full border border-primary/20 bg-primary/5 p-1.5 text-primary hover:bg-primary/10 shrink-0"
                         >
-                          <Pencil className="h-3.5 w-3.5" />
+                          <Pencil className="h-3 w-3" />
                         </button>
                       </div>
+                      <p className="text-xs text-muted-foreground line-clamp-2">{ticket.description || 'No description.'}</p>
+                      <div className="flex items-center justify-between mt-auto">
+                        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium" style={{ background: s.bg, color: s.color }}>
+                          {s.icon}{s.label}
+                        </span>
+                        <span className="text-xs text-muted-foreground">{ticket.assignee ? `@${ticket.assignee}` : 'Unassigned'}</span>
+                      </div>
                     </div>
-                    {ticket.meeting_id && !projectMeetingIdSet.has(ticket.meeting_id) && (
-                      <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-primary">
-                        Imported • {meetingNameById.get(ticket.meeting_id) || 'Meeting'}
-                      </p>
-                    )}
-                    {!ticket.meeting_id && (
-                      <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                        Manual project ticket
-                      </p>
-                    )}
-                    <p className="text-sm text-muted-foreground line-clamp-3">
-                      {ticket.description || 'No description provided.'}
-                    </p>
-                    <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-                      <span>{ticket.assignee ? `@${ticket.assignee}` : 'Unassigned'}</span>
-                      <span className="text-primary font-medium">
-                        {hasMeetingLink ? 'Open meeting' : 'Project-only'}
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── LIST tab (flat table-style list) ── */}
+        {projectTab === 'list' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="font-playfair text-2xl font-bold text-foreground">List</h2>
+              <Button onClick={() => setIsTicketDialogOpen(true)} className="rounded-full gap-2">
+                <Ticket className="h-4 w-4" />
+                New ticket
+              </Button>
+            </div>
+            {projectTickets.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-border bg-white p-12 text-center">
+                <p className="text-muted-foreground">No tickets in this project yet.</p>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-border bg-white overflow-hidden">
+                <div className="grid grid-cols-[1fr_120px_120px_40px] items-center px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground border-b border-border/60 bg-[#faf8f4]">
+                  <span>Title</span>
+                  <span>Status</span>
+                  <span>Assignee</span>
+                  <span />
+                </div>
+                {projectTickets.map((ticket, i) => {
+                  const s = statusConfig[ticket.status];
+                  return (
+                    <div
+                      key={ticket.id}
+                      className={`grid grid-cols-[1fr_120px_120px_40px] items-center px-4 py-3 gap-2 hover:bg-[#faf8f4] transition-colors ${i < projectTickets.length - 1 ? 'border-b border-border/40' : ''}`}
+                    >
+                      <span className="font-medium text-sm text-foreground truncate">{ticket.title}</span>
+                      <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium w-fit" style={{ background: s.bg, color: s.color }}>
+                        {s.icon}{s.label}
                       </span>
+                      <span className="text-xs text-muted-foreground truncate">{ticket.assignee ? `@${ticket.assignee}` : '—'}</span>
+                      <button
+                        type="button"
+                        onClick={() => openTicketEditor(ticket)}
+                        className="flex items-center justify-center rounded-full border border-primary/20 bg-primary/5 p-1.5 text-primary hover:bg-primary/10"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── KANBAN tab ── */}
+        {projectTab === 'kanban' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="font-playfair text-2xl font-bold text-foreground">Kanban</h2>
+              <Button onClick={() => setIsTicketDialogOpen(true)} className="rounded-full gap-2">
+                <Ticket className="h-4 w-4" />
+                New ticket
+              </Button>
+            </div>
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+              {kanbanColumns.map((col) => {
+                const colTickets = projectTickets.filter((t) => t.status === col.status);
+                const isOver = dragOverColumn === col.status;
+                return (
+                  <div
+                    key={col.status}
+                    onDragOver={(e) => { e.preventDefault(); setDragOverColumn(col.status); }}
+                    onDragLeave={() => setDragOverColumn(null)}
+                    onDrop={async (e) => {
+                      e.preventDefault();
+                      setDragOverColumn(null);
+                      if (draggedTicketId) {
+                        await handleKanbanDrop(draggedTicketId, col.status);
+                        setDraggedTicketId(null);
+                      }
+                    }}
+                    className={`rounded-2xl border-2 transition-colors min-h-[200px] flex flex-col ${
+                      isOver ? 'border-primary/50 bg-primary/5' : 'border-border bg-[#faf8f4]'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between px-4 pt-4 pb-2">
+                      <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: col.color }}>
+                        {col.label}
+                      </span>
+                      <span className="text-xs font-bold text-muted-foreground bg-white rounded-full px-2 py-0.5 border border-border">
+                        {colTickets.length}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-2 p-3 flex-1">
+                      {colTickets.map((ticket) => (
+                        <div
+                          key={ticket.id}
+                          draggable
+                          onDragStart={() => setDraggedTicketId(ticket.id)}
+                          onDragEnd={() => setDraggedTicketId(null)}
+                          className={`rounded-xl border border-border bg-white p-3 cursor-grab active:cursor-grabbing shadow-sm hover:shadow-md transition-shadow group ${
+                            draggedTicketId === ticket.id ? 'opacity-50' : ''
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <p className="text-sm font-medium text-foreground line-clamp-2 flex-1">{ticket.title}</p>
+                            <button
+                              type="button"
+                              onClick={() => openTicketEditor(ticket)}
+                              className="opacity-0 group-hover:opacity-100 rounded-full border border-primary/20 bg-primary/5 p-1 text-primary hover:bg-primary/10 shrink-0 transition-opacity"
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </button>
+                          </div>
+                          <p className="text-xs text-muted-foreground line-clamp-1">{ticket.description || 'No description'}</p>
+                          {ticket.assignee && (
+                            <p className="mt-2 text-[11px] text-muted-foreground">@{ticket.assignee}</p>
+                          )}
+                        </div>
+                      ))}
+                      {colTickets.length === 0 && (
+                        <div className="flex-1 flex items-center justify-center">
+                          <p className="text-xs text-muted-foreground/50">Drop tickets here</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
               })}
             </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="border-border bg-card">
-        <CardHeader className="border-b border-border/70">
-          <div className="flex items-center gap-2">
-            <GitBranch className="h-5 w-5 text-primary" />
-            <CardTitle className="font-playfair text-2xl">Dependency graph</CardTitle>
           </div>
-          <CardDescription>Visual map of ticket relationships and blocking chains.</CardDescription>
-        </CardHeader>
-        <CardContent className="p-4">
-          <TicketDependencyGraph projectId={selectedProject.id} />
-        </CardContent>
-      </Card>
+        )}
+
+        {/* ── ANALYTICS tab ── */}
+        {projectTab === 'analytics' && (() => {
+          const backlog = projectTickets.filter((t) => t.status === 'backlog').length;
+          const inProgress = projectTickets.filter((t) => t.status === 'in_progress').length;
+          const done = projectTickets.filter((t) => t.status === 'done').length;
+          const blocked = projectTickets.filter((t) => t.status === 'blocked').length;
+          const total = projectTickets.length;
+          const pct = (n: number) => (total ? Math.round((n / total) * 100) : 0);
+          return (
+            <div className="space-y-6">
+              <h2 className="font-playfair text-2xl font-bold text-foreground">Analytics</h2>
+              <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+                {[
+                  { label: 'Backlog', count: backlog, color: '#8a8a80', bg: '#f3f3f0' },
+                  { label: 'In Progress', count: inProgress, color: '#3d7abf', bg: '#eff5ff' },
+                  { label: 'Done', count: done, color: '#3d8a5e', bg: '#edf7f1' },
+                  { label: 'Blocked', count: blocked, color: '#b84040', bg: '#fdf0f0' },
+                ].map((stat) => (
+                  <div key={stat.label} className="rounded-2xl border border-border bg-white p-5 space-y-1">
+                    <p className="text-xs uppercase tracking-wide font-medium" style={{ color: stat.color }}>{stat.label}</p>
+                    <p className="text-4xl font-playfair font-bold text-foreground">{stat.count}</p>
+                    <p className="text-xs text-muted-foreground">{pct(stat.count)}% of total</p>
+                  </div>
+                ))}
+              </div>
+              <div className="rounded-2xl border border-border bg-white p-6 space-y-4">
+                <p className="font-playfair text-lg font-bold text-foreground">Progress overview</p>
+                <div className="space-y-3">
+                  {[
+                    { label: 'Backlog', count: backlog, color: '#8a8a80' },
+                    { label: 'In Progress', count: inProgress, color: '#3d7abf' },
+                    { label: 'Done', count: done, color: '#3d8a5e' },
+                    { label: 'Blocked', count: blocked, color: '#b84040' },
+                  ].map((bar) => (
+                    <div key={bar.label} className="space-y-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">{bar.label}</span>
+                        <span className="font-medium text-foreground">{bar.count}</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{ width: `${pct(bar.count)}%`, background: bar.color }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="pt-2 border-t border-border/60 flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Total tickets</span>
+                  <span className="font-playfair text-2xl font-bold text-foreground">{total}</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                <div className="rounded-2xl border border-border bg-white p-5 space-y-2">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Meetings</p>
+                  <p className="text-4xl font-playfair font-bold text-foreground">{projectMeetings.length}</p>
+                </div>
+                <div className="rounded-2xl border border-border bg-white p-5 space-y-2">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Completion rate</p>
+                  <p className="text-4xl font-playfair font-bold text-foreground">{pct(done)}%</p>
+                  <p className="text-xs text-muted-foreground">{done} of {total} tickets done</p>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ── DEPENDENCIES tab ── */}
+        {projectTab === 'dependencies' && (
+          <div className="space-y-4">
+            <h2 className="font-playfair text-2xl font-bold text-foreground">Dependencies</h2>
+            <div className="rounded-2xl border border-border bg-white p-4">
+              <TicketDependencyGraph projectId={selectedProject.id} />
+            </div>
+          </div>
+        )}
+
+      </div>
 
       <ProjectMeetingDialog
         open={isMeetingDialogOpen}

@@ -2,8 +2,6 @@
 
 import {
   LayoutDashboard,
-  Calendar,
-  BarChart3,
   Settings,
   FolderKanban,
   Plus,
@@ -30,9 +28,6 @@ export function Sidebar({
 }: SidebarProps) {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'meetings', label: 'Meetings', icon: Calendar },
-    { id: 'projects', label: 'Projects', icon: FolderKanban },
-    { id: 'tickets', label: 'Tickets', icon: BarChart3 },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 

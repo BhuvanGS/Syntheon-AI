@@ -259,6 +259,11 @@ function DashboardContent() {
   }
 
   function handleProjectSelect(projectId: string) {
+    if (!projectId) {
+      setSelectedProjectId(null);
+      setCurrentView('projects');
+      return;
+    }
     setSelectedProjectId(projectId);
     setCurrentView('project-detail');
   }
@@ -805,7 +810,7 @@ function DashboardContent() {
           )}
 
           {(currentView === 'projects' || currentView === 'project-detail') && (
-            <div style={pageStyle}>
+            <div style={selectedProjectId ? { height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' } : pageStyle}>
               <ProjectsWorkspace
                 projects={projects}
                 meetings={meetings}

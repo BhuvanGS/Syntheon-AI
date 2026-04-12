@@ -7,6 +7,16 @@ export function getAppBaseUrl(req: NextRequest): string {
   }
 
   const url = new URL(req.url);
+
+  // Use forwarded headers if present (for browser preview proxy)
+  const forwardedHost = req.headers.get('x-forwarded-host');
+  const forwardedProto = req.headers.get('x-forwarded-proto');
+
+  if (forwardedHost) {
+    const protocol = forwardedProto || (url.protocol === 'https:' ? 'https' : 'http');
+    return `${protocol}://${forwardedHost}`;
+  }
+
   if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
     url.protocol = 'http:';
   }
