@@ -13,6 +13,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { ManualTicketDialog } from '@/components/manual-ticket-dialog';
+import { TicketDependencyPanel } from '@/components/ticket-dependency-panel';
+import { TicketDependencyGraph } from '@/components/ticket-dependency-graph';
 import { ProjectTicketImportDialog } from '@/components/project-ticket-import-dialog';
 import { ProjectMeetingDialog } from '@/components/project-meeting-dialog';
 import {
@@ -25,6 +27,7 @@ import {
   Download,
   Pencil,
   Trash2,
+  GitBranch,
 } from 'lucide-react';
 
 interface Project {
@@ -141,7 +144,7 @@ export function ProjectsWorkspace({
 
     setSavingTicketId(ticketToEdit.id);
     try {
-      const res = await fetch(`/api/tickets/${ticketToEdit.id}`, {
+      let res = await fetch(`/api/tickets/${ticketToEdit.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -154,7 +157,38 @@ export function ProjectsWorkspace({
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error || 'Failed to update ticket');
+
+        if (res.status === 422 && data?.error === 'soft_blocked') {
+          const proceed = window.confirm(
+            `${data?.message || 'This move has unresolved soft dependencies.'}\n\nProceed anyway?`
+          );
+          if (proceed) {
+            res = await fetch(`/api/tickets/${ticketToEdit.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                title: ticketEditForm.title.trim(),
+                description: ticketEditForm.description.trim(),
+                assignee: ticketEditForm.assignee.trim() || null,
+                status: ticketEditForm.status,
+                bypassGate: true,
+              }),
+            });
+          }
+        }
+
+        if (!res.ok) {
+          const finalData = await res.json().catch(() => data || {});
+          if (res.status === 422 && finalData?.error === 'hard_blocked') {
+            window.alert(finalData?.message || 'Blocked by unresolved hard dependencies.');
+            return;
+          }
+          if (res.status === 422 && finalData?.error === 'soft_blocked') {
+            window.alert(finalData?.message || 'Blocked by unresolved soft dependencies.');
+            return;
+          }
+          throw new Error(finalData?.error || 'Failed to update ticket');
+        }
       }
 
       setTicketToEdit(null);
@@ -564,6 +598,19 @@ export function ProjectsWorkspace({
         </CardContent>
       </Card>
 
+      <Card className="border-border bg-card">
+        <CardHeader className="border-b border-border/70">
+          <div className="flex items-center gap-2">
+            <GitBranch className="h-5 w-5 text-primary" />
+            <CardTitle className="font-playfair text-2xl">Dependency graph</CardTitle>
+          </div>
+          <CardDescription>Visual map of ticket relationships and blocking chains.</CardDescription>
+        </CardHeader>
+        <CardContent className="p-4">
+          <TicketDependencyGraph projectId={selectedProject.id} />
+        </CardContent>
+      </Card>
+
       <ProjectMeetingDialog
         open={isMeetingDialogOpen}
         onOpenChange={setIsMeetingDialogOpen}
@@ -599,7 +646,7 @@ export function ProjectsWorkspace({
           if (!open) setTicketToEdit(null);
         }}
       >
-        <DialogContent className="sm:max-w-xl border-border bg-[#f9f6f1] shadow-2xl">
+        <DialogContent className="sm:max-w-2xl border-border bg-[#f9f6f1] shadow-2xl">
           <DialogHeader>
             <DialogTitle className="font-playfair text-2xl text-foreground">
               Update ticket
@@ -675,6 +722,20 @@ export function ProjectsWorkspace({
                 </select>
               </label>
             </div>
+
+            {ticketToEdit && ticketToEdit.projectId && (
+              <div className="border-t border-border/60 pt-4">
+                <TicketDependencyPanel
+                  ticketId={ticketToEdit.id}
+                  projectId={ticketToEdit.projectId}
+                  projectTickets={projectTickets.map((t) => ({
+                    id: t.id,
+                    title: t.title,
+                    status: t.status,
+                  }))}
+                />
+              </div>
+            )}
           </div>
 
           <DialogFooter className="pt-2">

@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { deleteTicketById, getAllTickets, updateTicket } from '@/lib/db';
+import {
+  deleteTicketById,
+  getAllTickets,
+  updateTicket,
+  checkHardBlockers,
+  cascadeDepRegressionForParent,
+  getDependenciesForTicket,
+  incrementDependencyIgnoreCount,
+} from '@/lib/db';
+import { supabaseAdmin } from '@/lib/supabase';
 
 const allowedStatuses = new Set(['backlog', 'in_progress', 'done', 'blocked']);
 
@@ -46,7 +55,73 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: 'No valid updates provided' }, { status: 400 });
     }
 
+    const newStatus = updates.status as string | undefined;
+    const bypassGate = body?.bypassGate === true;
+
+    if (newStatus === 'in_progress') {
+      const { blocked, blockers } = await checkHardBlockers(id);
+      if (blocked) {
+        return NextResponse.json(
+          {
+            error: 'hard_blocked',
+            message: `This ticket has ${blockers.length} unresolved hard dependenc${blockers.length === 1 ? 'y' : 'ies'} that must be resolved first.`,
+            blockers: blockers.map((b) => ({
+              id: b.id,
+              depends_on: b.depends_on_ticket_id,
+              type: b.dependency_type,
+            })),
+          },
+          { status: 422 }
+        );
+      }
+
+      const { parents } = await getDependenciesForTicket(id);
+      const softParentIds = parents
+        .filter((d) => d.strength === 'soft' && !d.escalated)
+        .map((d) => d.depends_on_ticket_id);
+
+      if (softParentIds.length > 0) {
+        const { data: softParentTickets } = await supabaseAdmin
+          .from('tickets')
+          .select('id, status')
+          .in('id', softParentIds);
+        const unresolvedSoft = parents.filter((dep) => {
+          if (dep.strength !== 'soft' || dep.escalated) return false;
+          const parent = (softParentTickets ?? []).find(
+            (t: any) => t.id === dep.depends_on_ticket_id
+          );
+          return parent?.status !== 'done';
+        });
+
+        if (unresolvedSoft.length > 0 && !bypassGate) {
+          return NextResponse.json(
+            {
+              error: 'soft_blocked',
+              message: `This ticket has ${unresolvedSoft.length} unresolved soft dependenc${unresolvedSoft.length === 1 ? 'y' : 'ies'}. You can proceed anyway.`,
+              blockers: unresolvedSoft.map((b) => ({
+                id: b.id,
+                depends_on: b.depends_on_ticket_id,
+                type: b.dependency_type,
+                ignore_count: b.ignore_count,
+              })),
+            },
+            { status: 422 }
+          );
+        }
+
+        if (bypassGate && unresolvedSoft.length > 0) {
+          await Promise.all(unresolvedSoft.map((d) => incrementDependencyIgnoreCount(d.id)));
+        }
+      }
+    }
+
+    const previousStatus = ticket.status;
     await updateTicket(id, updates);
+
+    if (previousStatus === 'done' && newStatus && newStatus !== 'done') {
+      await cascadeDepRegressionForParent(id);
+    }
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Failed to update ticket:', error);

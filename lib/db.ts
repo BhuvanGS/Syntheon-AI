@@ -590,6 +590,226 @@ export async function updateMeetingSpecs2(
   await updateMeetingSpecs(id, transcript, specsDetected);
 }
 
+// ─── Ticket Dependencies ────────────────────────────────────────
+
+export type DependencyType = 'data' | 'structural' | 'logical' | 'resource';
+export type DependencyStrength = 'soft' | 'hard';
+
+export interface TicketDependency {
+  id: string;
+  project_id: string;
+  ticket_id: string;
+  depends_on_ticket_id: string;
+  dependency_type: DependencyType;
+  strength: DependencyStrength;
+  note?: string | null;
+  ignore_count: number;
+  escalated: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+function rowToTicketDependency(row: any): TicketDependency {
+  return {
+    id: row.id,
+    project_id: row.project_id,
+    ticket_id: row.ticket_id,
+    depends_on_ticket_id: row.depends_on_ticket_id,
+    dependency_type: row.dependency_type,
+    strength: row.strength,
+    note: row.note ?? null,
+    ignore_count: row.ignore_count ?? 0,
+    escalated: row.escalated ?? false,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
+}
+
+export async function getDependenciesForTicket(ticketId: string): Promise<{
+  parents: TicketDependency[];
+  children: TicketDependency[];
+}> {
+  const [parentsRes, childrenRes] = await Promise.all([
+    supabaseAdmin
+      .from('ticket_dependencies')
+      .select('*')
+      .eq('ticket_id', ticketId)
+      .order('created_at', { ascending: true }),
+    supabaseAdmin
+      .from('ticket_dependencies')
+      .select('*')
+      .eq('depends_on_ticket_id', ticketId)
+      .order('created_at', { ascending: true }),
+  ]);
+  if (parentsRes.error) throw parentsRes.error;
+  if (childrenRes.error) throw childrenRes.error;
+  return {
+    parents: (parentsRes.data ?? []).map(rowToTicketDependency),
+    children: (childrenRes.data ?? []).map(rowToTicketDependency),
+  };
+}
+
+export async function getDependenciesForProject(projectId: string): Promise<TicketDependency[]> {
+  const { data, error } = await supabaseAdmin
+    .from('ticket_dependencies')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map(rowToTicketDependency);
+}
+
+async function _hasPath(fromId: string, toId: string): Promise<boolean> {
+  const visited = new Set<string>();
+  const queue: string[] = [fromId];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    if (current === toId) return true;
+    if (visited.has(current)) continue;
+    visited.add(current);
+    const { data } = await supabaseAdmin
+      .from('ticket_dependencies')
+      .select('depends_on_ticket_id')
+      .eq('ticket_id', current);
+    for (const row of data ?? []) {
+      if (!visited.has(row.depends_on_ticket_id)) {
+        queue.push(row.depends_on_ticket_id);
+      }
+    }
+  }
+  return false;
+}
+
+export async function createDependency(dep: {
+  id: string;
+  project_id: string;
+  ticket_id: string;
+  depends_on_ticket_id: string;
+  dependency_type: DependencyType;
+  strength: DependencyStrength;
+  note?: string | null;
+}): Promise<{ error?: string }> {
+  if (dep.ticket_id === dep.depends_on_ticket_id) {
+    return { error: 'A ticket cannot depend on itself.' };
+  }
+
+  const parentTicket = await supabaseAdmin
+    .from('tickets')
+    .select('project_id')
+    .eq('id', dep.depends_on_ticket_id)
+    .single();
+  if (parentTicket.error || !parentTicket.data) {
+    return { error: 'Parent ticket not found.' };
+  }
+  if (parentTicket.data.project_id !== dep.project_id) {
+    return { error: 'Cross-project dependencies are not allowed.' };
+  }
+
+  const cycleExists = await _hasPath(dep.depends_on_ticket_id, dep.ticket_id);
+  if (cycleExists) {
+    return {
+      error: `Cannot add dependency: this would create a cycle (${dep.depends_on_ticket_id} → ... → ${dep.ticket_id}).`,
+    };
+  }
+
+  const { data: existing } = await supabaseAdmin
+    .from('ticket_dependencies')
+    .select('id')
+    .eq('ticket_id', dep.ticket_id)
+    .eq('depends_on_ticket_id', dep.depends_on_ticket_id)
+    .maybeSingle();
+  if (existing) {
+    return { error: 'This dependency already exists.' };
+  }
+
+  const { error } = await supabaseAdmin.from('ticket_dependencies').insert({
+    id: dep.id,
+    project_id: dep.project_id,
+    ticket_id: dep.ticket_id,
+    depends_on_ticket_id: dep.depends_on_ticket_id,
+    dependency_type: dep.dependency_type,
+    strength: dep.strength,
+    note: dep.note ?? null,
+    ignore_count: 0,
+    escalated: false,
+  });
+  if (error) return { error: error.message };
+  return {};
+}
+
+export async function deleteDependency(id: string): Promise<void> {
+  const { error } = await supabaseAdmin.from('ticket_dependencies').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export async function incrementDependencyIgnoreCount(id: string): Promise<void> {
+  const { data: row } = await supabaseAdmin
+    .from('ticket_dependencies')
+    .select('ignore_count, strength')
+    .eq('id', id)
+    .single();
+  if (!row) return;
+
+  const newCount = (row.ignore_count ?? 0) + 1;
+  const shouldEscalate = row.strength === 'soft' && newCount >= 3;
+  await supabaseAdmin
+    .from('ticket_dependencies')
+    .update({
+      ignore_count: newCount,
+      escalated: shouldEscalate || undefined,
+      strength: shouldEscalate ? 'hard' : row.strength,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id);
+}
+
+export async function checkHardBlockers(ticketId: string): Promise<{
+  blocked: boolean;
+  blockers: TicketDependency[];
+}> {
+  const { parents } = await getDependenciesForTicket(ticketId);
+  const hardParents = parents.filter((d) => d.strength === 'hard' || d.escalated);
+  if (hardParents.length === 0) return { blocked: false, blockers: [] };
+
+  const parentIds = hardParents.map((d) => d.depends_on_ticket_id);
+  const { data: parentTickets } = await supabaseAdmin
+    .from('tickets')
+    .select('id, status')
+    .in('id', parentIds);
+
+  const unresolved = hardParents.filter((dep) => {
+    const parent = (parentTickets ?? []).find((t: any) => t.id === dep.depends_on_ticket_id);
+    return parent?.status !== 'done';
+  });
+
+  return { blocked: unresolved.length > 0, blockers: unresolved };
+}
+
+export async function cascadeDepRegressionForParent(parentId: string): Promise<void> {
+  const { children } = await getDependenciesForTicket(parentId);
+  if (children.length === 0) return;
+
+  const childIds = children.map((d) => d.ticket_id);
+  const { data: childTickets } = await supabaseAdmin
+    .from('tickets')
+    .select('id, status')
+    .in('id', childIds);
+
+  const toBlock = (childTickets ?? [])
+    .filter((t: any) => t.status === 'done' || t.status === 'in_progress')
+    .map((t: any) => t.id);
+
+  if (toBlock.length === 0) return;
+
+  await supabaseAdmin
+    .from('tickets')
+    .update({
+      status: 'blocked',
+      updated_at: new Date().toISOString(),
+    })
+    .in('id', toBlock);
+}
+
 // ─── Legacy compatibility (db.json style) ──────────────────────
 // These are kept so old code doesn't break during migration
 export function loadDB() {

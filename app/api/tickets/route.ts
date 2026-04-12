@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { getAllTickets, updateTicketStatus } from '@/lib/db';
+import {
+  cascadeDepRegressionForParent,
+  checkHardBlockers,
+  getAllTickets,
+  getDependenciesForTicket,
+  incrementDependencyIgnoreCount,
+  updateTicketStatus,
+} from '@/lib/db';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export async function GET(req: NextRequest) {
   try {
@@ -28,8 +36,10 @@ export async function PATCH(req: NextRequest) {
     }
 
     const allowedStatuses = new Set(['backlog', 'in_progress', 'done', 'blocked']);
+    const bypassGate = body?.bypassGate === true;
     const userTickets = await getAllTickets(userId);
     const userTicketIds = new Set(userTickets.map((ticket) => ticket.id));
+    const ticketById = new Map(userTickets.map((ticket) => [ticket.id, ticket]));
 
     for (const change of changes) {
       const ticketId = typeof change?.ticketId === 'string' ? change.ticketId : '';
@@ -44,12 +54,74 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
-    await Promise.all(
-      changes.map(
-        (change: { ticketId: string; status: 'backlog' | 'in_progress' | 'done' | 'blocked' }) =>
-          updateTicketStatus(change.ticketId, change.status)
-      )
-    );
+    for (const change of changes) {
+      const ticketId = change.ticketId as string;
+      const status = change.status as 'backlog' | 'in_progress' | 'done' | 'blocked';
+
+      if (status === 'in_progress') {
+        const { blocked, blockers } = await checkHardBlockers(ticketId);
+        if (blocked) {
+          return NextResponse.json(
+            {
+              error: 'hard_blocked',
+              ticketId,
+              message: `This ticket has ${blockers.length} unresolved hard dependenc${blockers.length === 1 ? 'y' : 'ies'} that must be resolved first.`,
+              blockers: blockers.map((b) => ({
+                id: b.id,
+                depends_on: b.depends_on_ticket_id,
+                type: b.dependency_type,
+              })),
+            },
+            { status: 422 }
+          );
+        }
+
+        const { parents } = await getDependenciesForTicket(ticketId);
+        const softParents = parents.filter((d) => d.strength === 'soft' && !d.escalated);
+        if (softParents.length > 0) {
+          const softParentIds = softParents.map((d) => d.depends_on_ticket_id);
+          const { data: softParentTickets } = await supabaseAdmin
+            .from('tickets')
+            .select('id, status')
+            .in('id', softParentIds);
+
+          const unresolvedSoft = softParents.filter((dep) => {
+            const parent = (softParentTickets ?? []).find(
+              (t: { id: string; status: string }) => t.id === dep.depends_on_ticket_id
+            );
+            return parent?.status !== 'done';
+          });
+
+          if (unresolvedSoft.length > 0 && !bypassGate) {
+            return NextResponse.json(
+              {
+                error: 'soft_blocked',
+                ticketId,
+                message: `This ticket has ${unresolvedSoft.length} unresolved soft dependenc${unresolvedSoft.length === 1 ? 'y' : 'ies'}. You can proceed anyway.`,
+                blockers: unresolvedSoft.map((b) => ({
+                  id: b.id,
+                  depends_on: b.depends_on_ticket_id,
+                  type: b.dependency_type,
+                  ignore_count: b.ignore_count,
+                })),
+              },
+              { status: 422 }
+            );
+          }
+
+          if (bypassGate && unresolvedSoft.length > 0) {
+            await Promise.all(unresolvedSoft.map((d) => incrementDependencyIgnoreCount(d.id)));
+          }
+        }
+      }
+
+      const previousStatus = ticketById.get(ticketId)?.status;
+      await updateTicketStatus(ticketId, status);
+
+      if (previousStatus === 'done' && status !== 'done') {
+        await cascadeDepRegressionForParent(ticketId);
+      }
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

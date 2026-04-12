@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Loader2, Clock, CheckCircle, AlertCircle, Circle, Pencil } from 'lucide-react';
+import { TicketDependencyPanel } from '@/components/ticket-dependency-panel';
 
 type TicketStatus = 'backlog' | 'in_progress' | 'done' | 'blocked';
 
@@ -102,7 +103,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
 
     setUpdatingTicketId(ticketToEdit.id);
     try {
-      const res = await fetch(`/api/tickets/${ticketToEdit.id}`, {
+      let res = await fetch(`/api/tickets/${ticketToEdit.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -115,7 +116,38 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error || 'Failed to update ticket');
+
+        if (res.status === 422 && data?.error === 'soft_blocked') {
+          const proceed = window.confirm(
+            `${data?.message || 'This move has unresolved soft dependencies.'}\n\nProceed anyway?`
+          );
+          if (proceed) {
+            res = await fetch(`/api/tickets/${ticketToEdit.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                title: ticketEditForm.title.trim(),
+                description: ticketEditForm.description.trim(),
+                assignee: ticketEditForm.assignee.trim() || null,
+                status: ticketEditForm.status,
+                bypassGate: true,
+              }),
+            });
+          }
+        }
+
+        if (!res.ok) {
+          const finalData = await res.json().catch(() => data || {});
+          if (res.status === 422 && finalData?.error === 'hard_blocked') {
+            window.alert(finalData?.message || 'Blocked by unresolved hard dependencies.');
+            return;
+          }
+          if (res.status === 422 && finalData?.error === 'soft_blocked') {
+            window.alert(finalData?.message || 'Blocked by unresolved soft dependencies.');
+            return;
+          }
+          throw new Error(finalData?.error || 'Failed to update ticket');
+        }
       }
 
       setTickets((prev) =>
@@ -210,7 +242,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
 
     setSaving(true);
     try {
-      const res = await fetch('/api/tickets', {
+      let res = await fetch('/api/tickets', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ changes }),
@@ -218,7 +250,31 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error || 'Failed to save ticket changes');
+
+        if (res.status === 422 && data?.error === 'soft_blocked') {
+          const proceed = window.confirm(
+            `${data?.message || 'This move has unresolved soft dependencies.'}\n\nProceed anyway?`
+          );
+          if (proceed) {
+            res = await fetch('/api/tickets', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ changes, bypassGate: true }),
+            });
+          }
+        }
+
+        if (!res.ok) {
+          const finalData = await res.json().catch(() => data || {});
+          if (res.status === 422 && finalData?.error === 'hard_blocked') {
+            window.alert(finalData?.message || 'Blocked by unresolved hard dependencies.');
+            return;
+          } else if (res.status === 422 && finalData?.error === 'soft_blocked') {
+            window.alert(finalData?.message || 'Blocked by unresolved soft dependencies.');
+            return;
+          }
+          throw new Error(finalData?.error || 'Failed to save ticket changes');
+        }
       }
 
       setOriginalStatusById((prev) => {
@@ -389,7 +445,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
           if (!open) setTicketToEdit(null);
         }}
       >
-        <DialogContent className="sm:max-w-xl border-border bg-[#f9f6f1] shadow-2xl">
+        <DialogContent className="sm:max-w-2xl border-border bg-[#f9f6f1] shadow-2xl">
           <DialogHeader>
             <DialogTitle className="font-playfair text-2xl text-foreground">
               Update ticket
@@ -465,6 +521,18 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                 </select>
               </label>
             </div>
+
+            {ticketToEdit && (
+              <div className="border-t border-border/60 pt-4">
+                <TicketDependencyPanel
+                  ticketId={ticketToEdit.id}
+                  projectId={ticketToEdit.projectId}
+                  projectTickets={tickets
+                    .filter((t) => t.projectId === ticketToEdit.projectId)
+                    .map((t) => ({ id: t.id, title: t.title, status: t.status }))}
+                />
+              </div>
+            )}
           </div>
 
           <DialogFooter className="pt-2">
