@@ -601,7 +601,9 @@ export function ProjectsWorkspace({
       >
         <DialogContent className="sm:max-w-xl border-border bg-[#f9f6f1] shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="font-playfair text-2xl text-foreground">Update ticket</DialogTitle>
+            <DialogTitle className="font-playfair text-2xl text-foreground">
+              Update ticket
+            </DialogTitle>
             <DialogDescription className="text-muted-foreground">
               Edit title, description, assignee, and status before confirming.
             </DialogDescription>

@@ -45,8 +45,9 @@ export async function PATCH(req: NextRequest) {
     }
 
     await Promise.all(
-      changes.map((change: { ticketId: string; status: 'backlog' | 'in_progress' | 'done' | 'blocked' }) =>
-        updateTicketStatus(change.ticketId, change.status)
+      changes.map(
+        (change: { ticketId: string; status: 'backlog' | 'in_progress' | 'done' | 'blocked' }) =>
+          updateTicketStatus(change.ticketId, change.status)
       )
     );
 

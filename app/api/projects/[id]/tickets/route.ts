@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { randomUUID } from 'crypto';
-import {
-  addTicketsToProject,
-  getMeetingById,
-  getProjectById,
-  saveTickets,
-} from '@/lib/db';
+import { addTicketsToProject, getMeetingById, getProjectById, saveTickets } from '@/lib/db';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -38,8 +33,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     if (resolvedMeetingId) {
       const meeting = await getMeetingById(resolvedMeetingId);
-      if (!meeting || meeting.projectId !== projectId || (meeting.user_id && meeting.user_id !== userId)) {
-        return NextResponse.json({ error: 'Meeting does not belong to this project' }, { status: 400 });
+      if (
+        !meeting ||
+        meeting.projectId !== projectId ||
+        (meeting.user_id && meeting.user_id !== userId)
+      ) {
+        return NextResponse.json(
+          { error: 'Meeting does not belong to this project' },
+          { status: 400 }
+        );
       }
     }
 

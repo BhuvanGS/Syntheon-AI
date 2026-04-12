@@ -11,7 +11,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { CheckCircle, ExternalLink, Loader2, Pencil, Plus, Rocket, Trash2, Video } from 'lucide-react';
+import {
+  CheckCircle,
+  ExternalLink,
+  Loader2,
+  Pencil,
+  Plus,
+  Rocket,
+  Trash2,
+  Video,
+} from 'lucide-react';
 import { ManualTicketDialog } from '@/components/manual-ticket-dialog';
 
 interface Ticket {
@@ -598,7 +607,9 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
       >
         <DialogContent className="sm:max-w-xl border-border bg-[#f9f6f1] shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="font-playfair text-2xl text-foreground">Update ticket</DialogTitle>
+            <DialogTitle className="font-playfair text-2xl text-foreground">
+              Update ticket
+            </DialogTitle>
             <DialogDescription className="text-muted-foreground">
               Edit title, description, assignee, and status before confirming.
             </DialogDescription>

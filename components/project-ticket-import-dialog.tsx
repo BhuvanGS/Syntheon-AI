@@ -57,7 +57,10 @@ export function ProjectTicketImportDialog({
   const importedMeetingIds = useMemo(() => {
     return new Set(
       tickets
-        .filter((ticket) => ticket.meeting_id && meetings.some((meeting) => meeting.id === ticket.meeting_id))
+        .filter(
+          (ticket) =>
+            ticket.meeting_id && meetings.some((meeting) => meeting.id === ticket.meeting_id)
+        )
         .map((ticket) => ticket.meeting_id as string)
     );
   }, [meetings, tickets]);

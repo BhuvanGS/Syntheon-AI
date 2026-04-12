@@ -21,7 +21,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const updates: Record<string, unknown> = {};
 
     if (typeof body?.title !== 'undefined') updates.title = String(body.title).trim();
-    if (typeof body?.description !== 'undefined') updates.description = String(body.description).trim();
+    if (typeof body?.description !== 'undefined')
+      updates.description = String(body.description).trim();
     if (typeof body?.status !== 'undefined') {
       const status = String(body.status);
       if (!allowedStatuses.has(status)) {
