@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -25,6 +25,7 @@ interface ManualTicketDialogProps {
   meetings: MeetingOption[];
   defaultMeetingId?: string | null;
   defaultProjectId?: string | null;
+  projectOnly?: boolean;
   onCreated?: () => void | Promise<void>;
 }
 
@@ -34,6 +35,7 @@ export function ManualTicketDialog({
   meetings,
   defaultMeetingId,
   defaultProjectId,
+  projectOnly = false,
   onCreated,
 }: ManualTicketDialogProps) {
   const [title, setTitle] = useState('');
@@ -42,39 +44,57 @@ export function ManualTicketDialog({
   const [assignee, setAssignee] = useState('');
   const [meetingId, setMeetingId] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
+  const wasOpenRef = useRef(false);
 
   const resolvedMeetingId = useMemo(
-    () => meetingId || defaultMeetingId || meetings[0]?.id || '',
-    [meetingId, defaultMeetingId, meetings]
+    () => (projectOnly ? '' : meetingId || defaultMeetingId || meetings[0]?.id || ''),
+    [meetingId, defaultMeetingId, meetings, projectOnly]
   );
 
   useEffect(() => {
-    if (!open) return;
-    setTitle('');
-    setDescription('');
-    setStatus('backlog');
-    setAssignee('');
-    setMeetingId(defaultMeetingId || meetings[0]?.id || '');
-    setSubmitting(false);
-  }, [open, defaultMeetingId, meetings]);
+    if (open && !wasOpenRef.current) {
+      setTitle('');
+      setDescription('');
+      setStatus('backlog');
+      setAssignee('');
+      setMeetingId(projectOnly ? '' : defaultMeetingId || meetings[0]?.id || '');
+      setSubmitting(false);
+    }
+
+    wasOpenRef.current = open;
+  }, [open, defaultMeetingId, meetings, projectOnly]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!resolvedMeetingId || !title.trim()) return;
+    if (!title.trim()) return;
 
     setSubmitting(true);
     try {
-      const res = await fetch(`/api/meetings/${resolvedMeetingId}/tickets`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: title.trim(),
-          description: description.trim(),
-          status,
-          assignee: assignee.trim() || null,
-          projectId: defaultProjectId ?? null,
-        }),
-      });
+      const payload = {
+        title: title.trim(),
+        description: description.trim(),
+        status,
+        assignee: assignee.trim() || null,
+        projectId: defaultProjectId ?? null,
+      };
+
+      const res = resolvedMeetingId
+        ? await fetch(`/api/meetings/${resolvedMeetingId}/tickets`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          })
+        : defaultProjectId
+          ? await fetch(`/api/projects/${defaultProjectId}/tickets`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            })
+          : null;
+
+      if (!res) {
+        throw new Error('No meeting available for ticket creation');
+      }
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -100,7 +120,9 @@ export function ManualTicketDialog({
             Create a ticket
           </DialogTitle>
           <DialogDescription className="text-muted-foreground">
-            Write a Jira-style ticket manually and attach it to one of your meetings.
+            {projectOnly
+              ? 'Write a Jira-style ticket manually for this project without linking it to a meeting.'
+              : 'Write a Jira-style ticket manually and attach it to one of your meetings.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -126,26 +148,28 @@ export function ManualTicketDialog({
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Meeting</label>
-              <select
-                value={resolvedMeetingId}
-                onChange={(e) => setMeetingId(e.target.value)}
-                className="h-10 w-full rounded-md border border-border bg-white px-3 text-sm text-foreground"
-                disabled={meetings.length === 0}
-              >
-                {meetings.length === 0 ? (
-                  <option value="">No meetings available</option>
-                ) : (
-                  meetings.map((meeting) => (
-                    <option key={meeting.id} value={meeting.id}>
-                      {meeting.projectName}
-                    </option>
-                  ))
-                )}
-              </select>
-            </div>
+          <div className={`grid grid-cols-1 gap-4 ${projectOnly ? '' : 'sm:grid-cols-2'}`}>
+            {!projectOnly && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Meeting</label>
+                <select
+                  value={resolvedMeetingId}
+                  onChange={(e) => setMeetingId(e.target.value)}
+                  className="h-10 w-full rounded-md border border-border bg-white px-3 text-sm text-foreground"
+                  disabled={meetings.length === 0}
+                >
+                  {meetings.length === 0 ? (
+                    <option value="">No meetings available</option>
+                  ) : (
+                    meetings.map((meeting) => (
+                      <option key={meeting.id} value={meeting.id}>
+                        {meeting.projectName}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+            )}
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Status</label>
@@ -183,7 +207,7 @@ export function ManualTicketDialog({
             </Button>
             <Button
               type="submit"
-              disabled={submitting || !title.trim() || !resolvedMeetingId}
+              disabled={submitting || !title.trim()}
               className="rounded-full gap-2"
             >
               <CirclePlus className="h-4 w-4" />

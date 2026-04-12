@@ -24,7 +24,7 @@ interface Meeting {
 
 interface Ticket {
   id: string;
-  meeting_id: string;
+  meeting_id: string | null;
 }
 
 interface ProjectTicketImportDialogProps {
@@ -48,6 +48,7 @@ export function ProjectTicketImportDialog({
 
   const meetingTicketCounts = useMemo(() => {
     return tickets.reduce<Record<string, number>>((acc, ticket) => {
+      if (!ticket.meeting_id) return acc;
       acc[ticket.meeting_id] = (acc[ticket.meeting_id] || 0) + 1;
       return acc;
     }, {});
@@ -56,8 +57,8 @@ export function ProjectTicketImportDialog({
   const importedMeetingIds = useMemo(() => {
     return new Set(
       tickets
-        .filter((ticket) => meetings.some((meeting) => meeting.id === ticket.meeting_id))
-        .map((ticket) => ticket.meeting_id)
+        .filter((ticket) => ticket.meeting_id && meetings.some((meeting) => meeting.id === ticket.meeting_id))
+        .map((ticket) => ticket.meeting_id as string)
     );
   }, [meetings, tickets]);
 

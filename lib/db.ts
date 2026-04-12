@@ -36,7 +36,7 @@ export interface SpecBlock {
 export interface Ticket {
   id: string;
   user_id?: string;
-  meeting_id: string;
+  meeting_id: string | null;
   projectId?: string;
   title: string;
   description: string;
@@ -87,7 +87,7 @@ function rowToTicket(row: any): Ticket {
   return {
     id: row.id,
     user_id: row.user_id,
-    meeting_id: row.meeting_id,
+    meeting_id: row.meeting_id ?? null,
     projectId: row.project_id,
     title: row.title,
     description: row.description ?? '',
@@ -392,6 +392,13 @@ export async function deleteProject(id: string): Promise<void> {
     .eq('project_id', id);
   if (meetingsError) throw meetingsError;
 
+  const { error: orphanTicketsDeleteError } = await supabaseAdmin
+    .from('tickets')
+    .delete()
+    .eq('project_id', id)
+    .is('meeting_id', null);
+  if (orphanTicketsDeleteError) throw orphanTicketsDeleteError;
+
   const { error: ticketsError } = await supabaseAdmin
     .from('tickets')
     .update({ project_id: null })
@@ -408,7 +415,7 @@ export async function saveTickets(tickets: Ticket[]): Promise<void> {
     tickets.map((ticket) => ({
       id: ticket.id,
       user_id: ticket.user_id,
-      meeting_id: ticket.meeting_id,
+      meeting_id: ticket.meeting_id ?? null,
       project_id: ticket.projectId ?? null,
       title: ticket.title,
       description: ticket.description,
@@ -425,7 +432,7 @@ function ticketFingerprint(
   ticket: Pick<Ticket, 'meeting_id' | 'title' | 'description' | 'status' | 'assignee'>
 ) {
   return [
-    ticket.meeting_id,
+    ticket.meeting_id ?? '',
     ticket.title.trim().toLowerCase(),
     ticket.description.trim().toLowerCase(),
     ticket.status,
@@ -520,6 +527,37 @@ export async function updateTicketDependency(
     .from('tickets')
     .update({ dependency_ticket_id: dependencyTicketId, updated_at: new Date().toISOString() })
     .eq('id', id);
+  if (error) throw error;
+}
+
+export async function updateTicket(
+  id: string,
+  updates: Partial<
+    Pick<
+      Ticket,
+      'title' | 'description' | 'status' | 'assignee' | 'assignee_user_id' | 'dependency_ticket_id'
+    >
+  >
+): Promise<void> {
+  const row: any = { updated_at: new Date().toISOString() };
+
+  if (typeof updates.title !== 'undefined') row.title = updates.title;
+  if (typeof updates.description !== 'undefined') row.description = updates.description;
+  if (typeof updates.status !== 'undefined') row.status = updates.status;
+  if (typeof updates.assignee !== 'undefined') row.assignee = updates.assignee;
+  if (typeof updates.assignee_user_id !== 'undefined') {
+    row.assignee_user_id = updates.assignee_user_id;
+  }
+  if (typeof updates.dependency_ticket_id !== 'undefined') {
+    row.dependency_ticket_id = updates.dependency_ticket_id;
+  }
+
+  const { error } = await supabaseAdmin.from('tickets').update(row).eq('id', id);
+  if (error) throw error;
+}
+
+export async function deleteTicketById(id: string): Promise<void> {
+  const { error } = await supabaseAdmin.from('tickets').delete().eq('id', id);
   if (error) throw error;
 }
 

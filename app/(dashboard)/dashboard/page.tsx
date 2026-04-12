@@ -56,7 +56,7 @@ interface Ticket {
   status: 'backlog' | 'in_progress' | 'done' | 'blocked';
   assignee?: string | null;
   projectId?: string | null;
-  meeting_id: string;
+  meeting_id: string | null;
 }
 
 const pageStyle: React.CSSProperties = {
@@ -767,7 +767,11 @@ function DashboardContent() {
             <div style={pageStyle}>
               <h1 style={headingStyle}>Tickets</h1>
               <p style={subStyle}>All extracted tickets across every meeting</p>
-              <TicketsBoard onSelectMeeting={handleMeetingSelect} />
+              <TicketsBoard
+                onSelectMeeting={handleMeetingSelect}
+                onSelectProject={handleProjectSelect}
+                onSaved={refreshWorkspace}
+              />
             </div>
           )}
 

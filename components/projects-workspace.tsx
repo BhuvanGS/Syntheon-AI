@@ -23,6 +23,7 @@ import {
   ArrowRight,
   Sparkles,
   Download,
+  Pencil,
   Trash2,
 } from 'lucide-react';
 
@@ -55,7 +56,7 @@ interface Ticket {
   status: 'backlog' | 'in_progress' | 'done' | 'blocked';
   assignee?: string | null;
   projectId?: string | null;
-  meeting_id: string;
+  meeting_id: string | null;
 }
 
 interface ProjectsWorkspaceProps {
@@ -85,6 +86,15 @@ export function ProjectsWorkspace({
   const [isTicketDialogOpen, setIsTicketDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+  const [ticketToDelete, setTicketToDelete] = useState<Ticket | null>(null);
+  const [ticketToEdit, setTicketToEdit] = useState<Ticket | null>(null);
+  const [ticketEditForm, setTicketEditForm] = useState({
+    title: '',
+    description: '',
+    assignee: '',
+    status: 'backlog' as Ticket['status'],
+  });
+  const [savingTicketId, setSavingTicketId] = useState<string | null>(null);
 
   const selectedProject = useMemo(
     () => projects.find((project) => project.id === selectedProjectId) ?? null,
@@ -115,6 +125,63 @@ export function ProjectsWorkspace({
   const readyTickets = projectTickets.filter(
     (ticket) => ticket.status === 'in_progress' || ticket.status === 'done'
   ).length;
+
+  function openTicketEditor(ticket: Ticket) {
+    setTicketToEdit(ticket);
+    setTicketEditForm({
+      title: ticket.title,
+      description: ticket.description || '',
+      assignee: ticket.assignee || '',
+      status: ticket.status,
+    });
+  }
+
+  async function handleSaveTicketEdit() {
+    if (!ticketToEdit) return;
+
+    setSavingTicketId(ticketToEdit.id);
+    try {
+      const res = await fetch(`/api/tickets/${ticketToEdit.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: ticketEditForm.title.trim(),
+          description: ticketEditForm.description.trim(),
+          assignee: ticketEditForm.assignee.trim() || null,
+          status: ticketEditForm.status,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || 'Failed to update ticket');
+      }
+
+      setTicketToEdit(null);
+      await onRefresh();
+    } finally {
+      setSavingTicketId(null);
+    }
+  }
+
+  async function handleDeleteTicket() {
+    if (!ticketToDelete) return;
+
+    setSavingTicketId(ticketToDelete.id);
+    try {
+      const res = await fetch(`/api/tickets/${ticketToDelete.id}`, { method: 'DELETE' });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || 'Failed to delete ticket');
+      }
+
+      setTicketToDelete(null);
+      await onRefresh();
+    } finally {
+      setSavingTicketId(null);
+    }
+  }
 
   useEffect(() => {
     if (!selectedProject) return;
@@ -264,7 +331,6 @@ export function ProjectsWorkspace({
             variant="secondary"
             onClick={() => setIsTicketDialogOpen(true)}
             className="rounded-full gap-2"
-            disabled={projectMeetings.length === 0}
           >
             <Ticket className="h-4 w-4" />
             New ticket
@@ -433,42 +499,66 @@ export function ProjectsWorkspace({
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {projectTickets.map((ticket) => (
-                <button
-                  key={ticket.id}
-                  onClick={() => onSelectMeeting(ticket.meeting_id)}
-                  className="rounded-2xl border border-border bg-white p-4 text-left hover:border-primary/30 hover:shadow-md transition-all"
-                >
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <h3 className="font-playfair text-lg font-bold text-foreground">
-                      {ticket.title}
-                    </h3>
-                    <Badge
-                      className={
-                        ticket.status === 'done'
-                          ? 'bg-green-100 text-green-800'
-                          : ticket.status === 'blocked'
-                            ? 'bg-destructive/20 text-destructive'
-                            : 'bg-primary/10 text-primary'
+              {projectTickets.map((ticket) => {
+                const hasMeetingLink = Boolean(ticket.meeting_id);
+
+                return (
+                  <div
+                    key={ticket.id}
+                    onClick={() => {
+                      if (ticket.meeting_id) onSelectMeeting(ticket.meeting_id);
+                    }}
+                    onKeyDown={(e) => {
+                      if (!ticket.meeting_id) return;
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onSelectMeeting(ticket.meeting_id);
                       }
-                    >
-                      {ticket.status.replace('_', ' ')}
-                    </Badge>
-                  </div>
-                  {!projectMeetingIdSet.has(ticket.meeting_id) && (
-                    <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-primary">
-                      Imported • {meetingNameById.get(ticket.meeting_id) || 'Meeting'}
+                    }}
+                    role={hasMeetingLink ? 'button' : undefined}
+                    tabIndex={hasMeetingLink ? 0 : -1}
+                    className={`rounded-2xl border border-border bg-white p-4 text-left transition-all ${
+                      hasMeetingLink ? 'hover:border-primary/30 hover:shadow-md' : ''
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <h3 className="font-playfair text-lg font-bold text-foreground">
+                        {ticket.title}
+                      </h3>
+                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => openTicketEditor(ticket)}
+                          className="rounded-full border border-primary/20 bg-primary/5 p-2 text-primary hover:bg-primary/10"
+                          aria-label="Update ticket"
+                          disabled={savingTicketId === ticket.id}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                    {ticket.meeting_id && !projectMeetingIdSet.has(ticket.meeting_id) && (
+                      <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-primary">
+                        Imported • {meetingNameById.get(ticket.meeting_id) || 'Meeting'}
+                      </p>
+                    )}
+                    {!ticket.meeting_id && (
+                      <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                        Manual project ticket
+                      </p>
+                    )}
+                    <p className="text-sm text-muted-foreground line-clamp-3">
+                      {ticket.description || 'No description provided.'}
                     </p>
-                  )}
-                  <p className="text-sm text-muted-foreground line-clamp-3">
-                    {ticket.description || 'No description provided.'}
-                  </p>
-                  <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{ticket.assignee ? `@${ticket.assignee}` : 'Unassigned'}</span>
-                    <span className="text-primary font-medium">Open meeting</span>
+                    <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
+                      <span>{ticket.assignee ? `@${ticket.assignee}` : 'Unassigned'}</span>
+                      <span className="text-primary font-medium">
+                        {hasMeetingLink ? 'Open meeting' : 'Project-only'}
+                      </span>
+                    </div>
                   </div>
-                </button>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
@@ -490,6 +580,7 @@ export function ProjectsWorkspace({
         }))}
         defaultMeetingId={projectMeetings[0]?.id}
         defaultProjectId={selectedProject.id}
+        projectOnly
         onCreated={onRefresh}
       />
 
@@ -501,6 +592,161 @@ export function ProjectsWorkspace({
         tickets={tickets}
         onCreated={onRefresh}
       />
+
+      <Dialog
+        open={Boolean(ticketToEdit)}
+        onOpenChange={(open) => {
+          if (!open) setTicketToEdit(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-xl border-border bg-[#f9f6f1] shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-playfair text-2xl text-foreground">Update ticket</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Edit title, description, assignee, and status before confirming.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <label className="block text-sm text-muted-foreground">
+              Name
+              <input
+                value={ticketEditForm.title}
+                onChange={(e) =>
+                  setTicketEditForm((prev) => ({
+                    ...prev,
+                    title: e.target.value,
+                  }))
+                }
+                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                placeholder="Ticket title"
+              />
+            </label>
+
+            <label className="block text-sm text-muted-foreground">
+              Description
+              <textarea
+                value={ticketEditForm.description}
+                onChange={(e) =>
+                  setTicketEditForm((prev) => ({
+                    ...prev,
+                    description: e.target.value,
+                  }))
+                }
+                className="mt-1 min-h-24 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                placeholder="Describe the ticket"
+              />
+            </label>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label className="block text-sm text-muted-foreground">
+                Assignee
+                <input
+                  value={ticketEditForm.assignee}
+                  onChange={(e) =>
+                    setTicketEditForm((prev) => ({
+                      ...prev,
+                      assignee: e.target.value,
+                    }))
+                  }
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                  placeholder="Optional assignee"
+                />
+              </label>
+
+              <label className="block text-sm text-muted-foreground">
+                Status
+                <select
+                  value={ticketEditForm.status}
+                  onChange={(e) =>
+                    setTicketEditForm((prev) => ({
+                      ...prev,
+                      status: e.target.value as Ticket['status'],
+                    }))
+                  }
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                >
+                  <option value="backlog">Backlog</option>
+                  <option value="in_progress">In progress</option>
+                  <option value="done">Done</option>
+                  <option value="blocked">Blocked</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => {
+                if (!ticketToEdit) return;
+                setTicketToDelete(ticketToEdit);
+                setTicketToEdit(null);
+              }}
+              className="rounded-full"
+              disabled={Boolean(savingTicketId)}
+            >
+              Delete ticket
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setTicketToEdit(null)}
+              className="rounded-full"
+              disabled={Boolean(savingTicketId)}
+            >
+              Discard changes
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSaveTicketEdit}
+              className="rounded-full"
+              disabled={Boolean(savingTicketId) || ticketEditForm.title.trim().length === 0}
+            >
+              Confirm changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(ticketToDelete)}
+        onOpenChange={(open) => {
+          if (!open) setTicketToDelete(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-xl border-border bg-[#f9f6f1] shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-playfair text-2xl text-foreground">
+              Delete this ticket?
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              This will permanently remove &quot;{ticketToDelete?.title}&quot; from this project.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setTicketToDelete(null)}
+              className="rounded-full"
+              disabled={Boolean(savingTicketId)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleDeleteTicket}
+              className="rounded-full"
+              disabled={Boolean(savingTicketId)}
+            >
+              Delete ticket
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={Boolean(projectToDelete)}

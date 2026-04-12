@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import Link from 'next/link';
 
 export default function LegalPage() {
@@ -371,7 +371,7 @@ export default function LegalPage() {
     </div>
   );
 
-  const content: Record<string, JSX.Element> = {
+  const content: Record<string, ReactNode> = {
     privacy: <Privacy />,
     terms: <Terms />,
     dpa: <DPA />,
