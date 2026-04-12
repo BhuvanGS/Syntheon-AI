@@ -622,13 +622,7 @@ export function ProjectsWorkspace({
         {/* ── LIST tab (flat table-style list) ── */}
         {projectTab === 'list' && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="font-playfair text-2xl font-bold text-foreground">List</h2>
-              <Button onClick={() => setIsTicketDialogOpen(true)} className="rounded-full gap-2">
-                <Ticket className="h-4 w-4" />
-                New ticket
-              </Button>
-            </div>
+            <h2 className="font-playfair text-2xl font-bold text-foreground">List</h2>
             {projectTickets.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border bg-white p-12 text-center">
                 <p className="text-muted-foreground">No tickets in this project yet.</p>
@@ -671,13 +665,7 @@ export function ProjectsWorkspace({
         {/* ── KANBAN tab ── */}
         {projectTab === 'kanban' && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="font-playfair text-2xl font-bold text-foreground">Kanban</h2>
-              <Button onClick={() => setIsTicketDialogOpen(true)} className="rounded-full gap-2">
-                <Ticket className="h-4 w-4" />
-                New ticket
-              </Button>
-            </div>
+            <h2 className="font-playfair text-2xl font-bold text-foreground">Kanban</h2>
             <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
               {kanbanColumns.map((col) => {
                 const colTickets = projectTickets.filter((t) => t.status === col.status);
