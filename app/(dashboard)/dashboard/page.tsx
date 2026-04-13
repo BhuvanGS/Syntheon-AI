@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
+import { FolderKanban, Video, Ticket, CheckCircle2, ArrowUpRight } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Sidebar } from '@/components/sidebar';
 import { MeetingCards } from '@/components/meeting-cards';
 import { TicketDetail } from '@/components/ticket-detail';
@@ -9,6 +11,9 @@ import { TicketsBoard } from '@/components/tickets-board';
 import { ProjectsWorkspace } from '@/components/projects-workspace';
 import { ProjectCreateDialog } from '@/components/project-create-dialog';
 import { ManualTicketDialog } from '@/components/manual-ticket-dialog';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 
 type ViewType = 'dashboard' | 'meetings' | 'projects' | 'tickets' | 'ticket-detail';
@@ -46,29 +51,6 @@ interface Ticket {
   projectId?: string | null;
   meeting_id: string | null;
 }
-
-const pageStyle: React.CSSProperties = {
-  padding: '2rem 2.5rem',
-  overflowY: 'auto',
-  height: '100%',
-  background: '#faf8f4',
-};
-
-const headingStyle: React.CSSProperties = {
-  fontFamily: "'DM Serif Display', serif",
-  fontSize: '2.2rem',
-  fontWeight: '400',
-  color: '#2c2c28',
-  marginBottom: '0.25rem',
-};
-
-const subStyle: React.CSSProperties = {
-  fontSize: '14px',
-  color: '#8a8a80',
-  fontWeight: '300',
-  marginBottom: '2rem',
-  fontFamily: "'DM Sans', sans-serif",
-};
 
 function DashboardContent() {
   const router = useRouter();
@@ -213,8 +195,23 @@ function DashboardContent() {
     toast({ title: 'Project created', description: `${data.project.name} is ready.` });
   }
 
+  const doneCount = tickets.filter((t) => t.status === 'done').length;
+  const completionPct = tickets.length ? Math.round((doneCount / tickets.length) * 100) : 0;
+
+  const STATS = [
+    { label: 'Projects', value: projects.length, Icon: FolderKanban, color: 'text-primary' },
+    { label: 'Meetings', value: meetings.length, Icon: Video, color: 'text-blue-500' },
+    { label: 'Tickets', value: tickets.length, Icon: Ticket, color: 'text-orange-500' },
+    {
+      label: 'Completion',
+      value: `${completionPct}%`,
+      Icon: CheckCircle2,
+      color: 'text-emerald-500',
+    },
+  ];
+
   return (
-    <div style={{ display: 'flex', height: '100vh', background: '#faf8f4' }}>
+    <div className="flex h-screen bg-background">
       <Sidebar
         currentView={currentView}
         projects={projects}
@@ -223,426 +220,232 @@ function DashboardContent() {
         onCreateProject={() => setIsProjectCreateOpen(true)}
       />
 
-      <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        <div
-          style={{
-            height: '56px',
-            borderBottom: '1px solid #e8dfd0',
-            background: '#faf8f4',
-            display: 'flex',
-            alignItems: 'center',
-            padding: '0 2.5rem',
-            justifyContent: 'space-between',
-            flexShrink: 0,
-          }}
-        >
-          <p
-            style={{
-              fontSize: '13px',
-              color: '#8a8a80',
-              fontFamily: "'DM Sans', sans-serif",
-              fontWeight: '300',
-            }}
-          >
-            {currentView === 'dashboard' && 'Overview of your meetings and work items'}
-            {currentView === 'meetings' && 'All your recorded meetings'}
-            {currentView === 'projects' && 'Workspace projects and project tickets'}
-            {currentView === 'tickets' && 'All extracted tickets'}
-            {currentView === 'ticket-detail' && 'Tickets for this meeting'}
-          </p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div
-              style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#8aab7e' }}
-            />
-            <span
-              style={{ fontSize: '12px', color: '#8aab7e', fontFamily: "'DM Sans', sans-serif" }}
-            >
-              Live
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Top header bar */}
+        <header className="h-14 border-b border-border flex items-center justify-between px-6 shrink-0 bg-background">
+          <h1 className="text-sm font-semibold text-foreground">
+            {currentView === 'dashboard' && 'Dashboard'}
+            {currentView === 'meetings' && 'Meetings'}
+            {currentView === 'projects' && 'Projects'}
+            {currentView === 'tickets' && 'Tickets'}
+            {currentView === 'ticket-detail' && 'Meeting Tickets'}
+          </h1>
+          <div className="flex items-center gap-1.5">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-60" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
             </span>
+            <span className="text-xs text-muted-foreground">Live</span>
           </div>
-        </div>
+        </header>
 
-        <div style={{ flex: 1, overflow: 'auto' }}>
+        <main className="flex-1 overflow-auto">
+          {/* ── DASHBOARD ── */}
           {currentView === 'dashboard' && (
-            <div style={pageStyle}>
-              <h1 style={headingStyle}>Dashboard</h1>
-              <p style={subStyle}>Overview of your meetings and work items</p>
-
-              <div
-                style={{
-                  background: '#ffffff',
-                  border: '1px solid #e8dfd0',
-                  borderRadius: '12px',
-                  padding: '1.5rem',
-                  marginBottom: '2rem',
-                }}
-              >
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    justifyContent: 'space-between',
-                    gap: '1rem',
-                    marginBottom: '1.25rem',
-                  }}
-                >
-                  <div>
-                    <h2
-                      style={{
-                        fontFamily: "'DM Serif Display', serif",
-                        fontSize: '1.4rem',
-                        fontWeight: '400',
-                        color: '#2c2c28',
-                        marginBottom: '0.25rem',
-                      }}
-                    >
-                      Projects
-                    </h2>
-                    <p
-                      style={{
-                        fontSize: '13px',
-                        color: '#8a8a80',
-                        fontFamily: "'DM Sans', sans-serif",
-                      }}
-                    >
-                      Keep track of your active workspaces and jump back in quickly.
-                    </p>
-                  </div>
-
-                  <button
-                    onClick={() => handleViewChange('projects')}
-                    style={{
-                      background: '#f4f7f1',
-                      border: '1px solid #d9e4d2',
-                      color: '#3d5a3e',
-                      padding: '0.55rem 1rem',
-                      borderRadius: '999px',
-                      fontSize: '12px',
-                      fontFamily: "'DM Sans', sans-serif",
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    View all projects
-                  </button>
-                </div>
-
-                {projects.length === 0 ? (
-                  <div
-                    style={{
-                      border: '1px dashed #d9cfbf',
-                      borderRadius: '12px',
-                      padding: '1.25rem',
-                      background: '#fbf9f5',
-                      textAlign: 'center',
-                    }}
-                  >
-                    <p
-                      style={{
-                        margin: 0,
-                        color: '#5a5a52',
-                        fontSize: '14px',
-                        fontFamily: "'DM Sans', sans-serif",
-                      }}
-                    >
-                      No projects yet. Create one to organize meetings and tickets.
-                    </p>
-                    <button
-                      onClick={() => setIsProjectCreateOpen(true)}
-                      style={{
-                        marginTop: '1rem',
-                        background: '#3d5a3e',
-                        color: '#f8fbf7',
-                        border: 'none',
-                        padding: '0.65rem 1rem',
-                        borderRadius: '999px',
-                        fontSize: '12px',
-                        fontFamily: "'DM Sans', sans-serif",
-                        fontWeight: '500',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Create project
-                    </button>
-                  </div>
-                ) : (
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-                      gap: '12px',
-                    }}
-                  >
-                    {projects.slice(0, 4).map((project) => {
-                      const projectTickets = tickets.filter(
-                        (ticket) => ticket.projectId === project.id
-                      ).length;
-                      const projectMeetings = meetings.filter(
-                        (meeting) => meeting.projectId === project.id
-                      ).length;
-
-                      return (
-                        <button
-                          key={project.id}
-                          onClick={() => handleProjectSelect(project.id)}
-                          style={{
-                            textAlign: 'left',
-                            background: '#ffffff',
-                            border: '1px solid #e8dfd0',
-                            borderRadius: '16px',
-                            padding: '1rem',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease',
-                            boxShadow: '0 1px 0 rgba(61, 90, 62, 0.03)',
-                          }}
-                        >
-                          <p
-                            style={{
-                              margin: '0 0 0.35rem',
-                              fontFamily: "'DM Serif Display', serif",
-                              fontSize: '1.05rem',
-                              color: '#2c2c28',
-                            }}
-                          >
-                            {project.name}
-                          </p>
-                          <p
-                            style={{
-                              margin: '0 0 0.75rem',
-                              fontSize: '12px',
-                              color: '#8a8a80',
-                              fontFamily: "'DM Sans', sans-serif",
-                            }}
-                          >
-                            {project.repo}
-                          </p>
-                          <div
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              gap: '12px',
-                              fontSize: '12px',
-                              color: '#5a5a52',
-                              fontFamily: "'DM Sans', sans-serif",
-                            }}
-                          >
-                            <span>{projectMeetings} meetings</span>
-                            <span>{projectTickets} tickets</span>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+            <div className="p-6 space-y-5 max-w-5xl mx-auto w-full">
+              <div>
+                <h2 className="text-xl font-semibold text-foreground">Overview</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">Your workspace at a glance</p>
               </div>
 
-              <div
-                style={{
-                  background: '#ffffff',
-                  border: '1px solid #e8dfd0',
-                  borderRadius: '12px',
-                  padding: '1.5rem',
-                  marginBottom: '2rem',
-                }}
-              >
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    justifyContent: 'space-between',
-                    gap: '1rem',
-                    marginBottom: '1.25rem',
-                  }}
-                >
-                  <div>
-                    <h2
-                      style={{
-                        fontFamily: "'DM Serif Display', serif",
-                        fontSize: '1.4rem',
-                        fontWeight: '400',
-                        color: '#2c2c28',
-                        marginBottom: '0.25rem',
-                      }}
+              {/* Stats */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {STATS.map(({ label, value, Icon, color }) => (
+                  <Card key={label} className="border-border/60 shadow-none">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs text-muted-foreground font-medium">{label}</span>
+                        <Icon className={cn('h-4 w-4', color)} />
+                      </div>
+                      <p className="text-2xl font-semibold text-foreground">{value}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Projects */}
+              <Card className="border-border/60 shadow-none">
+                <CardHeader className="pb-3 pt-5 px-5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-sm font-semibold">Projects</CardTitle>
+                      <CardDescription className="text-xs mt-0.5">
+                        Jump back into your active workspaces
+                      </CardDescription>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs gap-1 h-7"
+                      onClick={() => handleViewChange('projects')}
                     >
-                      Meetings
-                    </h2>
-                    <p
-                      style={{
-                        fontSize: '13px',
-                        color: '#8a8a80',
-                        fontFamily: "'DM Sans', sans-serif",
-                      }}
-                    >
-                      Keep track of your active meetings and jump back in quickly.
-                    </p>
+                      View all <ArrowUpRight className="h-3 w-3" />
+                    </Button>
                   </div>
+                </CardHeader>
+                <CardContent className="px-5 pb-5">
+                  {projects.length === 0 ? (
+                    <div className="border border-dashed border-border rounded-lg p-8 text-center">
+                      <FolderKanban className="h-7 w-7 text-muted-foreground/40 mx-auto mb-2" />
+                      <p className="text-sm font-medium text-foreground mb-1">No projects yet</p>
+                      <p className="text-xs text-muted-foreground mb-4">
+                        Create a project to organise meetings and tickets.
+                      </p>
+                      <Button size="sm" onClick={() => setIsProjectCreateOpen(true)}>
+                        Create project
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {projects.slice(0, 6).map((project) => {
+                        const pTickets = tickets.filter((t) => t.projectId === project.id).length;
+                        const pMeetings = meetings.filter((m) => m.projectId === project.id).length;
+                        return (
+                          <button
+                            key={project.id}
+                            onClick={() => handleProjectSelect(project.id)}
+                            className="text-left rounded-lg border border-border/60 bg-card p-4 hover:border-primary/40 hover:shadow-sm transition-all group"
+                          >
+                            <div className="flex items-center gap-2.5 mb-3">
+                              <div className="h-8 w-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                                <FolderKanban className="h-4 w-4 text-primary" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-foreground truncate">
+                                  {project.name}
+                                </p>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {project.repo || 'No repo set'}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <Video className="h-3 w-3" /> {pMeetings} meetings
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Ticket className="h-3 w-3" /> {pTickets} tickets
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
 
-                  <button
-                    onClick={() => handleViewChange('meetings')}
-                    style={{
-                      background: '#f4f7f1',
-                      border: '1px solid #d9e4d2',
-                      color: '#3d5a3e',
-                      padding: '0.55rem 1rem',
-                      borderRadius: '999px',
-                      fontSize: '12px',
-                      fontFamily: "'DM Sans', sans-serif",
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    View all meetings
-                  </button>
-                </div>
-
-                {meetings.length === 0 ? (
-                  <div
-                    style={{
-                      border: '1px dashed #d9cfbf',
-                      borderRadius: '12px',
-                      padding: '1.25rem',
-                      background: '#fbf9f5',
-                      textAlign: 'center',
-                    }}
-                  >
-                    <p
-                      style={{
-                        margin: 0,
-                        color: '#5a5a52',
-                        fontSize: '14px',
-                        fontFamily: "'DM Sans', sans-serif",
-                      }}
-                    >
-                      No meetings yet. Start one from a project or the meetings tab.
-                    </p>
-                    <button
+              {/* Meetings */}
+              <Card className="border-border/60 shadow-none">
+                <CardHeader className="pb-3 pt-5 px-5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-sm font-semibold">Recent Meetings</CardTitle>
+                      <CardDescription className="text-xs mt-0.5">
+                        Your latest recorded sessions
+                      </CardDescription>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs gap-1 h-7"
                       onClick={() => handleViewChange('meetings')}
-                      style={{
-                        marginTop: '1rem',
-                        background: '#3d5a3e',
-                        color: '#f8fbf7',
-                        border: 'none',
-                        padding: '0.65rem 1rem',
-                        borderRadius: '999px',
-                        fontSize: '12px',
-                        fontFamily: "'DM Sans', sans-serif",
-                        fontWeight: '500',
-                        cursor: 'pointer',
-                      }}
                     >
-                      Go to meetings
-                    </button>
+                      View all <ArrowUpRight className="h-3 w-3" />
+                    </Button>
                   </div>
-                ) : (
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-                      gap: '12px',
-                    }}
-                  >
-                    {meetings.slice(0, 4).map((meeting) => (
-                      <button
-                        key={meeting.id}
-                        onClick={() => handleMeetingSelect(meeting.id)}
-                        style={{
-                          textAlign: 'left',
-                          background: '#ffffff',
-                          border: '1px solid #e8dfd0',
-                          borderRadius: '16px',
-                          padding: '1rem',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease',
-                          boxShadow: '0 1px 0 rgba(61, 90, 62, 0.03)',
-                        }}
-                      >
-                        <p
-                          style={{
-                            margin: '0 0 0.35rem',
-                            fontFamily: "'DM Serif Display', serif",
-                            fontSize: '1.05rem',
-                            color: '#2c2c28',
-                          }}
+                </CardHeader>
+                <CardContent className="px-5 pb-5">
+                  {meetings.length === 0 ? (
+                    <div className="border border-dashed border-border rounded-lg p-8 text-center">
+                      <Video className="h-7 w-7 text-muted-foreground/40 mx-auto mb-2" />
+                      <p className="text-sm font-medium text-foreground mb-1">No meetings yet</p>
+                      <p className="text-xs text-muted-foreground">
+                        Start a meeting from a project to begin collecting tickets.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-border/60">
+                      {meetings.slice(0, 5).map((meeting) => (
+                        <button
+                          key={meeting.id}
+                          onClick={() => handleMeetingSelect(meeting.id)}
+                          className="w-full flex items-center gap-3 py-2.5 text-left hover:bg-muted/50 px-2 -mx-2 rounded-md transition-colors"
                         >
-                          {meeting.projectName}
-                        </p>
-                        <p
-                          style={{
-                            margin: '0 0 0.75rem',
-                            fontSize: '12px',
-                            color: '#8a8a80',
-                            fontFamily: "'DM Sans', sans-serif",
-                          }}
-                        >
-                          {meeting.platform} • {new Date(meeting.date).toLocaleDateString()}
-                        </p>
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            gap: '12px',
-                            fontSize: '12px',
-                            color: '#5a5a52',
-                            fontFamily: "'DM Sans', sans-serif",
-                          }}
-                        >
-                          <span>{meeting.status}</span>
-                          <span>Open meeting</span>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
+                          <div className="h-8 w-8 rounded-md bg-blue-500/10 flex items-center justify-center shrink-0">
+                            <Video className="h-4 w-4 text-blue-500" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">
+                              {meeting.projectName}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {meeting.platform} · {new Date(meeting.date).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <Badge
+                            variant={meeting.status === 'completed' ? 'default' : 'secondary'}
+                            className="text-[10px] shrink-0"
+                          >
+                            {meeting.status}
+                          </Badge>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* ── MEETINGS ── */}
+          {currentView === 'meetings' && (
+            <div className="p-6">
+              <div className="max-w-5xl mx-auto">
+                <div className="mb-5">
+                  <h2 className="text-xl font-semibold text-foreground">Meetings</h2>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    All your recorded meeting sessions
+                  </p>
+                </div>
+                <MeetingCards
+                  onSelectMeeting={handleMeetingSelect}
+                  onCreateTicket={handleMeetingTicketCreate}
+                />
               </div>
             </div>
           )}
 
-          {currentView === 'meetings' && (
-            <div style={pageStyle}>
-              <h1 style={headingStyle}>Meetings</h1>
-              <p style={subStyle}>All your recorded meetings</p>
-              <MeetingCards
-                onSelectMeeting={handleMeetingSelect}
-                onCreateTicket={handleMeetingTicketCreate}
-              />
-            </div>
-          )}
-
+          {/* ── TICKETS ── */}
           {currentView === 'tickets' && (
-            <div style={pageStyle}>
-              <h1 style={headingStyle}>Tickets</h1>
-              <p style={subStyle}>All extracted tickets across every meeting</p>
-              <TicketsBoard
-                onSelectMeeting={handleMeetingSelect}
-                onSelectProject={handleProjectSelect}
-                onSaved={refreshWorkspace}
-              />
+            <div className="p-6">
+              <div className="max-w-5xl mx-auto">
+                <div className="mb-5">
+                  <h2 className="text-xl font-semibold text-foreground">Tickets</h2>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    All extracted tickets across every meeting
+                  </p>
+                </div>
+                <TicketsBoard
+                  onSelectMeeting={handleMeetingSelect}
+                  onSelectProject={handleProjectSelect}
+                  onSaved={refreshWorkspace}
+                />
+              </div>
             </div>
           )}
 
+          {/* ── TICKET DETAIL ── */}
           {currentView === 'ticket-detail' && selectedMeeting && (
-            <div style={pageStyle}>
-              <button
+            <div className="p-6 max-w-5xl mx-auto">
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => handleViewChange('meetings')}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  color: '#5c7c5d',
-                  fontFamily: "'DM Sans', sans-serif",
-                  fontWeight: '500',
-                  marginBottom: '1.5rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: 0,
-                }}
+                className="-ml-2 mb-4 text-muted-foreground hover:text-foreground"
               >
                 ← Back to Meetings
-              </button>
+              </Button>
               <TicketDetail
                 meetingId={selectedMeeting}
                 onSelectMeeting={handleMeetingSelect}
@@ -651,8 +454,9 @@ function DashboardContent() {
             </div>
           )}
 
+          {/* ── PROJECTS ── */}
           {currentView === 'projects' && (
-            <div style={pageStyle}>
+            <div className="p-6">
               <ProjectsWorkspace
                 projects={projects}
                 meetings={meetings}
@@ -666,8 +470,8 @@ function DashboardContent() {
               />
             </div>
           )}
-        </div>
-      </main>
+        </main>
+      </div>
 
       <ProjectCreateDialog
         open={isProjectCreateOpen}

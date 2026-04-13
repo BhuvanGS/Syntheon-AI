@@ -405,7 +405,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
       </div>
 
       <Dialog open={isDiscardConfirmOpen} onOpenChange={setIsDiscardConfirmOpen}>
-        <DialogContent className="sm:max-w-lg border-border bg-[#f9f6f1] shadow-2xl">
+        <DialogContent className="sm:max-w-lg border-border bg-background shadow-2xl">
           <DialogHeader>
             <DialogTitle className="font-playfair text-2xl text-foreground">
               Discard ticket changes?
@@ -445,7 +445,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
           if (!open) setTicketToEdit(null);
         }}
       >
-        <DialogContent className="sm:max-w-2xl border-border bg-[#f9f6f1] shadow-2xl">
+        <DialogContent className="sm:max-w-2xl border-border bg-background shadow-2xl">
           <DialogHeader>
             <DialogTitle className="font-playfair text-2xl text-foreground">
               Update ticket
@@ -577,7 +577,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
           if (!open) setTicketToDelete(null);
         }}
       >
-        <DialogContent className="sm:max-w-lg border-border bg-[#f9f6f1] shadow-2xl">
+        <DialogContent className="sm:max-w-lg border-border bg-background shadow-2xl">
           <DialogHeader>
             <DialogTitle className="font-playfair text-2xl text-foreground">
               Delete this ticket?

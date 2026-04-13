@@ -63,7 +63,7 @@ export function ProjectMeetingDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl border-border bg-[#f9f6f1] shadow-2xl">
+      <DialogContent className="sm:max-w-xl border-border bg-background shadow-2xl">
         <DialogHeader>
           <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary w-fit mb-2">
             <Sparkles className="h-3.5 w-3.5" />

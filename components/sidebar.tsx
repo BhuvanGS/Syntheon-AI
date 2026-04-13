@@ -1,11 +1,17 @@
 'use client';
 
-import { LayoutDashboard, Settings, FolderKanban, Plus, Sprout } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { LayoutDashboard, Settings, FolderKanban, Plus, ChevronsUpDown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useUser } from '@clerk/nextjs';
 
 interface SidebarProps {
-  currentView: string;
+  currentView?: string;
   onViewChange?: (view: any) => void;
   projects: Array<{ id: string; name: string }>;
   selectedProjectId?: string | null;
@@ -13,268 +19,138 @@ interface SidebarProps {
   onCreateProject: () => void;
 }
 
+const NAV_ITEMS = [
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
+  { id: 'settings', label: 'Settings', icon: Settings, href: '/settings' },
+];
+
 export function Sidebar({
-  currentView,
-  onViewChange,
   projects,
   selectedProjectId,
   onSelectProject,
   onCreateProject,
 }: SidebarProps) {
   const router = useRouter();
-  const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'settings', label: 'Settings', icon: Settings },
-  ];
+  const pathname = usePathname();
+  const { user } = useUser();
+
+  const userInitial =
+    user?.firstName?.[0] ?? user?.emailAddresses?.[0]?.emailAddress?.[0]?.toUpperCase() ?? 'S';
+  const userName = user?.fullName ?? user?.emailAddresses?.[0]?.emailAddress ?? 'My Workspace';
 
   return (
-    <aside
-      style={{
-        width: '240px',
-        minWidth: '240px',
-        background: 'var(--sidebar-bg, #f5f0e8)',
-        borderRight: '1px solid var(--sidebar-border, #e8dfd0)',
-        display: 'flex',
-        flexDirection: 'column',
-        padding: '1.5rem 1rem',
-        height: '100vh',
-      }}
-    >
+    <aside className="w-[220px] min-w-[220px] h-screen flex flex-col bg-sidebar border-r border-sidebar-border">
       {/* Logo */}
-      <Link
-        href="/"
-        style={{
-          textDecoration: 'none',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
-          marginBottom: '2.5rem',
-          padding: '0 0.5rem',
-        }}
-      >
-        <img
-          src="/logo.png"
-          alt="Syntheon"
-          style={{ width: '32px', height: '32px', objectFit: 'contain' }}
-          onError={(e) => {
-            (e.target as HTMLImageElement).style.display = 'none';
-          }}
-        />
-        <span
-          style={{
-            fontFamily: "'DM Serif Display', serif",
-            fontSize: '1.2rem',
-            fontWeight: '400',
-            color: '#3d5a3e',
-            letterSpacing: '0.01em',
-          }}
-        >
-          Syntheon
-        </span>
-      </Link>
+      <div className="h-14 flex items-center px-4 shrink-0">
+        <Link href="/" className="flex items-center gap-2.5">
+          <img
+            src="/logo.png"
+            alt="Syntheon"
+            className="w-6 h-6 object-contain"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
+          />
+          <span className="font-[family-name:var(--font-dm-serif)] text-[1.05rem] text-primary tracking-tight">
+            Syntheon
+          </span>
+        </Link>
+      </div>
 
-      {/* Nav */}
-      <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-        {menuItems.map((item) => {
+      <Separator />
+
+      {/* Main nav */}
+      <nav className="px-2 pt-3 space-y-0.5 shrink-0">
+        {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
-          const isActive = currentView === item.id;
-
+          const active = pathname === item.href;
           return (
             <button
               key={item.id}
-              onClick={() => {
-                if (item.id === 'settings') router.push('/settings');
-                else router.push('/dashboard');
-                onViewChange?.(item.id);
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                padding: '10px 14px',
-                borderRadius: '10px',
-                border: 'none',
-                cursor: 'pointer',
-                width: '100%',
-                textAlign: 'left',
-                fontFamily: "'DM Sans', sans-serif",
-                fontSize: '14px',
-                fontWeight: isActive ? '500' : '400',
-                transition: 'all 0.15s ease',
-                background: isActive ? '#3d5a3e' : 'transparent',
-                color: isActive ? '#eaf2e8' : '#5a5a52',
-              }}
-              onMouseEnter={(e) => {
-                if (!isActive) {
-                  (e.currentTarget as HTMLButtonElement).style.background = '#eaf2e8';
-                  (e.currentTarget as HTMLButtonElement).style.color = '#3d5a3e';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive) {
-                  (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
-                  (e.currentTarget as HTMLButtonElement).style.color = '#5a5a52';
-                }
-              }}
+              onClick={() => router.push(item.href)}
+              className={cn(
+                'w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors',
+                active
+                  ? 'bg-primary text-primary-foreground font-medium'
+                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+              )}
             >
-              <Icon
-                style={{
-                  width: '17px',
-                  height: '17px',
-                  flexShrink: 0,
-                  color: isActive ? '#eaf2e8' : '#8aab7e',
-                }}
-              />
+              <Icon className="h-4 w-4 shrink-0" />
               {item.label}
             </button>
           );
         })}
+      </nav>
 
-        <div style={{ marginTop: '1.5rem', padding: '0 0.5rem' }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '0.75rem',
-            }}
+      <Separator className="mt-3" />
+
+      {/* Projects */}
+      <div className="px-2 pt-3 flex-1 min-h-0 flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between px-2 mb-2 shrink-0">
+          <span className="text-[10px] font-semibold tracking-[0.1em] uppercase text-muted-foreground">
+            Projects
+          </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-5 w-5 rounded text-muted-foreground hover:text-foreground hover:bg-accent"
+            onClick={onCreateProject}
+            title="New project"
           >
-            <p
-              style={{
-                fontSize: '11px',
-                letterSpacing: '0.12em',
-                textTransform: 'uppercase',
-                color: '#8a8a80',
-                margin: 0,
-              }}
-            >
-              Projects
-            </p>
-            <button
-              onClick={onCreateProject}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                border: 'none',
-                background: 'transparent',
-                color: '#5c7c5d',
-                fontSize: '12px',
-                cursor: 'pointer',
-                padding: 0,
-                fontFamily: "'DM Sans', sans-serif",
-              }}
-            >
-              <Plus style={{ width: '14px', height: '14px' }} />
-              New
-            </button>
-          </div>
+            <Plus className="h-3 w-3" />
+          </Button>
+        </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {projects.length === 0 ? (
-              <div
-                style={{
-                  border: '1px dashed #d9cfbf',
-                  borderRadius: '12px',
-                  padding: '12px',
-                  color: '#8a8a80',
-                  fontSize: '12px',
-                  lineHeight: 1.5,
-                  background: '#fbf9f5',
-                }}
-              >
-                Create your first project to organize meetings and tickets.
-              </div>
-            ) : (
-              projects.slice(0, 6).map((project) => {
-                const active = currentView === 'project-detail' && project.id === selectedProjectId;
-
+        <ScrollArea className="flex-1 -mx-1 px-1">
+          {projects.length === 0 ? (
+            <div className="mx-1 border border-dashed border-border rounded-lg p-3 text-center">
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                No projects yet. Create one to get started.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-0.5 pb-2">
+              {projects.slice(0, 8).map((project) => {
+                const active = pathname === '/project' && project.id === selectedProjectId;
                 return (
                   <button
                     key={project.id}
                     onClick={() => {
-                      router.push(`/project?projectId=${project.id}`);
+                      router.push(`/project?projectId=${project.id}&tab=kanban`);
                       onSelectProject?.(project.id);
                     }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: '8px',
-                      width: '100%',
-                      border: '1px solid transparent',
-                      background: active ? '#eaf2e8' : 'transparent',
-                      color: '#5a5a52',
-                      borderRadius: '10px',
-                      padding: '10px 12px',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      fontSize: '13px',
-                      fontFamily: "'DM Sans', sans-serif",
-                    }}
+                    className={cn(
+                      'w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md transition-colors text-left',
+                      active
+                        ? 'bg-accent text-foreground font-medium'
+                        : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                    )}
                   >
-                    <span
-                      style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                    >
-                      {project.name}
-                    </span>
-                    <FolderKanban
-                      style={{ width: '14px', height: '14px', color: '#8aab7e', flexShrink: 0 }}
-                    />
+                    <FolderKanban className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+                    <span className="truncate text-[13px]">{project.name}</span>
                   </button>
                 );
-              })
-            )}
+              })}
+            </div>
+          )}
+        </ScrollArea>
+      </div>
+
+      {/* Footer / User */}
+      <Separator />
+      <div className="p-3 shrink-0">
+        <div className="flex items-center gap-2.5 px-2 py-2 rounded-md hover:bg-accent cursor-pointer transition-colors">
+          <Avatar className="h-7 w-7 shrink-0">
+            <AvatarImage src={user?.imageUrl} />
+            <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+              {userInitial}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <p className="text-[12px] font-medium text-foreground truncate">{userName}</p>
+            <p className="text-[11px] text-muted-foreground truncate">syntheon.ai</p>
           </div>
-        </div>
-      </nav>
-
-      {/* Divider */}
-      <div style={{ borderTop: '1px solid #e8dfd0', margin: '1rem 0' }} />
-
-      {/* User */}
-      <div style={{ padding: '0 0.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <div
-          style={{
-            width: '36px',
-            height: '36px',
-            borderRadius: '50%',
-            background: '#eaf2e8',
-            border: '1.5px solid #c8dbc4',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-          }}
-        >
-          <Sprout style={{ width: '16px', height: '16px', color: '#5c7c5d' }} />
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p
-            style={{
-              fontSize: '13px',
-              fontWeight: '500',
-              color: '#3d5a3e',
-              margin: 0,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}
-          >
-            My Workspace
-          </p>
-          <p
-            style={{
-              fontSize: '11px',
-              color: '#8a8a80',
-              margin: 0,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}
-          >
-            syntheon.ai
-          </p>
+          <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
         </div>
       </div>
     </aside>

@@ -472,16 +472,7 @@ export function ProjectsWorkspace({
   return (
     <div className="flex flex-col h-full">
       {/* Top bar: back + project name + project nav/actions */}
-      <div
-        style={{
-          borderBottom: '1px solid #e8dfd0',
-          background: '#faf8f4',
-          padding: '0 2rem',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 0,
-        }}
-      >
+      <div className="border-b border-border bg-background px-8 flex flex-col gap-0">
         {/* Row 1: back + title */}
         <div className="flex items-center justify-between py-3 gap-4">
           <div className="flex items-center gap-3">
@@ -532,7 +523,7 @@ export function ProjectsWorkspace({
                   Options
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-56 bg-[#faf8f4] border-border">
+              <DropdownMenuContent align="start" className="w-56 bg-popover border-border">
                 <DropdownMenuItem
                   onClick={() => {
                     setProjectNameDraft(selectedProject.name);
@@ -581,7 +572,7 @@ export function ProjectsWorkspace({
               </Button>
             </div>
             {projectMeetings.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-border bg-white p-12 text-center">
+              <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
                 <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
                   <Calendar className="h-6 w-6 text-primary" />
                 </div>
@@ -600,7 +591,7 @@ export function ProjectsWorkspace({
                   <button
                     key={meeting.id}
                     onClick={() => onSelectMeeting(meeting.id)}
-                    className="text-left rounded-2xl border border-border bg-white p-5 hover:border-primary/30 hover:shadow-md transition-all"
+                    className="text-left rounded-2xl border border-border bg-card p-5 hover:border-primary/30 hover:shadow-md transition-all"
                   >
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <p className="font-playfair text-lg font-bold text-foreground">
@@ -638,7 +629,7 @@ export function ProjectsWorkspace({
                 <Button
                   variant="outline"
                   onClick={() => setIsImportDialogOpen(true)}
-                  className="rounded-full gap-2 bg-white"
+                  className="rounded-full gap-2 bg-card"
                   disabled={meetings.length === 0}
                 >
                   <Download className="h-4 w-4" />
@@ -651,7 +642,7 @@ export function ProjectsWorkspace({
               </div>
             </div>
             {projectTickets.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-border bg-white p-12 text-center">
+              <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
                 <p className="font-medium text-foreground mb-2">No tickets yet</p>
                 <p className="text-sm text-muted-foreground mb-5">
                   Import tickets from a meeting or create them manually.
@@ -672,7 +663,7 @@ export function ProjectsWorkspace({
                   return (
                     <div
                       key={ticket.id}
-                      className="rounded-2xl border border-border bg-white p-4 flex flex-col gap-3"
+                      className="rounded-2xl border border-border bg-card p-4 flex flex-col gap-3"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <h3 className="font-playfair text-base font-bold text-foreground line-clamp-2 flex-1">
@@ -714,12 +705,12 @@ export function ProjectsWorkspace({
           <div className="space-y-4">
             <h2 className="font-playfair text-2xl font-bold text-foreground">List</h2>
             {projectTickets.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-border bg-white p-12 text-center">
+              <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
                 <p className="text-muted-foreground">No tickets in this project yet.</p>
               </div>
             ) : (
-              <div className="rounded-2xl border border-border bg-white overflow-hidden">
-                <div className="grid grid-cols-[1fr_120px_120px_40px] items-center px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground border-b border-border/60 bg-[#faf8f4]">
+              <div className="rounded-2xl border border-border bg-card overflow-hidden">
+                <div className="grid grid-cols-[1fr_120px_120px_40px] items-center px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground border-b border-border/60 bg-muted/40">
                   <span>Title</span>
                   <span>Status</span>
                   <span>Assignee</span>
@@ -730,7 +721,7 @@ export function ProjectsWorkspace({
                   return (
                     <div
                       key={ticket.id}
-                      className={`grid grid-cols-[1fr_120px_120px_40px] items-center px-4 py-3 gap-2 hover:bg-[#faf8f4] transition-colors ${i < projectTickets.length - 1 ? 'border-b border-border/40' : ''}`}
+                      className={`grid grid-cols-[1fr_120px_120px_40px] items-center px-4 py-3 gap-2 hover:bg-muted/40 transition-colors ${i < projectTickets.length - 1 ? 'border-b border-border/40' : ''}`}
                     >
                       <span className="font-medium text-sm text-foreground truncate">
                         {ticket.title}
@@ -785,7 +776,7 @@ export function ProjectsWorkspace({
                       }
                     }}
                     className={`rounded-2xl border-2 transition-colors h-fit flex flex-col ${
-                      isOver ? 'border-primary/50 bg-primary/5' : 'border-border bg-[#faf8f4]'
+                      isOver ? 'border-primary/50 bg-primary/5' : 'border-border bg-muted/40'
                     }`}
                   >
                     <div className="flex items-center justify-between px-4 pt-4 pb-2">
@@ -795,7 +786,7 @@ export function ProjectsWorkspace({
                       >
                         {col.label}
                       </span>
-                      <span className="text-xs font-bold text-muted-foreground bg-white rounded-full px-2 py-0.5 border border-border">
+                      <span className="text-xs font-bold text-muted-foreground bg-card rounded-full px-2 py-0.5 border border-border">
                         {colTickets.length}
                       </span>
                     </div>
@@ -806,7 +797,7 @@ export function ProjectsWorkspace({
                           draggable
                           onDragStart={() => setDraggedTicketId(ticket.id)}
                           onDragEnd={() => setDraggedTicketId(null)}
-                          className={`rounded-xl border border-border bg-white p-3 cursor-grab active:cursor-grabbing shadow-sm hover:shadow-md transition-shadow group ${
+                          className={`rounded-xl border border-border bg-card p-3 cursor-grab active:cursor-grabbing shadow-sm hover:shadow-md transition-shadow group ${
                             draggedTicketId === ticket.id ? 'opacity-50' : ''
                           }`}
                         >
@@ -843,7 +834,7 @@ export function ProjectsWorkspace({
                       <button
                         type="button"
                         onClick={() => setIsTicketDialogOpen(true)}
-                        className="w-full rounded-xl bg-[#5c7c5d] text-white text-sm font-medium py-2.5 hover:bg-[#4f6e50] transition-colors"
+                        className="w-full rounded-xl bg-primary text-primary-foreground text-sm font-medium py-2.5 hover:bg-primary/90 transition-colors"
                       >
                         Add ticket
                       </button>
@@ -876,7 +867,7 @@ export function ProjectsWorkspace({
                   ].map((stat) => (
                     <div
                       key={stat.label}
-                      className="rounded-2xl border border-border bg-white p-5 space-y-1"
+                      className="rounded-2xl border border-border bg-card p-5 space-y-1"
                     >
                       <p
                         className="text-xs uppercase tracking-wide font-medium"
@@ -891,7 +882,7 @@ export function ProjectsWorkspace({
                     </div>
                   ))}
                 </div>
-                <div className="rounded-2xl border border-border bg-white p-6 space-y-4">
+                <div className="rounded-2xl border border-border bg-card p-6 space-y-4">
                   <p className="font-playfair text-lg font-bold text-foreground">
                     Progress overview
                   </p>
@@ -924,7 +915,7 @@ export function ProjectsWorkspace({
                   </div>
                 </div>
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                  <div className="rounded-2xl border border-border bg-white p-5 space-y-2">
+                  <div className="rounded-2xl border border-border bg-card p-5 space-y-2">
                     <p className="text-xs uppercase tracking-wide text-muted-foreground">
                       Meetings
                     </p>
@@ -932,7 +923,7 @@ export function ProjectsWorkspace({
                       {projectMeetings.length}
                     </p>
                   </div>
-                  <div className="rounded-2xl border border-border bg-white p-5 space-y-2">
+                  <div className="rounded-2xl border border-border bg-card p-5 space-y-2">
                     <p className="text-xs uppercase tracking-wide text-muted-foreground">
                       Completion rate
                     </p>
@@ -950,7 +941,7 @@ export function ProjectsWorkspace({
         {projectTab === 'dependencies' && (
           <div className="space-y-4">
             <h2 className="font-playfair text-2xl font-bold text-foreground">Dependencies</h2>
-            <div className="rounded-2xl border border-border bg-white p-4">
+            <div className="rounded-2xl border border-border bg-card p-4">
               <TicketDependencyGraph projectId={selectedProject.id} />
             </div>
           </div>
@@ -965,7 +956,7 @@ export function ProjectsWorkspace({
       />
 
       <Dialog open={isRenameProjectOpen} onOpenChange={setIsRenameProjectOpen}>
-        <DialogContent className="sm:max-w-xl border-border bg-[#f9f6f1] shadow-2xl">
+        <DialogContent className="sm:max-w-xl border-border bg-background shadow-2xl">
           <DialogHeader>
             <DialogTitle className="font-playfair text-2xl text-foreground">
               Change project name
@@ -998,7 +989,7 @@ export function ProjectsWorkspace({
             <Button
               type="button"
               onClick={handleRenameProject}
-              className="rounded-full bg-[#5c7c5d] text-white hover:bg-[#4f6e50]"
+              className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
               disabled={isSavingProject || projectNameDraft.trim().length === 0}
             >
               Save name
@@ -1036,7 +1027,7 @@ export function ProjectsWorkspace({
           if (!open) setTicketToEdit(null);
         }}
       >
-        <DialogContent className="sm:max-w-2xl border-border bg-[#f9f6f1] shadow-2xl">
+        <DialogContent className="sm:max-w-2xl border-border bg-background shadow-2xl">
           <DialogHeader>
             <DialogTitle className="font-playfair text-2xl text-foreground">
               Update ticket
@@ -1169,7 +1160,7 @@ export function ProjectsWorkspace({
           if (!open) setTicketToDelete(null);
         }}
       >
-        <DialogContent className="sm:max-w-xl border-border bg-[#f9f6f1] shadow-2xl">
+        <DialogContent className="sm:max-w-xl border-border bg-background shadow-2xl">
           <DialogHeader>
             <DialogTitle className="font-playfair text-2xl text-foreground">
               Delete this ticket?
@@ -1207,7 +1198,7 @@ export function ProjectsWorkspace({
           if (!open) setProjectToDelete(null);
         }}
       >
-        <DialogContent className="sm:max-w-xl border-border bg-[#f9f6f1] shadow-2xl">
+        <DialogContent className="sm:max-w-xl border-border bg-background shadow-2xl">
           <DialogHeader>
             <DialogTitle className="font-playfair text-2xl text-foreground">
               Delete this project?

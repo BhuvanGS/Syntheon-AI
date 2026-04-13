@@ -641,7 +641,7 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
           if (!open) setTicketToEdit(null);
         }}
       >
-        <DialogContent className="sm:max-w-2xl border-border bg-[#f9f6f1] shadow-2xl">
+        <DialogContent className="sm:max-w-2xl border-border bg-background shadow-2xl">
           <DialogHeader>
             <DialogTitle className="font-playfair text-2xl text-foreground">
               Update ticket
@@ -774,7 +774,7 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
           if (!open) setTicketToDelete(null);
         }}
       >
-        <DialogContent className="sm:max-w-xl border-border bg-[#f9f6f1] shadow-2xl">
+        <DialogContent className="sm:max-w-xl border-border bg-background shadow-2xl">
           <DialogHeader>
             <DialogTitle className="font-playfair text-2xl text-foreground">
               Delete this ticket?
@@ -810,7 +810,7 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
           if (!open) setMeetingToDelete(null);
         }}
       >
-        <DialogContent className="sm:max-w-xl border-border bg-[#f9f6f1] shadow-2xl">
+        <DialogContent className="sm:max-w-xl border-border bg-background shadow-2xl">
           <DialogHeader>
             <DialogTitle className="font-playfair text-2xl text-foreground">
               Delete this meeting?

@@ -26,9 +26,26 @@ export function MeetingCards({ onSelectMeeting, onCreateTicket }: MeetingCardsPr
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchMeetings();
-    const interval = setInterval(fetchMeetings, 10000);
-    return () => clearInterval(interval);
+    let interval: ReturnType<typeof setInterval> | null = null;
+
+    async function fetchAndSchedule() {
+      await fetchMeetings();
+      setMeetings((current) => {
+        const hasProcessing = current.some((m) => m.status === 'processing');
+        if (hasProcessing && !interval) {
+          interval = setInterval(fetchAndSchedule, 10000);
+        } else if (!hasProcessing && interval) {
+          clearInterval(interval);
+          interval = null;
+        }
+        return current;
+      });
+    }
+
+    void fetchAndSchedule();
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, []);
 
   async function fetchMeetings() {

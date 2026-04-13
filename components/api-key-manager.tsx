@@ -107,410 +107,152 @@ export function ApiKeyManager() {
   };
 
   return (
-    <div
-      style={{
-        background: '#ffffff',
-        border: '1px solid #e8dfd0',
-        borderRadius: '12px',
-        padding: '2rem',
-        marginBottom: '2rem',
-      }}
-    >
+    <div className="rounded-lg border border-border/60 bg-card">
       {/* Header */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          marginBottom: '1.5rem',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
-          <div
-            style={{
-              width: '48px',
-              height: '48px',
-              background: '#f0f8ff',
-              borderRadius: '12px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
-          >
-            <Key size={24} color="#5c7c5d" />
+      <div className="flex items-start justify-between p-5 pb-4">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+            <Key className="h-5 w-5 text-foreground" />
           </div>
           <div>
-            <h2
-              style={{
-                fontFamily: "'DM Serif Display', serif",
-                fontSize: '1.4rem',
-                fontWeight: '400',
-                color: '#2c2c28',
-                marginBottom: '0.25rem',
-              }}
-            >
-              Syntheon Extension API
-            </h2>
-            <p
-              style={{
-                fontSize: '14px',
-                color: '#8a8a80',
-                fontFamily: "'DM Sans', sans-serif",
-              }}
-            >
-              Generate API keys for the Syntheon browser extension
+            <p className="text-sm font-semibold text-foreground">Syntheon Extension API</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Generate API keys for the browser extension
             </p>
           </div>
         </div>
-
         {hasExistingKey && (
-          <div
-            style={{
-              background: '#e8f5e9',
-              color: '#2e7d32',
-              padding: '0.5rem 1rem',
-              borderRadius: '6px',
-              fontSize: '12px',
-              fontFamily: "'DM Sans', sans-serif",
-              fontWeight: '500',
-            }}
-          >
-            ✓ Active
-          </div>
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 text-[11px] font-medium">
+            <Shield className="h-3 w-3" /> Active
+          </span>
         )}
       </div>
 
+      <div className="h-px bg-border" />
+
       {/* Content */}
-      {hasExistingKey ? (
-        <div>
-          {apiKey ? (
-            <div>
-              {/* Show Generated Key */}
-              <div
-                style={{
-                  background: '#f1f8f5',
-                  border: '1px solid #c8e6c9',
-                  borderRadius: '8px',
-                  padding: '1.5rem',
-                  marginBottom: '1.5rem',
-                }}
-              >
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    marginBottom: '1rem',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Shield size={16} color="#2e7d32" />
-                    <span
-                      style={{
-                        fontSize: '14px',
-                        color: '#1b5e20',
-                        fontFamily: "'DM Sans', sans-serif",
-                        fontWeight: '500',
-                      }}
-                    >
-                      Your API Key
-                    </span>
+      <div className="p-5 space-y-4">
+        {hasExistingKey ? (
+          apiKey ? (
+            <>
+              {/* Generated key display */}
+              <div className="rounded-md border border-border bg-muted/40 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <Shield className="h-4 w-4 text-muted-foreground" />
+                    Your API Key
                   </div>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <div className="flex gap-2">
                     <Button
                       onClick={() => setShowKey(!showKey)}
                       size="sm"
                       variant="outline"
-                      style={{
-                        borderColor: '#c8e6c9',
-                        color: '#2e7d32',
-                        fontSize: '12px',
-                        fontFamily: "'DM Sans', sans-serif",
-                        background: '#ffffff',
-                      }}
+                      className="h-7 gap-1.5 text-xs"
                     >
                       {showKey ? (
-                        <>
-                          <EyeOff size={14} style={{ marginRight: '0.5rem' }} />
-                          Hide
-                        </>
+                        <EyeOff className="h-3.5 w-3.5" />
                       ) : (
-                        <>
-                          <Eye size={14} style={{ marginRight: '0.5rem' }} />
-                          Show
-                        </>
+                        <Eye className="h-3.5 w-3.5" />
                       )}
+                      {showKey ? 'Hide' : 'Show'}
                     </Button>
-                    <Button
-                      onClick={copyToClipboard}
-                      size="sm"
-                      style={{
-                        background: copied ? '#2e7d32' : '#5c7c5d',
-                        border: 'none',
-                        color: 'white',
-                        fontSize: '12px',
-                        fontFamily: "'DM Sans', sans-serif",
-                      }}
-                    >
+                    <Button onClick={copyToClipboard} size="sm" className="h-7 gap-1.5 text-xs">
                       {copied ? (
-                        <>
-                          <Check size={14} style={{ marginRight: '0.5rem' }} />
-                          Copied!
-                        </>
+                        <Check className="h-3.5 w-3.5" />
                       ) : (
-                        <>
-                          <Copy size={14} style={{ marginRight: '0.5rem' }} />
-                          Copy
-                        </>
+                        <Copy className="h-3.5 w-3.5" />
                       )}
+                      {copied ? 'Copied!' : 'Copy'}
                     </Button>
                   </div>
                 </div>
 
-                <div
-                  style={{
-                    background: '#ffffff',
-                    border: '1px solid #c8e6c9',
-                    borderRadius: '6px',
-                    padding: '1rem',
-                    fontFamily: 'monospace',
-                    fontSize: '13px',
-                    color: '#2c2c28',
-                    wordBreak: 'break-all',
-                    marginBottom: '1rem',
-                    letterSpacing: showKey ? 'normal' : '0.05em',
-                  }}
+                <code
+                  className="block w-full rounded border border-border bg-background px-3 py-2 font-mono text-[12px] text-foreground break-all"
+                  style={{ letterSpacing: showKey ? 'normal' : '0.05em' }}
                 >
                   {showKey ? apiKey : maskedKey}
-                </div>
+                </code>
 
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    fontSize: '12px',
-                    color: '#558b2f',
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                >
-                  <AlertCircle size={14} />
-                  <span>
-                    {showKey
-                      ? 'Keep your API key secure and never share it publicly!'
-                      : 'Click Show to reveal the full API key'}
-                  </span>
-                </div>
+                <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                  {showKey
+                    ? 'Keep this key secure — never share it publicly.'
+                    : 'Click Show to reveal your full API key.'}
+                </p>
               </div>
 
-              {/* Regenerate Button */}
-              <div style={{ display: 'flex', gap: '1rem' }}>
-                <Button
-                  onClick={regenerateKey}
-                  disabled={loading}
-                  style={{
-                    background: '#5c7c5d',
-                    border: 'none',
-                    color: 'white',
-                    fontFamily: "'DM Sans', sans-serif",
-                    fontWeight: '500',
-                  }}
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw size={16} style={{ marginRight: '0.5rem' }} />
-                      Regenerate Key
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          ) : (
-            /* Existing Key State - no key in state but exists in DB */
-            <div>
-              <div
-                style={{
-                  background: '#fff3e0',
-                  border: '1px solid #ffe0b2',
-                  borderRadius: '8px',
-                  padding: '1rem',
-                  marginBottom: '1.5rem',
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '1rem',
-                }}
-              >
-                <div style={{ color: '#f57c00', fontSize: '20px', marginTop: '0.25rem' }}>
-                  <Key size={20} />
-                </div>
-                <div>
-                  <p
-                    style={{
-                      fontSize: '14px',
-                      color: '#e65100',
-                      fontFamily: "'DM Sans', sans-serif",
-                      fontWeight: '500',
-                      marginBottom: '0.25rem',
-                    }}
-                  >
-                    API Key Already Exists
-                  </p>
-                  <p
-                    style={{
-                      fontSize: '12px',
-                      color: '#d84315',
-                      fontFamily: "'DM Sans', sans-serif",
-                    }}
-                  >
-                    You already have an active API key. Generate a new one to replace it.
-                  </p>
-                </div>
-              </div>
-
-              {/* Regenerate Button */}
               <Button
                 onClick={regenerateKey}
                 disabled={loading}
-                style={{
-                  background: '#5c7c5d',
-                  border: 'none',
-                  color: 'white',
-                  fontFamily: "'DM Sans', sans-serif",
-                  fontWeight: '500',
-                }}
+                variant="outline"
+                size="sm"
+                className="gap-2"
               >
                 {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Generating...
-                  </>
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <>
-                    <RefreshCw size={16} style={{ marginRight: '0.5rem' }} />
-                    Regenerate Key
-                  </>
+                  <RefreshCw className="h-4 w-4" />
                 )}
+                {loading ? 'Generating…' : 'Regenerate Key'}
               </Button>
+            </>
+          ) : (
+            <>
+              {/* Key exists in DB but not in state */}
+              <div className="flex items-start gap-3 rounded-md border border-border bg-muted/40 p-4">
+                <Key className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">API Key Already Exists</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    You already have an active key. Regenerate to replace it.
+                  </p>
+                </div>
+              </div>
+              <Button onClick={regenerateKey} disabled={loading} size="sm" className="gap-2">
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+                {loading ? 'Generating…' : 'Regenerate Key'}
+              </Button>
+            </>
+          )
+        ) : (
+          <>
+            {/* No key */}
+            <div className="flex items-start gap-3 rounded-md border border-dashed border-border p-4">
+              <Key className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-foreground">No API Key Found</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Generate a key to use the Syntheon browser extension.
+                </p>
+              </div>
             </div>
-          )}
-        </div>
-      ) : (
-        <div>
-          {/* No Key State */}
-          <div
-            style={{
-              background: '#f0f8ff',
-              border: '1px solid #e3f2fd',
-              borderRadius: '8px',
-              padding: '1rem',
-              marginBottom: '1.5rem',
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: '1rem',
-            }}
-          >
-            <div style={{ color: '#1976d2', fontSize: '20px', marginTop: '0.25rem' }}>
-              <Key size={20} />
-            </div>
-            <div>
-              <p
-                style={{
-                  fontSize: '14px',
-                  color: '#1565c0',
-                  fontFamily: "'DM Sans', sans-serif",
-                  fontWeight: '500',
-                  marginBottom: '0.25rem',
-                }}
-              >
-                No API Key Found
-              </p>
-              <p
-                style={{
-                  fontSize: '12px',
-                  color: '#0d47a1',
-                  fontFamily: "'DM Sans', sans-serif",
-                }}
-              >
-                Generate an API key to use the Syntheon browser extension
-              </p>
-            </div>
-          </div>
+            <Button onClick={generateKey} disabled={loading} size="sm" className="gap-2">
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Key className="h-4 w-4" />}
+              {loading ? 'Generating…' : 'Generate API Key'}
+            </Button>
+          </>
+        )}
+      </div>
 
-          {/* Generate Button */}
-          <Button
-            onClick={generateKey}
-            disabled={loading}
-            style={{
-              background: '#5c7c5d',
-              border: 'none',
-              color: 'white',
-              fontFamily: "'DM Sans', sans-serif",
-              fontWeight: '500',
-            }}
-          >
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Generating...
-              </>
-            ) : (
-              <>
-                <Key size={16} style={{ marginRight: '0.5rem' }} />
-                Generate API Key
-              </>
-            )}
-          </Button>
-        </div>
-      )}
-
-      {/* Usage Info */}
-      <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #e8dfd0' }}>
-        <p
-          style={{
-            fontSize: '12px',
-            color: '#8a8a80',
-            fontWeight: '500',
-            marginBottom: '0.75rem',
-            fontFamily: "'DM Sans', sans-serif",
-          }}
-        >
-          What this API key is used for:
+      {/* Usage info */}
+      <div className="px-5 pb-5 pt-1 border-t border-border/60 mt-1 space-y-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground pt-3">
+          Used for
         </p>
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+        <ul className="space-y-1.5">
           {[
             'Authenticate the Syntheon browser extension',
-            'Access your meeting data and specifications',
+            'Access your meeting data and tickets',
             'Generate code and create pull requests',
             'Sync with your GitHub repositories',
           ].map((item, i) => (
-            <li
-              key={i}
-              style={{
-                fontSize: '13px',
-                color: '#8a8a80',
-                fontFamily: "'DM Sans', sans-serif",
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                marginBottom: '0.5rem',
-              }}
-            >
-              <span
-                style={{
-                  width: '4px',
-                  height: '4px',
-                  background: '#8aab7e',
-                  borderRadius: '50%',
-                  display: 'inline-block',
-                  flexShrink: 0,
-                }}
-              />
+            <li key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="h-1 w-1 rounded-full bg-muted-foreground/50 shrink-0" />
               {item}
             </li>
           ))}

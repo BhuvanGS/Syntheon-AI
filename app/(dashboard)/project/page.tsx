@@ -7,6 +7,7 @@ import { ProjectsWorkspace } from '@/components/projects-workspace';
 import { ProjectCreateDialog } from '@/components/project-create-dialog';
 import { ManualTicketDialog } from '@/components/manual-ticket-dialog';
 import { TicketDetail } from '@/components/ticket-detail';
+import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 
 type ViewType = 'project' | 'ticket-detail';
@@ -45,13 +46,6 @@ interface Ticket {
   projectId?: string | null;
   meeting_id: string | null;
 }
-
-const pageStyle: React.CSSProperties = {
-  padding: '2rem 2.5rem',
-  overflowY: 'auto',
-  height: '100%',
-  background: '#faf8f4',
-};
 
 const validProjectTabs: ProjectTab[] = [
   'meetings',
@@ -206,7 +200,7 @@ function ProjectContent() {
   if (!projectId) return null;
 
   return (
-    <div style={{ display: 'flex', height: '100vh', background: '#faf8f4' }}>
+    <div className="flex h-screen bg-background">
       <Sidebar
         currentView="project-detail"
         projects={projects}
@@ -214,47 +208,27 @@ function ProjectContent() {
         onCreateProject={() => setIsProjectCreateOpen(true)}
       />
 
-      <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        <div
-          style={{
-            height: '56px',
-            borderBottom: '1px solid #e8dfd0',
-            background: '#faf8f4',
-            display: 'flex',
-            alignItems: 'center',
-            padding: '0 2.5rem',
-            justifyContent: 'space-between',
-            flexShrink: 0,
-          }}
-        >
-          <p
-            style={{
-              fontSize: '13px',
-              color: '#8a8a80',
-              fontFamily: "'DM Sans', sans-serif",
-              fontWeight: '300',
-            }}
-          >
-            {currentView === 'project'
-              ? 'Project workspace and meeting history'
-              : 'Tickets for this meeting'}
-          </p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div
-              style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#8aab7e' }}
-            />
-            <span
-              style={{ fontSize: '12px', color: '#8aab7e', fontFamily: "'DM Sans', sans-serif" }}
-            >
-              Live
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header */}
+        <header className="h-14 border-b border-border flex items-center justify-between px-6 shrink-0 bg-background">
+          <h1 className="text-sm font-semibold text-foreground">
+            {currentView === 'project' ? 'Project Workspace' : 'Meeting Tickets'}
+          </h1>
+          <div className="flex items-center gap-1.5">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-60" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
             </span>
+            <span className="text-xs text-muted-foreground">Live</span>
           </div>
-        </div>
+        </header>
 
-        <div style={{ flex: 1, overflow: 'auto' }}>
+        <main className="flex-1 overflow-auto">
           {currentView === 'ticket-detail' && selectedMeeting && (
-            <div style={pageStyle}>
-              <button
+            <div className="p-6 max-w-5xl mx-auto">
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => {
                   setCurrentView('project');
                   setSelectedMeeting(null);
@@ -263,23 +237,10 @@ function ProjectContent() {
                     scroll: false,
                   });
                 }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  color: '#5c7c5d',
-                  fontFamily: "'DM Sans', sans-serif",
-                  fontWeight: '500',
-                  marginBottom: '1.5rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: 0,
-                }}
+                className="-ml-2 mb-4 text-muted-foreground hover:text-foreground"
               >
                 ← Back to Meetings
-              </button>
+              </Button>
               <TicketDetail
                 meetingId={selectedMeeting}
                 onSelectMeeting={handleMeetingSelect}
@@ -289,14 +250,7 @@ function ProjectContent() {
           )}
 
           {currentView === 'project' && (
-            <div
-              style={{
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column',
-                overflow: 'hidden',
-              }}
-            >
+            <div className="h-full flex flex-col overflow-hidden">
               <ProjectsWorkspace
                 projects={projects}
                 meetings={meetings}
@@ -312,8 +266,8 @@ function ProjectContent() {
               />
             </div>
           )}
-        </div>
-      </main>
+        </main>
+      </div>
 
       <ProjectCreateDialog
         open={isProjectCreateOpen}
