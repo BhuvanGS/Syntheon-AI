@@ -469,10 +469,7 @@ export async function getTicketsByMeetingId(
   meetingId: string,
   options?: { originalOnly?: boolean }
 ): Promise<Ticket[]> {
-  let query = supabaseAdmin
-    .from('tickets')
-    .select('*')
-    .eq('meeting_id', meetingId);
+  let query = supabaseAdmin.from('tickets').select('*').eq('meeting_id', meetingId);
   if (options?.originalOnly) {
     query = query.is('project_id', null);
   }

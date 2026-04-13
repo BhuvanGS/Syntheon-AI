@@ -1,20 +1,15 @@
 'use client';
 
-import {
-  LayoutDashboard,
-  Settings,
-  FolderKanban,
-  Plus,
-  Sprout,
-} from 'lucide-react';
+import { LayoutDashboard, Settings, FolderKanban, Plus, Sprout } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 interface SidebarProps {
   currentView: string;
-  onViewChange: (view: any) => void;
+  onViewChange?: (view: any) => void;
   projects: Array<{ id: string; name: string }>;
   selectedProjectId?: string | null;
-  onSelectProject: (projectId: string) => void;
+  onSelectProject?: (projectId: string) => void;
   onCreateProject: () => void;
 }
 
@@ -26,6 +21,7 @@ export function Sidebar({
   onSelectProject,
   onCreateProject,
 }: SidebarProps) {
+  const router = useRouter();
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'settings', label: 'Settings', icon: Settings },
@@ -86,7 +82,11 @@ export function Sidebar({
           return (
             <button
               key={item.id}
-              onClick={() => onViewChange(item.id)}
+              onClick={() => {
+                if (item.id === 'settings') router.push('/settings');
+                else router.push('/dashboard');
+                onViewChange?.(item.id);
+              }}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -192,7 +192,10 @@ export function Sidebar({
                 return (
                   <button
                     key={project.id}
-                    onClick={() => onSelectProject(project.id)}
+                    onClick={() => {
+                      router.push(`/project?projectId=${project.id}`);
+                      onSelectProject?.(project.id);
+                    }}
                     style={{
                       display: 'flex',
                       alignItems: 'center',

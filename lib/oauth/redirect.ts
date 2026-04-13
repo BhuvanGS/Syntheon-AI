@@ -27,3 +27,7 @@ export function getAppBaseUrl(req: NextRequest): string {
 export function getDashboardRedirectUrl(req: NextRequest): URL {
   return new URL('/dashboard', getAppBaseUrl(req));
 }
+
+export function getSettingsRedirectUrl(req: NextRequest): URL {
+  return new URL('/settings', getAppBaseUrl(req));
+}

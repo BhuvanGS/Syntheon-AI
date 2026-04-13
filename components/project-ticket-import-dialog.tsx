@@ -125,7 +125,7 @@ export function ProjectTicketImportDialog({
         ) : (
           <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
             {meetings.map((meeting) => {
-              const count = meetingTicketCounts[meeting.id] ?? 0;  // from specsDetected
+              const count = meetingTicketCounts[meeting.id] ?? 0; // from specsDetected
               const isImporting = importingMeetingId === meeting.id;
               const isAlreadyImported = importedMeetingIds.has(meeting.id);
 

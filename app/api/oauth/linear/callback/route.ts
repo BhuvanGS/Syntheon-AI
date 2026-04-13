@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { ensureUser } from '@/lib/ensureUser';
 import { getLinearViewerContext } from '@/lib/shipai/linear';
-import { getDashboardRedirectUrl } from '@/lib/oauth/redirect';
+import { getSettingsRedirectUrl } from '@/lib/oauth/redirect';
 import { saveLinearIntegration } from '@/lib/services/integrations';
 
 export async function GET(req: NextRequest) {
@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
     const errorDescription = searchParams.get('error_description');
 
     if (error) {
-      const redirectUrl = getDashboardRedirectUrl(req);
+      const redirectUrl = getSettingsRedirectUrl(req);
       redirectUrl.searchParams.set('linear_error', error);
       if (errorDescription) {
         redirectUrl.searchParams.set('linear_error_detail', errorDescription);
@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (!code) {
-      const redirectUrl = getDashboardRedirectUrl(req);
+      const redirectUrl = getSettingsRedirectUrl(req);
       redirectUrl.searchParams.set('linear_error', 'no_code');
       return NextResponse.redirect(redirectUrl);
     }
@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
     const redirectUri = process.env.LINEAR_OAUTH_REDIRECT_URI;
 
     if (!clientId || !clientSecret || !redirectUri) {
-      const redirectUrl = getDashboardRedirectUrl(req);
+      const redirectUrl = getSettingsRedirectUrl(req);
       redirectUrl.searchParams.set('linear_error', 'oauth_not_configured');
       return NextResponse.redirect(redirectUrl);
     }
@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
     const tokenData = await tokenResponse.json();
 
     if (!tokenResponse.ok || tokenData.error || !tokenData.access_token) {
-      const redirectUrl = getDashboardRedirectUrl(req);
+      const redirectUrl = getSettingsRedirectUrl(req);
       redirectUrl.searchParams.set('linear_error', tokenData.error || 'token_exchange_failed');
       if (tokenData.error_description) {
         redirectUrl.searchParams.set('linear_error_detail', tokenData.error_description);
@@ -87,7 +87,7 @@ export async function GET(req: NextRequest) {
       linearUserName: context.viewer?.name ?? null,
     });
 
-    const redirectUrl = getDashboardRedirectUrl(req);
+    const redirectUrl = getSettingsRedirectUrl(req);
     redirectUrl.searchParams.set('linear_connected', 'true');
     if (context.defaultTeamName) {
       redirectUrl.searchParams.set('linear_team', context.defaultTeamName);
@@ -97,7 +97,7 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error('Linear OAuth callback error:', error);
 
-    const redirectUrl = getDashboardRedirectUrl(req);
+    const redirectUrl = getSettingsRedirectUrl(req);
     redirectUrl.searchParams.set('linear_error', 'callback_error');
     const message = error instanceof Error ? error.message : 'Unknown callback error';
     redirectUrl.searchParams.set('linear_error_detail', message);

@@ -92,7 +92,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       }
     } catch (dependencyErr) {
       console.error('Dependency auto-mapping failed:', dependencyErr);
-      dependencyInferenceWarning = 'Tickets imported, but dependency auto-mapping could not be completed.';
+      dependencyInferenceWarning =
+        'Tickets imported, but dependency auto-mapping could not be completed.';
     }
 
     return NextResponse.json({

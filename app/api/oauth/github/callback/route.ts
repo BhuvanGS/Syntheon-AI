@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { ensureUser } from '@/lib/ensureUser';
-import { getDashboardRedirectUrl } from '@/lib/oauth/redirect';
+import { getSettingsRedirectUrl } from '@/lib/oauth/redirect';
 import { saveGithubIntegration } from '@/lib/services/integrations';
 
 export async function GET(req: NextRequest) {
@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
     const errorDescription = searchParams.get('error_description');
 
     if (error) {
-      const redirectUrl = getDashboardRedirectUrl(req);
+      const redirectUrl = getSettingsRedirectUrl(req);
       redirectUrl.searchParams.set('github_error', error);
       if (errorDescription) {
         redirectUrl.searchParams.set('github_error_detail', errorDescription);
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (!code) {
-      const redirectUrl = getDashboardRedirectUrl(req);
+      const redirectUrl = getSettingsRedirectUrl(req);
       redirectUrl.searchParams.set('github_error', 'no_code');
       return NextResponse.redirect(redirectUrl);
     }
@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
     const tokenData = await tokenResponse.json();
 
     if (!tokenResponse.ok || tokenData.error || !tokenData.access_token) {
-      const redirectUrl = getDashboardRedirectUrl(req);
+      const redirectUrl = getSettingsRedirectUrl(req);
       redirectUrl.searchParams.set('github_error', tokenData.error || 'token_exchange_failed');
       if (tokenData.error_description) {
         redirectUrl.searchParams.set('github_error_detail', tokenData.error_description);
@@ -78,7 +78,7 @@ export async function GET(req: NextRequest) {
 
     if (!userResponse.ok) {
       console.error('Failed to verify token:', githubUser);
-      const redirectUrl = getDashboardRedirectUrl(req);
+      const redirectUrl = getSettingsRedirectUrl(req);
       redirectUrl.searchParams.set('github_error', 'token_invalid');
       return NextResponse.redirect(redirectUrl);
     }
@@ -91,7 +91,7 @@ export async function GET(req: NextRequest) {
       githubOwner: githubUser.login,
     });
 
-    const redirectUrl = getDashboardRedirectUrl(req);
+    const redirectUrl = getSettingsRedirectUrl(req);
     redirectUrl.searchParams.set('github_connected', 'true');
     redirectUrl.searchParams.set('github_user', githubUser.login);
 
@@ -99,7 +99,7 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error('OAuth callback error:', error);
 
-    const redirectUrl = getDashboardRedirectUrl(req);
+    const redirectUrl = getSettingsRedirectUrl(req);
     redirectUrl.searchParams.set('github_error', 'callback_error');
     const message = error instanceof Error ? error.message : 'Unknown callback error';
     redirectUrl.searchParams.set('github_error_detail', message);

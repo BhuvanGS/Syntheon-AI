@@ -35,7 +35,6 @@ import {
   Pencil,
   Trash2,
   GitBranch,
-  MoreHorizontal,
   Calendar,
   LayoutList,
   KanbanSquare,
@@ -45,6 +44,7 @@ import {
   Clock,
   AlertCircle,
   ChevronLeft,
+  SlidersHorizontal,
 } from 'lucide-react';
 
 type ProjectTab = 'meetings' | 'tickets' | 'list' | 'kanban' | 'analytics' | 'dependencies';
@@ -87,6 +87,8 @@ interface ProjectsWorkspaceProps {
   meetings: Meeting[];
   tickets: Ticket[];
   selectedProjectId: string | null;
+  preferredTab?: ProjectTab | null;
+  onTabChange?: (tab: ProjectTab) => void;
   onSelectProject: (projectId: string) => void;
   onSelectMeeting: (meetingId: string) => void;
   onCreateProject: () => void;
@@ -99,6 +101,8 @@ export function ProjectsWorkspace({
   meetings,
   tickets,
   selectedProjectId,
+  preferredTab,
+  onTabChange,
   onSelectProject,
   onSelectMeeting,
   onCreateProject,
@@ -111,6 +115,8 @@ export function ProjectsWorkspace({
   const [isMeetingDialogOpen, setIsMeetingDialogOpen] = useState(false);
   const [isTicketDialogOpen, setIsTicketDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [isRenameProjectOpen, setIsRenameProjectOpen] = useState(false);
+  const [projectNameDraft, setProjectNameDraft] = useState('');
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [ticketToDelete, setTicketToDelete] = useState<Ticket | null>(null);
   const [ticketToEdit, setTicketToEdit] = useState<Ticket | null>(null);
@@ -121,6 +127,7 @@ export function ProjectsWorkspace({
     status: 'backlog' as Ticket['status'],
   });
   const [savingTicketId, setSavingTicketId] = useState<string | null>(null);
+  const [isSavingProject, setIsSavingProject] = useState(false);
 
   const selectedProject = useMemo(
     () => projects.find((project) => project.id === selectedProjectId) ?? null,
@@ -275,9 +282,39 @@ export function ProjectsWorkspace({
     await onRefresh();
   }
 
+  async function handleRenameProject() {
+    if (!selectedProject) return;
+    const nextName = projectNameDraft.trim();
+    if (!nextName) return;
+
+    setIsSavingProject(true);
+    try {
+      const res = await fetch(`/api/projects/${selectedProject.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: nextName }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || 'Failed to update project');
+      }
+
+      await onRefresh();
+      setIsRenameProjectOpen(false);
+    } finally {
+      setIsSavingProject(false);
+    }
+  }
+
   useEffect(() => {
     setProjectTab('kanban');
   }, [selectedProjectId]);
+
+  useEffect(() => {
+    if (!preferredTab) return;
+    setProjectTab(preferredTab);
+  }, [preferredTab]);
 
   useEffect(() => {
     if (!selectedProject) return;
@@ -402,16 +439,39 @@ export function ProjectsWorkspace({
     { status: 'blocked', label: 'Blocked', color: '#b84040' },
   ];
 
-  const statusConfig: Record<Ticket['status'], { label: string; color: string; bg: string; icon: React.ReactNode }> = {
-    backlog: { label: 'Backlog', color: '#8a8a80', bg: '#f3f3f0', icon: <Circle className="h-3 w-3" /> },
-    in_progress: { label: 'In Progress', color: '#3d7abf', bg: '#eff5ff', icon: <Clock className="h-3 w-3" /> },
-    done: { label: 'Done', color: '#3d8a5e', bg: '#edf7f1', icon: <CheckCircle2 className="h-3 w-3" /> },
-    blocked: { label: 'Blocked', color: '#b84040', bg: '#fdf0f0', icon: <AlertCircle className="h-3 w-3" /> },
+  const statusConfig: Record<
+    Ticket['status'],
+    { label: string; color: string; bg: string; icon: React.ReactNode }
+  > = {
+    backlog: {
+      label: 'Backlog',
+      color: '#8a8a80',
+      bg: '#f3f3f0',
+      icon: <Circle className="h-3 w-3" />,
+    },
+    in_progress: {
+      label: 'In Progress',
+      color: '#3d7abf',
+      bg: '#eff5ff',
+      icon: <Clock className="h-3 w-3" />,
+    },
+    done: {
+      label: 'Done',
+      color: '#3d8a5e',
+      bg: '#edf7f1',
+      icon: <CheckCircle2 className="h-3 w-3" />,
+    },
+    blocked: {
+      label: 'Blocked',
+      color: '#b84040',
+      bg: '#fdf0f0',
+      icon: <AlertCircle className="h-3 w-3" />,
+    },
   };
 
   return (
     <div className="flex flex-col h-full">
-      {/* Top bar: back + project name + tabs + 3-dot */}
+      {/* Top bar: back + project name + project nav/actions */}
       <div
         style={{
           borderBottom: '1px solid #e8dfd0',
@@ -422,7 +482,7 @@ export function ProjectsWorkspace({
           gap: 0,
         }}
       >
-        {/* Row 1: back + title + 3-dot */}
+        {/* Row 1: back + title */}
         <div className="flex items-center justify-between py-3 gap-4">
           <div className="flex items-center gap-3">
             <button
@@ -442,89 +502,93 @@ export function ProjectsWorkspace({
               </h1>
             </div>
           </div>
-
-          {/* 3-dot dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="rounded-full h-8 w-8 p-0">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52 bg-[#faf8f4] border-border">
-              <DropdownMenuItem
-                onClick={() => setIsTicketDialogOpen(true)}
-                className="gap-2 cursor-pointer"
-              >
-                <Ticket className="h-4 w-4 text-primary" />
-                New ticket
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={onCreateProject}
-                className="gap-2 cursor-pointer"
-              >
-                <Plus className="h-4 w-4 text-primary" />
-                New project
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => setIsImportDialogOpen(true)}
-                className="gap-2 cursor-pointer"
-              >
-                <Download className="h-4 w-4 text-primary" />
-                Import tickets from meeting
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setIsMeetingDialogOpen(true)}
-                className="gap-2 cursor-pointer"
-              >
-                <Video className="h-4 w-4 text-primary" />
-                Start meeting
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => setProjectToDelete(selectedProject)}
-                className="gap-2 cursor-pointer text-destructive focus:text-destructive"
-              >
-                <Trash2 className="h-4 w-4" />
-                Delete project
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
 
-        {/* Row 2: tab bar */}
-        <div className="flex items-center gap-1 -mb-px">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setProjectTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-all ${
-                projectTab === tab.id
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
-              }`}
-            >
-              {tab.icon}
-              {tab.label}
-            </button>
-          ))}
+        {/* Row 2: tab bar + actions */}
+        <div className="flex items-center gap-3 -mb-px">
+          <div className="flex items-center gap-1">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setProjectTab(tab.id);
+                  onTabChange?.(tab.id);
+                }}
+                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-all ${
+                  projectTab === tab.id
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+                }`}
+              >
+                {tab.icon}
+                {tab.label}
+              </button>
+            ))}
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 border-transparent text-muted-foreground hover:text-foreground hover:border-border transition-all">
+                  <SlidersHorizontal className="h-4 w-4" />
+                  Options
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56 bg-[#faf8f4] border-border">
+                <DropdownMenuItem
+                  onClick={() => {
+                    setProjectNameDraft(selectedProject.name);
+                    setIsRenameProjectOpen(true);
+                  }}
+                  className="gap-2 cursor-pointer"
+                >
+                  <Pencil className="h-4 w-4 text-primary" />
+                  Change name
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setIsImportDialogOpen(true)}
+                  className="gap-2 cursor-pointer"
+                >
+                  <Download className="h-4 w-4 text-primary" />
+                  Import tickets from meeting
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onCreateProject} className="gap-2 cursor-pointer">
+                  <Plus className="h-4 w-4 text-primary" />
+                  New project
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => setProjectToDelete(selectedProject)}
+                  className="gap-2 cursor-pointer text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete project
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
 
       {/* Tab content */}
       <div className="flex-1 overflow-auto p-6 space-y-6">
-
         {/* ── MEETINGS tab ── */}
         {projectTab === 'meetings' && (
           <div className="space-y-4">
-            <h2 className="font-playfair text-2xl font-bold text-foreground">Meetings</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="font-playfair text-2xl font-bold text-foreground">Meetings</h2>
+              <Button onClick={() => setIsMeetingDialogOpen(true)} className="rounded-full gap-2">
+                <Video className="h-4 w-4" />
+                New meeting
+              </Button>
+            </div>
             {projectMeetings.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border bg-white p-12 text-center">
                 <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
                   <Calendar className="h-6 w-6 text-primary" />
                 </div>
                 <p className="font-medium text-foreground mb-2">No meetings yet</p>
-                <p className="text-sm text-muted-foreground mb-5">Start a meeting to begin collecting tickets.</p>
+                <p className="text-sm text-muted-foreground mb-5">
+                  Start a meeting to begin collecting tickets.
+                </p>
                 <Button onClick={() => setIsMeetingDialogOpen(true)} className="rounded-full gap-2">
                   <Video className="h-4 w-4" />
                   Start first meeting
@@ -539,7 +603,9 @@ export function ProjectsWorkspace({
                     className="text-left rounded-2xl border border-border bg-white p-5 hover:border-primary/30 hover:shadow-md transition-all"
                   >
                     <div className="flex items-start justify-between gap-3 mb-3">
-                      <p className="font-playfair text-lg font-bold text-foreground">{meeting.projectName}</p>
+                      <p className="font-playfair text-lg font-bold text-foreground">
+                        {meeting.projectName}
+                      </p>
                       <Badge
                         className={
                           meeting.status === 'completed'
@@ -569,7 +635,12 @@ export function ProjectsWorkspace({
             <div className="flex items-center justify-between">
               <h2 className="font-playfair text-2xl font-bold text-foreground">Tickets</h2>
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setIsImportDialogOpen(true)} className="rounded-full gap-2 bg-white" disabled={meetings.length === 0}>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsImportDialogOpen(true)}
+                  className="rounded-full gap-2 bg-white"
+                  disabled={meetings.length === 0}
+                >
                   <Download className="h-4 w-4" />
                   Import
                 </Button>
@@ -582,8 +653,14 @@ export function ProjectsWorkspace({
             {projectTickets.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border bg-white p-12 text-center">
                 <p className="font-medium text-foreground mb-2">No tickets yet</p>
-                <p className="text-sm text-muted-foreground mb-5">Import tickets from a meeting or create them manually.</p>
-                <Button onClick={() => setIsImportDialogOpen(true)} className="rounded-full gap-2" disabled={meetings.length === 0}>
+                <p className="text-sm text-muted-foreground mb-5">
+                  Import tickets from a meeting or create them manually.
+                </p>
+                <Button
+                  onClick={() => setIsImportDialogOpen(true)}
+                  className="rounded-full gap-2"
+                  disabled={meetings.length === 0}
+                >
                   <Download className="h-4 w-4" />
                   Import tickets from meeting
                 </Button>
@@ -593,9 +670,14 @@ export function ProjectsWorkspace({
                 {projectTickets.map((ticket) => {
                   const s = statusConfig[ticket.status];
                   return (
-                    <div key={ticket.id} className="rounded-2xl border border-border bg-white p-4 flex flex-col gap-3">
+                    <div
+                      key={ticket.id}
+                      className="rounded-2xl border border-border bg-white p-4 flex flex-col gap-3"
+                    >
                       <div className="flex items-start justify-between gap-2">
-                        <h3 className="font-playfair text-base font-bold text-foreground line-clamp-2 flex-1">{ticket.title}</h3>
+                        <h3 className="font-playfair text-base font-bold text-foreground line-clamp-2 flex-1">
+                          {ticket.title}
+                        </h3>
                         <button
                           type="button"
                           onClick={() => openTicketEditor(ticket)}
@@ -604,12 +686,20 @@ export function ProjectsWorkspace({
                           <Pencil className="h-3 w-3" />
                         </button>
                       </div>
-                      <p className="text-xs text-muted-foreground line-clamp-2">{ticket.description || 'No description.'}</p>
+                      <p className="text-xs text-muted-foreground line-clamp-2">
+                        {ticket.description || 'No description.'}
+                      </p>
                       <div className="flex items-center justify-between mt-auto">
-                        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium" style={{ background: s.bg, color: s.color }}>
-                          {s.icon}{s.label}
+                        <span
+                          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium"
+                          style={{ background: s.bg, color: s.color }}
+                        >
+                          {s.icon}
+                          {s.label}
                         </span>
-                        <span className="text-xs text-muted-foreground">{ticket.assignee ? `@${ticket.assignee}` : 'Unassigned'}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {ticket.assignee ? `@${ticket.assignee}` : 'Unassigned'}
+                        </span>
                       </div>
                     </div>
                   );
@@ -642,11 +732,19 @@ export function ProjectsWorkspace({
                       key={ticket.id}
                       className={`grid grid-cols-[1fr_120px_120px_40px] items-center px-4 py-3 gap-2 hover:bg-[#faf8f4] transition-colors ${i < projectTickets.length - 1 ? 'border-b border-border/40' : ''}`}
                     >
-                      <span className="font-medium text-sm text-foreground truncate">{ticket.title}</span>
-                      <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium w-fit" style={{ background: s.bg, color: s.color }}>
-                        {s.icon}{s.label}
+                      <span className="font-medium text-sm text-foreground truncate">
+                        {ticket.title}
                       </span>
-                      <span className="text-xs text-muted-foreground truncate">{ticket.assignee ? `@${ticket.assignee}` : '—'}</span>
+                      <span
+                        className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium w-fit"
+                        style={{ background: s.bg, color: s.color }}
+                      >
+                        {s.icon}
+                        {s.label}
+                      </span>
+                      <span className="text-xs text-muted-foreground truncate">
+                        {ticket.assignee ? `@${ticket.assignee}` : '—'}
+                      </span>
                       <button
                         type="button"
                         onClick={() => openTicketEditor(ticket)}
@@ -673,7 +771,10 @@ export function ProjectsWorkspace({
                 return (
                   <div
                     key={col.status}
-                    onDragOver={(e) => { e.preventDefault(); setDragOverColumn(col.status); }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setDragOverColumn(col.status);
+                    }}
                     onDragLeave={() => setDragOverColumn(null)}
                     onDrop={async (e) => {
                       e.preventDefault();
@@ -683,12 +784,15 @@ export function ProjectsWorkspace({
                         setDraggedTicketId(null);
                       }
                     }}
-                    className={`rounded-2xl border-2 transition-colors min-h-[200px] flex flex-col ${
+                    className={`rounded-2xl border-2 transition-colors h-fit flex flex-col ${
                       isOver ? 'border-primary/50 bg-primary/5' : 'border-border bg-[#faf8f4]'
                     }`}
                   >
                     <div className="flex items-center justify-between px-4 pt-4 pb-2">
-                      <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: col.color }}>
+                      <span
+                        className="text-xs font-semibold uppercase tracking-widest"
+                        style={{ color: col.color }}
+                      >
                         {col.label}
                       </span>
                       <span className="text-xs font-bold text-muted-foreground bg-white rounded-full px-2 py-0.5 border border-border">
@@ -707,7 +811,9 @@ export function ProjectsWorkspace({
                           }`}
                         >
                           <div className="flex items-start justify-between gap-2 mb-2">
-                            <p className="text-sm font-medium text-foreground line-clamp-2 flex-1">{ticket.title}</p>
+                            <p className="text-sm font-medium text-foreground line-clamp-2 flex-1">
+                              {ticket.title}
+                            </p>
                             <button
                               type="button"
                               onClick={() => openTicketEditor(ticket)}
@@ -716,9 +822,13 @@ export function ProjectsWorkspace({
                               <Pencil className="h-3 w-3" />
                             </button>
                           </div>
-                          <p className="text-xs text-muted-foreground line-clamp-1">{ticket.description || 'No description'}</p>
+                          <p className="text-xs text-muted-foreground line-clamp-1">
+                            {ticket.description || 'No description'}
+                          </p>
                           {ticket.assignee && (
-                            <p className="mt-2 text-[11px] text-muted-foreground">@{ticket.assignee}</p>
+                            <p className="mt-2 text-[11px] text-muted-foreground">
+                              @{ticket.assignee}
+                            </p>
                           )}
                         </div>
                       ))}
@@ -728,6 +838,16 @@ export function ProjectsWorkspace({
                         </div>
                       )}
                     </div>
+
+                    <div className="px-3 pb-3 pt-1 border-t border-border/60">
+                      <button
+                        type="button"
+                        onClick={() => setIsTicketDialogOpen(true)}
+                        className="w-full rounded-xl bg-[#5c7c5d] text-white text-sm font-medium py-2.5 hover:bg-[#4f6e50] transition-colors"
+                      >
+                        Add ticket
+                      </button>
+                    </div>
                   </div>
                 );
               })}
@@ -736,72 +856,95 @@ export function ProjectsWorkspace({
         )}
 
         {/* ── ANALYTICS tab ── */}
-        {projectTab === 'analytics' && (() => {
-          const backlog = projectTickets.filter((t) => t.status === 'backlog').length;
-          const inProgress = projectTickets.filter((t) => t.status === 'in_progress').length;
-          const done = projectTickets.filter((t) => t.status === 'done').length;
-          const blocked = projectTickets.filter((t) => t.status === 'blocked').length;
-          const total = projectTickets.length;
-          const pct = (n: number) => (total ? Math.round((n / total) * 100) : 0);
-          return (
-            <div className="space-y-6">
-              <h2 className="font-playfair text-2xl font-bold text-foreground">Analytics</h2>
-              <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-                {[
-                  { label: 'Backlog', count: backlog, color: '#8a8a80', bg: '#f3f3f0' },
-                  { label: 'In Progress', count: inProgress, color: '#3d7abf', bg: '#eff5ff' },
-                  { label: 'Done', count: done, color: '#3d8a5e', bg: '#edf7f1' },
-                  { label: 'Blocked', count: blocked, color: '#b84040', bg: '#fdf0f0' },
-                ].map((stat) => (
-                  <div key={stat.label} className="rounded-2xl border border-border bg-white p-5 space-y-1">
-                    <p className="text-xs uppercase tracking-wide font-medium" style={{ color: stat.color }}>{stat.label}</p>
-                    <p className="text-4xl font-playfair font-bold text-foreground">{stat.count}</p>
-                    <p className="text-xs text-muted-foreground">{pct(stat.count)}% of total</p>
-                  </div>
-                ))}
-              </div>
-              <div className="rounded-2xl border border-border bg-white p-6 space-y-4">
-                <p className="font-playfair text-lg font-bold text-foreground">Progress overview</p>
-                <div className="space-y-3">
+        {projectTab === 'analytics' &&
+          (() => {
+            const backlog = projectTickets.filter((t) => t.status === 'backlog').length;
+            const inProgress = projectTickets.filter((t) => t.status === 'in_progress').length;
+            const done = projectTickets.filter((t) => t.status === 'done').length;
+            const blocked = projectTickets.filter((t) => t.status === 'blocked').length;
+            const total = projectTickets.length;
+            const pct = (n: number) => (total ? Math.round((n / total) * 100) : 0);
+            return (
+              <div className="space-y-6">
+                <h2 className="font-playfair text-2xl font-bold text-foreground">Analytics</h2>
+                <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
                   {[
-                    { label: 'Backlog', count: backlog, color: '#8a8a80' },
-                    { label: 'In Progress', count: inProgress, color: '#3d7abf' },
-                    { label: 'Done', count: done, color: '#3d8a5e' },
-                    { label: 'Blocked', count: blocked, color: '#b84040' },
-                  ].map((bar) => (
-                    <div key={bar.label} className="space-y-1">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">{bar.label}</span>
-                        <span className="font-medium text-foreground">{bar.count}</span>
-                      </div>
-                      <div className="h-2 rounded-full bg-muted overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-500"
-                          style={{ width: `${pct(bar.count)}%`, background: bar.color }}
-                        />
-                      </div>
+                    { label: 'Backlog', count: backlog, color: '#8a8a80', bg: '#f3f3f0' },
+                    { label: 'In Progress', count: inProgress, color: '#3d7abf', bg: '#eff5ff' },
+                    { label: 'Done', count: done, color: '#3d8a5e', bg: '#edf7f1' },
+                    { label: 'Blocked', count: blocked, color: '#b84040', bg: '#fdf0f0' },
+                  ].map((stat) => (
+                    <div
+                      key={stat.label}
+                      className="rounded-2xl border border-border bg-white p-5 space-y-1"
+                    >
+                      <p
+                        className="text-xs uppercase tracking-wide font-medium"
+                        style={{ color: stat.color }}
+                      >
+                        {stat.label}
+                      </p>
+                      <p className="text-4xl font-playfair font-bold text-foreground">
+                        {stat.count}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{pct(stat.count)}% of total</p>
                     </div>
                   ))}
                 </div>
-                <div className="pt-2 border-t border-border/60 flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Total tickets</span>
-                  <span className="font-playfair text-2xl font-bold text-foreground">{total}</span>
+                <div className="rounded-2xl border border-border bg-white p-6 space-y-4">
+                  <p className="font-playfair text-lg font-bold text-foreground">
+                    Progress overview
+                  </p>
+                  <div className="space-y-3">
+                    {[
+                      { label: 'Backlog', count: backlog, color: '#8a8a80' },
+                      { label: 'In Progress', count: inProgress, color: '#3d7abf' },
+                      { label: 'Done', count: done, color: '#3d8a5e' },
+                      { label: 'Blocked', count: blocked, color: '#b84040' },
+                    ].map((bar) => (
+                      <div key={bar.label} className="space-y-1">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">{bar.label}</span>
+                          <span className="font-medium text-foreground">{bar.count}</span>
+                        </div>
+                        <div className="h-2 rounded-full bg-muted overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{ width: `${pct(bar.count)}%`, background: bar.color }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="pt-2 border-t border-border/60 flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Total tickets</span>
+                    <span className="font-playfair text-2xl font-bold text-foreground">
+                      {total}
+                    </span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                  <div className="rounded-2xl border border-border bg-white p-5 space-y-2">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Meetings
+                    </p>
+                    <p className="text-4xl font-playfair font-bold text-foreground">
+                      {projectMeetings.length}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-border bg-white p-5 space-y-2">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Completion rate
+                    </p>
+                    <p className="text-4xl font-playfair font-bold text-foreground">{pct(done)}%</p>
+                    <p className="text-xs text-muted-foreground">
+                      {done} of {total} tickets done
+                    </p>
+                  </div>
                 </div>
               </div>
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                <div className="rounded-2xl border border-border bg-white p-5 space-y-2">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Meetings</p>
-                  <p className="text-4xl font-playfair font-bold text-foreground">{projectMeetings.length}</p>
-                </div>
-                <div className="rounded-2xl border border-border bg-white p-5 space-y-2">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Completion rate</p>
-                  <p className="text-4xl font-playfair font-bold text-foreground">{pct(done)}%</p>
-                  <p className="text-xs text-muted-foreground">{done} of {total} tickets done</p>
-                </div>
-              </div>
-            </div>
-          );
-        })()}
+            );
+          })()}
 
         {/* ── DEPENDENCIES tab ── */}
         {projectTab === 'dependencies' && (
@@ -812,7 +955,6 @@ export function ProjectsWorkspace({
             </div>
           </div>
         )}
-
       </div>
 
       <ProjectMeetingDialog
@@ -821,6 +963,49 @@ export function ProjectsWorkspace({
         projectId={selectedProject.id}
         onCreated={onRefresh}
       />
+
+      <Dialog open={isRenameProjectOpen} onOpenChange={setIsRenameProjectOpen}>
+        <DialogContent className="sm:max-w-xl border-border bg-[#f9f6f1] shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-playfair text-2xl text-foreground">
+              Change project name
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Update the project name used in your workspace.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <label className="block text-sm text-muted-foreground">
+              Project name
+              <input
+                value={projectNameDraft}
+                onChange={(e) => setProjectNameDraft(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                placeholder="Project name"
+              />
+            </label>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsRenameProjectOpen(false)}
+              className="rounded-full"
+              disabled={isSavingProject}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleRenameProject}
+              className="rounded-full bg-[#5c7c5d] text-white hover:bg-[#4f6e50]"
+              disabled={isSavingProject || projectNameDraft.trim().length === 0}
+            >
+              Save name
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ManualTicketDialog
         open={isTicketDialogOpen}
