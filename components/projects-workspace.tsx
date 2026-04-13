@@ -105,7 +105,7 @@ export function ProjectsWorkspace({
   onDeleteProject,
   onRefresh,
 }: ProjectsWorkspaceProps) {
-  const [projectTab, setProjectTab] = useState<ProjectTab>('meetings');
+  const [projectTab, setProjectTab] = useState<ProjectTab>('kanban');
   const [draggedTicketId, setDraggedTicketId] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<Ticket['status'] | null>(null);
   const [isMeetingDialogOpen, setIsMeetingDialogOpen] = useState(false);
@@ -276,7 +276,7 @@ export function ProjectsWorkspace({
   }
 
   useEffect(() => {
-    setProjectTab('meetings');
+    setProjectTab('kanban');
   }, [selectedProjectId]);
 
   useEffect(() => {
@@ -387,10 +387,10 @@ export function ProjectsWorkspace({
   }
 
   const tabs: { id: ProjectTab; label: string; icon: React.ReactNode }[] = [
-    { id: 'meetings', label: 'Meetings', icon: <Calendar className="h-4 w-4" /> },
+    { id: 'kanban', label: 'Kanban', icon: <KanbanSquare className="h-4 w-4" /> },
     { id: 'tickets', label: 'Tickets', icon: <Ticket className="h-4 w-4" /> },
     { id: 'list', label: 'List', icon: <LayoutList className="h-4 w-4" /> },
-    { id: 'kanban', label: 'Kanban', icon: <KanbanSquare className="h-4 w-4" /> },
+    { id: 'meetings', label: 'Meetings', icon: <Calendar className="h-4 w-4" /> },
     { id: 'analytics', label: 'Analytics', icon: <BarChart3 className="h-4 w-4" /> },
     { id: 'dependencies', label: 'Dependencies', icon: <GitBranch className="h-4 w-4" /> },
   ];

@@ -261,7 +261,7 @@ export function TicketDependencyGraph({ projectId }: TicketDependencyGraphProps)
               refY="3"
               orient="auto"
             >
-              <polygon points="0 0, 8 3, 0 6" fill="#a8a29e" />
+              <polygon points="0 0, 8 3, 0 6" fill="#1a1a1a" />
             </marker>
           </defs>
 
@@ -280,7 +280,7 @@ export function TicketDependencyGraph({ projectId }: TicketDependencyGraphProps)
               const mx = (x1 + x2) / 2;
 
               const isHard = dep.strength === 'hard' || dep.escalated;
-              const strokeColor = isHard ? '#ef4444' : '#d6d3d1';
+              const strokeColor = isHard ? '#ef4444' : '#1a1a1a';
               const markerId = isHard ? 'arrowhead-hard' : 'arrowhead-soft';
 
               return (
