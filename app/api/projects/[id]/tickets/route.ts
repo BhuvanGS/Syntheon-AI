@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { randomUUID } from 'crypto';
-import { addTicketsToProject, getMeetingById, getProjectById, saveTickets } from '@/lib/db';
+import {
+  addTicketsToProject,
+  getMeetingById,
+  getProjectById,
+  getTicketsByProjectId,
+  saveTickets,
+} from '@/lib/db';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -24,9 +30,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         ? body.status
         : 'backlog';
     const assignee = body?.assignee ? String(body.assignee).trim() : null;
+    const parentTicketId =
+      typeof body?.parentTicketId === 'string' && body.parentTicketId.trim()
+        ? body.parentTicketId.trim()
+        : null;
 
     if (!title) {
       return NextResponse.json({ error: 'Title is required' }, { status: 400 });
+    }
+
+    if (parentTicketId) {
+      const projectTickets = await getTicketsByProjectId(projectId);
+      const parent = projectTickets.find((ticket) => ticket.id === parentTicketId);
+      if (!parent) {
+        return NextResponse.json(
+          { error: 'Parent ticket does not belong to this project' },
+          { status: 400 }
+        );
+      }
     }
 
     let resolvedMeetingId: string | null = meetingIdFromBody || null;
@@ -58,7 +79,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         status,
         assignee,
         assignee_user_id: null,
-        dependency_ticket_id: null,
+        dependency_ticket_id: parentTicketId,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },

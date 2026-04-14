@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,6 +19,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { ManualTicketDialog } from '@/components/manual-ticket-dialog';
 import { TicketDependencyPanel } from '@/components/ticket-dependency-panel';
 import { TicketDependencyGraph } from '@/components/ticket-dependency-graph';
@@ -45,6 +53,11 @@ import {
   AlertCircle,
   ChevronLeft,
   SlidersHorizontal,
+  PlusCircle,
+  GripVertical,
+  ChevronDown,
+  ChevronRight,
+  X,
 } from 'lucide-react';
 
 type ProjectTab = 'meetings' | 'tickets' | 'list' | 'kanban' | 'analytics' | 'dependencies';
@@ -80,7 +93,22 @@ interface Ticket {
   assignee?: string | null;
   projectId?: string | null;
   meeting_id: string | null;
+  dependency_ticket_id?: string | null;
 }
+
+type StageConfig = {
+  id: string;
+  label: string;
+  color: string;
+  status: Ticket['status'];
+};
+
+const DEFAULT_STAGES: StageConfig[] = [
+  { id: 'stage-backlog', label: 'Backlog', color: '#8a8a80', status: 'backlog' },
+  { id: 'stage-progress', label: 'In Progress', color: '#3d7abf', status: 'in_progress' },
+  { id: 'stage-done', label: 'Done', color: '#3d8a5e', status: 'done' },
+  { id: 'stage-blocked', label: 'Blocked', color: '#b84040', status: 'blocked' },
+];
 
 interface ProjectsWorkspaceProps {
   projects: Project[];
@@ -111,7 +139,8 @@ export function ProjectsWorkspace({
 }: ProjectsWorkspaceProps) {
   const [projectTab, setProjectTab] = useState<ProjectTab>('kanban');
   const [draggedTicketId, setDraggedTicketId] = useState<string | null>(null);
-  const [dragOverColumn, setDragOverColumn] = useState<Ticket['status'] | null>(null);
+  const [draggedStageId, setDraggedStageId] = useState<string | null>(null);
+  const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
   const [isMeetingDialogOpen, setIsMeetingDialogOpen] = useState(false);
   const [isTicketDialogOpen, setIsTicketDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -126,6 +155,22 @@ export function ProjectsWorkspace({
     assignee: '',
     status: 'backlog' as Ticket['status'],
   });
+  const [stages, setStages] = useState<StageConfig[]>(DEFAULT_STAGES);
+  const [ticketStageMap, setTicketStageMap] = useState<Record<string, string>>({});
+  const [isStageDialogOpen, setIsStageDialogOpen] = useState(false);
+  const [stageForm, setStageForm] = useState<{
+    id: string | null;
+    label: string;
+    color: string;
+    status: Ticket['status'];
+  }>({
+    id: null,
+    label: '',
+    color: '#64748b',
+    status: 'backlog',
+  });
+  const [expandedTicketIds, setExpandedTicketIds] = useState<Record<string, boolean>>({});
+  const [newChildDraft, setNewChildDraft] = useState({ title: '' });
   const [savingTicketId, setSavingTicketId] = useState<string | null>(null);
   const [isSavingProject, setIsSavingProject] = useState(false);
 
@@ -144,20 +189,278 @@ export function ProjectsWorkspace({
     [tickets, selectedProject?.id]
   );
 
-  const projectMeetingIdSet = useMemo(
-    () => new Set(projectMeetings.map((meeting) => meeting.id)),
-    [projectMeetings]
-  );
-
-  const meetingNameById = useMemo(
-    () => new Map(meetings.map((meeting) => [meeting.id, meeting.projectName])),
-    [meetings]
+  const rootProjectTickets = useMemo(
+    () => projectTickets.filter((ticket) => !ticket.dependency_ticket_id),
+    [projectTickets]
   );
 
   const totalTickets = projectTickets.length;
-  const readyTickets = projectTickets.filter(
-    (ticket) => ticket.status === 'in_progress' || ticket.status === 'done'
-  ).length;
+
+  const childrenByParentId = useMemo(() => {
+    const grouped: Record<string, Ticket[]> = {};
+    for (const ticket of projectTickets) {
+      if (!ticket.dependency_ticket_id) continue;
+      if (!grouped[ticket.dependency_ticket_id]) grouped[ticket.dependency_ticket_id] = [];
+      grouped[ticket.dependency_ticket_id].push(ticket);
+    }
+    return grouped;
+  }, [projectTickets]);
+
+  const findStageByStatus = useCallback(
+    (status: Ticket['status']) => stages.find((stage) => stage.status === status) ?? stages[0],
+    [stages]
+  );
+
+  const resolveTicketStage = useCallback(
+    (ticket: Ticket) => {
+      const mapped = ticketStageMap[ticket.id];
+      if (mapped) {
+        const stage = stages.find((entry) => entry.id === mapped);
+        if (stage) return stage;
+      }
+      return findStageByStatus(ticket.status);
+    },
+    [findStageByStatus, stages, ticketStageMap]
+  );
+
+  useEffect(() => {
+    if (!selectedProject?.id) return;
+    if (typeof window === 'undefined') return;
+
+    const storedStages = window.localStorage.getItem(`project-stages:${selectedProject.id}`);
+    const storedMap = window.localStorage.getItem(`project-stage-map:${selectedProject.id}`);
+
+    if (storedStages) {
+      try {
+        const parsed = JSON.parse(storedStages) as StageConfig[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setStages(parsed);
+        } else {
+          setStages(DEFAULT_STAGES);
+        }
+      } catch {
+        setStages(DEFAULT_STAGES);
+      }
+    } else {
+      setStages(DEFAULT_STAGES);
+    }
+
+    if (storedMap) {
+      try {
+        const parsed = JSON.parse(storedMap) as Record<string, string>;
+        setTicketStageMap(parsed && typeof parsed === 'object' ? parsed : {});
+      } catch {
+        setTicketStageMap({});
+      }
+    } else {
+      setTicketStageMap({});
+    }
+  }, [selectedProject?.id]);
+
+  useEffect(() => {
+    if (!selectedProject?.id) return;
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(`project-stages:${selectedProject.id}`, JSON.stringify(stages));
+  }, [selectedProject?.id, stages]);
+
+  useEffect(() => {
+    if (!selectedProject?.id) return;
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(
+      `project-stage-map:${selectedProject.id}`,
+      JSON.stringify(ticketStageMap)
+    );
+  }, [selectedProject?.id, ticketStageMap]);
+
+  useEffect(() => {
+    setTicketStageMap((prev) => {
+      const validTicketIds = new Set(projectTickets.map((ticket) => ticket.id));
+      const validStageIds = new Set(stages.map((stage) => stage.id));
+      const next: Record<string, string> = {};
+
+      for (const [ticketId, stageId] of Object.entries(prev)) {
+        if (!validTicketIds.has(ticketId)) continue;
+        if (!validStageIds.has(stageId)) continue;
+        next[ticketId] = stageId;
+      }
+
+      const changed =
+        Object.keys(next).length !== Object.keys(prev).length ||
+        Object.entries(next).some(([ticketId, stageId]) => prev[ticketId] !== stageId);
+
+      return changed ? next : prev;
+    });
+  }, [projectTickets, stages]);
+
+  function toggleExpanded(ticketId: string) {
+    setExpandedTicketIds((prev) => ({ ...prev, [ticketId]: !prev[ticketId] }));
+  }
+
+  async function handleCreateChildTicket() {
+    if (!ticketToEdit || !selectedProject) return;
+    if (!newChildDraft.title.trim()) return;
+
+    setSavingTicketId(ticketToEdit.id);
+    try {
+      const res = await fetch(`/api/projects/${selectedProject.id}/tickets`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: newChildDraft.title.trim(),
+          description: '',
+          assignee: null,
+          status: 'backlog',
+          parentTicketId: ticketToEdit.id,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || 'Failed to create child ticket');
+      }
+
+      setNewChildDraft({ title: '' });
+      setExpandedTicketIds((prev) => ({ ...prev, [ticketToEdit.id]: true }));
+      await onRefresh();
+    } finally {
+      setSavingTicketId(null);
+    }
+  }
+
+  async function moveTicketToStage(ticketId: string, stage: StageConfig) {
+    const ticket = projectTickets.find((entry) => entry.id === ticketId);
+    if (!ticket) return;
+
+    let moved = true;
+    if (ticket.status !== stage.status) {
+      let res = await fetch(`/api/tickets/${ticketId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: stage.status }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 422 && data?.error === 'hard_blocked') {
+          window.alert(data?.message || 'Blocked by unresolved hard dependencies.');
+          moved = false;
+        } else if (res.status === 422 && data?.error === 'soft_blocked') {
+          const proceed = window.confirm(
+            `${data?.message || 'Unresolved soft dependencies.'}\n\nProceed anyway?`
+          );
+          if (proceed) {
+            res = await fetch(`/api/tickets/${ticketId}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ status: stage.status, bypassGate: true }),
+            });
+            moved = res.ok;
+          } else {
+            moved = false;
+          }
+        } else {
+          moved = false;
+        }
+      }
+    }
+
+    if (!moved) return;
+
+    setTicketStageMap((prev) => ({
+      ...prev,
+      [ticketId]: stage.id,
+    }));
+
+    await onRefresh();
+  }
+
+  function openAddStageDialog() {
+    setStageForm({
+      id: null,
+      label: '',
+      color: '#64748b',
+      status: 'backlog',
+    });
+    setIsStageDialogOpen(true);
+  }
+
+  function openEditStageDialog(stage: StageConfig) {
+    setStageForm({
+      id: stage.id,
+      label: stage.label,
+      color: stage.color,
+      status: stage.status,
+    });
+    setIsStageDialogOpen(true);
+  }
+
+  function saveStageDetails() {
+    const label = stageForm.label.trim();
+    if (!label) return;
+
+    if (stageForm.id) {
+      setStages((prev) =>
+        prev.map((stage) =>
+          stage.id === stageForm.id
+            ? {
+                ...stage,
+                label,
+                color: stageForm.color,
+                status: stageForm.status,
+              }
+            : stage
+        )
+      );
+    } else {
+      setStages((prev) => [
+        ...prev,
+        {
+          id: `stage-${Date.now().toString(36)}`,
+          label,
+          color: stageForm.color,
+          status: stageForm.status,
+        },
+      ]);
+    }
+
+    setIsStageDialogOpen(false);
+  }
+
+  async function removeStage(stageId: string) {
+    const stage = stages.find((entry) => entry.id === stageId);
+    if (!stage || stages.length <= 1) return;
+
+    const fallback = stages.find((entry) => entry.id !== stageId) ?? stages[0];
+    const ticketsInStage = projectTickets.filter((ticket) => resolveTicketStage(ticket).id === stageId);
+
+    for (const ticket of ticketsInStage) {
+      await moveTicketToStage(ticket.id, fallback);
+    }
+
+    setStages((prev) => prev.filter((entry) => entry.id !== stageId));
+    setTicketStageMap((prev) => {
+      const next = { ...prev };
+      for (const [ticketId, mappedStageId] of Object.entries(next)) {
+        if (mappedStageId === stageId) {
+          next[ticketId] = fallback.id;
+        }
+      }
+      return next;
+    });
+  }
+
+  function moveStageByDrop(sourceStageId: string, targetStageId: string) {
+    setStages((prev) => {
+      const sourceIdx = prev.findIndex((stage) => stage.id === sourceStageId);
+      const targetIdx = prev.findIndex((stage) => stage.id === targetStageId);
+      if (sourceIdx === -1 || targetIdx === -1 || sourceIdx === targetIdx) return prev;
+
+      const next = [...prev];
+      const [stage] = next.splice(sourceIdx, 1);
+      next.splice(targetIdx, 0, stage);
+      return next;
+    });
+  }
 
   function openTicketEditor(ticket: Ticket) {
     setTicketToEdit(ticket);
@@ -166,6 +469,9 @@ export function ProjectsWorkspace({
       description: ticket.description || '',
       assignee: ticket.assignee || '',
       status: ticket.status,
+    });
+    setNewChildDraft({
+      title: '',
     });
   }
 
@@ -221,6 +527,14 @@ export function ProjectsWorkspace({
         }
       }
 
+      const matchingStage = stages.find((stage) => stage.status === ticketEditForm.status) ?? stages[0];
+      if (matchingStage) {
+        setTicketStageMap((prev) => ({
+          ...prev,
+          [ticketToEdit.id]: matchingStage.id,
+        }));
+      }
+
       setTicketToEdit(null);
       await onRefresh();
     } finally {
@@ -240,6 +554,11 @@ export function ProjectsWorkspace({
         throw new Error(data?.error || 'Failed to delete ticket');
       }
 
+      setTicketStageMap((prev) => {
+        const next = { ...prev };
+        delete next[ticketToDelete.id];
+        return next;
+      });
       setTicketToDelete(null);
       await onRefresh();
     } finally {
@@ -247,39 +566,10 @@ export function ProjectsWorkspace({
     }
   }
 
-  async function handleKanbanDrop(ticketId: string, newStatus: Ticket['status']) {
-    const ticket = projectTickets.find((t) => t.id === ticketId);
-    if (!ticket || ticket.status === newStatus) return;
-
-    let res = await fetch(`/api/tickets/${ticketId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: newStatus }),
-    });
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      if (res.status === 422 && data?.error === 'hard_blocked') {
-        window.alert(data?.message || 'Blocked by unresolved hard dependencies.');
-        return;
-      }
-      if (res.status === 422 && data?.error === 'soft_blocked') {
-        const proceed = window.confirm(
-          `${data?.message || 'Unresolved soft dependencies.'}\n\nProceed anyway?`
-        );
-        if (proceed) {
-          res = await fetch(`/api/tickets/${ticketId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: newStatus, bypassGate: true }),
-          });
-          if (!res.ok) return;
-        } else {
-          return;
-        }
-      }
-    }
-    await onRefresh();
+  async function handleKanbanDrop(ticketId: string, stageId: string) {
+    const stage = stages.find((entry) => entry.id === stageId);
+    if (!stage) return;
+    await moveTicketToStage(ticketId, stage);
   }
 
   async function handleRenameProject() {
@@ -432,13 +722,6 @@ export function ProjectsWorkspace({
     { id: 'dependencies', label: 'Dependencies', icon: <GitBranch className="h-4 w-4" /> },
   ];
 
-  const kanbanColumns: { status: Ticket['status']; label: string; color: string }[] = [
-    { status: 'backlog', label: 'Backlog', color: '#8a8a80' },
-    { status: 'in_progress', label: 'In Progress', color: '#3d7abf' },
-    { status: 'done', label: 'Done', color: '#3d8a5e' },
-    { status: 'blocked', label: 'Blocked', color: '#b84040' },
-  ];
-
   const statusConfig: Record<
     Ticket['status'],
     { label: string; color: string; bg: string; icon: React.ReactNode }
@@ -468,6 +751,75 @@ export function ProjectsWorkspace({
       icon: <AlertCircle className="h-3 w-3" />,
     },
   };
+
+  function renderChildTicketTree(ticket: Ticket, depth = 0): React.ReactNode {
+    const children = childrenByParentId[ticket.id] ?? [];
+    const hasChildren = children.length > 0;
+    const isExpanded = expandedTicketIds[ticket.id] ?? depth < 1;
+    const status = statusConfig[ticket.status];
+
+    return (
+      <div key={ticket.id} className="space-y-2">
+        <div
+          className="rounded-md border border-border bg-card/60 p-2"
+          style={{ marginLeft: `${Math.min(depth, 4) * 10}px` }}
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                {hasChildren ? (
+                  <button
+                    type="button"
+                    onClick={() => toggleExpanded(ticket.id)}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    {isExpanded ? (
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    ) : (
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                ) : (
+                  <span className="w-3.5" />
+                )}
+                <button
+                  type="button"
+                  onClick={() => openTicketEditor(ticket)}
+                  className="text-left text-sm font-medium text-foreground hover:underline truncate"
+                >
+                  {ticket.title}
+                </button>
+              </div>
+              <p className="pl-5 text-xs text-muted-foreground truncate">
+                {ticket.assignee ? `@${ticket.assignee}` : 'Unassigned'}
+              </p>
+            </div>
+            <div className="flex items-center gap-1">
+              <span
+                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium"
+                style={{ background: status.bg, color: status.color }}
+              >
+                {status.icon}
+                {status.label}
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-destructive hover:text-destructive"
+                onClick={() => setTicketToDelete(ticket)}
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+        </div>
+        {hasChildren && isExpanded && (
+          <div className="space-y-2">{children.map((child) => renderChildTicketTree(child, depth + 1))}</div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -545,6 +897,12 @@ export function ProjectsWorkspace({
                   <Plus className="h-4 w-4 text-primary" />
                   New project
                 </DropdownMenuItem>
+                {projectTab === 'kanban' && (
+                  <DropdownMenuItem onClick={openAddStageDialog} className="gap-2 cursor-pointer">
+                    <PlusCircle className="h-4 w-4 text-primary" />
+                    Add stage
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => setProjectToDelete(selectedProject)}
@@ -641,7 +999,7 @@ export function ProjectsWorkspace({
                 </Button>
               </div>
             </div>
-            {projectTickets.length === 0 ? (
+            {rootProjectTickets.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
                 <p className="font-medium text-foreground mb-2">No tickets yet</p>
                 <p className="text-sm text-muted-foreground mb-5">
@@ -658,25 +1016,18 @@ export function ProjectsWorkspace({
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {projectTickets.map((ticket) => {
+                {rootProjectTickets.map((ticket) => {
                   const s = statusConfig[ticket.status];
                   return (
-                    <div
+                    <button
                       key={ticket.id}
-                      className="rounded-2xl border border-border bg-card p-4 flex flex-col gap-3"
+                      type="button"
+                      onClick={() => openTicketEditor(ticket)}
+                      className="rounded-2xl border border-border bg-card p-4 flex flex-col gap-3 text-left hover:border-primary/40 hover:shadow-md transition-all"
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <h3 className="font-playfair text-base font-bold text-foreground line-clamp-2 flex-1">
-                          {ticket.title}
-                        </h3>
-                        <button
-                          type="button"
-                          onClick={() => openTicketEditor(ticket)}
-                          className="rounded-full border border-primary/20 bg-primary/5 p-1.5 text-primary hover:bg-primary/10 shrink-0"
-                        >
-                          <Pencil className="h-3 w-3" />
-                        </button>
-                      </div>
+                      <h3 className="font-playfair text-base font-bold text-foreground line-clamp-2">
+                        {ticket.title}
+                      </h3>
                       <p className="text-xs text-muted-foreground line-clamp-2">
                         {ticket.description || 'No description.'}
                       </p>
@@ -692,7 +1043,7 @@ export function ProjectsWorkspace({
                           {ticket.assignee ? `@${ticket.assignee}` : 'Unassigned'}
                         </span>
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
@@ -704,7 +1055,7 @@ export function ProjectsWorkspace({
         {projectTab === 'list' && (
           <div className="space-y-4">
             <h2 className="font-playfair text-2xl font-bold text-foreground">List</h2>
-            {projectTickets.length === 0 ? (
+            {rootProjectTickets.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
                 <p className="text-muted-foreground">No tickets in this project yet.</p>
               </div>
@@ -716,12 +1067,12 @@ export function ProjectsWorkspace({
                   <span>Assignee</span>
                   <span />
                 </div>
-                {projectTickets.map((ticket, i) => {
+                {rootProjectTickets.map((ticket, i) => {
                   const s = statusConfig[ticket.status];
                   return (
                     <div
                       key={ticket.id}
-                      className={`grid grid-cols-[1fr_120px_120px_40px] items-center px-4 py-3 gap-2 hover:bg-muted/40 transition-colors ${i < projectTickets.length - 1 ? 'border-b border-border/40' : ''}`}
+                      className={`grid grid-cols-[1fr_120px_120px_40px] items-center px-4 py-3 gap-2 hover:bg-muted/40 transition-colors ${i < rootProjectTickets.length - 1 ? 'border-b border-border/40' : ''}`}
                     >
                       <span className="font-medium text-sm text-foreground truncate">
                         {ticket.title}
@@ -739,9 +1090,9 @@ export function ProjectsWorkspace({
                       <button
                         type="button"
                         onClick={() => openTicketEditor(ticket)}
-                        className="flex items-center justify-center rounded-full border border-primary/20 bg-primary/5 p-1.5 text-primary hover:bg-primary/10"
+                        className="text-xs text-primary hover:underline justify-self-end"
                       >
-                        <Pencil className="h-3 w-3" />
+                        Open
                       </button>
                     </div>
                   );
@@ -755,23 +1106,30 @@ export function ProjectsWorkspace({
         {projectTab === 'kanban' && (
           <div className="space-y-4">
             <h2 className="font-playfair text-2xl font-bold text-foreground">Kanban</h2>
-            <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-              {kanbanColumns.map((col) => {
-                const colTickets = projectTickets.filter((t) => t.status === col.status);
-                const isOver = dragOverColumn === col.status;
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+              {stages.map((stage) => {
+                const colTickets = rootProjectTickets.filter(
+                  (ticket) => resolveTicketStage(ticket).id === stage.id
+                );
+                const isOver = dragOverColumn === stage.id;
                 return (
                   <div
-                    key={col.status}
+                    key={stage.id}
                     onDragOver={(e) => {
                       e.preventDefault();
-                      setDragOverColumn(col.status);
+                      setDragOverColumn(stage.id);
                     }}
                     onDragLeave={() => setDragOverColumn(null)}
                     onDrop={async (e) => {
                       e.preventDefault();
                       setDragOverColumn(null);
+                      if (draggedStageId && draggedStageId !== stage.id) {
+                        moveStageByDrop(draggedStageId, stage.id);
+                        setDraggedStageId(null);
+                        return;
+                      }
                       if (draggedTicketId) {
-                        await handleKanbanDrop(draggedTicketId, col.status);
+                        await handleKanbanDrop(draggedTicketId, stage.id);
                         setDraggedTicketId(null);
                       }
                     }}
@@ -779,40 +1137,74 @@ export function ProjectsWorkspace({
                       isOver ? 'border-primary/50 bg-primary/5' : 'border-border bg-muted/40'
                     }`}
                   >
-                    <div className="flex items-center justify-between px-4 pt-4 pb-2">
-                      <span
-                        className="text-xs font-semibold uppercase tracking-widest"
-                        style={{ color: col.color }}
-                      >
-                        {col.label}
-                      </span>
-                      <span className="text-xs font-bold text-muted-foreground bg-card rounded-full px-2 py-0.5 border border-border">
-                        {colTickets.length}
-                      </span>
+                    <div className="flex items-start justify-between px-4 pt-4 pb-2 gap-2">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            draggable
+                            onDragStart={() => {
+                              setDraggedStageId(stage.id);
+                              setDraggedTicketId(null);
+                            }}
+                            onDragEnd={() => setDraggedStageId(null)}
+                            className="cursor-grab active:cursor-grabbing text-muted-foreground/70 hover:text-foreground"
+                            aria-label={`Reorder ${stage.label} stage`}
+                          >
+                            <GripVertical className="h-3.5 w-3.5" />
+                          </button>
+                          <span
+                            className="text-xs font-semibold uppercase tracking-widest"
+                            style={{ color: stage.color }}
+                          >
+                            {stage.label}
+                          </span>
+                        </div>
+                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                          {stage.status.replace('_', ' ')}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs font-bold text-muted-foreground bg-card rounded-full px-2 py-0.5 border border-border">
+                          {colTickets.length}
+                        </span>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6"
+                          onClick={() => openEditStageDialog(stage)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6 text-destructive hover:text-destructive"
+                          onClick={() => removeStage(stage.id)}
+                          disabled={stages.length <= 1}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
+
                     <div className="flex flex-col gap-2 p-3 flex-1">
                       {colTickets.map((ticket) => (
-                        <div
+                        <button
                           key={ticket.id}
+                          type="button"
                           draggable
-                          onDragStart={() => setDraggedTicketId(ticket.id)}
+                          onClick={() => openTicketEditor(ticket)}
+                          onDragStart={() => {
+                            setDraggedTicketId(ticket.id);
+                            setDraggedStageId(null);
+                          }}
                           onDragEnd={() => setDraggedTicketId(null)}
-                          className={`rounded-xl border border-border bg-card p-3 cursor-grab active:cursor-grabbing shadow-sm hover:shadow-md transition-shadow group ${
+                          className={`rounded-xl border border-border bg-card p-3 cursor-grab active:cursor-grabbing shadow-sm hover:shadow-md transition-shadow text-left ${
                             draggedTicketId === ticket.id ? 'opacity-50' : ''
                           }`}
                         >
-                          <div className="flex items-start justify-between gap-2 mb-2">
-                            <p className="text-sm font-medium text-foreground line-clamp-2 flex-1">
-                              {ticket.title}
-                            </p>
-                            <button
-                              type="button"
-                              onClick={() => openTicketEditor(ticket)}
-                              className="opacity-0 group-hover:opacity-100 rounded-full border border-primary/20 bg-primary/5 p-1 text-primary hover:bg-primary/10 shrink-0 transition-opacity"
-                            >
-                              <Pencil className="h-3 w-3" />
-                            </button>
-                          </div>
+                          <p className="text-sm font-medium text-foreground line-clamp-2">{ticket.title}</p>
                           <p className="text-xs text-muted-foreground line-clamp-1">
                             {ticket.description || 'No description'}
                           </p>
@@ -821,23 +1213,13 @@ export function ProjectsWorkspace({
                               @{ticket.assignee}
                             </p>
                           )}
-                        </div>
+                        </button>
                       ))}
                       {colTickets.length === 0 && (
                         <div className="flex-1 flex items-center justify-center">
                           <p className="text-xs text-muted-foreground/50">Drop tickets here</p>
                         </div>
                       )}
-                    </div>
-
-                    <div className="px-3 pb-3 pt-1 border-t border-border/60">
-                      <button
-                        type="button"
-                        onClick={() => setIsTicketDialogOpen(true)}
-                        className="w-full rounded-xl bg-primary text-primary-foreground text-sm font-medium py-2.5 hover:bg-primary/90 transition-colors"
-                      >
-                        Add ticket
-                      </button>
                     </div>
                   </div>
                 );
@@ -955,6 +1337,86 @@ export function ProjectsWorkspace({
         onCreated={onRefresh}
       />
 
+      <Dialog open={isStageDialogOpen} onOpenChange={setIsStageDialogOpen}>
+        <DialogContent className="sm:max-w-md border-border bg-background shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-playfair text-2xl text-foreground">
+              {stageForm.id ? 'Edit stage' : 'Add new stage'}
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Configure stage name, status mapping, and color.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <label className="block text-sm text-muted-foreground">
+              Stage name
+              <input
+                value={stageForm.label}
+                onChange={(e) =>
+                  setStageForm((prev) => ({
+                    ...prev,
+                    label: e.target.value,
+                  }))
+                }
+                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                placeholder="e.g. QA Review"
+              />
+            </label>
+
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block text-sm text-muted-foreground">
+                Status
+                <select
+                  value={stageForm.status}
+                  onChange={(e) =>
+                    setStageForm((prev) => ({
+                      ...prev,
+                      status: e.target.value as Ticket['status'],
+                    }))
+                  }
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                >
+                  <option value="backlog">Backlog</option>
+                  <option value="in_progress">In progress</option>
+                  <option value="done">Done</option>
+                  <option value="blocked">Blocked</option>
+                </select>
+              </label>
+
+              <label className="block text-sm text-muted-foreground">
+                Color
+                <input
+                  type="color"
+                  value={stageForm.color}
+                  onChange={(e) =>
+                    setStageForm((prev) => ({
+                      ...prev,
+                      color: e.target.value,
+                    }))
+                  }
+                  className="mt-1 h-10 w-full rounded-lg border border-border bg-background px-2"
+                />
+              </label>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsStageDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={saveStageDetails}
+              disabled={!stageForm.label.trim()}
+              className="rounded-full"
+            >
+              {stageForm.id ? 'Save stage' : 'Create stage'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={isRenameProjectOpen} onOpenChange={setIsRenameProjectOpen}>
         <DialogContent className="sm:max-w-xl border-border bg-background shadow-2xl">
           <DialogHeader>
@@ -1021,23 +1483,21 @@ export function ProjectsWorkspace({
         onCreated={onRefresh}
       />
 
-      <Dialog
+      <Sheet
         open={Boolean(ticketToEdit)}
         onOpenChange={(open) => {
           if (!open) setTicketToEdit(null);
         }}
       >
-        <DialogContent className="sm:max-w-2xl border-border bg-background shadow-2xl">
-          <DialogHeader>
-            <DialogTitle className="font-playfair text-2xl text-foreground">
-              Update ticket
-            </DialogTitle>
-            <DialogDescription className="text-muted-foreground">
-              Edit title, description, assignee, and status before confirming.
-            </DialogDescription>
-          </DialogHeader>
+        <SheetContent side="right" className="w-[680px] sm:max-w-[680px] p-0 overflow-hidden">
+          <SheetHeader className="border-b border-border px-6 py-4">
+            <SheetTitle className="text-lg">Edit ticket</SheetTitle>
+            <SheetDescription>
+              Update ticket fields, manage child tickets, and adjust dependencies.
+            </SheetDescription>
+          </SheetHeader>
 
-          <div className="space-y-4 py-2">
+          <div className="flex-1 overflow-auto px-6 py-5 space-y-5">
             <label className="block text-sm text-muted-foreground">
               Name
               <input
@@ -1104,6 +1564,58 @@ export function ProjectsWorkspace({
               </label>
             </div>
 
+            {ticketToEdit && (
+              <div className="space-y-3 rounded-lg border border-border p-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-foreground">Sub-tickets</h3>
+                  <span className="text-xs text-muted-foreground">
+                    {(childrenByParentId[ticketToEdit.id] ?? []).length} children
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  {(childrenByParentId[ticketToEdit.id] ?? []).length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No child tickets yet.</p>
+                  ) : (
+                    (childrenByParentId[ticketToEdit.id] ?? []).map((child) =>
+                      renderChildTicketTree(child, 0)
+                    )
+                  )}
+                </div>
+
+                <div className="border-t border-border/60 pt-3 space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">Add sub-ticket</p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      value={newChildDraft.title}
+                      onChange={(e) =>
+                        setNewChildDraft((prev) => ({
+                          ...prev,
+                          title: e.target.value,
+                        }))
+                      }
+                      className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm"
+                      placeholder="Sub-ticket name"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          void handleCreateChildTicket();
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      size="icon"
+                      onClick={handleCreateChildTicket}
+                      disabled={!newChildDraft.title.trim() || Boolean(savingTicketId)}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {ticketToEdit && ticketToEdit.projectId && (
               <div className="border-t border-border/60 pt-4">
                 <TicketDependencyPanel
@@ -1119,7 +1631,7 @@ export function ProjectsWorkspace({
             )}
           </div>
 
-          <DialogFooter className="pt-2">
+          <SheetFooter className="border-t border-border px-6 py-4 flex-row justify-end gap-2">
             <Button
               type="button"
               variant="destructive"
@@ -1128,7 +1640,6 @@ export function ProjectsWorkspace({
                 setTicketToDelete(ticketToEdit);
                 setTicketToEdit(null);
               }}
-              className="rounded-full"
               disabled={Boolean(savingTicketId)}
             >
               Delete ticket
@@ -1137,22 +1648,20 @@ export function ProjectsWorkspace({
               type="button"
               variant="outline"
               onClick={() => setTicketToEdit(null)}
-              className="rounded-full"
               disabled={Boolean(savingTicketId)}
             >
-              Discard changes
+              Cancel
             </Button>
             <Button
               type="button"
               onClick={handleSaveTicketEdit}
-              className="rounded-full"
               disabled={Boolean(savingTicketId) || ticketEditForm.title.trim().length === 0}
             >
-              Confirm changes
+              Save changes
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
       <Dialog
         open={Boolean(ticketToDelete)}
