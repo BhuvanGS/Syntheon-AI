@@ -157,18 +157,21 @@ export function ProjectsWorkspace({
   });
   const [stages, setStages] = useState<StageConfig[]>(DEFAULT_STAGES);
   const [ticketStageMap, setTicketStageMap] = useState<Record<string, string>>({});
+  const [hydratedProjectId, setHydratedProjectId] = useState<string | null>(null);
   const [isStageDialogOpen, setIsStageDialogOpen] = useState(false);
   const [stageForm, setStageForm] = useState<{
     id: string | null;
     label: string;
     color: string;
-    status: Ticket['status'];
   }>({
     id: null,
     label: '',
     color: '#64748b',
-    status: 'backlog',
   });
+  const [stageToDelete, setStageToDelete] = useState<StageConfig | null>(null);
+  const [isDeleteStageDialogOpen, setIsDeleteStageDialogOpen] = useState(false);
+  const [relocateStageId, setRelocateStageId] = useState<string>('');
+  const [isRelocateStageDialogOpen, setIsRelocateStageDialogOpen] = useState(false);
   const [expandedTicketIds, setExpandedTicketIds] = useState<Record<string, boolean>>({});
   const [newChildDraft, setNewChildDraft] = useState({ title: '' });
   const [savingTicketId, setSavingTicketId] = useState<string | null>(null);
@@ -226,6 +229,7 @@ export function ProjectsWorkspace({
   useEffect(() => {
     if (!selectedProject?.id) return;
     if (typeof window === 'undefined') return;
+    setHydratedProjectId(null);
 
     const storedStages = window.localStorage.getItem(`project-stages:${selectedProject.id}`);
     const storedMap = window.localStorage.getItem(`project-stage-map:${selectedProject.id}`);
@@ -255,22 +259,26 @@ export function ProjectsWorkspace({
     } else {
       setTicketStageMap({});
     }
+
+    setHydratedProjectId(selectedProject.id);
   }, [selectedProject?.id]);
 
   useEffect(() => {
     if (!selectedProject?.id) return;
+    if (hydratedProjectId !== selectedProject.id) return;
     if (typeof window === 'undefined') return;
     window.localStorage.setItem(`project-stages:${selectedProject.id}`, JSON.stringify(stages));
-  }, [selectedProject?.id, stages]);
+  }, [hydratedProjectId, selectedProject?.id, stages]);
 
   useEffect(() => {
     if (!selectedProject?.id) return;
+    if (hydratedProjectId !== selectedProject.id) return;
     if (typeof window === 'undefined') return;
     window.localStorage.setItem(
       `project-stage-map:${selectedProject.id}`,
       JSON.stringify(ticketStageMap)
     );
-  }, [selectedProject?.id, ticketStageMap]);
+  }, [hydratedProjectId, selectedProject?.id, ticketStageMap]);
 
   useEffect(() => {
     setTicketStageMap((prev) => {
@@ -327,7 +335,28 @@ export function ProjectsWorkspace({
     }
   }
 
-  async function moveTicketToStage(ticketId: string, stage: StageConfig) {
+  async function handleConfirmRelocateStageDelete() {
+    if (!stageToDelete) return;
+    if (!relocateStageId) {
+      window.alert('Please select a destination stage.');
+      return;
+    }
+
+    setSavingTicketId(stageToDelete.id);
+    try {
+      await removeStageKeepTickets(stageToDelete.id, relocateStageId);
+      setIsRelocateStageDialogOpen(false);
+      setStageToDelete(null);
+      setRelocateStageId('');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to delete stage';
+      window.alert(message);
+    } finally {
+      setSavingTicketId(null);
+    }
+  }
+
+  async function moveTicketToStage(ticketId: string, stage: StageConfig, skipRefresh = false) {
     const ticket = projectTickets.find((entry) => entry.id === ticketId);
     if (!ticket) return;
 
@@ -371,7 +400,9 @@ export function ProjectsWorkspace({
       [ticketId]: stage.id,
     }));
 
-    await onRefresh();
+    if (!skipRefresh) {
+      await onRefresh();
+    }
   }
 
   function openAddStageDialog() {
@@ -379,7 +410,6 @@ export function ProjectsWorkspace({
       id: null,
       label: '',
       color: '#64748b',
-      status: 'backlog',
     });
     setIsStageDialogOpen(true);
   }
@@ -389,7 +419,6 @@ export function ProjectsWorkspace({
       id: stage.id,
       label: stage.label,
       color: stage.color,
-      status: stage.status,
     });
     setIsStageDialogOpen(true);
   }
@@ -406,7 +435,6 @@ export function ProjectsWorkspace({
                 ...stage,
                 label,
                 color: stageForm.color,
-                status: stageForm.status,
               }
             : stage
         )
@@ -418,7 +446,7 @@ export function ProjectsWorkspace({
           id: `stage-${Date.now().toString(36)}`,
           label,
           color: stageForm.color,
-          status: stageForm.status,
+          status: 'backlog',
         },
       ]);
     }
@@ -426,27 +454,81 @@ export function ProjectsWorkspace({
     setIsStageDialogOpen(false);
   }
 
-  async function removeStage(stageId: string) {
+  function promptDeleteStage(stage: StageConfig) {
+    const fallback = stages.find((entry) => entry.id !== stage.id);
+    setRelocateStageId(fallback?.id ?? '');
+    setIsRelocateStageDialogOpen(false);
+    setStageToDelete(stage);
+    setIsDeleteStageDialogOpen(true);
+  }
+
+  async function removeStageKeepTickets(stageId: string, targetStageId: string) {
     const stage = stages.find((entry) => entry.id === stageId);
-    if (!stage || stages.length <= 1) return;
+    const fallback = stages.find((entry) => entry.id === targetStageId);
+    if (!stage || !fallback || stages.length <= 1) return;
+    if (stage.id === fallback.id) return;
 
-    const fallback = stages.find((entry) => entry.id !== stageId) ?? stages[0];
     const ticketsInStage = projectTickets.filter((ticket) => resolveTicketStage(ticket).id === stageId);
-
     for (const ticket of ticketsInStage) {
-      await moveTicketToStage(ticket.id, fallback);
+      await moveTicketToStage(ticket.id, fallback, true);
     }
 
     setStages((prev) => prev.filter((entry) => entry.id !== stageId));
     setTicketStageMap((prev) => {
       const next = { ...prev };
       for (const [ticketId, mappedStageId] of Object.entries(next)) {
-        if (mappedStageId === stageId) {
-          next[ticketId] = fallback.id;
-        }
+        if (mappedStageId === stageId) next[ticketId] = fallback.id;
       }
       return next;
     });
+
+    await onRefresh();
+  }
+
+  async function removeStageWithTickets(stageId: string) {
+    const ticketsInStage = projectTickets.filter((ticket) => resolveTicketStage(ticket).id === stageId);
+
+    for (const ticket of ticketsInStage) {
+      const res = await fetch(`/api/tickets/${ticket.id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || 'Failed to delete stage tickets');
+      }
+    }
+
+    setStages((prev) => prev.filter((entry) => entry.id !== stageId));
+    setTicketStageMap((prev) => {
+      const next = { ...prev };
+      for (const ticket of ticketsInStage) {
+        delete next[ticket.id];
+      }
+      return next;
+    });
+
+    await onRefresh();
+  }
+
+  async function handleDeleteStage(mode: 'keep_tickets' | 'delete_with_tickets') {
+    if (!stageToDelete) return;
+
+    if (mode === 'keep_tickets') {
+      setIsDeleteStageDialogOpen(false);
+      setIsRelocateStageDialogOpen(true);
+      return;
+    }
+
+    setSavingTicketId(stageToDelete.id);
+    try {
+      await removeStageWithTickets(stageToDelete.id);
+      setIsDeleteStageDialogOpen(false);
+      setStageToDelete(null);
+      setRelocateStageId('');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to delete stage';
+      window.alert(message);
+    } finally {
+      setSavingTicketId(null);
+    }
   }
 
   function moveStageByDrop(sourceStageId: string, targetStageId: string) {
@@ -897,12 +979,6 @@ export function ProjectsWorkspace({
                   <Plus className="h-4 w-4 text-primary" />
                   New project
                 </DropdownMenuItem>
-                {projectTab === 'kanban' && (
-                  <DropdownMenuItem onClick={openAddStageDialog} className="gap-2 cursor-pointer">
-                    <PlusCircle className="h-4 w-4 text-primary" />
-                    Add stage
-                  </DropdownMenuItem>
-                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => setProjectToDelete(selectedProject)}
@@ -1106,7 +1182,7 @@ export function ProjectsWorkspace({
         {projectTab === 'kanban' && (
           <div className="space-y-4">
             <h2 className="font-playfair text-2xl font-bold text-foreground">Kanban</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+            <div className="flex gap-4 overflow-x-auto pb-2">
               {stages.map((stage) => {
                 const colTickets = rootProjectTickets.filter(
                   (ticket) => resolveTicketStage(ticket).id === stage.id
@@ -1133,7 +1209,7 @@ export function ProjectsWorkspace({
                         setDraggedTicketId(null);
                       }
                     }}
-                    className={`rounded-2xl border-2 transition-colors h-fit flex flex-col ${
+                    className={`min-w-[280px] w-[280px] rounded-2xl border-2 transition-colors h-fit flex flex-col ${
                       isOver ? 'border-primary/50 bg-primary/5' : 'border-border bg-muted/40'
                     }`}
                   >
@@ -1160,9 +1236,6 @@ export function ProjectsWorkspace({
                             {stage.label}
                           </span>
                         </div>
-                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                          {stage.status.replace('_', ' ')}
-                        </p>
                       </div>
                       <div className="flex items-center gap-1">
                         <span className="text-xs font-bold text-muted-foreground bg-card rounded-full px-2 py-0.5 border border-border">
@@ -1180,7 +1253,7 @@ export function ProjectsWorkspace({
                           size="icon"
                           variant="ghost"
                           className="h-6 w-6 text-destructive hover:text-destructive"
-                          onClick={() => removeStage(stage.id)}
+                          onClick={() => promptDeleteStage(stage)}
                           disabled={stages.length <= 1}
                         >
                           <X className="h-3.5 w-3.5" />
@@ -1224,6 +1297,20 @@ export function ProjectsWorkspace({
                   </div>
                 );
               })}
+
+              <button
+                type="button"
+                onClick={openAddStageDialog}
+                className="min-w-[280px] w-[280px] rounded-2xl border border-dashed border-border bg-card/60 text-left p-4 hover:border-primary/40 hover:bg-card transition-colors"
+              >
+                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                  <PlusCircle className="h-4 w-4 text-primary" />
+                  Add stage
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Create a new column at the end.
+                </p>
+              </button>
             </div>
           </div>
         )}
@@ -1364,41 +1451,20 @@ export function ProjectsWorkspace({
               />
             </label>
 
-            <div className="grid grid-cols-2 gap-3">
-              <label className="block text-sm text-muted-foreground">
-                Status
-                <select
-                  value={stageForm.status}
-                  onChange={(e) =>
-                    setStageForm((prev) => ({
-                      ...prev,
-                      status: e.target.value as Ticket['status'],
-                    }))
-                  }
-                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-                >
-                  <option value="backlog">Backlog</option>
-                  <option value="in_progress">In progress</option>
-                  <option value="done">Done</option>
-                  <option value="blocked">Blocked</option>
-                </select>
-              </label>
-
-              <label className="block text-sm text-muted-foreground">
-                Color
-                <input
-                  type="color"
-                  value={stageForm.color}
-                  onChange={(e) =>
-                    setStageForm((prev) => ({
-                      ...prev,
-                      color: e.target.value,
-                    }))
-                  }
-                  className="mt-1 h-10 w-full rounded-lg border border-border bg-background px-2"
-                />
-              </label>
-            </div>
+            <label className="block text-sm text-muted-foreground">
+              Color
+              <input
+                type="color"
+                value={stageForm.color}
+                onChange={(e) =>
+                  setStageForm((prev) => ({
+                    ...prev,
+                    color: e.target.value,
+                  }))
+                }
+                className="mt-1 h-10 w-full rounded-lg border border-border bg-background px-2"
+              />
+            </label>
           </div>
 
           <DialogFooter>
@@ -1412,6 +1478,120 @@ export function ProjectsWorkspace({
               className="rounded-full"
             >
               {stageForm.id ? 'Save stage' : 'Create stage'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isRelocateStageDialogOpen}
+        onOpenChange={(open) => {
+          setIsRelocateStageDialogOpen(open);
+          if (!open) {
+            setStageToDelete(null);
+            setRelocateStageId('');
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg border-border bg-background shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-playfair text-2xl text-foreground">
+              Move tickets before deleting stage
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Select a destination stage for tickets from &quot;{stageToDelete?.label}&quot;.
+            </DialogDescription>
+          </DialogHeader>
+
+          <label className="block text-sm text-muted-foreground">
+            Destination stage
+            <select
+              value={relocateStageId}
+              onChange={(e) => setRelocateStageId(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+              disabled={Boolean(savingTicketId)}
+            >
+              <option value="">Select stage</option>
+              {stages
+                .filter((stage) => stage.id !== stageToDelete?.id)
+                .map((stage) => (
+                  <option key={stage.id} value={stage.id}>
+                    {stage.label}
+                  </option>
+                ))}
+            </select>
+          </label>
+
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setIsRelocateStageDialogOpen(false);
+                setStageToDelete(null);
+                setRelocateStageId('');
+              }}
+              disabled={Boolean(savingTicketId)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleConfirmRelocateStageDelete}
+              disabled={Boolean(savingTicketId) || !relocateStageId}
+            >
+              Move tickets &amp; delete stage
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isDeleteStageDialogOpen}
+        onOpenChange={(open) => {
+          setIsDeleteStageDialogOpen(open);
+        }}
+      >
+        <DialogContent className="sm:max-w-xl border-border bg-background shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-playfair text-2xl text-foreground">
+              Delete stage &quot;{stageToDelete?.label}&quot;?
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Choose whether to keep tickets by moving them to the previous stage, or delete all
+              tickets in this stage.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setIsDeleteStageDialogOpen(false);
+                setStageToDelete(null);
+                setRelocateStageId('');
+                setIsRelocateStageDialogOpen(false);
+              }}
+              disabled={Boolean(savingTicketId)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => handleDeleteStage('keep_tickets')}
+              disabled={Boolean(savingTicketId)}
+            >
+              Keep tickets &amp; delete stage
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => handleDeleteStage('delete_with_tickets')}
+              disabled={Boolean(savingTicketId)}
+            >
+              Delete stage with tickets
             </Button>
           </DialogFooter>
         </DialogContent>
