@@ -149,6 +149,7 @@ export function ProjectsWorkspace({
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [ticketToDelete, setTicketToDelete] = useState<Ticket | null>(null);
   const [ticketToEdit, setTicketToEdit] = useState<Ticket | null>(null);
+  const [ticketEditorHistory, setTicketEditorHistory] = useState<Ticket[]>([]);
   const [ticketEditForm, setTicketEditForm] = useState({
     title: '',
     description: '',
@@ -174,6 +175,7 @@ export function ProjectsWorkspace({
   const [isRelocateStageDialogOpen, setIsRelocateStageDialogOpen] = useState(false);
   const [expandedTicketIds, setExpandedTicketIds] = useState<Record<string, boolean>>({});
   const [newChildDraft, setNewChildDraft] = useState({ title: '' });
+  const [isAddingSubtask, setIsAddingSubtask] = useState(false);
   const [savingTicketId, setSavingTicketId] = useState<string | null>(null);
   const [isSavingProject, setIsSavingProject] = useState(false);
 
@@ -328,6 +330,7 @@ export function ProjectsWorkspace({
       }
 
       setNewChildDraft({ title: '' });
+      setIsAddingSubtask(false);
       setExpandedTicketIds((prev) => ({ ...prev, [ticketToEdit.id]: true }));
       await onRefresh();
     } finally {
@@ -544,7 +547,13 @@ export function ProjectsWorkspace({
     });
   }
 
-  function openTicketEditor(ticket: Ticket) {
+  function openTicketEditor(ticket: Ticket, pushCurrent = false) {
+    if (pushCurrent && ticketToEdit) {
+      setTicketEditorHistory((prev) => [...prev, ticketToEdit]);
+    } else {
+      setTicketEditorHistory([]);
+    }
+
     setTicketToEdit(ticket);
     setTicketEditForm({
       title: ticket.title,
@@ -555,6 +564,28 @@ export function ProjectsWorkspace({
     setNewChildDraft({
       title: '',
     });
+    setIsAddingSubtask(false);
+  }
+
+  function goBackTicketEditor() {
+    const previous = ticketEditorHistory[ticketEditorHistory.length - 1];
+    if (!previous) return;
+
+    setTicketEditorHistory((prev) => prev.slice(0, -1));
+    setTicketToEdit(previous);
+    setTicketEditForm({
+      title: previous.title,
+      description: previous.description || '',
+      assignee: previous.assignee || '',
+      status: previous.status,
+    });
+    setNewChildDraft({ title: '' });
+  }
+
+  function closeTicketEditor() {
+    setTicketToEdit(null);
+    setTicketEditorHistory([]);
+    setIsAddingSubtask(false);
   }
 
   async function handleSaveTicketEdit() {
@@ -617,7 +648,7 @@ export function ProjectsWorkspace({
         }));
       }
 
-      setTicketToEdit(null);
+      closeTicketEditor();
       await onRefresh();
     } finally {
       setSavingTicketId(null);
@@ -838,66 +869,64 @@ export function ProjectsWorkspace({
     const children = childrenByParentId[ticket.id] ?? [];
     const hasChildren = children.length > 0;
     const isExpanded = expandedTicketIds[ticket.id] ?? depth < 1;
-    const status = statusConfig[ticket.status];
+    const isDone = ticket.status === 'done';
 
     return (
-      <div key={ticket.id} className="space-y-2">
+      <div key={ticket.id} className="space-y-0">
         <div
-          className="rounded-md border border-border bg-card/60 p-2"
-          style={{ marginLeft: `${Math.min(depth, 4) * 10}px` }}
+          className="group flex items-center gap-2 border-t border-border/60 px-2 py-2"
+          style={{ paddingLeft: `${8 + Math.min(depth, 4) * 18}px` }}
         >
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                {hasChildren ? (
-                  <button
-                    type="button"
-                    onClick={() => toggleExpanded(ticket.id)}
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    {isExpanded ? (
-                      <ChevronDown className="h-3.5 w-3.5" />
-                    ) : (
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    )}
-                  </button>
-                ) : (
-                  <span className="w-3.5" />
-                )}
-                <button
-                  type="button"
-                  onClick={() => openTicketEditor(ticket)}
-                  className="text-left text-sm font-medium text-foreground hover:underline truncate"
-                >
-                  {ticket.title}
-                </button>
-              </div>
-              <p className="pl-5 text-xs text-muted-foreground truncate">
-                {ticket.assignee ? `@${ticket.assignee}` : 'Unassigned'}
-              </p>
-            </div>
-            <div className="flex items-center gap-1">
-              <span
-                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium"
-                style={{ background: status.bg, color: status.color }}
-              >
-                {status.icon}
-                {status.label}
-              </span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 text-destructive hover:text-destructive"
-                onClick={() => setTicketToDelete(ticket)}
-              >
-                <X className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          </div>
+          {isDone ? (
+            <CheckCircle2 className="h-4 w-4 text-primary" />
+          ) : (
+            <Circle className="h-4 w-4 text-muted-foreground" />
+          )}
+
+          <button
+            type="button"
+            onClick={() => openTicketEditor(ticket, true)}
+            className="min-w-0 flex-1 truncate text-left text-sm text-foreground hover:underline"
+          >
+            {ticket.title}
+          </button>
+
+          {hasChildren && (
+            <button
+              type="button"
+              onClick={() => toggleExpanded(ticket.id)}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              {isExpanded ? (
+                <ChevronDown className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronRight className="h-3.5 w-3.5" />
+              )}
+            </button>
+          )}
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 opacity-0 group-hover:opacity-100"
+            onClick={() => openTicketEditor(ticket, true)}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100"
+            onClick={() => setTicketToDelete(ticket)}
+          >
+            <X className="h-3.5 w-3.5" />
+          </Button>
         </div>
+
         {hasChildren && isExpanded && (
-          <div className="space-y-2">{children.map((child) => renderChildTicketTree(child, depth + 1))}</div>
+          <div>{children.map((child) => renderChildTicketTree(child, depth + 1))}</div>
         )}
       </div>
     );
@@ -1666,14 +1695,25 @@ export function ProjectsWorkspace({
       <Sheet
         open={Boolean(ticketToEdit)}
         onOpenChange={(open) => {
-          if (!open) setTicketToEdit(null);
+          if (!open) closeTicketEditor();
         }}
       >
         <SheetContent side="right" className="w-[680px] sm:max-w-[680px] p-0 overflow-hidden">
           <SheetHeader className="border-b border-border px-6 py-4">
-            <SheetTitle className="text-lg">Edit ticket</SheetTitle>
+            <div className="flex items-center justify-between gap-2">
+              <SheetTitle className="text-lg">
+                {ticketToEdit?.dependency_ticket_id ? 'Edit subticket' : 'Edit ticket'}
+              </SheetTitle>
+              {ticketEditorHistory.length > 0 && (
+                <Button type="button" variant="outline" size="sm" onClick={goBackTicketEditor}>
+                  Go back
+                </Button>
+              )}
+            </div>
             <SheetDescription>
-              Update ticket fields, manage child tickets, and adjust dependencies.
+              {ticketToEdit?.dependency_ticket_id
+                ? 'Describe subticket and update assignee, status, and dependencies.'
+                : 'Update ticket fields, manage child tickets, and adjust dependencies.'}
             </SheetDescription>
           </SheetHeader>
 
@@ -1745,17 +1785,33 @@ export function ProjectsWorkspace({
             </div>
 
             {ticketToEdit && (
-              <div className="space-y-3 rounded-lg border border-border p-4">
+              <div className="rounded-lg border border-border bg-card/40">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-foreground">Sub-tickets</h3>
-                  <span className="text-xs text-muted-foreground">
-                    {(childrenByParentId[ticketToEdit.id] ?? []).length} children
-                  </span>
+                  <div className="flex items-center gap-2 px-3 py-2.5">
+                    <h3 className="text-sm font-semibold text-foreground">Subtasks</h3>
+                    <span className="rounded-md border border-border bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                      {(childrenByParentId[ticketToEdit.id] ?? []).filter((child) => child.status === 'done')
+                        .length}
+                      /
+                      {(childrenByParentId[ticketToEdit.id] ?? []).length}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => setIsAddingSubtask(true)}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
 
-                <div className="space-y-2">
+                <div>
                   {(childrenByParentId[ticketToEdit.id] ?? []).length === 0 ? (
-                    <p className="text-xs text-muted-foreground">No child tickets yet.</p>
+                    <p className="border-t border-border/60 px-3 py-2 text-xs text-muted-foreground">
+                      No subtasks yet.
+                    </p>
                   ) : (
                     (childrenByParentId[ticketToEdit.id] ?? []).map((child) =>
                       renderChildTicketTree(child, 0)
@@ -1763,36 +1819,47 @@ export function ProjectsWorkspace({
                   )}
                 </div>
 
-                <div className="border-t border-border/60 pt-3 space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground">Add sub-ticket</p>
-                  <div className="flex items-center gap-2">
-                    <input
-                      value={newChildDraft.title}
-                      onChange={(e) =>
-                        setNewChildDraft((prev) => ({
-                          ...prev,
-                          title: e.target.value,
-                        }))
-                      }
-                      className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm"
-                      placeholder="Sub-ticket name"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          void handleCreateChildTicket();
+                {isAddingSubtask && (
+                  <div className="border-t border-border/60 bg-primary/5 px-2 py-2">
+                    <div className="flex items-center gap-2">
+                      <Circle className="h-4 w-4 text-muted-foreground" />
+                      <input
+                        value={newChildDraft.title}
+                        onChange={(e) =>
+                          setNewChildDraft((prev) => ({
+                            ...prev,
+                            title: e.target.value,
+                          }))
                         }
-                      }}
-                    />
-                    <Button
-                      type="button"
-                      size="icon"
-                      onClick={handleCreateChildTicket}
-                      disabled={!newChildDraft.title.trim() || Boolean(savingTicketId)}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
+                        className="flex-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-sm"
+                        placeholder="Subtask name"
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            void handleCreateChildTicket();
+                          }
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        size="icon"
+                        onClick={handleCreateChildTicket}
+                        disabled={!newChildDraft.title.trim() || Boolean(savingTicketId)}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setIsAddingSubtask(true)}
+                  className="w-full border-t border-border/60 px-3 py-2 text-left text-sm font-medium text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                >
+                  Add subtask
+                </button>
               </div>
             )}
 
@@ -1818,7 +1885,7 @@ export function ProjectsWorkspace({
               onClick={() => {
                 if (!ticketToEdit) return;
                 setTicketToDelete(ticketToEdit);
-                setTicketToEdit(null);
+                closeTicketEditor();
               }}
               disabled={Boolean(savingTicketId)}
             >
@@ -1827,7 +1894,7 @@ export function ProjectsWorkspace({
             <Button
               type="button"
               variant="outline"
-              onClick={() => setTicketToEdit(null)}
+              onClick={closeTicketEditor}
               disabled={Boolean(savingTicketId)}
             >
               Cancel
