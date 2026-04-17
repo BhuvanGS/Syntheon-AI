@@ -109,7 +109,11 @@ function layoutNodes(
   return positions;
 }
 
-export function TicketDependencyGraph({ projectId, subtaskCounts = {}, onTicketClick }: TicketDependencyGraphProps) {
+export function TicketDependencyGraph({
+  projectId,
+  subtaskCounts = {},
+  onTicketClick,
+}: TicketDependencyGraphProps) {
   const [tickets, setTickets] = useState<GraphTicket[]>([]);
   const [deps, setDeps] = useState<GraphDependency[]>([]);
   const [loading, setLoading] = useState(true);
@@ -368,13 +372,7 @@ export function TicketDependencyGraph({ projectId, subtaskCounts = {}, onTicketC
                   )}
                   {hasSubtasks && (
                     <g transform={`translate(${NODE_W - 24}, 8)`}>
-                      <rect
-                        width={18}
-                        height={14}
-                        rx={7}
-                        ry={7}
-                        fill={colors.dot}
-                      />
+                      <rect width={18} height={14} rx={7} ry={7} fill={colors.dot} />
                       <text
                         x={9}
                         y={10}

@@ -30,6 +30,8 @@ import {
 import { ManualTicketDialog } from '@/components/manual-ticket-dialog';
 import { TicketDependencyPanel } from '@/components/ticket-dependency-panel';
 import { TicketDependencyGraph } from '@/components/ticket-dependency-graph';
+import { TicketAttachmentsPanel } from '@/components/ticket-attachments-panel';
+import { TicketCommentsPanel } from '@/components/ticket-comments-panel';
 import { ProjectTicketImportDialog } from '@/components/project-ticket-import-dialog';
 import { ProjectMeetingDialog } from '@/components/project-meeting-dialog';
 import {
@@ -179,6 +181,9 @@ export function ProjectsWorkspace({
   const [savingTicketId, setSavingTicketId] = useState<string | null>(null);
   const [isSavingProject, setIsSavingProject] = useState(false);
   const [subtasksPopupTicket, setSubtasksPopupTicket] = useState<Ticket | null>(null);
+  const [ticketEditTab, setTicketEditTab] = useState<'details' | 'attachments' | 'comments'>(
+    'details'
+  );
 
   const selectedProject = useMemo(
     () => projects.find((project) => project.id === selectedProjectId) ?? null,
@@ -472,7 +477,9 @@ export function ProjectsWorkspace({
     if (!stage || !fallback || stages.length <= 1) return;
     if (stage.id === fallback.id) return;
 
-    const ticketsInStage = projectTickets.filter((ticket) => resolveTicketStage(ticket).id === stageId);
+    const ticketsInStage = projectTickets.filter(
+      (ticket) => resolveTicketStage(ticket).id === stageId
+    );
     for (const ticket of ticketsInStage) {
       await moveTicketToStage(ticket.id, fallback, true);
     }
@@ -490,7 +497,9 @@ export function ProjectsWorkspace({
   }
 
   async function removeStageWithTickets(stageId: string) {
-    const ticketsInStage = projectTickets.filter((ticket) => resolveTicketStage(ticket).id === stageId);
+    const ticketsInStage = projectTickets.filter(
+      (ticket) => resolveTicketStage(ticket).id === stageId
+    );
 
     for (const ticket of ticketsInStage) {
       const res = await fetch(`/api/tickets/${ticket.id}`, { method: 'DELETE' });
@@ -566,6 +575,7 @@ export function ProjectsWorkspace({
       title: '',
     });
     setIsAddingSubtask(false);
+    setTicketEditTab('details');
   }
 
   function goBackTicketEditor() {
@@ -581,6 +591,7 @@ export function ProjectsWorkspace({
       status: previous.status,
     });
     setNewChildDraft({ title: '' });
+    setTicketEditTab('details');
   }
 
   function closeTicketEditor() {
@@ -641,7 +652,8 @@ export function ProjectsWorkspace({
         }
       }
 
-      const matchingStage = stages.find((stage) => stage.status === ticketEditForm.status) ?? stages[0];
+      const matchingStage =
+        stages.find((stage) => stage.status === ticketEditForm.status) ?? stages[0];
       if (matchingStage) {
         setTicketStageMap((prev) => ({
           ...prev,
@@ -1317,7 +1329,9 @@ export function ProjectsWorkspace({
                             draggedTicketId === ticket.id ? 'opacity-50' : ''
                           }`}
                         >
-                          <p className="text-sm font-medium text-foreground line-clamp-2">{ticket.title}</p>
+                          <p className="text-sm font-medium text-foreground line-clamp-2">
+                            {ticket.title}
+                          </p>
                           <p className="text-xs text-muted-foreground line-clamp-1">
                             {ticket.description || 'No description'}
                           </p>
@@ -1330,7 +1344,11 @@ export function ProjectsWorkspace({
                             {(childrenByParentId[ticket.id] ?? []).length > 0 && (
                               <span className="text-[11px] text-muted-foreground flex items-center gap-1">
                                 <CheckCircle2 className="h-3 w-3" />
-                                {(childrenByParentId[ticket.id] ?? []).filter((c) => c.status === 'done').length}
+                                {
+                                  (childrenByParentId[ticket.id] ?? []).filter(
+                                    (c) => c.status === 'done'
+                                  ).length
+                                }
                                 /{(childrenByParentId[ticket.id] ?? []).length}
                               </span>
                             )}
@@ -1750,155 +1768,188 @@ export function ProjectsWorkspace({
             </SheetDescription>
           </SheetHeader>
 
-          <div className="flex-1 overflow-auto px-6 py-5 space-y-5">
-            <label className="block text-sm text-muted-foreground">
-              Name
-              <input
-                value={ticketEditForm.title}
-                onChange={(e) =>
-                  setTicketEditForm((prev) => ({
-                    ...prev,
-                    title: e.target.value,
-                  }))
-                }
-                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-                placeholder="Ticket title"
-              />
-            </label>
-
-            <label className="block text-sm text-muted-foreground">
-              Description
-              <textarea
-                value={ticketEditForm.description}
-                onChange={(e) =>
-                  setTicketEditForm((prev) => ({
-                    ...prev,
-                    description: e.target.value,
-                  }))
-                }
-                className="mt-1 min-h-24 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-                placeholder="Describe the ticket"
-              />
-            </label>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <label className="block text-sm text-muted-foreground">
-                Assignee
-                <input
-                  value={ticketEditForm.assignee}
-                  onChange={(e) =>
-                    setTicketEditForm((prev) => ({
-                      ...prev,
-                      assignee: e.target.value,
-                    }))
-                  }
-                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-                  placeholder="Optional assignee"
-                />
-              </label>
-
-              <label className="block text-sm text-muted-foreground">
-                Status
-                <select
-                  value={ticketEditForm.status}
-                  onChange={(e) =>
-                    setTicketEditForm((prev) => ({
-                      ...prev,
-                      status: e.target.value as Ticket['status'],
-                    }))
-                  }
-                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+          <div className="border-b border-border px-6 pt-2">
+            <div className="flex gap-1">
+              {(['details', 'attachments', 'comments'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setTicketEditTab(tab)}
+                  className={`px-3 py-2 text-sm font-medium transition-colors rounded-t-lg ${
+                    ticketEditTab === tab
+                      ? 'text-primary border-b-2 border-primary'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
                 >
-                  <option value="backlog">Backlog</option>
-                  <option value="in_progress">In progress</option>
-                  <option value="done">Done</option>
-                  <option value="blocked">Blocked</option>
-                </select>
-              </label>
+                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </button>
+              ))}
             </div>
+          </div>
 
-            {ticketToEdit && (
-              <div className="rounded-lg border border-border bg-card/40">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 px-3 py-2.5">
-                    <h3 className="text-sm font-semibold text-foreground">Subtasks</h3>
-                    <span className="rounded-md border border-border bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
-                      {(childrenByParentId[ticketToEdit.id] ?? []).filter((child) => child.status === 'done')
-                        .length}
-                      /
-                      {(childrenByParentId[ticketToEdit.id] ?? []).length}
-                    </span>
-                  </div>
+          <div className="flex-1 overflow-auto px-6 py-5 space-y-5">
+            {ticketEditTab === 'details' && (
+              <>
+                <label className="block text-sm text-muted-foreground">
+                  Name
+                  <input
+                    value={ticketEditForm.title}
+                    onChange={(e) =>
+                      setTicketEditForm((prev) => ({
+                        ...prev,
+                        title: e.target.value,
+                      }))
+                    }
+                    className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                    placeholder="Ticket title"
+                  />
+                </label>
+
+                <label className="block text-sm text-muted-foreground">
+                  Description
+                  <textarea
+                    value={ticketEditForm.description}
+                    onChange={(e) =>
+                      setTicketEditForm((prev) => ({
+                        ...prev,
+                        description: e.target.value,
+                      }))
+                    }
+                    className="mt-1 min-h-24 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                    placeholder="Describe the ticket"
+                  />
+                </label>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label className="block text-sm text-muted-foreground">
+                    Assignee
+                    <input
+                      value={ticketEditForm.assignee}
+                      onChange={(e) =>
+                        setTicketEditForm((prev) => ({
+                          ...prev,
+                          assignee: e.target.value,
+                        }))
+                      }
+                      className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                      placeholder="Optional assignee"
+                    />
+                  </label>
+
+                  <label className="block text-sm text-muted-foreground">
+                    Status
+                    <select
+                      value={ticketEditForm.status}
+                      onChange={(e) =>
+                        setTicketEditForm((prev) => ({
+                          ...prev,
+                          status: e.target.value as Ticket['status'],
+                        }))
+                      }
+                      className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                    >
+                      <option value="backlog">Backlog</option>
+                      <option value="in_progress">In progress</option>
+                      <option value="done">Done</option>
+                      <option value="blocked">Blocked</option>
+                    </select>
+                  </label>
                 </div>
 
-                <div>
-                  {(childrenByParentId[ticketToEdit.id] ?? []).length === 0 ? (
-                    <p className="border-t border-border/60 px-3 py-2 text-xs text-muted-foreground">
-                      No subtasks yet.
-                    </p>
-                  ) : (
-                    (childrenByParentId[ticketToEdit.id] ?? []).map((child) =>
-                      renderChildTicketTree(child, 0)
-                    )
-                  )}
-                </div>
-
-                {isAddingSubtask && (
-                  <div className="border-t border-border/60 bg-primary/5 px-2 py-2">
-                    <div className="flex items-center gap-2">
-                      <Circle className="h-4 w-4 text-muted-foreground" />
-                      <input
-                        value={newChildDraft.title}
-                        onChange={(e) =>
-                          setNewChildDraft((prev) => ({
-                            ...prev,
-                            title: e.target.value,
-                          }))
-                        }
-                        className="flex-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-sm"
-                        placeholder="Subtask name"
-                        autoFocus
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            void handleCreateChildTicket();
+                {ticketToEdit && (
+                  <div className="rounded-lg border border-border bg-card/40">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 px-3 py-2.5">
+                        <h3 className="text-sm font-semibold text-foreground">Subtasks</h3>
+                        <span className="rounded-md border border-border bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                          {
+                            (childrenByParentId[ticketToEdit.id] ?? []).filter(
+                              (child) => child.status === 'done'
+                            ).length
                           }
-                        }}
-                      />
-                      <Button
-                        type="button"
-                        size="icon"
-                        onClick={handleCreateChildTicket}
-                        disabled={!newChildDraft.title.trim() || Boolean(savingTicketId)}
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
+                          /{(childrenByParentId[ticketToEdit.id] ?? []).length}
+                        </span>
+                      </div>
                     </div>
+
+                    <div>
+                      {(childrenByParentId[ticketToEdit.id] ?? []).length === 0 ? (
+                        <p className="border-t border-border/60 px-3 py-2 text-xs text-muted-foreground">
+                          No subtasks yet.
+                        </p>
+                      ) : (
+                        (childrenByParentId[ticketToEdit.id] ?? []).map((child) =>
+                          renderChildTicketTree(child, 0)
+                        )
+                      )}
+                    </div>
+
+                    {isAddingSubtask && (
+                      <div className="border-t border-border/60 bg-primary/5 px-2 py-2">
+                        <div className="flex items-center gap-2">
+                          <Circle className="h-4 w-4 text-muted-foreground" />
+                          <input
+                            value={newChildDraft.title}
+                            onChange={(e) =>
+                              setNewChildDraft((prev) => ({
+                                ...prev,
+                                title: e.target.value,
+                              }))
+                            }
+                            className="flex-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-sm"
+                            placeholder="Subtask name"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                void handleCreateChildTicket();
+                              }
+                            }}
+                          />
+                          <Button
+                            type="button"
+                            size="icon"
+                            onClick={handleCreateChildTicket}
+                            disabled={!newChildDraft.title.trim() || Boolean(savingTicketId)}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingSubtask(true)}
+                      className="w-full border-t border-border/60 px-3 py-2 text-left text-sm font-medium text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                    >
+                      Add subtask
+                    </button>
                   </div>
                 )}
 
-                <button
-                  type="button"
-                  onClick={() => setIsAddingSubtask(true)}
-                  className="w-full border-t border-border/60 px-3 py-2 text-left text-sm font-medium text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                >
-                  Add subtask
-                </button>
-              </div>
+                {ticketToEdit && ticketToEdit.projectId && (
+                  <div className="border-t border-border/60 pt-4">
+                    <TicketDependencyPanel
+                      ticketId={ticketToEdit.id}
+                      projectId={ticketToEdit.projectId}
+                      projectTickets={projectTickets.map((t) => ({
+                        id: t.id,
+                        title: t.title,
+                        status: t.status,
+                      }))}
+                    />
+                  </div>
+                )}
+              </>
             )}
 
-            {ticketToEdit && ticketToEdit.projectId && (
-              <div className="border-t border-border/60 pt-4">
-                <TicketDependencyPanel
-                  ticketId={ticketToEdit.id}
-                  projectId={ticketToEdit.projectId}
-                  projectTickets={projectTickets.map((t) => ({
-                    id: t.id,
-                    title: t.title,
-                    status: t.status,
-                  }))}
-                />
-              </div>
+            {ticketEditTab === 'attachments' && ticketToEdit && (
+              <TicketAttachmentsPanel ticketId={ticketToEdit.id} />
+            )}
+
+            {ticketEditTab === 'comments' && ticketToEdit && (
+              <TicketCommentsPanel ticketId={ticketToEdit.id} />
             )}
           </div>
 

@@ -63,6 +63,29 @@ export interface Project {
   updatedAt: string;
 }
 
+export interface TicketAttachment {
+  id: string;
+  ticket_id: string;
+  project_id?: string | null;
+  user_id: string;
+  filename: string;
+  file_url: string;
+  file_size: number;
+  file_type?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TicketComment {
+  id: string;
+  ticket_id: string;
+  project_id?: string | null;
+  user_id: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
 // ─── Helper — map Supabase row to Meeting ──────────────────────
 function rowToMeeting(row: any): Meeting {
   return {
@@ -498,6 +521,16 @@ export async function getAllTickets(userId: string): Promise<Ticket[]> {
   return (data ?? []).map(rowToTicket);
 }
 
+export async function getTicketById(id: string): Promise<Ticket | null> {
+  const { data, error } = await supabaseAdmin
+    .from('tickets')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? rowToTicket(data) : null;
+}
+
 export async function updateTicketStatus(id: string, status: Ticket['status']): Promise<void> {
   const { error } = await supabaseAdmin
     .from('tickets')
@@ -811,6 +844,113 @@ export async function cascadeDepRegressionForParent(parentId: string): Promise<v
       updated_at: new Date().toISOString(),
     })
     .in('id', toBlock);
+}
+
+// ─── Attachments ───────────────────────────────────────────────
+export async function getAttachmentsForTicket(ticketId: string): Promise<TicketAttachment[]> {
+  const { data, error } = await supabaseAdmin
+    .from('ticket_attachments')
+    .select('*')
+    .eq('ticket_id', ticketId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((row: any) => ({
+    id: row.id,
+    ticket_id: row.ticket_id,
+    project_id: row.project_id,
+    user_id: row.user_id,
+    filename: row.filename,
+    file_url: row.file_url,
+    file_size: row.file_size,
+    file_type: row.file_type,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  }));
+}
+
+export async function createAttachment(
+  attachment: Omit<TicketAttachment, 'id' | 'created_at' | 'updated_at'>
+): Promise<TicketAttachment> {
+  const { data, error } = await supabaseAdmin
+    .from('ticket_attachments')
+    .insert({
+      ticket_id: attachment.ticket_id,
+      project_id: attachment.project_id,
+      user_id: attachment.user_id,
+      filename: attachment.filename,
+      file_url: attachment.file_url,
+      file_size: attachment.file_size,
+      file_type: attachment.file_type,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return {
+    id: data.id,
+    ticket_id: data.ticket_id,
+    project_id: data.project_id,
+    user_id: data.user_id,
+    filename: data.filename,
+    file_url: data.file_url,
+    file_size: data.file_size,
+    file_type: data.file_type,
+    created_at: data.created_at,
+    updated_at: data.updated_at,
+  };
+}
+
+export async function deleteAttachment(id: string): Promise<void> {
+  const { error } = await supabaseAdmin.from('ticket_attachments').delete().eq('id', id);
+  if (error) throw error;
+}
+
+// ─── Comments ────────────────────────────────────────────────────
+export async function getCommentsForTicket(ticketId: string): Promise<TicketComment[]> {
+  const { data, error } = await supabaseAdmin
+    .from('ticket_comments')
+    .select('*')
+    .eq('ticket_id', ticketId)
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map((row: any) => ({
+    id: row.id,
+    ticket_id: row.ticket_id,
+    project_id: row.project_id,
+    user_id: row.user_id,
+    content: row.content,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  }));
+}
+
+export async function createComment(
+  comment: Omit<TicketComment, 'id' | 'created_at' | 'updated_at'>
+): Promise<TicketComment> {
+  const { data, error } = await supabaseAdmin
+    .from('ticket_comments')
+    .insert({
+      ticket_id: comment.ticket_id,
+      project_id: comment.project_id,
+      user_id: comment.user_id,
+      content: comment.content,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return {
+    id: data.id,
+    ticket_id: data.ticket_id,
+    project_id: data.project_id,
+    user_id: data.user_id,
+    content: data.content,
+    created_at: data.created_at,
+    updated_at: data.updated_at,
+  };
+}
+
+export async function deleteComment(id: string): Promise<void> {
+  const { error } = await supabaseAdmin.from('ticket_comments').delete().eq('id', id);
+  if (error) throw error;
 }
 
 // ─── Legacy compatibility (db.json style) ──────────────────────

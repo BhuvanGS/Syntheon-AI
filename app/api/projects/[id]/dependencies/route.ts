@@ -18,7 +18,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       getDependenciesForProject(projectId),
     ]);
 
-    const tickets = allTickets.filter((t: { dependency_ticket_id?: string | null }) => !t.dependency_ticket_id);
+    const tickets = allTickets.filter(
+      (t: { dependency_ticket_id?: string | null }) => !t.dependency_ticket_id
+    );
 
     return NextResponse.json({ tickets, dependencies });
   } catch (err) {
