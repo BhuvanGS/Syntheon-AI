@@ -178,6 +178,7 @@ export function ProjectsWorkspace({
   const [isAddingSubtask, setIsAddingSubtask] = useState(false);
   const [savingTicketId, setSavingTicketId] = useState<string | null>(null);
   const [isSavingProject, setIsSavingProject] = useState(false);
+  const [subtasksPopupTicket, setSubtasksPopupTicket] = useState<Ticket | null>(null);
 
   const selectedProject = useMemo(
     () => projects.find((project) => project.id === selectedProjectId) ?? null,
@@ -648,7 +649,10 @@ export function ProjectsWorkspace({
         }));
       }
 
-      closeTicketEditor();
+      const isSubtask = Boolean(ticketToEdit.dependency_ticket_id);
+      if (!isSubtask) {
+        closeTicketEditor();
+      }
       await onRefresh();
     } finally {
       setSavingTicketId(null);
@@ -1296,7 +1300,14 @@ export function ProjectsWorkspace({
                           key={ticket.id}
                           type="button"
                           draggable
-                          onClick={() => openTicketEditor(ticket)}
+                          onClick={() => {
+                            const hasSubtasks = (childrenByParentId[ticket.id] ?? []).length > 0;
+                            if (hasSubtasks) {
+                              setSubtasksPopupTicket(ticket);
+                            } else {
+                              openTicketEditor(ticket);
+                            }
+                          }}
                           onDragStart={() => {
                             setDraggedTicketId(ticket.id);
                             setDraggedStageId(null);
@@ -1310,11 +1321,20 @@ export function ProjectsWorkspace({
                           <p className="text-xs text-muted-foreground line-clamp-1">
                             {ticket.description || 'No description'}
                           </p>
-                          {ticket.assignee && (
-                            <p className="mt-2 text-[11px] text-muted-foreground">
-                              @{ticket.assignee}
-                            </p>
-                          )}
+                          <div className="mt-2 flex items-center justify-between">
+                            {ticket.assignee && (
+                              <p className="text-[11px] text-muted-foreground">
+                                @{ticket.assignee}
+                              </p>
+                            )}
+                            {(childrenByParentId[ticket.id] ?? []).length > 0 && (
+                              <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                                <CheckCircle2 className="h-3 w-3" />
+                                {(childrenByParentId[ticket.id] ?? []).filter((c) => c.status === 'done').length}
+                                /{(childrenByParentId[ticket.id] ?? []).length}
+                              </span>
+                            )}
+                          </div>
                         </button>
                       ))}
                       {colTickets.length === 0 && (
@@ -1795,15 +1815,6 @@ export function ProjectsWorkspace({
                       /
                       {(childrenByParentId[ticketToEdit.id] ?? []).length}
                     </span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => setIsAddingSubtask(true)}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
                   </div>
                 </div>
 
@@ -1985,6 +1996,97 @@ export function ProjectsWorkspace({
             >
               Delete project
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(subtasksPopupTicket)}
+        onOpenChange={(open) => {
+          if (!open) setSubtasksPopupTicket(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md border-border bg-background shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-playfair text-xl text-foreground">
+              {subtasksPopupTicket?.title}
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Subtasks ({(childrenByParentId[subtasksPopupTicket?.id ?? ''] ?? []).length})
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-2">
+            {(childrenByParentId[subtasksPopupTicket?.id ?? ''] ?? []).length === 0 ? (
+              <p className="text-sm text-muted-foreground">No subtasks yet.</p>
+            ) : (
+              <div className="space-y-1 rounded-lg border border-border bg-card/40">
+                {(childrenByParentId[subtasksPopupTicket?.id ?? ''] ?? []).map((child) => (
+                  <div
+                    key={child.id}
+                    className="flex items-center gap-2 border-b border-border/60 px-3 py-2 last:border-b-0"
+                  >
+                    {child.status === 'done' ? (
+                      <CheckCircle2 className="h-4 w-4 text-primary" />
+                    ) : (
+                      <Circle className="h-4 w-4 text-muted-foreground" />
+                    )}
+                    <span className="flex-1 text-sm text-foreground">{child.title}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => {
+                        setSubtasksPopupTicket(null);
+                        openTicketEditor(child, true);
+                      }}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="flex-row justify-between gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setSubtasksPopupTicket(null)}
+              className="rounded-full"
+            >
+              Close
+            </Button>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  if (subtasksPopupTicket) {
+                    openTicketEditor(subtasksPopupTicket);
+                    setSubtasksPopupTicket(null);
+                  }
+                }}
+                className="rounded-full"
+              >
+                Edit ticket
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  if (subtasksPopupTicket) {
+                    setIsAddingSubtask(true);
+                    openTicketEditor(subtasksPopupTicket);
+                    setSubtasksPopupTicket(null);
+                  }
+                }}
+                className="rounded-full"
+              >
+                Add subtask
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
