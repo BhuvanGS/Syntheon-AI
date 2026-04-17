@@ -22,6 +22,8 @@ interface GraphDependency {
 
 interface TicketDependencyGraphProps {
   projectId: string;
+  subtaskCounts?: Record<string, number>;
+  onTicketClick?: (ticketId: string) => void;
 }
 
 const STATUS_COLORS: Record<string, { bg: string; border: string; text: string; dot: string }> = {
@@ -107,7 +109,7 @@ function layoutNodes(
   return positions;
 }
 
-export function TicketDependencyGraph({ projectId }: TicketDependencyGraphProps) {
+export function TicketDependencyGraph({ projectId, subtaskCounts = {}, onTicketClick }: TicketDependencyGraphProps) {
   const [tickets, setTickets] = useState<GraphTicket[]>([]);
   const [deps, setDeps] = useState<GraphDependency[]>([]);
   const [loading, setLoading] = useState(true);
@@ -309,6 +311,8 @@ export function TicketDependencyGraph({ projectId }: TicketDependencyGraphProps)
               const isHovered = hoveredNode === ticket.id;
               const hasIncoming = deps.some((d) => d.ticket_id === ticket.id);
               const hasOutgoing = deps.some((d) => d.depends_on_ticket_id === ticket.id);
+              const subtaskCount = subtaskCounts[ticket.id] ?? 0;
+              const hasSubtasks = subtaskCount > 0;
 
               return (
                 <g
@@ -316,7 +320,8 @@ export function TicketDependencyGraph({ projectId }: TicketDependencyGraphProps)
                   transform={`translate(${pos.x},${pos.y})`}
                   onMouseEnter={() => setHoveredNode(ticket.id)}
                   onMouseLeave={() => setHoveredNode(null)}
-                  style={{ cursor: 'default' }}
+                  onClick={() => onTicketClick?.(ticket.id)}
+                  style={{ cursor: onTicketClick ? 'pointer' : 'default' }}
                 >
                   <rect
                     width={NODE_W}
@@ -360,6 +365,28 @@ export function TicketDependencyGraph({ projectId }: TicketDependencyGraphProps)
                     >
                       {hasIncoming && hasOutgoing ? '⇄' : hasIncoming ? '←' : '→'}
                     </text>
+                  )}
+                  {hasSubtasks && (
+                    <g transform={`translate(${NODE_W - 24}, 8)`}>
+                      <rect
+                        width={18}
+                        height={14}
+                        rx={7}
+                        ry={7}
+                        fill={colors.dot}
+                      />
+                      <text
+                        x={9}
+                        y={10}
+                        fontSize={8}
+                        fontWeight="600"
+                        fill="#ffffff"
+                        fontFamily="inherit"
+                        textAnchor="middle"
+                      >
+                        {subtaskCount > 9 ? '9+' : subtaskCount}
+                      </text>
+                    </g>
                   )}
                 </g>
               );

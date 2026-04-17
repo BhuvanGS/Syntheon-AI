@@ -1460,7 +1460,20 @@ export function ProjectsWorkspace({
           <div className="space-y-4">
             <h2 className="font-playfair text-2xl font-bold text-foreground">Dependencies</h2>
             <div className="rounded-2xl border border-border bg-card p-4">
-              <TicketDependencyGraph projectId={selectedProject.id} />
+              <TicketDependencyGraph
+                projectId={selectedProject.id}
+                subtaskCounts={Object.fromEntries(
+                  Object.entries(childrenByParentId).map(([id, children]) => [id, children.length])
+                )}
+                onTicketClick={(ticketId) => {
+                  const ticket = projectTickets.find((t) => t.id === ticketId);
+                  if (ticket && (childrenByParentId[ticketId] ?? []).length > 0) {
+                    setSubtasksPopupTicket(ticket);
+                  } else if (ticket) {
+                    openTicketEditor(ticket);
+                  }
+                }}
+              />
             </div>
           </div>
         )}
