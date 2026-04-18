@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { deleteAttachment, getTicketById } from '@/lib/db';
+import { deleteAttachment, getTicketById, createActivity } from '@/lib/db';
 
 export async function DELETE(
   req: NextRequest,
@@ -17,6 +17,25 @@ export async function DELETE(
     }
 
     await deleteAttachment(attachmentId);
+
+    // Log activity
+    await createActivity({
+      ticket_id: ticketId,
+      user_id: userId,
+      action_type: 'attachment_deleted',
+      metadata: { attachment_id: attachmentId },
+    });
+
+    // If this is a subticket, also log to parent
+    if (ticket.parent_id) {
+      await createActivity({
+        ticket_id: ticket.parent_id,
+        user_id: userId,
+        action_type: 'attachment_deleted',
+        metadata: { attachment_id: attachmentId, subtask_id: ticketId },
+      });
+    }
+
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error('DELETE /attachments error:', err);

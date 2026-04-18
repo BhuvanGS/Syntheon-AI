@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { getCommentsForTicket, createComment, deleteComment, getTicketById } from '@/lib/db';
+import {
+  getCommentsForTicket,
+  createComment,
+  deleteComment,
+  getTicketById,
+  createActivity,
+} from '@/lib/db';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -45,6 +51,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       user_id: userId,
       content: content.trim(),
     });
+
+    // Log activity
+    await createActivity({
+      ticket_id: ticketId,
+      user_id: userId,
+      action_type: 'comment_added',
+      metadata: { content: content.trim() },
+    });
+
+    // If this is a subticket, also log to parent
+    if (ticket.parent_id) {
+      await createActivity({
+        ticket_id: ticket.parent_id,
+        user_id: userId,
+        action_type: 'comment_added',
+        metadata: { content: content.trim(), subtask_id: ticketId },
+      });
+    }
 
     return NextResponse.json(comment, { status: 201 });
   } catch (err) {

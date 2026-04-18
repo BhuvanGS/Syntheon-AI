@@ -5,6 +5,7 @@ import {
   createAttachment,
   deleteAttachment,
   getTicketById,
+  createActivity,
 } from '@/lib/db';
 import { randomUUID } from 'crypto';
 
@@ -60,6 +61,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       file_size,
       file_type: file_type ?? null,
     });
+
+    // Log activity
+    await createActivity({
+      ticket_id: ticketId,
+      user_id: userId,
+      action_type: 'attachment_added',
+      metadata: { filename, file_size },
+    });
+
+    // If this is a subticket, also log to parent
+    if (ticket.parent_id) {
+      await createActivity({
+        ticket_id: ticket.parent_id,
+        user_id: userId,
+        action_type: 'attachment_added',
+        metadata: { filename, file_size, subtask_id: ticketId },
+      });
+    }
 
     return NextResponse.json(attachment, { status: 201 });
   } catch (err) {

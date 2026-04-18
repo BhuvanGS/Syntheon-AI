@@ -7,16 +7,6 @@ const nextConfig = {
     unoptimized: true,
   },
   allowedDevOrigins: ['uncapacious-lauraceous-verna.ngrok-free.dev'],
-  api: {
-    bodyParser: {
-      sizeLimit: '15mb',
-    },
-  },
-  experimental: {
-    serverActions: {
-      bodySizeLimit: '15mb',
-    },
-  },
 };
 
 export default nextConfig;

@@ -5,6 +5,7 @@ import {
   getAllTickets,
   createDependency,
   getDependenciesForTicket,
+  createActivity,
   type DependencyType,
   type DependencyStrength,
 } from '@/lib/db';
@@ -81,6 +82,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (result.error) {
       return NextResponse.json({ error: result.error }, { status: 422 });
     }
+
+    // Log activity
+    await createActivity({
+      ticket_id: ticketId,
+      user_id: userId,
+      action_type: 'dependency_added',
+      metadata: { depends_on_ticket_id, dependency_type, strength },
+    });
 
     return NextResponse.json({ success: true }, { status: 201 });
   } catch (err) {

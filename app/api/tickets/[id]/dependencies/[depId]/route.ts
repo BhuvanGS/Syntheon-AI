@@ -5,6 +5,7 @@ import {
   deleteDependency,
   getDependenciesForTicket,
   incrementDependencyIgnoreCount,
+  createActivity,
   type DependencyType,
   type DependencyStrength,
 } from '@/lib/db';
@@ -40,6 +41,15 @@ export async function DELETE(
     if (!found) return NextResponse.json({ error: 'Dependency not found' }, { status: 404 });
 
     await deleteDependency(depId);
+
+    // Log activity
+    await createActivity({
+      ticket_id: ticketId,
+      user_id: userId,
+      action_type: 'dependency_removed',
+      metadata: { dependency_id: depId },
+    });
+
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error('DELETE /dependencies/[depId] error:', err);
@@ -91,6 +101,14 @@ export async function PATCH(
       .update(updates)
       .eq('id', depId);
     if (error) throw error;
+
+    // Log activity
+    await createActivity({
+      ticket_id: ticketId,
+      user_id: userId,
+      action_type: 'dependency_updated',
+      metadata: updates,
+    });
 
     return NextResponse.json({ success: true });
   } catch (err) {

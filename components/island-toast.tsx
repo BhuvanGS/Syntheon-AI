@@ -47,18 +47,21 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const showToast = useCallback((message: string, type: ToastType = 'info') => {
-    const id = `${Date.now()}-${Math.random()}`;
-    const toast: Toast = { id, message, type };
+  const showToast = useCallback(
+    (message: string, type: ToastType = 'info') => {
+      const id = `${Date.now()}-${Math.random()}`;
+      const toast: Toast = { id, message, type };
 
-    setToasts((prev) => [...prev, toast]);
+      setToasts((prev) => [...prev, toast]);
 
-    const timeout = setTimeout(() => {
-      removeToast(id);
-    }, TOAST_DURATION);
+      const timeout = setTimeout(() => {
+        removeToast(id);
+      }, TOAST_DURATION);
 
-    timeoutsRef.current.set(id, timeout);
-  }, [removeToast]);
+      timeoutsRef.current.set(id, timeout);
+    },
+    [removeToast]
+  );
 
   // Cleanup on unmount
   useEffect(() => {
@@ -73,7 +76,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {children}
       <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center gap-2 pointer-events-none">
         {toasts.map((toast, index) => (
-          <IslandToast key={toast.id} toast={toast} onClose={() => removeToast(toast.id)} index={index} />
+          <IslandToast
+            key={toast.id}
+            toast={toast}
+            onClose={() => removeToast(toast.id)}
+            index={index}
+          />
         ))}
       </div>
     </ToastContext.Provider>
@@ -117,7 +125,9 @@ function IslandToast({ toast, onClose, index }: IslandToastProps) {
         'shadow-[0_8px_32px_rgba(0,0,0,0.12)]',
         'rounded-full',
         'max-w-[90vw] sm:max-w-[400px]',
-        isVisible && !isExiting ? 'translate-y-0 opacity-100 scale-100' : '-translate-y-4 opacity-0 scale-95',
+        isVisible && !isExiting
+          ? 'translate-y-0 opacity-100 scale-100'
+          : '-translate-y-4 opacity-0 scale-95',
         isExiting && 'translate-y-2 opacity-0 scale-95'
       )}
       style={{
@@ -125,11 +135,9 @@ function IslandToast({ toast, onClose, index }: IslandToastProps) {
       }}
     >
       <Icon className={cn('w-5 h-5 flex-shrink-0', colorMap[toast.type])} />
-      
-      <span className="text-sm font-medium text-foreground truncate">
-        {toast.message}
-      </span>
-      
+
+      <span className="text-sm font-medium text-foreground truncate">{toast.message}</span>
+
       <button
         onClick={handleClose}
         className="ml-1 p-1 rounded-full hover:bg-muted transition-colors flex-shrink-0"

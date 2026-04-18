@@ -38,6 +38,7 @@ export interface Ticket {
   user_id?: string;
   meeting_id: string | null;
   projectId?: string;
+  parent_id?: string | null;
   title: string;
   description: string;
   status: 'backlog' | 'in_progress' | 'done' | 'blocked';
@@ -951,6 +952,46 @@ export async function createComment(
 export async function deleteComment(id: string): Promise<void> {
   const { error } = await supabaseAdmin.from('ticket_comments').delete().eq('id', id);
   if (error) throw error;
+}
+
+// ─── Activities ────────────────────────────────────────────────────
+export interface TicketActivity {
+  id: string;
+  ticket_id: string; // UUID in database, string in JS
+  user_id: string;
+  action_type: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export async function getActivitiesForTicket(ticketId: string): Promise<TicketActivity[]> {
+  const { data, error } = await supabaseAdmin
+    .from('ticket_activities')
+    .select('*')
+    .eq('ticket_id', ticketId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function createActivity(
+  activity: Omit<TicketActivity, 'id' | 'created_at'>
+): Promise<TicketActivity> {
+  const { data, error } = await supabaseAdmin
+    .from('ticket_activities')
+    .insert({
+      ticket_id: activity.ticket_id,
+      user_id: activity.user_id,
+      action_type: activity.action_type,
+      metadata: activity.metadata || {},
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  if (!data) throw new Error('Failed to create activity');
+  return data;
 }
 
 // ─── Legacy compatibility (db.json style) ──────────────────────

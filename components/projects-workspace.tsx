@@ -32,6 +32,8 @@ import { TicketDependencyPanel } from '@/components/ticket-dependency-panel';
 import { TicketDependencyGraph } from '@/components/ticket-dependency-graph';
 import { TicketAttachmentsPanel } from '@/components/ticket-attachments-panel';
 import { TicketCommentsPanel } from '@/components/ticket-comments-panel';
+import { TicketActivityPanel } from '@/components/ticket-activity-panel';
+import { TipTapEditor } from '@/components/tiptap-editor';
 import { useToast } from '@/components/island-toast';
 import { ProjectTicketImportDialog } from '@/components/project-ticket-import-dialog';
 import { ProjectMeetingDialog } from '@/components/project-meeting-dialog';
@@ -182,9 +184,9 @@ export function ProjectsWorkspace({
   const [savingTicketId, setSavingTicketId] = useState<string | null>(null);
   const [isSavingProject, setIsSavingProject] = useState(false);
   const [subtasksPopupTicket, setSubtasksPopupTicket] = useState<Ticket | null>(null);
-  const [ticketEditTab, setTicketEditTab] = useState<'details' | 'attachments' | 'comments'>(
-    'details'
-  );
+  const [ticketEditTab, setTicketEditTab] = useState<
+    'details' | 'attachments' | 'comments' | 'activity'
+  >('details');
 
   const { showToast } = useToast();
 
@@ -580,8 +582,8 @@ export function ProjectsWorkspace({
     setNewChildDraft({
       title: '',
     });
-    setIsAddingSubtask(false);
     setTicketEditTab('details');
+    setIsAddingSubtask(false);
   }
 
   function goBackTicketEditor() {
@@ -598,6 +600,7 @@ export function ProjectsWorkspace({
     });
     setNewChildDraft({ title: '' });
     setTicketEditTab('details');
+    setIsAddingSubtask(false);
   }
 
   function closeTicketEditor() {
@@ -1779,20 +1782,29 @@ export function ProjectsWorkspace({
 
           <div className="border-b border-border px-6 pt-2">
             <div className="flex gap-1">
-              {(['details', 'attachments', 'comments'] as const).map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setTicketEditTab(tab)}
-                  className={`px-3 py-2 text-sm font-medium transition-colors rounded-t-lg ${
-                    ticketEditTab === tab
-                      ? 'text-primary border-b-2 border-primary'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                </button>
-              ))}
+              {(() => {
+                // Only parent tickets (not subtickets) get the Activity tab
+                const isSubtask = Boolean(ticketToEdit?.dependency_ticket_id);
+                const tabs = isSubtask
+                  ? ['details', 'attachments', 'comments']
+                  : ['details', 'attachments', 'comments', 'activity'];
+                return tabs.map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() =>
+                      setTicketEditTab(tab as 'details' | 'attachments' | 'comments' | 'activity')
+                    }
+                    className={`px-3 py-2 text-sm font-medium transition-colors rounded-t-lg ${
+                      ticketEditTab === tab
+                        ? 'text-primary border-b-2 border-primary'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                  </button>
+                ));
+              })()}
             </div>
           </div>
 
@@ -1814,20 +1826,20 @@ export function ProjectsWorkspace({
                   />
                 </label>
 
-                <label className="block text-sm text-muted-foreground">
-                  Description
-                  <textarea
-                    value={ticketEditForm.description}
-                    onChange={(e) =>
+                <div className="space-y-1">
+                  <label className="block text-sm text-muted-foreground">Description</label>
+                  <TipTapEditor
+                    content={ticketEditForm.description}
+                    onChange={(html) =>
                       setTicketEditForm((prev) => ({
                         ...prev,
-                        description: e.target.value,
+                        description: html,
                       }))
                     }
-                    className="mt-1 min-h-24 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-                    placeholder="Describe the ticket"
+                    placeholder="Describe the ticket..."
+                    disabled={Boolean(savingTicketId)}
                   />
-                </label>
+                </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <label className="block text-sm text-muted-foreground">
@@ -1959,6 +1971,10 @@ export function ProjectsWorkspace({
 
             {ticketEditTab === 'comments' && ticketToEdit && (
               <TicketCommentsPanel ticketId={ticketToEdit.id} />
+            )}
+
+            {ticketEditTab === 'activity' && ticketToEdit && (
+              <TicketActivityPanel ticketId={ticketToEdit.id} />
             )}
           </div>
 

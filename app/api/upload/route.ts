@@ -78,10 +78,7 @@ export async function POST(req: NextRequest) {
       errorMessage.includes('Request body') ||
       errorMessage.includes('10MB')
     ) {
-      return NextResponse.json(
-        { error: 'File size exceeds 15MB limit' },
-        { status: 413 }
-      );
+      return NextResponse.json({ error: 'File size exceeds 15MB limit' }, { status: 413 });
     }
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

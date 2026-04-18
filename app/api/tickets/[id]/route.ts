@@ -8,6 +8,8 @@ import {
   cascadeDepRegressionForParent,
   getDependenciesForTicket,
   incrementDependencyIgnoreCount,
+  createActivity,
+  getTicketById,
 } from '@/lib/db';
 import { supabaseAdmin } from '@/lib/supabase';
 
@@ -116,7 +118,48 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
 
     const previousStatus = ticket.status;
+    const previousAssignee = ticket.assignee;
     await updateTicket(id, updates);
+
+    // Log activity for status change
+    if (newStatus && newStatus !== previousStatus) {
+      await createActivity({
+        ticket_id: id,
+        user_id: userId,
+        action_type: 'status_changed',
+        metadata: { from: previousStatus, to: newStatus },
+      });
+    }
+
+    // Log activity for assignee change
+    const newAssignee = updates.assignee as string | null;
+    if (newAssignee !== undefined && newAssignee !== previousAssignee) {
+      await createActivity({
+        ticket_id: id,
+        user_id: userId,
+        action_type: 'assigned',
+        metadata: { to: newAssignee || 'Unassigned' },
+      });
+    }
+
+    // Log generic update for other changes
+    const hasOtherChanges = Object.keys(updates).some(
+      (k) => !['status', 'assignee', 'assignee_user_id'].includes(k)
+    );
+    if (hasOtherChanges) {
+      await createActivity({
+        ticket_id: id,
+        user_id: userId,
+        action_type: 'updated',
+        metadata: Object.keys(updates).reduce(
+          (acc, key) => {
+            acc[key] = { from: ticket[key as keyof typeof ticket], to: updates[key] };
+            return acc;
+          },
+          {} as Record<string, { from: unknown; to: unknown }>
+        ),
+      });
+    }
 
     if (previousStatus === 'done' && newStatus && newStatus !== 'done') {
       await cascadeDepRegressionForParent(id);

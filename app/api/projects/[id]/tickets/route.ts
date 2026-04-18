@@ -7,6 +7,7 @@ import {
   getProjectById,
   getTicketsByProjectId,
   saveTickets,
+  createActivity,
 } from '@/lib/db';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -86,6 +87,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     ]);
 
     await addTicketsToProject(projectId, [ticketId]);
+
+    // Log activity for ticket creation
+    await createActivity({
+      ticket_id: ticketId,
+      user_id: userId,
+      action_type: 'created',
+      metadata: { title },
+    });
+
+    // If this is a subticket, also log to parent
+    if (parentTicketId) {
+      await createActivity({
+        ticket_id: parentTicketId,
+        user_id: userId,
+        action_type: 'subtask_created',
+        metadata: { title, subtask_id: ticketId },
+      });
+    }
 
     return NextResponse.json({ success: true, ticketId, meetingId: resolvedMeetingId });
   } catch (error) {
