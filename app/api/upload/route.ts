@@ -3,6 +3,13 @@ import { auth } from '@clerk/nextjs/server';
 import { supabaseAdmin } from '@/lib/supabase';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+// Body size limit for this route
+export const bodyParser = {
+  sizeLimit: '15mb',
+};
+
 export const maxBodyLength = 15 * 1024 * 1024; // 15MB
 
 export async function POST(req: NextRequest) {
@@ -60,6 +67,23 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     console.error('POST /upload error:', err);
+
+    // Check for body size limit exceeded
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    if (
+      errorMessage.includes('exceeded') ||
+      errorMessage.includes('body size') ||
+      errorMessage.includes('maximum') ||
+      errorMessage.includes('payload too large') ||
+      errorMessage.includes('Request body') ||
+      errorMessage.includes('10MB')
+    ) {
+      return NextResponse.json(
+        { error: 'File size exceeds 15MB limit' },
+        { status: 413 }
+      );
+    }
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -60,34 +60,62 @@ export function TicketAttachmentsPanel({ ticketId }: TicketAttachmentsPanelProps
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Validate file size (max 15MB)
+    const maxSize = 15 * 1024 * 1024;
+    if (file.size > maxSize) {
+      showToast('File size exceeds 15MB limit', 'error');
+      e.target.value = '';
+      return;
+    }
+
     setUploading(true);
     try {
-      // First upload to storage
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('ticketId', ticketId);
-
-      const uploadRes = await fetch('/api/upload', {
+      // Step 1: Get presigned URL for direct Supabase upload
+      const presignedRes = await fetch('/api/upload/presigned', {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filename: file.name,
+          ticketId,
+          fileSize: file.size,
+          fileType: file.type,
+        }),
+      });
+
+      if (!presignedRes.ok) {
+        const error = await presignedRes.json();
+        throw new Error(error.error || 'Failed to get upload URL');
+      }
+
+      const { signedUrl, filePath } = await presignedRes.json();
+
+      // Step 2: Upload file directly to Supabase (bypasses Next.js body limit)
+      const uploadRes = await fetch(signedUrl, {
+        method: 'PUT',
+        body: file,
+        headers: {
+          'Content-Type': file.type,
+        },
       });
 
       if (!uploadRes.ok) {
-        const error = await uploadRes.json();
-        throw new Error(error.error || 'Upload failed');
+        throw new Error('Failed to upload file to storage');
       }
 
-      const uploadData = await uploadRes.json();
+      // Step 3: Get public URL
+      const { data: urlData } = await fetch(
+        `/api/upload/url?path=${encodeURIComponent(filePath)}`
+      ).then((r) => r.json());
 
-      // Then create attachment record
+      // Step 4: Create attachment record
       const attachmentRes = await fetch(`/api/tickets/${ticketId}/attachments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          filename: uploadData.filename,
-          file_url: uploadData.fileUrl,
-          file_size: uploadData.fileSize,
-          file_type: uploadData.fileType,
+          filename: file.name,
+          file_url: urlData.publicUrl,
+          file_size: file.size,
+          file_type: file.type,
         }),
       });
 
