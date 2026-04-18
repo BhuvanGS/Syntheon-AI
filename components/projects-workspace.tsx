@@ -32,6 +32,7 @@ import { TicketDependencyPanel } from '@/components/ticket-dependency-panel';
 import { TicketDependencyGraph } from '@/components/ticket-dependency-graph';
 import { TicketAttachmentsPanel } from '@/components/ticket-attachments-panel';
 import { TicketCommentsPanel } from '@/components/ticket-comments-panel';
+import { useToast } from '@/components/island-toast';
 import { ProjectTicketImportDialog } from '@/components/project-ticket-import-dialog';
 import { ProjectMeetingDialog } from '@/components/project-meeting-dialog';
 import {
@@ -184,6 +185,8 @@ export function ProjectsWorkspace({
   const [ticketEditTab, setTicketEditTab] = useState<'details' | 'attachments' | 'comments'>(
     'details'
   );
+
+  const { showToast } = useToast();
 
   const selectedProject = useMemo(
     () => projects.find((project) => project.id === selectedProjectId) ?? null,
@@ -339,6 +342,7 @@ export function ProjectsWorkspace({
       setIsAddingSubtask(false);
       setExpandedTicketIds((prev) => ({ ...prev, [ticketToEdit.id]: true }));
       await onRefresh();
+      showToast('Subtask created', 'success');
     } finally {
       setSavingTicketId(null);
     }
@@ -357,6 +361,7 @@ export function ProjectsWorkspace({
       setIsRelocateStageDialogOpen(false);
       setStageToDelete(null);
       setRelocateStageId('');
+      showToast('Stage deleted', 'success');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to delete stage';
       window.alert(message);
@@ -536,6 +541,7 @@ export function ProjectsWorkspace({
       setIsDeleteStageDialogOpen(false);
       setStageToDelete(null);
       setRelocateStageId('');
+      showToast('Stage and tickets deleted', 'success');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to delete stage';
       window.alert(message);
@@ -666,6 +672,7 @@ export function ProjectsWorkspace({
         closeTicketEditor();
       }
       await onRefresh();
+      showToast('Ticket saved successfully', 'success');
     } finally {
       setSavingTicketId(null);
     }
@@ -690,6 +697,7 @@ export function ProjectsWorkspace({
       });
       setTicketToDelete(null);
       await onRefresh();
+      showToast('Ticket deleted', 'success');
     } finally {
       setSavingTicketId(null);
     }
@@ -721,6 +729,7 @@ export function ProjectsWorkspace({
 
       await onRefresh();
       setIsRenameProjectOpen(false);
+      showToast('Project updated', 'success');
     } finally {
       setIsSavingProject(false);
     }

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { MessageSquare, Send, X, User } from 'lucide-react';
+import { useToast } from '@/components/island-toast';
 
 interface Comment {
   id: string;
@@ -37,6 +38,7 @@ export function TicketCommentsPanel({ ticketId, currentUserId }: TicketCommentsP
   const [newComment, setNewComment] = useState('');
   const [sending, setSending] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   const fetchComments = useCallback(async () => {
     try {
@@ -72,8 +74,10 @@ export function TicketCommentsPanel({ ticketId, currentUserId }: TicketCommentsP
       const comment = await res.json();
       setComments((prev) => [...prev, comment]);
       setNewComment('');
+      showToast('Comment added', 'success');
     } catch (err) {
       console.error('Error adding comment:', err);
+      showToast('Failed to add comment', 'error');
     } finally {
       setSending(false);
     }
@@ -89,8 +93,10 @@ export function TicketCommentsPanel({ ticketId, currentUserId }: TicketCommentsP
       if (!res.ok) throw new Error('Failed to delete comment');
 
       setComments((prev) => prev.filter((c) => c.id !== commentId));
+      showToast('Comment deleted', 'success');
     } catch (err) {
       console.error('Error deleting comment:', err);
+      showToast('Failed to delete comment', 'error');
     } finally {
       setDeletingId(null);
     }

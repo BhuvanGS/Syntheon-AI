@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Paperclip, X, Upload, FileText, Image, File } from 'lucide-react';
+import { useToast } from '@/components/island-toast';
 
 interface Attachment {
   id: string;
@@ -36,6 +37,7 @@ export function TicketAttachmentsPanel({ ticketId }: TicketAttachmentsPanelProps
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   const fetchAttachments = useCallback(async () => {
     try {
@@ -92,9 +94,10 @@ export function TicketAttachmentsPanel({ ticketId }: TicketAttachmentsPanelProps
       if (!attachmentRes.ok) throw new Error('Failed to create attachment record');
 
       await fetchAttachments();
+      showToast('File uploaded', 'success');
     } catch (err) {
       console.error('Error uploading file:', err);
-      alert(err instanceof Error ? err.message : 'Failed to upload file');
+      showToast(err instanceof Error ? err.message : 'Failed to upload file', 'error');
     } finally {
       setUploading(false);
       // Reset input
@@ -112,8 +115,10 @@ export function TicketAttachmentsPanel({ ticketId }: TicketAttachmentsPanelProps
       if (!res.ok) throw new Error('Failed to delete attachment');
 
       setAttachments((prev) => prev.filter((a) => a.id !== attachmentId));
+      showToast('File deleted', 'success');
     } catch (err) {
       console.error('Error deleting attachment:', err);
+      showToast('Failed to delete file', 'error');
     } finally {
       setDeletingId(null);
     }

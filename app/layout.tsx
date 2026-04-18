@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Geist, Geist_Mono, Playfair_Display, DM_Sans, DM_Serif_Display } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/next';
 import { ClerkProvider } from '@clerk/nextjs';
+import { ToastProvider } from '@/components/island-toast';
 import './globals.css';
 
 const _geist = Geist({ subsets: ['latin'] });
@@ -37,8 +38,10 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en" className={`${_playfair.variable} ${_dmSans.variable} ${_dmSerif.variable}`}>
         <body className="font-sans antialiased bg-background text-foreground">
-          {children}
-          <Analytics />
+          <ToastProvider>
+            {children}
+            <Analytics />
+          </ToastProvider>
         </body>
       </html>
     </ClerkProvider>

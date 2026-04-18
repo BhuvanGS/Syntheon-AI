@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Loader2, Plus, Trash2, AlertTriangle, ArrowRight, Link2, Pencil } from 'lucide-react';
+import { useToast } from '@/components/island-toast';
 
 type DependencyType = 'data' | 'structural' | 'logical' | 'resource';
 type DependencyStrength = 'soft' | 'hard';
@@ -60,6 +61,7 @@ export function TicketDependencyPanel({
   const [savingEdit, setSavingEdit] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   const [newDep, setNewDep] = useState({
     depends_on_ticket_id: '',
@@ -119,6 +121,7 @@ export function TicketDependencyPanel({
         note: '',
       });
       await fetchDeps();
+      showToast('Dependency added', 'success');
     } finally {
       setSubmitting(false);
     }
@@ -155,6 +158,7 @@ export function TicketDependencyPanel({
       }
       setEditingDepId(null);
       await fetchDeps();
+      showToast('Dependency updated', 'success');
     } finally {
       setSavingEdit(false);
     }
@@ -165,6 +169,7 @@ export function TicketDependencyPanel({
     try {
       await fetch(`/api/tickets/${ticketId}/dependencies/${depId}`, { method: 'DELETE' });
       await fetchDeps();
+      showToast('Dependency removed', 'success');
     } finally {
       setRemovingId(null);
     }
