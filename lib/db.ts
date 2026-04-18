@@ -45,6 +45,9 @@ export interface Ticket {
   assignee?: string | null;
   assignee_user_id?: string | null;
   dependency_ticket_id?: string | null;
+  start_date?: string | null;
+  due_date?: string | null;
+  deadline_time?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }

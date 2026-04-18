@@ -52,6 +52,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         ? String(body.dependencyTicketId).trim()
         : null;
     }
+    if (typeof body?.start_date !== 'undefined') {
+      updates.start_date = body.start_date ? String(body.start_date) : null;
+    }
+    if (typeof body?.due_date !== 'undefined') {
+      updates.due_date = body.due_date ? String(body.due_date) : null;
+    }
+    if (typeof body?.deadline_time !== 'undefined') {
+      updates.deadline_time = body.deadline_time ? String(body.deadline_time) : null;
+    }
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ error: 'No valid updates provided' }, { status: 400 });

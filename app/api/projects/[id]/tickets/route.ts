@@ -35,6 +35,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       typeof body?.parentTicketId === 'string' && body.parentTicketId.trim()
         ? body.parentTicketId.trim()
         : null;
+    const start_date = body?.start_date ? String(body.start_date) : null;
+    const due_date = body?.due_date ? String(body.due_date) : null;
+    const deadline_time = body?.deadline_time ? String(body.deadline_time) : null;
 
     if (!title) {
       return NextResponse.json({ error: 'Title is required' }, { status: 400 });
@@ -81,6 +84,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         assignee,
         assignee_user_id: null,
         dependency_ticket_id: parentTicketId,
+        start_date,
+        due_date,
+        deadline_time,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },

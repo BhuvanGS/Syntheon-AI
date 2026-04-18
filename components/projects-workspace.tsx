@@ -33,6 +33,8 @@ import { TicketDependencyGraph } from '@/components/ticket-dependency-graph';
 import { TicketAttachmentsPanel } from '@/components/ticket-attachments-panel';
 import { TicketCommentsPanel } from '@/components/ticket-comments-panel';
 import { TicketActivityPanel } from '@/components/ticket-activity-panel';
+import { TicketTimelinePanel } from '@/components/ticket-timeline-panel';
+import { DateRangePicker } from '@/components/date-range-picker';
 import { TipTapEditor } from '@/components/tiptap-editor';
 import { useToast } from '@/components/island-toast';
 import { ProjectTicketImportDialog } from '@/components/project-ticket-import-dialog';
@@ -99,6 +101,9 @@ interface Ticket {
   projectId?: string | null;
   meeting_id: string | null;
   dependency_ticket_id?: string | null;
+  start_date?: string | null;
+  due_date?: string | null;
+  deadline_time?: string | null;
 }
 
 type StageConfig = {
@@ -160,6 +165,9 @@ export function ProjectsWorkspace({
     description: '',
     assignee: '',
     status: 'backlog' as Ticket['status'],
+    start_date: '',
+    due_date: '',
+    deadline_time: '',
   });
   const [stages, setStages] = useState<StageConfig[]>(DEFAULT_STAGES);
   const [ticketStageMap, setTicketStageMap] = useState<Record<string, string>>({});
@@ -185,7 +193,7 @@ export function ProjectsWorkspace({
   const [isSavingProject, setIsSavingProject] = useState(false);
   const [subtasksPopupTicket, setSubtasksPopupTicket] = useState<Ticket | null>(null);
   const [ticketEditTab, setTicketEditTab] = useState<
-    'details' | 'attachments' | 'comments' | 'activity'
+    'details' | 'attachments' | 'comments' | 'activity' | 'timeline'
   >('details');
 
   const { showToast } = useToast();
@@ -578,6 +586,9 @@ export function ProjectsWorkspace({
       description: ticket.description || '',
       assignee: ticket.assignee || '',
       status: ticket.status,
+      start_date: ticket.start_date || '',
+      due_date: ticket.due_date || '',
+      deadline_time: ticket.deadline_time || '',
     });
     setNewChildDraft({
       title: '',
@@ -597,6 +608,9 @@ export function ProjectsWorkspace({
       description: previous.description || '',
       assignee: previous.assignee || '',
       status: previous.status,
+      start_date: previous.start_date || '',
+      due_date: previous.due_date || '',
+      deadline_time: previous.deadline_time || '',
     });
     setNewChildDraft({ title: '' });
     setTicketEditTab('details');
@@ -622,6 +636,9 @@ export function ProjectsWorkspace({
           description: ticketEditForm.description.trim(),
           assignee: ticketEditForm.assignee.trim() || null,
           status: ticketEditForm.status,
+          start_date: ticketEditForm.start_date || null,
+          due_date: ticketEditForm.due_date || null,
+          deadline_time: ticketEditForm.deadline_time || null,
         }),
       });
 
@@ -641,6 +658,9 @@ export function ProjectsWorkspace({
                 description: ticketEditForm.description.trim(),
                 assignee: ticketEditForm.assignee.trim() || null,
                 status: ticketEditForm.status,
+                start_date: ticketEditForm.start_date || null,
+                due_date: ticketEditForm.due_date || null,
+                deadline_time: ticketEditForm.deadline_time || null,
                 bypassGate: true,
               }),
             });
@@ -1786,14 +1806,16 @@ export function ProjectsWorkspace({
                 // Only parent tickets (not subtickets) get the Activity tab
                 const isSubtask = Boolean(ticketToEdit?.dependency_ticket_id);
                 const tabs = isSubtask
-                  ? ['details', 'attachments', 'comments']
-                  : ['details', 'attachments', 'comments', 'activity'];
+                  ? ['details', 'attachments', 'comments', 'timeline']
+                  : ['details', 'attachments', 'comments', 'activity', 'timeline'];
                 return tabs.map((tab) => (
                   <button
                     key={tab}
                     type="button"
                     onClick={() =>
-                      setTicketEditTab(tab as 'details' | 'attachments' | 'comments' | 'activity')
+                      setTicketEditTab(
+                        tab as 'details' | 'attachments' | 'comments' | 'activity' | 'timeline'
+                      )
                     }
                     className={`px-3 py-2 text-sm font-medium transition-colors rounded-t-lg ${
                       ticketEditTab === tab
@@ -1874,6 +1896,36 @@ export function ProjectsWorkspace({
                       <option value="done">Done</option>
                       <option value="blocked">Blocked</option>
                     </select>
+                  </label>
+
+                  <label className="block text-sm text-muted-foreground">
+                    Dates
+                    <div className="mt-1">
+                      <DateRangePicker
+                        startDate={ticketEditForm.start_date || undefined}
+                        dueDate={ticketEditForm.due_date || undefined}
+                        deadlineTime={ticketEditForm.deadline_time || undefined}
+                        onStartDateChange={(date) =>
+                          setTicketEditForm((prev) => ({
+                            ...prev,
+                            start_date: date || '',
+                          }))
+                        }
+                        onDueDateChange={(date) =>
+                          setTicketEditForm((prev) => ({
+                            ...prev,
+                            due_date: date || '',
+                          }))
+                        }
+                        onDeadlineTimeChange={(time) =>
+                          setTicketEditForm((prev) => ({
+                            ...prev,
+                            deadline_time: time || '',
+                          }))
+                        }
+                        disabled={Boolean(savingTicketId)}
+                      />
+                    </div>
                   </label>
                 </div>
 
@@ -1975,6 +2027,13 @@ export function ProjectsWorkspace({
 
             {ticketEditTab === 'activity' && ticketToEdit && (
               <TicketActivityPanel ticketId={ticketToEdit.id} />
+            )}
+
+            {ticketEditTab === 'timeline' && ticketToEdit && (
+              <TicketTimelinePanel
+                ticket={ticketToEdit}
+                subtasks={childrenByParentId[ticketToEdit.id] ?? []}
+              />
             )}
           </div>
 

@@ -133,38 +133,26 @@ export function TipTapEditor({
         />
         <div className="mx-1 h-4 w-px bg-border" />
         <ToolbarButton
-          onClick={() => {
-            console.log('H1 clicked, editor focused:', editor.isFocused);
-            editor.chain().focus().toggleHeading({ level: 1 }).run();
-          }}
+          onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
           active={editor.isActive('heading', { level: 1 })}
           icon={Heading1}
           title="Heading 1"
         />
         <ToolbarButton
-          onClick={() => {
-            console.log('H2 clicked, editor focused:', editor.isFocused);
-            editor.chain().focus().toggleHeading({ level: 2 }).run();
-          }}
+          onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
           active={editor.isActive('heading', { level: 2 })}
           icon={Heading2}
           title="Heading 2"
         />
         <div className="mx-1 h-4 w-px bg-border" />
         <ToolbarButton
-          onClick={() => {
-            console.log('Bullet list clicked, editor focused:', editor.isFocused);
-            editor.chain().focus().toggleBulletList().run();
-          }}
+          onClick={() => editor.chain().focus().toggleBulletList().run()}
           active={editor.isActive('bulletList')}
           icon={List}
           title="Bullet List"
         />
         <ToolbarButton
-          onClick={() => {
-            console.log('Ordered list clicked, editor focused:', editor.isFocused);
-            editor.chain().focus().toggleOrderedList().run();
-          }}
+          onClick={() => editor.chain().focus().toggleOrderedList().run()}
           active={editor.isActive('orderedList')}
           icon={ListOrdered}
           title="Numbered List"
@@ -204,7 +192,7 @@ export function TipTapEditor({
       </div>
       <EditorContent
         editor={editor}
-        className="prose prose-sm max-w-none px-3 py-2 [&_.ProseMirror]:min-h-[150px] [&_.ProseMirror]:outline-none [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-muted-foreground"
+        className="px-3 py-2 [&_.ProseMirror]:min-h-[150px] [&_.ProseMirror]:outline-none [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-muted-foreground [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:my-2 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_blockquote]:border-l-4 [&_blockquote]:border-border [&_blockquote]:pl-4 [&_blockquote]:italic [&_code]:bg-muted [&_code]:px-1 [&_code]:rounded [&_a]:text-primary [&_a]:underline"
       />
     </div>
   );

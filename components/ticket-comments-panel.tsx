@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { MessageSquare, Send, X, User } from 'lucide-react';
 import { useToast } from '@/components/island-toast';
+import { TipTapEditor } from '@/components/tiptap-editor';
 
 interface Comment {
   id: string;
@@ -57,8 +58,7 @@ export function TicketCommentsPanel({ ticketId, currentUserId }: TicketCommentsP
     fetchComments();
   }, [fetchComments]);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSubmit() {
     if (!newComment.trim()) return;
 
     setSending(true);
@@ -161,37 +161,39 @@ export function TicketCommentsPanel({ ticketId, currentUserId }: TicketCommentsP
                     )}
                   </div>
                 </div>
-                <p className="text-sm text-foreground mt-1 whitespace-pre-wrap">
-                  {comment.content}
-                </p>
+                <div
+                  className="text-sm text-foreground mt-1 prose prose-sm max-w-none [&_h1]:text-lg [&_h1]:font-bold [&_h2]:text-base [&_h2]:font-bold [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-2 [&_blockquote]:italic [&_code]:bg-muted [&_code]:px-1 [&_code]:rounded [&_a]:text-primary [&_a]:underline"
+                  dangerouslySetInnerHTML={{ __html: comment.content }}
+                />
               </div>
             </div>
           ))}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="flex gap-2 pt-2 border-t border-border">
-        <input
-          type="text"
-          value={newComment}
-          onChange={(e) => setNewComment(e.target.value)}
+      <div className="pt-2 border-t border-border space-y-2">
+        <TipTapEditor
+          content={newComment}
+          onChange={setNewComment}
           placeholder="Add a comment..."
-          className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
           disabled={sending}
         />
-        <Button
-          type="submit"
-          size="icon"
-          disabled={!newComment.trim() || sending}
-          className="rounded-full"
-        >
-          {sending ? (
-            <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
-          ) : (
-            <Send className="h-4 w-4" />
-          )}
-        </Button>
-      </form>
+        <div className="flex justify-end">
+          <Button
+            onClick={handleSubmit}
+            disabled={!newComment.trim() || sending}
+            className="rounded-full gap-2"
+            size="sm"
+          >
+            {sending ? (
+              <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+            Send
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
