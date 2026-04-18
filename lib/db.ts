@@ -748,7 +748,8 @@ export async function createDependency(dep: {
   const cycleExists = await _hasPath(dep.depends_on_ticket_id, dep.ticket_id);
   if (cycleExists) {
     return {
-      error: `Cannot add dependency: this would create a cycle (${dep.depends_on_ticket_id} → ... → ${dep.ticket_id}).`,
+      error:
+        'Cannot add dependency: this would create a circular dependency. The selected ticket already depends on this ticket (directly or indirectly).',
     };
   }
 

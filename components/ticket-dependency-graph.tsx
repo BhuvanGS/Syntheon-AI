@@ -94,8 +94,9 @@ function layoutNodes(
   }
 
   const maxLevel = Math.max(...levels.values(), 0);
+  // Reverse the column order so dependencies (higher level) are on the right
   for (let col = 0; col <= maxLevel; col++) {
-    const ids = byLevel.get(col) ?? [];
+    const ids = byLevel.get(maxLevel - col) ?? [];
     const totalH = ids.length * NODE_H + (ids.length - 1) * V_GAP;
     const startY = -totalH / 2;
     ids.forEach((id, row) => {
@@ -275,8 +276,9 @@ export function TicketDependencyGraph({
             transform={`translate(${pan.x + (contentW / 2) * (zoom - 1)},${pan.y + (contentH / 2) * (zoom - 1) + 240}) scale(${zoom})`}
           >
             {deps.map((dep) => {
-              const from = positions.get(dep.depends_on_ticket_id);
-              const to = positions.get(dep.ticket_id);
+              // Arrow goes from dependent (ticket_id) to dependency (depends_on_ticket_id)
+              const from = positions.get(dep.ticket_id);
+              const to = positions.get(dep.depends_on_ticket_id);
               if (!from || !to) return null;
 
               const x1 = from.x + NODE_W;

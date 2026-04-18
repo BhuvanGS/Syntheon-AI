@@ -69,7 +69,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const newStatus = updates.status as string | undefined;
     const bypassGate = body?.bypassGate === true;
 
-    if (newStatus === 'in_progress') {
+    // Block status changes when there are unresolved hard dependencies
+    if (newStatus === 'in_progress' || newStatus === 'done') {
       const { blocked, blockers } = await checkHardBlockers(id);
       if (blocked) {
         return NextResponse.json(
@@ -86,42 +87,45 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         );
       }
 
-      const { parents } = await getDependenciesForTicket(id);
-      const softParentIds = parents
-        .filter((d) => d.strength === 'soft' && !d.escalated)
-        .map((d) => d.depends_on_ticket_id);
+      // Soft dependencies only block in_progress, not done
+      if (newStatus === 'in_progress') {
+        const { parents } = await getDependenciesForTicket(id);
+        const softParentIds = parents
+          .filter((d) => d.strength === 'soft' && !d.escalated)
+          .map((d) => d.depends_on_ticket_id);
 
-      if (softParentIds.length > 0) {
-        const { data: softParentTickets } = await supabaseAdmin
-          .from('tickets')
-          .select('id, status')
-          .in('id', softParentIds);
-        const unresolvedSoft = parents.filter((dep) => {
-          if (dep.strength !== 'soft' || dep.escalated) return false;
-          const parent = (softParentTickets ?? []).find(
-            (t: any) => t.id === dep.depends_on_ticket_id
-          );
-          return parent?.status !== 'done';
-        });
+        if (softParentIds.length > 0) {
+          const { data: softParentTickets } = await supabaseAdmin
+            .from('tickets')
+            .select('id, status')
+            .in('id', softParentIds);
+          const unresolvedSoft = parents.filter((dep) => {
+            if (dep.strength !== 'soft' || dep.escalated) return false;
+            const parent = (softParentTickets ?? []).find(
+              (t: any) => t.id === dep.depends_on_ticket_id
+            );
+            return parent?.status !== 'done';
+          });
 
-        if (unresolvedSoft.length > 0 && !bypassGate) {
-          return NextResponse.json(
-            {
-              error: 'soft_blocked',
-              message: `This ticket has ${unresolvedSoft.length} unresolved soft dependenc${unresolvedSoft.length === 1 ? 'y' : 'ies'}. You can proceed anyway.`,
-              blockers: unresolvedSoft.map((b) => ({
-                id: b.id,
-                depends_on: b.depends_on_ticket_id,
-                type: b.dependency_type,
-                ignore_count: b.ignore_count,
-              })),
-            },
-            { status: 422 }
-          );
-        }
+          if (unresolvedSoft.length > 0 && !bypassGate) {
+            return NextResponse.json(
+              {
+                error: 'soft_blocked',
+                message: `This ticket has ${unresolvedSoft.length} unresolved soft dependenc${unresolvedSoft.length === 1 ? 'y' : 'ies'}. You can proceed anyway.`,
+                blockers: unresolvedSoft.map((b) => ({
+                  id: b.id,
+                  depends_on: b.depends_on_ticket_id,
+                  type: b.dependency_type,
+                  ignore_count: b.ignore_count,
+                })),
+              },
+              { status: 422 }
+            );
+          }
 
-        if (bypassGate && unresolvedSoft.length > 0) {
-          await Promise.all(unresolvedSoft.map((d) => incrementDependencyIgnoreCount(d.id)));
+          if (bypassGate && unresolvedSoft.length > 0) {
+            await Promise.all(unresolvedSoft.map((d) => incrementDependencyIgnoreCount(d.id)));
+          }
         }
       }
     }

@@ -137,19 +137,98 @@ export function DateRangePicker({
             />
           </div>
 
-          {/* Time Input (only for due date) */}
+          {/* Time Picker (only for due date) */}
           {activeTab === 'due' && (
             <div className="px-4 pb-3">
-              <label className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Clock className="h-4 w-4" />
-                <span>Time (optional)</span>
-              </label>
-              <input
-                type="time"
-                value={deadlineTime || ''}
-                onChange={(e) => onDeadlineTimeChange(e.target.value || undefined)}
-                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              />
+              <div className="flex items-center justify-between mb-3">
+                <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Clock className="h-4 w-4" />
+                  <span>Time</span>
+                </label>
+                {/* AM/PM Toggle */}
+                <div className="flex bg-muted rounded-lg p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (deadlineTime) {
+                        const [h, m] = deadlineTime.split(':').map(Number);
+                        const newH = h >= 12 ? h - 12 : h;
+                        onDeadlineTimeChange(
+                          `${String(newH).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+                        );
+                      }
+                    }}
+                    className={cn(
+                      'px-3 py-1 text-xs font-medium rounded-md transition-all',
+                      !deadlineTime || parseInt(deadlineTime.split(':')[0]) < 12
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    AM
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (deadlineTime) {
+                        const [h, m] = deadlineTime.split(':').map(Number);
+                        const newH = h < 12 ? h + 12 : h;
+                        onDeadlineTimeChange(
+                          `${String(newH).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+                        );
+                      } else {
+                        onDeadlineTimeChange('19:00');
+                      }
+                    }}
+                    className={cn(
+                      'px-3 py-1 text-xs font-medium rounded-md transition-all',
+                      deadlineTime && parseInt(deadlineTime.split(':')[0]) >= 12
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    PM
+                  </button>
+                </div>
+              </div>
+
+              {/* Time Grid: 7:00 - 11:30 in 30-min intervals */}
+              <div className="grid grid-cols-5 gap-1.5">
+                {[
+                  '07:00',
+                  '07:30',
+                  '08:00',
+                  '08:30',
+                  '09:00',
+                  '09:30',
+                  '10:00',
+                  '10:30',
+                  '11:00',
+                  '11:30',
+                ].map((baseTime) => {
+                  const [baseH, baseM] = baseTime.split(':').map(Number);
+                  const isAm = !deadlineTime || parseInt(deadlineTime.split(':')[0]) < 12;
+                  const actualH = isAm ? baseH : baseH + 12;
+                  const timeValue = `${String(actualH).padStart(2, '0')}:${String(baseM).padStart(2, '0')}`;
+                  const isSelected = deadlineTime === timeValue;
+
+                  return (
+                    <button
+                      key={baseTime}
+                      type="button"
+                      onClick={() => onDeadlineTimeChange(timeValue)}
+                      className={cn(
+                        'py-2 px-1 text-xs font-medium rounded-md transition-all',
+                        isSelected
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted hover:bg-muted/80 text-foreground'
+                      )}
+                    >
+                      {baseH}:{String(baseM).padStart(2, '0')}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
 

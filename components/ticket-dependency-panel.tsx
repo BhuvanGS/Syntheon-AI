@@ -177,7 +177,11 @@ export function TicketDependencyPanel({
 
   const otherTickets = projectTickets.filter((t) => t.id !== ticketId);
   const usedParentIds = new Set(parents.map((d) => d.depends_on_ticket_id));
-  const availableTickets = otherTickets.filter((t) => !usedParentIds.has(t.id));
+  // Also filter out children (tickets that depend on current) to prevent cycles
+  const childrenIds = new Set(children.map((d) => d.ticket_id));
+  const availableTickets = otherTickets.filter(
+    (t) => !usedParentIds.has(t.id) && !childrenIds.has(t.id)
+  );
 
   const ticketById = new Map(projectTickets.map((t) => [t.id, t]));
 
@@ -314,6 +318,19 @@ export function TicketDependencyPanel({
                   aria-label="Edit dependency"
                 >
                   <Pencil className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleRemove(dep.id)}
+                  disabled={removingId === dep.id}
+                  className="rounded p-0.5 text-muted-foreground hover:text-destructive"
+                  aria-label="Remove dependency"
+                >
+                  {removingId === dep.id ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-3.5 h-3.5" />
+                  )}
                 </button>
               </div>
             );
