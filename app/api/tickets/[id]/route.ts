@@ -87,8 +87,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         );
       }
 
-      // Soft dependencies only block in_progress, not done
-      if (newStatus === 'in_progress') {
+      // Soft dependencies warn on any progressing status (in_progress or done)
+      if (newStatus === 'in_progress' || newStatus === 'done') {
         const { parents } = await getDependenciesForTicket(id);
         const softParentIds = parents
           .filter((d) => d.strength === 'soft' && !d.escalated)

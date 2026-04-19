@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Loader2, Clock, CheckCircle, AlertCircle, Circle, Pencil } from 'lucide-react';
 import { TicketDependencyPanel } from '@/components/ticket-dependency-panel';
+import { DependencyBlockerModal } from '@/components/dependency-blocker-modal';
 
 type TicketStatus = 'backlog' | 'in_progress' | 'done' | 'blocked';
 
@@ -57,6 +58,15 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
   const [updatingTicketId, setUpdatingTicketId] = useState<string | null>(null);
   const [ticketToDelete, setTicketToDelete] = useState<Ticket | null>(null);
   const [deletingTicketId, setDeletingTicketId] = useState<string | null>(null);
+
+  // Dependency blocker modal state
+  const [blockerModalOpen, setBlockerModalOpen] = useState(false);
+  const [blockerModalData, setBlockerModalData] = useState<{
+    message: string;
+    blockers: Array<{ id: string; depends_on: string; type: string; title?: string }>;
+    isHardBlock: boolean;
+    onRevert: () => void;
+  } | null>(null);
 
   useEffect(() => {
     fetchAll();
@@ -138,12 +148,32 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
 
         if (!res.ok) {
           const finalData = await res.json().catch(() => data || {});
-          if (res.status === 422 && finalData?.error === 'hard_blocked') {
-            window.alert(finalData?.message || 'Blocked by unresolved hard dependencies.');
-            return;
-          }
-          if (res.status === 422 && finalData?.error === 'soft_blocked') {
-            window.alert(finalData?.message || 'Blocked by unresolved soft dependencies.');
+          if (
+            res.status === 422 &&
+            (finalData?.error === 'hard_blocked' || finalData?.error === 'soft_blocked')
+          ) {
+            const isHard = finalData?.error === 'hard_blocked';
+            // Enrich blocker data with ticket titles
+            const blockersWithTitles = (finalData?.blockers || []).map((b: any) => ({
+              ...b,
+              title: tickets.find((t) => t.id === b.depends_on)?.title,
+            }));
+            setBlockerModalData({
+              message:
+                finalData?.message ||
+                `Blocked by unresolved ${isHard ? 'hard' : 'soft'} dependencies.`,
+              blockers: blockersWithTitles,
+              isHardBlock: isHard,
+              onRevert: () => {
+                setBlockerModalOpen(false);
+                // Revert the status change in the form
+                setTicketEditForm((prev) => ({
+                  ...prev,
+                  status: ticketToEdit.status,
+                }));
+              },
+            });
+            setBlockerModalOpen(true);
             return;
           }
           throw new Error(finalData?.error || 'Failed to update ticket');
@@ -267,7 +297,22 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
         if (!res.ok) {
           const finalData = await res.json().catch(() => data || {});
           if (res.status === 422 && finalData?.error === 'hard_blocked') {
-            window.alert(finalData?.message || 'Blocked by unresolved hard dependencies.');
+            // Enrich blocker data with ticket titles
+            const blockersWithTitles = (finalData?.blockers || []).map((b: any) => ({
+              ...b,
+              title: tickets.find((t) => t.id === b.depends_on)?.title,
+            }));
+            setBlockerModalData({
+              message: finalData?.message || 'Blocked by unresolved hard dependencies.',
+              blockers: blockersWithTitles,
+              isHardBlock: true,
+              onRevert: () => {
+                setBlockerModalOpen(false);
+                // Reload to get original state
+                fetchAll();
+              },
+            });
+            setBlockerModalOpen(true);
             return;
           } else if (res.status === 422 && finalData?.error === 'soft_blocked') {
             window.alert(finalData?.message || 'Blocked by unresolved soft dependencies.');
@@ -727,6 +772,25 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
           );
         })}
       </div>
+
+      {/* Dependency Blocker Modal */}
+      {blockerModalData && (
+        <DependencyBlockerModal
+          isOpen={blockerModalOpen}
+          onClose={() => setBlockerModalOpen(false)}
+          onGoToTicket={(ticketId) => {
+            const ticket = tickets.find((t) => t.id === ticketId);
+            if (ticket) {
+              setBlockerModalOpen(false);
+              openTicketEditor(ticket);
+            }
+          }}
+          onRevert={blockerModalData.onRevert}
+          message={blockerModalData.message}
+          blockers={blockerModalData.blockers}
+          isHardBlock={blockerModalData.isHardBlock}
+        />
+      )}
     </div>
   );
 }

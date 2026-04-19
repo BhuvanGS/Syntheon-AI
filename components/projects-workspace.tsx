@@ -35,6 +35,7 @@ import { TicketCommentsPanel } from '@/components/ticket-comments-panel';
 import { TicketActivityPanel } from '@/components/ticket-activity-panel';
 import { TicketTimelinePanel } from '@/components/ticket-timeline-panel';
 import { DateRangePicker } from '@/components/date-range-picker';
+import { DependencyBlockerModal } from '@/components/dependency-blocker-modal';
 import { TipTapEditor } from '@/components/tiptap-editor';
 import { useToast } from '@/components/island-toast';
 import { ProjectTicketImportDialog } from '@/components/project-ticket-import-dialog';
@@ -195,6 +196,15 @@ export function ProjectsWorkspace({
   const [ticketEditTab, setTicketEditTab] = useState<
     'details' | 'attachments' | 'comments' | 'activity' | 'timeline'
   >('details');
+
+  // Dependency blocker modal state
+  const [blockerModalOpen, setBlockerModalOpen] = useState(false);
+  const [blockerModalData, setBlockerModalData] = useState<{
+    message: string;
+    blockers: Array<{ id: string; depends_on: string; type: string; title?: string }>;
+    isHardBlock: boolean;
+    onRevert: () => void;
+  } | null>(null);
 
   const { showToast } = useToast();
 
@@ -395,7 +405,22 @@ export function ProjectsWorkspace({
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         if (res.status === 422 && data?.error === 'hard_blocked') {
-          window.alert(data?.message || 'Blocked by unresolved hard dependencies.');
+          // Show blocker modal instead of alert
+          const blockersWithTitles = (data?.blockers || []).map((b: any) => ({
+            ...b,
+            title: projectTickets.find((t) => t.id === b.depends_on)?.title,
+          }));
+          setBlockerModalData({
+            message: data?.message || 'Blocked by unresolved hard dependencies.',
+            blockers: blockersWithTitles,
+            isHardBlock: true,
+            onRevert: () => {
+              setBlockerModalOpen(false);
+              // Reload to restore original state
+              onRefresh?.();
+            },
+          });
+          setBlockerModalOpen(true);
           moved = false;
         } else if (res.status === 422 && data?.error === 'soft_blocked') {
           const proceed = window.confirm(
@@ -670,7 +695,27 @@ export function ProjectsWorkspace({
         if (!res.ok) {
           const finalData = await res.json().catch(() => data || {});
           if (res.status === 422 && finalData?.error === 'hard_blocked') {
-            window.alert(finalData?.message || 'Blocked by unresolved hard dependencies.');
+            const isHard = true;
+            const blockersWithTitles = (finalData?.blockers || []).map((b: any) => ({
+              ...b,
+              title: projectTickets.find((t) => t.id === b.depends_on)?.title,
+            }));
+            setBlockerModalData({
+              message:
+                finalData?.message ||
+                `Blocked by unresolved ${isHard ? 'hard' : 'soft'} dependencies.`,
+              blockers: blockersWithTitles,
+              isHardBlock: isHard,
+              onRevert: () => {
+                setBlockerModalOpen(false);
+                // Revert the status in the form
+                setTicketEditForm((prev) => ({
+                  ...prev,
+                  status: ticketToEdit.status,
+                }));
+              },
+            });
+            setBlockerModalOpen(true);
             return;
           }
           if (res.status === 422 && finalData?.error === 'soft_blocked') {
@@ -2238,6 +2283,25 @@ export function ProjectsWorkspace({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Dependency Blocker Modal */}
+      {blockerModalData && (
+        <DependencyBlockerModal
+          isOpen={blockerModalOpen}
+          onClose={() => setBlockerModalOpen(false)}
+          onGoToTicket={(ticketId) => {
+            const ticket = projectTickets.find((t) => t.id === ticketId);
+            if (ticket) {
+              setBlockerModalOpen(false);
+              openTicketEditor(ticket);
+            }
+          }}
+          onRevert={blockerModalData.onRevert}
+          message={blockerModalData.message}
+          blockers={blockerModalData.blockers}
+          isHardBlock={blockerModalData.isHardBlock}
+        />
+      )}
     </div>
   );
 }

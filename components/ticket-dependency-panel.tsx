@@ -110,7 +110,9 @@ export function TicketDependencyPanel({
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data?.error ?? 'Failed to add dependency');
+        const errorMsg = data?.error ?? 'Failed to add dependency';
+        setError(errorMsg);
+        showToast(errorMsg, 'error');
         return;
       }
       setShowAddForm(false);
@@ -135,6 +137,11 @@ export function TicketDependencyPanel({
       strength: dep.strength,
       note: dep.note ?? '',
     });
+    // Scroll to edit form after a short delay to let it render
+    setTimeout(() => {
+      const editForm = document.getElementById('dependency-edit-form');
+      editForm?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
   }
 
   async function handleSaveEdit() {
@@ -153,7 +160,9 @@ export function TicketDependencyPanel({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setEditError(data?.error ?? 'Failed to update dependency');
+        const errorMsg = data?.error ?? 'Failed to update dependency';
+        setEditError(errorMsg);
+        showToast(errorMsg, 'error');
         return;
       }
       setEditingDepId(null);
@@ -343,8 +352,31 @@ export function TicketDependencyPanel({
       )}
 
       {editingDepId && (
-        <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-3">
-          <p className="text-xs font-medium text-foreground">Edit dependency</p>
+        <div
+          id="dependency-edit-form"
+          className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-3"
+        >
+          {(() => {
+            const editingDep = [...parents, ...children].find((d) => d.id === editingDepId);
+            const depTicket = editingDep
+              ? ticketById.get(
+                  parents.find((d) => d.id === editingDepId)?.depends_on_ticket_id ??
+                    children.find((d) => d.id === editingDepId)?.ticket_id ??
+                    ''
+                )
+              : null;
+            const isParent = parents.some((d) => d.id === editingDepId);
+            return (
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-medium text-foreground">
+                  Editing {isParent ? 'dependency on' : 'dependent'}:
+                </p>
+                <span className="text-xs text-primary font-medium truncate">
+                  {depTicket?.title ?? 'Unknown ticket'}
+                </span>
+              </div>
+            );
+          })()}
 
           <div className="grid grid-cols-2 gap-2">
             <label className="block text-xs text-muted-foreground">
