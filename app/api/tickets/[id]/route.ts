@@ -155,22 +155,29 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       });
     }
 
-    // Log generic update for other changes
-    const hasOtherChanges = Object.keys(updates).some(
-      (k) => !['status', 'assignee', 'assignee_user_id'].includes(k)
-    );
-    if (hasOtherChanges) {
+    // Log one activity per changed field with from/to values
+    const ignoredKeys = ['status', 'assignee', 'assignee_user_id'];
+    const fieldLabels: Record<string, string> = {
+      title: 'title',
+      description: 'description',
+      start_date: 'start date',
+      due_date: 'due date',
+      deadline_time: 'deadline time',
+      dependency_ticket_id: 'dependency',
+    };
+    const changedKeys = Object.keys(updates).filter((k) => !ignoredKeys.includes(k));
+    for (const key of changedKeys) {
+      const oldVal = ticket[key as keyof typeof ticket];
+      const newVal = updates[key];
       await createActivity({
         ticket_id: id,
         user_id: userId,
         action_type: 'updated',
-        metadata: Object.keys(updates).reduce(
-          (acc, key) => {
-            acc[key] = { from: ticket[key as keyof typeof ticket], to: updates[key] };
-            return acc;
-          },
-          {} as Record<string, { from: unknown; to: unknown }>
-        ),
+        metadata: {
+          field: fieldLabels[key] ?? key,
+          from: (oldVal ?? 'not set') as string,
+          to: (newVal ?? 'not set') as string,
+        },
       });
     }
 

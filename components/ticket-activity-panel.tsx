@@ -108,9 +108,34 @@ function ActivityItem({
     : 'Unknown';
 
   const renderMetadata = () => {
-    const { from, to, field, title, filename, content } = activity.metadata;
+    const meta = activity.metadata;
+    if (!meta || typeof meta !== 'object') return null;
 
-    if (from && to) {
+    const { from, to, field, title, filename, content, fields } = meta as Record<string, unknown>;
+
+    // New: summarised field list e.g. "start date, due date"
+    if (fields && typeof fields === 'string') {
+      return (
+        <span className="text-sm text-muted-foreground">
+          updated <span className="font-medium text-foreground">{fields}</span>
+        </span>
+      );
+    }
+
+    // Per-field change with from → to
+    if (field && typeof field === 'string' && from !== undefined && to !== undefined && typeof from !== 'object' && typeof to !== 'object') {
+      return (
+        <span className="text-sm text-muted-foreground">
+          changed <span className="font-medium text-foreground">{String(field)}</span> from{' '}
+          <span className="font-medium text-foreground">{String(from)}</span>
+          {' → '}
+          <span className="font-medium text-foreground">{String(to)}</span>
+        </span>
+      );
+    }
+
+    // Scalar from → to only
+    if (from !== undefined && to !== undefined && typeof from !== 'object' && typeof to !== 'object') {
       return (
         <span className="text-sm text-muted-foreground">
           from <span className="font-medium text-foreground">{String(from)}</span>
@@ -120,29 +145,28 @@ function ActivityItem({
       );
     }
 
-    if (field && (from !== undefined || to !== undefined)) {
+    if (field && typeof field === 'string') {
       return (
         <span className="text-sm text-muted-foreground">
-          changed {String(field)} from "<span className="font-medium">{String(from || '')}</span>"
-          to "<span className="font-medium">{String(to || '')}</span>"
+          changed {field}
         </span>
       );
     }
 
-    if (title) {
-      return <span className="text-sm text-muted-foreground">"{String(title)}"</span>;
+    if (title && typeof title === 'string') {
+      return <span className="text-sm text-muted-foreground">"{title}"</span>;
     }
 
-    if (filename) {
-      return <span className="text-sm text-muted-foreground">{String(filename)}</span>;
+    if (filename && typeof filename === 'string') {
+      return <span className="text-sm text-muted-foreground">{filename}</span>;
     }
 
-    if (content && typeof content === 'string' && content.length > 50) {
-      return <span className="text-sm text-muted-foreground">"{content.slice(0, 50)}..."</span>;
-    }
-
-    if (content) {
-      return <span className="text-sm text-muted-foreground">"{String(content)}"</span>;
+    if (content && typeof content === 'string') {
+      return (
+        <span className="text-sm text-muted-foreground">
+          "{content.length > 50 ? content.slice(0, 50) + '…' : content}"
+        </span>
+      );
     }
 
     return null;

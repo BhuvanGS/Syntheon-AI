@@ -39,8 +39,6 @@ export function DateRangePicker({
     const formatted = format(date, 'yyyy-MM-dd');
     if (activeTab === 'start') {
       onStartDateChange(formatted);
-      // Auto-advance to due date tab after picking start
-      setActiveTab('due');
     } else {
       onDueDateChange(formatted);
     }
