@@ -122,6 +122,9 @@ function rowToTicket(row: any): Ticket {
     assignee: row.assignee ?? null,
     assignee_user_id: row.assignee_user_id ?? null,
     dependency_ticket_id: row.dependency_ticket_id ?? null,
+    start_date: row.start_date ?? null,
+    due_date: row.due_date ?? null,
+    deadline_time: row.deadline_time ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -575,7 +578,15 @@ export async function updateTicket(
   updates: Partial<
     Pick<
       Ticket,
-      'title' | 'description' | 'status' | 'assignee' | 'assignee_user_id' | 'dependency_ticket_id'
+      | 'title'
+      | 'description'
+      | 'status'
+      | 'assignee'
+      | 'assignee_user_id'
+      | 'dependency_ticket_id'
+      | 'start_date'
+      | 'due_date'
+      | 'deadline_time'
     >
   >
 ): Promise<void> {
@@ -591,6 +602,9 @@ export async function updateTicket(
   if (typeof updates.dependency_ticket_id !== 'undefined') {
     row.dependency_ticket_id = updates.dependency_ticket_id;
   }
+  if (typeof updates.start_date !== 'undefined') row.start_date = updates.start_date;
+  if (typeof updates.due_date !== 'undefined') row.due_date = updates.due_date;
+  if (typeof updates.deadline_time !== 'undefined') row.deadline_time = updates.deadline_time;
 
   const { error } = await supabaseAdmin.from('tickets').update(row).eq('id', id);
   if (error) throw error;

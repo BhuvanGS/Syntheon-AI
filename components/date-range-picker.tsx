@@ -28,7 +28,7 @@ export function DateRangePicker({
   onDeadlineTimeChange,
   disabled = false,
 }: DateRangePickerProps) {
-  const [activeTab, setActiveTab] = React.useState<'start' | 'due'>('due');
+  const [activeTab, setActiveTab] = React.useState<'start' | 'due'>('start');
   const [isOpen, setIsOpen] = React.useState(false);
 
   const startDateObj = startDate ? parseISO(startDate) : undefined;
@@ -39,6 +39,8 @@ export function DateRangePicker({
     const formatted = format(date, 'yyyy-MM-dd');
     if (activeTab === 'start') {
       onStartDateChange(formatted);
+      // Auto-advance to due date tab after picking start
+      setActiveTab('due');
     } else {
       onDueDateChange(formatted);
     }
@@ -56,7 +58,13 @@ export function DateRangePicker({
   const selectedDate = activeTab === 'start' ? startDateObj : dueDateObj;
 
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
+    <Popover
+      open={isOpen}
+      onOpenChange={(open) => {
+        setIsOpen(open);
+        if (open) setActiveTab('start');
+      }}
+    >
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -234,16 +242,19 @@ export function DateRangePicker({
 
           {/* Footer Actions */}
           <div className="flex items-center justify-between border-t px-4 py-3">
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-muted-foreground" />
-              <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-            </div>
             <button
               type="button"
               onClick={handleClear}
               className="text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               Clear
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+            >
+              Done
             </button>
           </div>
         </div>
