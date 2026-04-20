@@ -12,7 +12,7 @@ import {
   createActivity,
   getTicketById,
 } from '@/lib/db';
-import { requireAuth, isOrgAdmin, canAdminProject } from '@/lib/rbac';
+import { requireAuth } from '@/lib/rbac';
 import { supabaseAdmin } from '@/lib/supabase';
 
 const allowedStatuses = new Set(['backlog', 'in_progress', 'done', 'blocked']);
@@ -205,12 +205,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     if (!ticket) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
-    }
-
-    const allowed =
-      isOrgAdmin(ctx) || (ticket.projectId ? await canAdminProject(ctx, ticket.projectId) : false);
-    if (!allowed) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     await deleteTicketById(id);

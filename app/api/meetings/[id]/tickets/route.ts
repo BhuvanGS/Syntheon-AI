@@ -40,6 +40,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         ? body.status
         : 'backlog';
     const assignee = body?.assignee ? String(body.assignee).trim() : null;
+    const assigneeUserId = body?.assigneeUserId ? String(body.assigneeUserId).trim() : null;
     const meeting = await getMeetingById(id);
     const resolvedProjectId = body?.projectId ?? meeting?.projectId ?? null;
     const parentTicketId =
@@ -85,7 +86,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         description,
         status,
         assignee,
-        assignee_user_id: null,
+        assignee_user_id: assigneeUserId,
         dependency_ticket_id: parentTicketId,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),

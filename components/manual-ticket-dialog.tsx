@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { CirclePlus, Sparkles } from 'lucide-react';
+import { AssigneePicker, type AssigneeValue } from '@/components/assignee-picker';
 
 interface MeetingOption {
   id: string;
@@ -41,7 +42,7 @@ export function ManualTicketDialog({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<'backlog' | 'in_progress' | 'done' | 'blocked'>('backlog');
-  const [assignee, setAssignee] = useState('');
+  const [assignee, setAssignee] = useState<AssigneeValue | null>(null);
   const [meetingId, setMeetingId] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
   const wasOpenRef = useRef(false);
@@ -56,7 +57,7 @@ export function ManualTicketDialog({
       setTitle('');
       setDescription('');
       setStatus('backlog');
-      setAssignee('');
+      setAssignee(null);
       setMeetingId(projectOnly ? '' : defaultMeetingId || meetings[0]?.id || '');
       setSubmitting(false);
     }
@@ -74,7 +75,8 @@ export function ManualTicketDialog({
         title: title.trim(),
         description: description.trim(),
         status,
-        assignee: assignee.trim() || null,
+        assignee: assignee?.displayName ?? null,
+        assigneeUserId: assignee?.userId ?? null,
         projectId: defaultProjectId ?? null,
       };
 
@@ -188,12 +190,7 @@ export function ManualTicketDialog({
 
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">Assignee</label>
-            <Input
-              value={assignee}
-              onChange={(e) => setAssignee(e.target.value)}
-              placeholder="Optional username"
-              className="bg-white"
-            />
+            <AssigneePicker value={assignee} onChange={setAssignee} />
           </div>
 
           <DialogFooter className="pt-2">

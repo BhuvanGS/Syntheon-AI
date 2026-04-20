@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { stripHtml } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,6 +23,7 @@ import {
   Video,
 } from 'lucide-react';
 import { ManualTicketDialog } from '@/components/manual-ticket-dialog';
+import { AssigneePicker, type AssigneeValue } from '@/components/assignee-picker';
 import { TicketDependencyPanel } from '@/components/ticket-dependency-panel';
 
 interface Ticket {
@@ -78,11 +80,16 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
   const [savingTicketId, setSavingTicketId] = useState<string | null>(null);
   const [isManualTicketOpen, setIsManualTicketOpen] = useState(false);
   const [ticketToEdit, setTicketToEdit] = useState<Ticket | null>(null);
-  const [ticketEditForm, setTicketEditForm] = useState({
+  const [ticketEditForm, setTicketEditForm] = useState<{
+    title: string;
+    description: string;
+    assignee: AssigneeValue | null;
+    status: Ticket['status'];
+  }>({
     title: '',
     description: '',
-    assignee: '',
-    status: 'backlog' as Ticket['status'],
+    assignee: null,
+    status: 'backlog',
   });
   const [ticketToDelete, setTicketToDelete] = useState<string | null>(null);
   const [meetingToDelete, setMeetingToDelete] = useState<string | null>(null);
@@ -150,7 +157,10 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
     setTicketEditForm({
       title: ticket.title,
       description: ticket.description || '',
-      assignee: ticket.assignee || '',
+      assignee:
+        ticket.assignee_user_id && ticket.assignee
+          ? { userId: ticket.assignee_user_id, displayName: ticket.assignee }
+          : null,
       status: ticket.status,
     });
   }
@@ -166,7 +176,8 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
         body: JSON.stringify({
           title: ticketEditForm.title.trim(),
           description: ticketEditForm.description.trim(),
-          assignee: ticketEditForm.assignee.trim() || null,
+          assignee: ticketEditForm.assignee?.displayName ?? null,
+          assigneeUserId: ticketEditForm.assignee?.userId ?? null,
           status: ticketEditForm.status,
         }),
       });
@@ -185,7 +196,8 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
               body: JSON.stringify({
                 title: ticketEditForm.title.trim(),
                 description: ticketEditForm.description.trim(),
-                assignee: ticketEditForm.assignee.trim() || null,
+                assignee: ticketEditForm.assignee?.displayName ?? null,
+                assigneeUserId: ticketEditForm.assignee?.userId ?? null,
                 status: ticketEditForm.status,
                 bypassGate: true,
               }),
@@ -214,7 +226,8 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
                 ...ticket,
                 title: ticketEditForm.title.trim(),
                 description: ticketEditForm.description.trim(),
-                assignee: ticketEditForm.assignee.trim() || null,
+                assignee: ticketEditForm.assignee?.displayName ?? null,
+                assignee_user_id: ticketEditForm.assignee?.userId ?? null,
                 status: ticketEditForm.status,
               }
             : ticket
@@ -455,7 +468,7 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground leading-6">
-                  {ticket.description || 'No description provided.'}
+                  {ticket.description ? stripHtml(ticket.description) : 'No description provided.'}
                 </p>
               </div>
               {savingTicketId === ticket.id && (
@@ -685,17 +698,12 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <label className="block text-sm text-muted-foreground">
                 Assignee
-                <input
-                  value={ticketEditForm.assignee}
-                  onChange={(e) =>
-                    setTicketEditForm((prev) => ({
-                      ...prev,
-                      assignee: e.target.value,
-                    }))
-                  }
-                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-                  placeholder="Optional assignee"
-                />
+                <div className="mt-1">
+                  <AssigneePicker
+                    value={ticketEditForm.assignee}
+                    onChange={(val) => setTicketEditForm((prev) => ({ ...prev, assignee: val }))}
+                  />
+                </div>
               </label>
 
               <label className="block text-sm text-muted-foreground">

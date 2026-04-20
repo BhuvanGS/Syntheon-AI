@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useUser } from '@clerk/nextjs';
+import { stripHtml } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,6 +14,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Loader2, Clock, CheckCircle, AlertCircle, Circle, Pencil } from 'lucide-react';
+import { AssigneePicker, type AssigneeValue } from '@/components/assignee-picker';
 import { TicketDependencyPanel } from '@/components/ticket-dependency-panel';
 import { DependencyBlockerModal } from '@/components/dependency-blocker-modal';
 
@@ -23,6 +26,7 @@ interface Ticket {
   description: string;
   status: TicketStatus;
   assignee?: string | null;
+  assignee_user_id?: string | null;
   projectId?: string | null;
   meeting_id: string | null;
 }
@@ -39,6 +43,8 @@ interface TicketsBoardProps {
 }
 
 export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: TicketsBoardProps) {
+  const { user } = useUser();
+  const [assigneeFilter, setAssigneeFilter] = useState<'all' | 'mine' | 'unassigned'>('all');
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,11 +55,16 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
   const [originalStatusById, setOriginalStatusById] = useState<Record<string, TicketStatus>>({});
   const [isDiscardConfirmOpen, setIsDiscardConfirmOpen] = useState(false);
   const [ticketToEdit, setTicketToEdit] = useState<Ticket | null>(null);
-  const [ticketEditForm, setTicketEditForm] = useState({
+  const [ticketEditForm, setTicketEditForm] = useState<{
+    title: string;
+    description: string;
+    assignee: AssigneeValue | null;
+    status: TicketStatus;
+  }>({
     title: '',
     description: '',
-    assignee: '',
-    status: 'backlog' as TicketStatus,
+    assignee: null,
+    status: 'backlog',
   });
   const [updatingTicketId, setUpdatingTicketId] = useState<string | null>(null);
   const [ticketToDelete, setTicketToDelete] = useState<Ticket | null>(null);
@@ -103,7 +114,10 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
     setTicketEditForm({
       title: ticket.title,
       description: ticket.description || '',
-      assignee: ticket.assignee || '',
+      assignee:
+        ticket.assignee_user_id && ticket.assignee
+          ? { userId: ticket.assignee_user_id, displayName: ticket.assignee }
+          : null,
       status: ticket.status,
     });
   }
@@ -119,7 +133,8 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
         body: JSON.stringify({
           title: ticketEditForm.title.trim(),
           description: ticketEditForm.description.trim(),
-          assignee: ticketEditForm.assignee.trim() || null,
+          assignee: ticketEditForm.assignee?.displayName ?? null,
+          assigneeUserId: ticketEditForm.assignee?.userId ?? null,
           status: ticketEditForm.status,
         }),
       });
@@ -138,7 +153,8 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
               body: JSON.stringify({
                 title: ticketEditForm.title.trim(),
                 description: ticketEditForm.description.trim(),
-                assignee: ticketEditForm.assignee.trim() || null,
+                assignee: ticketEditForm.assignee?.displayName ?? null,
+                assigneeUserId: ticketEditForm.assignee?.userId ?? null,
                 status: ticketEditForm.status,
                 bypassGate: true,
               }),
@@ -187,7 +203,8 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                 ...ticket,
                 title: ticketEditForm.title.trim(),
                 description: ticketEditForm.description.trim(),
-                assignee: ticketEditForm.assignee.trim() || null,
+                assignee: ticketEditForm.assignee?.displayName ?? null,
+                assignee_user_id: ticketEditForm.assignee?.userId ?? null,
                 status: ticketEditForm.status,
               }
             : ticket
@@ -429,7 +446,28 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1 rounded-lg border border-border p-0.5 bg-muted/40">
+          {(
+            [
+              { key: 'all', label: 'All' },
+              { key: 'mine', label: 'Mine' },
+              { key: 'unassigned', label: 'Unassigned' },
+            ] as const
+          ).map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setAssigneeFilter(key)}
+              className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                assigneeFilter === key
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         {hasPendingChanges && (
           <div className="flex items-center gap-2">
             <Button
@@ -534,17 +572,12 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <label className="block text-sm text-muted-foreground">
                 Assignee
-                <input
-                  value={ticketEditForm.assignee}
-                  onChange={(e) =>
-                    setTicketEditForm((prev) => ({
-                      ...prev,
-                      assignee: e.target.value,
-                    }))
-                  }
-                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-                  placeholder="Optional assignee"
-                />
+                <div className="mt-1">
+                  <AssigneePicker
+                    value={ticketEditForm.assignee}
+                    onChange={(val) => setTicketEditForm((prev) => ({ ...prev, assignee: val }))}
+                  />
+                </div>
               </label>
 
               <label className="block text-sm text-muted-foreground">
@@ -657,7 +690,12 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         {columns.map((column) => {
-          const columnTickets = tickets.filter((ticket) => ticket.status === column.key);
+          const filteredTickets = tickets.filter((ticket) => {
+            if (assigneeFilter === 'mine') return ticket.assignee_user_id === user?.id;
+            if (assigneeFilter === 'unassigned') return !ticket.assignee_user_id;
+            return true;
+          });
+          const columnTickets = filteredTickets.filter((ticket) => ticket.status === column.key);
 
           return (
             <div key={column.key} className="flex flex-col gap-3">
@@ -740,7 +778,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
 
                     {ticket.description && (
                       <p className="text-xs text-muted-foreground leading-5 line-clamp-3">
-                        {ticket.description}
+                        {stripHtml(ticket.description)}
                       </p>
                     )}
 

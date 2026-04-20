@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { useOrganization } from '@clerk/nextjs';
+import { useOrganization, useUser } from '@clerk/nextjs';
+import { stripHtml } from '@/lib/utils';
+import { AssigneePicker, type AssigneeValue } from '@/components/assignee-picker';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -100,6 +102,7 @@ interface Ticket {
   description: string;
   status: 'backlog' | 'in_progress' | 'done' | 'blocked';
   assignee?: string | null;
+  assignee_user_id?: string | null;
   projectId?: string | null;
   meeting_id: string | null;
   dependency_ticket_id?: string | null;
@@ -150,7 +153,11 @@ export function ProjectsWorkspace({
   onRefresh,
 }: ProjectsWorkspaceProps) {
   const { membership } = useOrganization();
+  const { user } = useUser();
   const isAdmin = membership?.role === 'org:admin';
+  const [kanbanAssigneeFilter, setKanbanAssigneeFilter] = useState<
+    'all' | 'unassigned' | 'mine'
+  >('all');
   const [projectTab, setProjectTab] = useState<ProjectTab>('kanban');
   const [draggedTicketId, setDraggedTicketId] = useState<string | null>(null);
   const [draggedStageId, setDraggedStageId] = useState<string | null>(null);
@@ -164,11 +171,19 @@ export function ProjectsWorkspace({
   const [ticketToDelete, setTicketToDelete] = useState<Ticket | null>(null);
   const [ticketToEdit, setTicketToEdit] = useState<Ticket | null>(null);
   const [ticketEditorHistory, setTicketEditorHistory] = useState<Ticket[]>([]);
-  const [ticketEditForm, setTicketEditForm] = useState({
+  const [ticketEditForm, setTicketEditForm] = useState<{
+    title: string;
+    description: string;
+    assignee: AssigneeValue | null;
+    status: Ticket['status'];
+    start_date: string;
+    due_date: string;
+    deadline_time: string;
+  }>({
     title: '',
     description: '',
-    assignee: '',
-    status: 'backlog' as Ticket['status'],
+    assignee: null,
+    status: 'backlog',
     start_date: '',
     due_date: '',
     deadline_time: '',
@@ -226,10 +241,12 @@ export function ProjectsWorkspace({
     [tickets, selectedProject?.id]
   );
 
-  const rootProjectTickets = useMemo(
-    () => projectTickets.filter((ticket) => !ticket.dependency_ticket_id),
-    [projectTickets]
-  );
+  const rootProjectTickets = useMemo(() => {
+    const base = projectTickets.filter((ticket) => !ticket.dependency_ticket_id);
+    if (kanbanAssigneeFilter === 'unassigned') return base.filter((t) => !t.assignee_user_id);
+    if (kanbanAssigneeFilter === 'mine') return base.filter((t) => t.assignee_user_id === user?.id);
+    return base;
+  }, [projectTickets, kanbanAssigneeFilter, user?.id]);
 
   const totalTickets = projectTickets.length;
 
@@ -612,7 +629,10 @@ export function ProjectsWorkspace({
     setTicketEditForm({
       title: ticket.title,
       description: ticket.description || '',
-      assignee: ticket.assignee || '',
+      assignee:
+        ticket.assignee_user_id && ticket.assignee
+          ? { userId: ticket.assignee_user_id, displayName: ticket.assignee }
+          : null,
       status: ticket.status,
       start_date: ticket.start_date || '',
       due_date: ticket.due_date || '',
@@ -634,7 +654,10 @@ export function ProjectsWorkspace({
     setTicketEditForm({
       title: previous.title,
       description: previous.description || '',
-      assignee: previous.assignee || '',
+      assignee:
+        previous.assignee_user_id && previous.assignee
+          ? { userId: previous.assignee_user_id, displayName: previous.assignee }
+          : null,
       status: previous.status,
       start_date: previous.start_date || '',
       due_date: previous.due_date || '',
@@ -662,7 +685,8 @@ export function ProjectsWorkspace({
         body: JSON.stringify({
           title: ticketEditForm.title.trim(),
           description: ticketEditForm.description.trim(),
-          assignee: ticketEditForm.assignee.trim() || null,
+          assignee: ticketEditForm.assignee?.displayName ?? null,
+          assigneeUserId: ticketEditForm.assignee?.userId ?? null,
           status: ticketEditForm.status,
           start_date: ticketEditForm.start_date || null,
           due_date: ticketEditForm.due_date || null,
@@ -684,7 +708,8 @@ export function ProjectsWorkspace({
               body: JSON.stringify({
                 title: ticketEditForm.title.trim(),
                 description: ticketEditForm.description.trim(),
-                assignee: ticketEditForm.assignee.trim() || null,
+                assignee: ticketEditForm.assignee?.displayName ?? null,
+                assigneeUserId: ticketEditForm.assignee?.userId ?? null,
                 status: ticketEditForm.status,
                 start_date: ticketEditForm.start_date || null,
                 due_date: ticketEditForm.due_date || null,
@@ -926,14 +951,21 @@ export function ProjectsWorkspace({
     );
   }
 
-  const tabs: { id: ProjectTab; label: string; icon: React.ReactNode }[] = [
-    { id: 'kanban', label: 'Kanban', icon: <KanbanSquare className="h-4 w-4" /> },
-    { id: 'tickets', label: 'Tickets', icon: <Ticket className="h-4 w-4" /> },
-    { id: 'list', label: 'List', icon: <LayoutList className="h-4 w-4" /> },
-    { id: 'meetings', label: 'Meetings', icon: <Calendar className="h-4 w-4" /> },
-    { id: 'analytics', label: 'Analytics', icon: <BarChart3 className="h-4 w-4" /> },
-    { id: 'dependencies', label: 'Dependencies', icon: <GitBranch className="h-4 w-4" /> },
-  ];
+  const allTabs: { id: ProjectTab; label: string; icon: React.ReactNode; adminOnly?: boolean }[] =
+    [
+      { id: 'kanban', label: 'Kanban', icon: <KanbanSquare className="h-4 w-4" /> },
+      { id: 'tickets', label: 'Tickets', icon: <Ticket className="h-4 w-4" /> },
+      { id: 'list', label: 'List', icon: <LayoutList className="h-4 w-4" /> },
+      { id: 'meetings', label: 'Meetings', icon: <Calendar className="h-4 w-4" /> },
+      {
+        id: 'analytics',
+        label: 'Analytics',
+        icon: <BarChart3 className="h-4 w-4" />,
+        adminOnly: true,
+      },
+      { id: 'dependencies', label: 'Dependencies', icon: <GitBranch className="h-4 w-4" /> },
+    ];
+  const tabs = allTabs.filter((t) => !t.adminOnly || isAdmin);
 
   const statusConfig: Record<
     Ticket['status'],
@@ -1238,7 +1270,7 @@ export function ProjectsWorkspace({
                         {ticket.title}
                       </h3>
                       <p className="text-xs text-muted-foreground line-clamp-2">
-                        {ticket.description || 'No description.'}
+                        {ticket.description ? stripHtml(ticket.description) : 'No description.'}
                       </p>
                       <div className="flex items-center justify-between mt-auto">
                         <span
@@ -1314,7 +1346,30 @@ export function ProjectsWorkspace({
         {/* ── KANBAN tab ── */}
         {projectTab === 'kanban' && (
           <div className="space-y-4">
-            <h2 className="font-playfair text-2xl font-bold text-foreground">Kanban</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="font-playfair text-2xl font-bold text-foreground">Kanban</h2>
+              <div className="flex items-center gap-1 rounded-lg border border-border p-0.5 bg-muted/40">
+                {(
+                  [
+                    { key: 'all', label: 'All' },
+                    { key: 'mine', label: 'Mine' },
+                    { key: 'unassigned', label: 'Unassigned' },
+                  ] as const
+                ).map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => setKanbanAssigneeFilter(key)}
+                    className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                      kanbanAssigneeFilter === key
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="flex gap-4 overflow-x-auto pb-2">
               {stages.map((stage) => {
                 const colTickets = rootProjectTickets.filter(
@@ -1421,7 +1476,7 @@ export function ProjectsWorkspace({
                             {ticket.title}
                           </p>
                           <p className="text-xs text-muted-foreground line-clamp-1">
-                            {ticket.description || 'No description'}
+                            {ticket.description ? stripHtml(ticket.description) : 'No description'}
                           </p>
                           <div className="mt-2 flex items-center justify-between">
                             {ticket.assignee && (
@@ -1922,17 +1977,14 @@ export function ProjectsWorkspace({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <label className="block text-sm text-muted-foreground">
                     Assignee
-                    <input
-                      value={ticketEditForm.assignee}
-                      onChange={(e) =>
-                        setTicketEditForm((prev) => ({
-                          ...prev,
-                          assignee: e.target.value,
-                        }))
-                      }
-                      className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-                      placeholder="Optional assignee"
-                    />
+                    <div className="mt-1">
+                      <AssigneePicker
+                        value={ticketEditForm.assignee}
+                        onChange={(val) =>
+                          setTicketEditForm((prev) => ({ ...prev, assignee: val }))
+                        }
+                      />
+                    </div>
                   </label>
 
                   <label className="block text-sm text-muted-foreground">

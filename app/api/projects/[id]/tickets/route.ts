@@ -32,6 +32,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         ? body.status
         : 'backlog';
     const assignee = body?.assignee ? String(body.assignee).trim() : null;
+    const assigneeUserId = body?.assigneeUserId ? String(body.assigneeUserId).trim() : null;
     const parentTicketId =
       typeof body?.parentTicketId === 'string' && body.parentTicketId.trim()
         ? body.parentTicketId.trim()
@@ -84,7 +85,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         description,
         status,
         assignee,
-        assignee_user_id: null,
+        assignee_user_id: assigneeUserId,
         dependency_ticket_id: parentTicketId,
         start_date,
         due_date,
