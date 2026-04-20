@@ -1,17 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { deleteProject, getProjectById, updateProject } from '@/lib/db';
+import { requireAuth, isOrgAdmin, canAdminProject } from '@/lib/rbac';
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId, orgId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = await requireAuth();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
     const project = await getProjectById(id);
-    const owned = orgId ? project?.org_id === orgId : project?.user_id === userId;
-    if (!project || !owned) {
+    if (!project || project.org_id !== ctx.orgId) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+    if (!(await canAdminProject(ctx, id))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const body = await req.json().catch(() => ({}));
@@ -53,13 +55,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId, orgId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = await requireAuth();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!isOrgAdmin(ctx)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     const { id } = await params;
     const project = await getProjectById(id);
-    const owned = orgId ? project?.org_id === orgId : project?.user_id === userId;
-    if (!project || !owned) {
+    if (!project || project.org_id !== ctx.orgId) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 

@@ -12,6 +12,7 @@ import {
   createActivity,
   getTicketById,
 } from '@/lib/db';
+import { requireAuth, isOrgAdmin, canAdminProject } from '@/lib/rbac';
 import { supabaseAdmin } from '@/lib/supabase';
 
 const allowedStatuses = new Set(['backlog', 'in_progress', 'done', 'blocked']);
@@ -195,15 +196,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId, orgId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = await requireAuth();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
-    const userTickets = orgId ? await getAllTicketsByOrg(orgId) : await getAllTickets(userId);
+    const userTickets = await getAllTicketsByOrg(ctx.orgId);
     const ticket = userTickets.find((item) => item.id === id);
 
     if (!ticket) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+    }
+
+    const allowed =
+      isOrgAdmin(ctx) || (ticket.projectId ? await canAdminProject(ctx, ticket.projectId) : false);
+    if (!allowed) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     await deleteTicketById(id);

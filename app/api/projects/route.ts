@@ -8,6 +8,7 @@ import {
   saveProjectForOrg,
   addProjectMember,
 } from '@/lib/db';
+import { requireAuth, isOrgAdmin } from '@/lib/rbac';
 
 export async function GET(req: NextRequest) {
   try {
@@ -33,9 +34,10 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId, orgId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    if (!orgId) return NextResponse.json({ error: 'No organization' }, { status: 403 });
+    const ctx = await requireAuth();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!isOrgAdmin(ctx)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const { userId, orgId } = ctx;
 
     const body = await req.json();
     const name = String(body?.name ?? '').trim();

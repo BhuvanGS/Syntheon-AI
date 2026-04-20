@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useOrganization } from '@clerk/nextjs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -148,6 +149,8 @@ export function ProjectsWorkspace({
   onDeleteProject,
   onRefresh,
 }: ProjectsWorkspaceProps) {
+  const { membership } = useOrganization();
+  const isAdmin = membership?.role === 'org:admin';
   const [projectTab, setProjectTab] = useState<ProjectTab>('kanban');
   const [draggedTicketId, setDraggedTicketId] = useState<string | null>(null);
   const [draggedStageId, setDraggedStageId] = useState<string | null>(null);
@@ -860,12 +863,16 @@ export function ProjectsWorkspace({
               No projects yet
             </h2>
             <p className="text-muted-foreground mb-6">
-              Create your first project to start organizing meetings and tickets.
+              {isAdmin
+                ? 'Create your first project to start organizing meetings and tickets.'
+                : 'No projects have been created yet. Ask your org admin to create one.'}
             </p>
-            <Button onClick={onCreateProject} className="rounded-full gap-2">
-              <Sparkles className="h-4 w-4" />
-              Create project
-            </Button>
+            {isAdmin && (
+              <Button onClick={onCreateProject} className="rounded-full gap-2">
+                <Sparkles className="h-4 w-4" />
+                Create project
+              </Button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -1097,18 +1104,22 @@ export function ProjectsWorkspace({
                   <Download className="h-4 w-4 text-primary" />
                   Import tickets from meeting
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={onCreateProject} className="gap-2 cursor-pointer">
-                  <Plus className="h-4 w-4 text-primary" />
-                  New project
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => setProjectToDelete(selectedProject)}
-                  className="gap-2 cursor-pointer text-destructive focus:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Delete project
-                </DropdownMenuItem>
+                {isAdmin && (
+                  <DropdownMenuItem onClick={onCreateProject} className="gap-2 cursor-pointer">
+                    <Plus className="h-4 w-4 text-primary" />
+                    New project
+                  </DropdownMenuItem>
+                )}
+                {isAdmin && <DropdownMenuSeparator />}
+                {isAdmin && (
+                  <DropdownMenuItem
+                    onClick={() => setProjectToDelete(selectedProject)}
+                    className="gap-2 cursor-pointer text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete project
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
