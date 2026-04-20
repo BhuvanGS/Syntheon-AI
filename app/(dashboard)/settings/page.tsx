@@ -3,16 +3,18 @@
 import { useCallback, useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/sidebar';
-import { Github, CheckCircle2, Link2Off } from 'lucide-react';
+import { Github, CheckCircle2, Link2Off, Users, Copy, RefreshCw, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { GitHubConnectButton } from '@/components/github-connect-button';
 import { ApiKeyManager } from '@/components/api-key-manager';
 import { LinearConnectButton } from '@/components/linear-connect-button';
 import { ProjectCreateDialog } from '@/components/project-create-dialog';
+import { useOrganization } from '@clerk/nextjs';
 
 interface Project {
   id: string;
@@ -22,6 +24,11 @@ interface Project {
 function SettingsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { membership, organization, invitations } = useOrganization({
+    invitations: { infinite: true, pageSize: 20 },
+  });
+  const isAdmin = membership?.role === 'org:admin';
+
   const [projects, setProjects] = useState<Project[]>([]);
   const [githubConnected, setGithubConnected] = useState(false);
   const [githubUser, setGithubUser] = useState<string | null>(null);
@@ -29,6 +36,8 @@ function SettingsContent() {
   const [linearTeam, setLinearTeam] = useState<string | null>(null);
   const [integrationStatusLoaded, setIntegrationStatusLoaded] = useState(false);
   const [isProjectCreateOpen, setIsProjectCreateOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviting, setInviting] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -120,6 +129,38 @@ function SettingsContent() {
     }
   }, [searchParams, integrationStatusLoaded]);
 
+  async function handleInvite(e: React.FormEvent) {
+    e.preventDefault();
+    if (!inviteEmail.trim() || !organization) return;
+    setInviting(true);
+    try {
+      await organization.inviteMember({ emailAddress: inviteEmail.trim(), role: 'org:member' });
+      setInviteEmail('');
+      await organization?.reload?.();
+      toast({ title: 'Invite sent', description: `Invite sent to ${inviteEmail.trim()}` });
+    } catch (err: any) {
+      toast({
+        title: 'Failed to send invite',
+        description: err?.errors?.[0]?.message || 'Something went wrong',
+        variant: 'destructive',
+      });
+    } finally {
+      setInviting(false);
+    }
+  }
+
+  async function handleRevokeInvite(invitationId: string) {
+    const inv = invitations?.data?.find((i) => i.id === invitationId);
+    if (!inv) return;
+    try {
+      await inv.revoke();
+      await organization?.reload?.();
+      toast({ title: 'Invite revoked' });
+    } catch {
+      toast({ title: 'Failed to revoke invite', variant: 'destructive' });
+    }
+  }
+
   async function handleDisconnectGithub() {
     try {
       const res = await fetch('/api/integrations/github/disconnect', { method: 'POST' });
@@ -206,6 +247,81 @@ function SettingsContent() {
                 Manage your integrations and workspace preferences
               </p>
             </div>
+
+            {/* Org Invitations — admin only */}
+            {isAdmin && (
+              <Card className="border-border/60 shadow-none">
+                <CardHeader className="pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <Users className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-sm font-semibold">Team Invitations</CardTitle>
+                      <CardDescription className="text-xs mt-0.5">
+                        Invite members to {organization?.name ?? 'your org'} via email
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <Separator />
+                <CardContent className="pt-4 space-y-4">
+                  <form onSubmit={handleInvite} className="flex gap-2">
+                    <Input
+                      type="email"
+                      placeholder="colleague@company.com"
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                      disabled={inviting}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={inviting || !inviteEmail.trim()}
+                      className="shrink-0"
+                    >
+                      {inviting ? (
+                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        'Send invite'
+                      )}
+                    </Button>
+                  </form>
+
+                  {(invitations?.data?.length ?? 0) > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-2">
+                        Pending invitations
+                      </p>
+                      <div className="space-y-2">
+                        {invitations!.data!.map((inv) => (
+                          <div
+                            key={inv.id}
+                            className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2"
+                          >
+                            <div>
+                              <p className="text-sm text-foreground">{inv.emailAddress}</p>
+                              <p className="text-[11px] text-muted-foreground">
+                                Invited · expires {new Date(inv.createdAt).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                              onClick={() => handleRevokeInvite(inv.id)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             {/* GitHub */}
             <Card className="border-border/60 shadow-none">

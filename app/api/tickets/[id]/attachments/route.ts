@@ -16,7 +16,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const { id } = await params;
     const ticket = await getTicketById(id);
-    if (!ticket || ticket.user_id !== userId) {
+    if (!ticket) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const { id: ticketId } = await params;
     const ticket = await getTicketById(ticketId);
-    if (!ticket || ticket.user_id !== userId) {
+    if (!ticket) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 

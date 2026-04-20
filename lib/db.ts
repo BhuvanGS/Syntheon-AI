@@ -5,6 +5,7 @@ import { supabaseAdmin } from './supabase';
 export interface Meeting {
   id: string;
   user_id?: string;
+  org_id?: string;
   projectName: string;
   meetingId: string;
   platform: string;
@@ -36,6 +37,7 @@ export interface SpecBlock {
 export interface Ticket {
   id: string;
   user_id?: string;
+  org_id?: string;
   meeting_id: string | null;
   projectId?: string;
   parent_id?: string | null;
@@ -55,6 +57,7 @@ export interface Ticket {
 export interface Project {
   id: string;
   user_id?: string;
+  org_id?: string;
   name: string;
   repo: string;
   deployUrl?: string;
@@ -95,6 +98,7 @@ function rowToMeeting(row: any): Meeting {
   return {
     id: row.id,
     user_id: row.user_id,
+    org_id: row.org_id,
     projectName: row.project_name,
     meetingId: row.meeting_id,
     platform: row.platform,
@@ -114,6 +118,7 @@ function rowToTicket(row: any): Ticket {
   return {
     id: row.id,
     user_id: row.user_id,
+    org_id: row.org_id,
     meeting_id: row.meeting_id ?? null,
     projectId: row.project_id,
     title: row.title,
@@ -148,6 +153,7 @@ function rowToProject(row: any): Project {
   return {
     id: row.id,
     user_id: row.user_id,
+    org_id: row.org_id,
     name: row.name,
     repo: row.repo,
     deployUrl: row.deploy_url,
@@ -166,6 +172,7 @@ export async function saveMeeting(meeting: Meeting): Promise<void> {
   const { error } = await supabaseAdmin.from('meetings').insert({
     id: meeting.id,
     user_id: meeting.user_id,
+    org_id: meeting.org_id ?? null,
     project_id: meeting.projectId ?? null,
     project_name: meeting.projectName,
     meeting_id: meeting.meetingId,
@@ -445,6 +452,7 @@ export async function saveTickets(tickets: Ticket[]): Promise<void> {
     tickets.map((ticket) => ({
       id: ticket.id,
       user_id: ticket.user_id,
+      org_id: ticket.org_id ?? null,
       meeting_id: ticket.meeting_id ?? null,
       project_id: ticket.projectId ?? null,
       title: ticket.title,
@@ -1020,4 +1028,150 @@ export function loadDB() {
 
 export function saveDB() {
   throw new Error('saveDB is deprecated — use Supabase async functions');
+}
+
+// ─── Org-scoped functions ───────────────────────────────────────
+
+export async function getProjectsByOrg(orgId: string): Promise<Project[]> {
+  const { data, error } = await supabaseAdmin
+    .from('projects')
+    .select('*')
+    .eq('org_id', orgId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map(rowToProject);
+}
+
+export async function getMeetingsByOrg(orgId: string): Promise<Meeting[]> {
+  const { data, error } = await supabaseAdmin
+    .from('meetings')
+    .select('*')
+    .eq('org_id', orgId)
+    .order('date', { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map(rowToMeeting);
+}
+
+export async function getAllTicketsByOrg(orgId: string): Promise<Ticket[]> {
+  const { data, error } = await supabaseAdmin
+    .from('tickets')
+    .select('*')
+    .eq('org_id', orgId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map(rowToTicket);
+}
+
+export async function saveProjectForOrg(project: Project & { org_id: string }): Promise<void> {
+  const { error } = await supabaseAdmin.from('projects').insert({
+    id: project.id,
+    user_id: project.user_id,
+    org_id: project.org_id,
+    name: project.name,
+    repo: project.repo ?? '',
+    deploy_url: project.deployUrl ?? null,
+    branch_base: project.branchBase ?? '',
+    meetings: project.meetings ?? [],
+    spec_ids: project.ticketIds ?? [],
+    files: project.files ?? [],
+    context: project.context ?? '',
+  });
+  if (error) throw error;
+}
+
+export async function saveMeetingForOrg(meeting: Meeting & { org_id: string }): Promise<void> {
+  const { error } = await supabaseAdmin.from('meetings').insert({
+    id: meeting.id,
+    user_id: meeting.user_id,
+    org_id: meeting.org_id,
+    project_id: meeting.projectId ?? null,
+    project_name: meeting.projectName,
+    meeting_id: meeting.meetingId,
+    meeting_url: meeting.meeting_url ?? null,
+    platform: meeting.platform,
+    transcript: meeting.transcript ?? '',
+    specs_detected: meeting.specsDetected,
+    status: meeting.status,
+    bot_id: meeting.botId ?? null,
+    branch_name: meeting.branchName ?? null,
+    deploy_url: meeting.deployUrl ?? null,
+    file_path: meeting.filePath ?? '',
+    date: meeting.date,
+  });
+  if (error) throw error;
+}
+
+// ─── Project Members ────────────────────────────────────────────
+
+export interface ProjectMember {
+  id: string;
+  project_id: string;
+  org_id: string;
+  user_id: string;
+  role: 'admin' | 'member';
+  created_at: string;
+}
+
+export async function addProjectMember(
+  projectId: string,
+  orgId: string,
+  userId: string,
+  role: 'admin' | 'member' = 'member'
+): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from('project_members')
+    .upsert(
+      { project_id: projectId, org_id: orgId, user_id: userId, role },
+      { onConflict: 'project_id,user_id' }
+    );
+  if (error) throw error;
+}
+
+export async function removeProjectMember(projectId: string, userId: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from('project_members')
+    .delete()
+    .eq('project_id', projectId)
+    .eq('user_id', userId);
+  if (error) throw error;
+}
+
+export async function getProjectMembers(projectId: string): Promise<ProjectMember[]> {
+  const { data, error } = await supabaseAdmin
+    .from('project_members')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getProjectsForMember(orgId: string, userId: string): Promise<Project[]> {
+  const { data: memberRows, error: memberError } = await supabaseAdmin
+    .from('project_members')
+    .select('project_id')
+    .eq('org_id', orgId)
+    .eq('user_id', userId);
+  if (memberError) throw memberError;
+
+  const projectIds = (memberRows ?? []).map((r) => r.project_id);
+  if (projectIds.length === 0) return [];
+
+  const { data, error } = await supabaseAdmin
+    .from('projects')
+    .select('*')
+    .in('id', projectIds)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map(rowToProject);
+}
+
+export async function isProjectMember(projectId: string, userId: string): Promise<boolean> {
+  const { data } = await supabaseAdmin
+    .from('project_members')
+    .select('id')
+    .eq('project_id', projectId)
+    .eq('user_id', userId)
+    .maybeSingle();
+  return !!data;
 }

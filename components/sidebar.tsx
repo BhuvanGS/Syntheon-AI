@@ -3,12 +3,25 @@
 import { cn } from '@/lib/utils';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, Settings, FolderKanban, Plus, ChevronsUpDown } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Settings,
+  FolderKanban,
+  Plus,
+  Users,
+  CalendarDays,
+  Ticket,
+  Home,
+  Video,
+  ShieldCheck,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useUser } from '@clerk/nextjs';
+import { useUser, useOrganization } from '@clerk/nextjs';
+import { useSearchParams } from 'next/navigation';
+import { Badge } from '@/components/ui/badge';
 
 interface SidebarProps {
   currentView?: string;
@@ -19,9 +32,42 @@ interface SidebarProps {
   onCreateProject: () => void;
 }
 
-const NAV_ITEMS = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
-  { id: 'settings', label: 'Settings', icon: Settings, href: '/settings' },
+const ADMIN_NAV = [
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard', view: null },
+  {
+    id: 'members',
+    label: 'Members',
+    icon: Users,
+    href: '/dashboard?view=members',
+    view: 'members',
+  },
+  {
+    id: 'calendar',
+    label: 'Calendar',
+    icon: CalendarDays,
+    href: '/dashboard?view=calendar',
+    view: 'calendar',
+  },
+  {
+    id: 'tickets',
+    label: 'Tickets',
+    icon: Ticket,
+    href: '/dashboard?view=tickets',
+    view: 'tickets',
+  },
+  { id: 'settings', label: 'Settings', icon: Settings, href: '/settings', view: null },
+];
+
+const MEMBER_NAV = [
+  { id: 'dashboard', label: 'My Dashboard', icon: Home, href: '/dashboard', view: null },
+  {
+    id: 'meetings',
+    label: 'Meetings',
+    icon: Video,
+    href: '/dashboard?view=meetings',
+    view: 'meetings',
+  },
+  { id: 'settings', label: 'Settings', icon: Settings, href: '/settings', view: null },
 ];
 
 export function Sidebar({
@@ -32,38 +78,76 @@ export function Sidebar({
 }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { user } = useUser();
+  const { membership, organization } = useOrganization();
+
+  const isAdmin = membership?.role === 'org:admin';
+  const navItems = isAdmin ? ADMIN_NAV : MEMBER_NAV;
 
   const userInitial =
     user?.firstName?.[0] ?? user?.emailAddresses?.[0]?.emailAddress?.[0]?.toUpperCase() ?? 'S';
-  const userName = user?.fullName ?? user?.emailAddresses?.[0]?.emailAddress ?? 'My Workspace';
+  const userName = user?.fullName ?? user?.emailAddresses?.[0]?.emailAddress ?? 'User';
 
   return (
     <aside className="w-[220px] min-w-[220px] h-screen flex flex-col bg-sidebar border-r border-sidebar-border">
-      {/* Logo */}
-      <div className="h-14 flex items-center px-4 shrink-0">
-        <Link href="/" className="flex items-center gap-2.5">
+      {/* Logo + Org */}
+      <div className="h-14 flex items-center px-4 shrink-0 gap-2">
+        <Link href="/" className="flex items-center gap-2.5 flex-1 min-w-0">
           <img
             src="/logo.png"
             alt="Syntheon"
-            className="w-6 h-6 object-contain"
+            className="w-6 h-6 object-contain shrink-0"
             onError={(e) => {
               (e.target as HTMLImageElement).style.display = 'none';
             }}
           />
-          <span className="font-[family-name:var(--font-dm-serif)] text-[1.05rem] text-primary tracking-tight">
-            Syntheon
-          </span>
+          <div className="min-w-0">
+            <span className="font-[family-name:var(--font-dm-serif)] text-[1.05rem] text-primary tracking-tight block truncate">
+              Syntheon
+            </span>
+            {organization?.name && (
+              <span className="text-[10px] text-muted-foreground truncate block leading-none">
+                {organization.name}
+              </span>
+            )}
+          </div>
         </Link>
+        {isAdmin && (
+          <span title="Admin">
+            <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-primary/60" />
+          </span>
+        )}
       </div>
 
       <Separator />
 
+      {/* Role badge */}
+      <div className="px-4 pt-2.5 pb-1 shrink-0">
+        <Badge
+          variant="outline"
+          className={cn(
+            'text-[10px] px-2 py-0.5 rounded-full font-medium',
+            isAdmin
+              ? 'border-primary/30 text-primary bg-primary/5'
+              : 'border-border text-muted-foreground'
+          )}
+        >
+          {isAdmin ? 'Admin' : 'Member'}
+        </Badge>
+      </div>
+
       {/* Main nav */}
-      <nav className="px-2 pt-3 space-y-0.5 shrink-0">
-        {NAV_ITEMS.map((item) => {
+      <nav className="px-2 pt-1.5 space-y-0.5 shrink-0">
+        {navItems.map((item) => {
           const Icon = item.icon;
-          const active = pathname === item.href;
+          const currentView = searchParams.get('view');
+          const active =
+            item.view === null && item.href !== '/settings'
+              ? pathname === '/dashboard' && !currentView
+              : item.href === '/settings'
+                ? pathname === '/settings'
+                : currentView === item.view;
           return (
             <button
               key={item.id}
@@ -90,22 +174,26 @@ export function Sidebar({
           <span className="text-[10px] font-semibold tracking-[0.1em] uppercase text-muted-foreground">
             Projects
           </span>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-5 w-5 rounded text-muted-foreground hover:text-foreground hover:bg-accent"
-            onClick={onCreateProject}
-            title="New project"
-          >
-            <Plus className="h-3 w-3" />
-          </Button>
+          {isAdmin && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-5 w-5 rounded text-muted-foreground hover:text-foreground hover:bg-accent"
+              onClick={onCreateProject}
+              title="New project"
+            >
+              <Plus className="h-3 w-3" />
+            </Button>
+          )}
         </div>
 
         <ScrollArea className="flex-1 -mx-1 px-1">
           {projects.length === 0 ? (
             <div className="mx-1 border border-dashed border-border rounded-lg p-3 text-center">
               <p className="text-[11px] text-muted-foreground leading-relaxed">
-                No projects yet. Create one to get started.
+                {isAdmin
+                  ? 'No projects yet. Create one to get started.'
+                  : 'No projects assigned yet.'}
               </p>
             </div>
           ) : (
@@ -148,9 +236,10 @@ export function Sidebar({
           </Avatar>
           <div className="flex-1 min-w-0">
             <p className="text-[12px] font-medium text-foreground truncate">{userName}</p>
-            <p className="text-[11px] text-muted-foreground truncate">syntheon.ai</p>
+            <p className="text-[11px] text-muted-foreground truncate">
+              {organization?.name ?? 'No org'}
+            </p>
           </div>
-          <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
         </div>
       </div>
     </aside>

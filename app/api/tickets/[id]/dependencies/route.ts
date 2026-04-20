@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { randomUUID } from 'crypto';
 import {
   getAllTickets,
+  getAllTicketsByOrg,
   createDependency,
   getDependenciesForTicket,
   createActivity,
@@ -15,11 +16,11 @@ const DEP_STRENGTHS = new Set<DependencyStrength>(['soft', 'hard']);
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId } = await auth();
+    const { userId, orgId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
-    const userTickets = await getAllTickets(userId);
+    const userTickets = orgId ? await getAllTicketsByOrg(orgId) : await getAllTickets(userId);
     if (!userTickets.find((t) => t.id === id)) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
@@ -34,11 +35,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId } = await auth();
+    const { userId, orgId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id: ticketId } = await params;
-    const userTickets = await getAllTickets(userId);
+    const userTickets = orgId ? await getAllTicketsByOrg(orgId) : await getAllTickets(userId);
     const ticket = userTickets.find((t) => t.id === ticketId);
     if (!ticket) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });

@@ -8,7 +8,7 @@ import { saveMeeting, getProjectById, getActiveMeetingByUrl, addMeetingToProject
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId } = await auth();
+    const { userId, orgId } = await auth();
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -55,6 +55,7 @@ export async function POST(req: NextRequest) {
       await saveMeeting({
         id: meetingId,
         user_id: userId,
+        org_id: orgId ?? undefined,
         projectName: isFollowUpMeeting
           ? `${project.name} — Follow-up ${date}`
           : `${project.name} — First meeting`,

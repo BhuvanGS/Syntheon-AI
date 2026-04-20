@@ -123,7 +123,14 @@ function ActivityItem({
     }
 
     // Per-field change with from → to
-    if (field && typeof field === 'string' && from !== undefined && to !== undefined && typeof from !== 'object' && typeof to !== 'object') {
+    if (
+      field &&
+      typeof field === 'string' &&
+      from !== undefined &&
+      to !== undefined &&
+      typeof from !== 'object' &&
+      typeof to !== 'object'
+    ) {
       return (
         <span className="text-sm text-muted-foreground">
           changed <span className="font-medium text-foreground">{String(field)}</span> from{' '}
@@ -135,7 +142,12 @@ function ActivityItem({
     }
 
     // Scalar from → to only
-    if (from !== undefined && to !== undefined && typeof from !== 'object' && typeof to !== 'object') {
+    if (
+      from !== undefined &&
+      to !== undefined &&
+      typeof from !== 'object' &&
+      typeof to !== 'object'
+    ) {
       return (
         <span className="text-sm text-muted-foreground">
           from <span className="font-medium text-foreground">{String(from)}</span>
@@ -146,11 +158,7 @@ function ActivityItem({
     }
 
     if (field && typeof field === 'string') {
-      return (
-        <span className="text-sm text-muted-foreground">
-          changed {field}
-        </span>
-      );
+      return <span className="text-sm text-muted-foreground">changed {field}</span>;
     }
 
     if (title && typeof title === 'string') {

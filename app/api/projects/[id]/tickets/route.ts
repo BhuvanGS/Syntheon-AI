@@ -12,13 +12,14 @@ import {
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId } = await auth();
+    const { userId, orgId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id: projectId } = await params;
     const project = await getProjectById(projectId);
+    const owned = orgId ? project?.org_id === orgId : project?.user_id === userId;
 
-    if (!project || project.user_id !== userId) {
+    if (!project || !owned) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
@@ -76,6 +77,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       {
         id: ticketId,
         user_id: userId,
+        org_id: orgId ?? undefined,
         meeting_id: resolvedMeetingId,
         projectId,
         title,

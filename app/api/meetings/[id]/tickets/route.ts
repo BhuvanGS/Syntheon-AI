@@ -28,7 +28,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId } = await auth();
+    const { userId, orgId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
@@ -78,6 +78,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       {
         id: ticketId,
         user_id: userId,
+        org_id: orgId ?? undefined,
         meeting_id: id,
         projectId: resolvedProjectId,
         title,

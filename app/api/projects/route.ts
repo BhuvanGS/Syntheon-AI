@@ -2,12 +2,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { randomUUID } from 'crypto';
-import { getProjects, getProjectByMeetingId, saveProject } from '@/lib/db';
+import {
+  getProjectsByOrg,
+  getProjectByMeetingId,
+  saveProjectForOrg,
+  addProjectMember,
+} from '@/lib/db';
 
 export async function GET(req: NextRequest) {
   try {
-    const { userId } = await auth();
+    const { userId, orgId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!orgId) return NextResponse.json({ error: 'No organization' }, { status: 403 });
 
     const { searchParams } = new URL(req.url);
     const meetingId = searchParams.get('meetingId');
@@ -17,7 +23,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(project ?? null);
     }
 
-    const projects = await getProjects(userId);
+    const projects = await getProjectsByOrg(orgId);
     return NextResponse.json(projects);
   } catch (error) {
     console.error('Failed to fetch projects:', error);
@@ -27,8 +33,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId } = await auth();
+    const { userId, orgId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!orgId) return NextResponse.json({ error: 'No organization' }, { status: 403 });
 
     const body = await req.json();
     const name = String(body?.name ?? '').trim();
@@ -47,9 +54,10 @@ export async function POST(req: NextRequest) {
         .replace(/^-+|-+$/g, '') || 'project'
     }`;
 
-    await saveProject({
+    await saveProjectForOrg({
       id: projectId,
       user_id: userId,
+      org_id: orgId,
       name,
       repo: repoLabel,
       deployUrl: deployUrl || undefined,
@@ -61,6 +69,9 @@ export async function POST(req: NextRequest) {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
+
+    // Creator is auto-added as project admin
+    await addProjectMember(projectId, orgId, userId, 'admin');
 
     return NextResponse.json({
       success: true,

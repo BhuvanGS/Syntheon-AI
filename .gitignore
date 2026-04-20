@@ -10,3 +10,4 @@ node_modules/
 .DS_Storerecordings/*.webm
 db.json
 .env.local  
+ideas.txt

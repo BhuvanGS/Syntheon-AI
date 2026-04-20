@@ -4,6 +4,7 @@ import {
   cascadeDepRegressionForParent,
   checkHardBlockers,
   getAllTickets,
+  getAllTicketsByOrg,
   getDependenciesForTicket,
   incrementDependencyIgnoreCount,
   updateTicketStatus,
@@ -12,10 +13,10 @@ import { supabaseAdmin } from '@/lib/supabase';
 
 export async function GET(req: NextRequest) {
   try {
-    const { userId } = await auth();
+    const { userId, orgId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const tickets = await getAllTickets(userId);
+    const tickets = orgId ? await getAllTicketsByOrg(orgId) : await getAllTickets(userId);
     return NextResponse.json(tickets);
   } catch (error) {
     console.error('Failed to fetch tickets:', error);
@@ -25,7 +26,7 @@ export async function GET(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const { userId } = await auth();
+    const { userId, orgId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
@@ -37,7 +38,7 @@ export async function PATCH(req: NextRequest) {
 
     const allowedStatuses = new Set(['backlog', 'in_progress', 'done', 'blocked']);
     const bypassGate = body?.bypassGate === true;
-    const userTickets = await getAllTickets(userId);
+    const userTickets = orgId ? await getAllTicketsByOrg(orgId) : await getAllTickets(userId);
     const userTicketIds = new Set(userTickets.map((ticket) => ticket.id));
     const ticketById = new Map(userTickets.map((ticket) => [ticket.id, ticket]));
 

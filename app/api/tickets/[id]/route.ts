@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import {
   deleteTicketById,
   getAllTickets,
+  getAllTicketsByOrg,
   updateTicket,
   checkHardBlockers,
   cascadeDepRegressionForParent,
@@ -17,11 +18,11 @@ const allowedStatuses = new Set(['backlog', 'in_progress', 'done', 'blocked']);
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId } = await auth();
+    const { userId, orgId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
-    const userTickets = await getAllTickets(userId);
+    const userTickets = orgId ? await getAllTicketsByOrg(orgId) : await getAllTickets(userId);
     const ticket = userTickets.find((item) => item.id === id);
 
     if (!ticket) {
@@ -194,11 +195,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId } = await auth();
+    const { userId, orgId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
-    const userTickets = await getAllTickets(userId);
+    const userTickets = orgId ? await getAllTicketsByOrg(orgId) : await getAllTickets(userId);
     const ticket = userTickets.find((item) => item.id === id);
 
     if (!ticket) {

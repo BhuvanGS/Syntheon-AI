@@ -34,9 +34,11 @@ export async function POST(req: NextRequest) {
     }
 
     // 🔥 Clerk auth (dashboard)
+    let orgId: string | null = null;
     if (!userId) {
       const session = await auth();
       userId = session.userId;
+      orgId = session.orgId ?? null;
     }
 
     if (!userId) {
@@ -58,6 +60,7 @@ export async function POST(req: NextRequest) {
       await saveMeeting({
         id: meetingId,
         user_id: userId,
+        org_id: orgId ?? undefined,
         projectName: tabTitle || 'Untitled Meeting',
         meetingId: meetingId,
         meeting_url: meetingUrl,

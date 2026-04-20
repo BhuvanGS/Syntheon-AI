@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   let meetingId: string | null = null;
 
   try {
-    const { userId } = await auth();
+    const { userId, orgId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const formData = await req.formData();
@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
     await saveMeeting({
       id: meetingId,
       user_id: userId,
+      org_id: orgId ?? undefined,
       projectName: tabTitle,
       meetingId: meetingId,
       platform,
@@ -65,7 +66,7 @@ export async function POST(req: NextRequest) {
     console.log(`Extracted ${tickets.length} tickets, title: ${title}`);
 
     const insertedTickets = await saveExtractedTickets(
-      tickets.map((ticket: any) => ({ ...ticket, user_id: userId }))
+      tickets.map((ticket: any) => ({ ...ticket, user_id: userId, org_id: orgId ?? undefined }))
     );
 
     // Update meeting

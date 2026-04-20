@@ -14,12 +14,13 @@ import { inferProjectTicketDependencies } from '@/lib/groq';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId } = await auth();
+    const { userId, orgId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
     const project = await getProjectById(id);
-    if (!project || project.user_id !== userId) {
+    const owned = orgId ? project?.org_id === orgId : project?.user_id === userId;
+    if (!project || !owned) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
@@ -30,7 +31,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     const meeting = await getMeetingById(sourceMeetingId);
-    if (!meeting || meeting.user_id !== userId) {
+    if (!meeting) {
       return NextResponse.json({ error: 'Meeting not found' }, { status: 404 });
     }
 
