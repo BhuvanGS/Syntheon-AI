@@ -14,7 +14,7 @@ import { GitHubConnectButton } from '@/components/github-connect-button';
 import { ApiKeyManager } from '@/components/api-key-manager';
 import { LinearConnectButton } from '@/components/linear-connect-button';
 import { ProjectCreateDialog } from '@/components/project-create-dialog';
-import { useOrganization } from '@clerk/nextjs';
+import { useOrganization, useOrganizationList } from '@clerk/nextjs';
 
 interface Project {
   id: string;
@@ -24,6 +24,9 @@ interface Project {
 function SettingsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { setActive, userMemberships, createOrganization } = useOrganizationList({
+    userMemberships: true,
+  });
   const { membership, organization, invitations } = useOrganization({
     invitations: { infinite: true, pageSize: 20 },
   });
@@ -38,6 +41,16 @@ function SettingsContent() {
   const [isProjectCreateOpen, setIsProjectCreateOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviting, setInviting] = useState(false);
+  const [newOrgName, setNewOrgName] = useState('');
+  const [creatingOrg, setCreatingOrg] = useState(false);
+  const [orgName, setOrgName] = useState('');
+  const [savingOrgName, setSavingOrgName] = useState(false);
+  const [switchingOrgId, setSwitchingOrgId] = useState<string | null>(null);
+  const memberships = userMemberships.data ?? [];
+
+  useEffect(() => {
+    setOrgName(organization?.name ?? '');
+  }, [organization?.id, organization?.name]);
 
   useEffect(() => {
     let isMounted = true;
@@ -74,6 +87,64 @@ function SettingsContent() {
       isMounted = false;
     };
   }, []);
+
+  async function handleCreateOrganization(e: React.FormEvent) {
+    e.preventDefault();
+    if (!createOrganization || !setActive || !newOrgName.trim()) return;
+    setCreatingOrg(true);
+    try {
+      const created = await createOrganization({ name: newOrgName.trim() });
+      await setActive({ organization: created.id });
+      setNewOrgName('');
+      toast({ title: 'Organization created', description: `${created.name} is now active.` });
+      window.location.assign('/dashboard');
+    } catch (err: any) {
+      toast({
+        title: 'Failed to create organization',
+        description: err?.errors?.[0]?.message || 'Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setCreatingOrg(false);
+    }
+  }
+
+  async function handleSwitchOrganization(nextOrgId: string) {
+    if (!setActive) return;
+    setSwitchingOrgId(nextOrgId);
+    try {
+      await setActive({ organization: nextOrgId });
+      toast({ title: 'Organization switched' });
+      window.location.assign('/dashboard');
+    } catch (err: any) {
+      toast({
+        title: 'Failed to switch organization',
+        description: err?.errors?.[0]?.message || 'Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSwitchingOrgId(null);
+    }
+  }
+
+  async function handleSaveOrgName(e: React.FormEvent) {
+    e.preventDefault();
+    if (!organization || !isAdmin || !orgName.trim()) return;
+    setSavingOrgName(true);
+    try {
+      await organization.update({ name: orgName.trim() });
+      await organization.reload();
+      toast({ title: 'Organization updated', description: 'Organization name saved successfully.' });
+    } catch (err: any) {
+      toast({
+        title: 'Failed to update organization',
+        description: err?.errors?.[0]?.message || 'Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingOrgName(false);
+    }
+  }
 
   useEffect(() => {
     const githubConnectedParam = searchParams.get('github_connected');
@@ -247,6 +318,104 @@ function SettingsContent() {
                 Manage your integrations and workspace preferences
               </p>
             </div>
+
+            <Card className="border-border/60 shadow-none">
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <Users className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-sm font-semibold">Organization Settings</CardTitle>
+                    <CardDescription className="text-xs mt-0.5">
+                      Manage your active organization workspace
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <Separator />
+              <CardContent className="pt-4 space-y-4">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Current organization</p>
+                  <p className="text-sm font-medium text-foreground">
+                    {organization?.name ?? 'No organization selected'}
+                  </p>
+                </div>
+
+                <form onSubmit={handleCreateOrganization} className="space-y-2">
+                  <p className="text-xs text-muted-foreground">Create new organization</p>
+                  <div className="flex gap-2">
+                    <Input
+                      value={newOrgName}
+                      onChange={(e) => setNewOrgName(e.target.value)}
+                      disabled={creatingOrg}
+                      placeholder="e.g. Acme Labs"
+                      className="flex-1"
+                    />
+                    <Button type="submit" size="sm" disabled={creatingOrg || !newOrgName.trim()}>
+                      {creatingOrg ? 'Creating...' : 'Create'}
+                    </Button>
+                  </div>
+                </form>
+
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">Switch organization</p>
+                  {memberships.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">You are not part of any organizations yet.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {memberships.map((m) => {
+                        const selected = m.organization.id === organization?.id;
+                        const isSwitching = switchingOrgId === m.organization.id;
+                        return (
+                          <div
+                            key={m.id}
+                            className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2"
+                          >
+                            <div>
+                              <p className="text-sm text-foreground">{m.organization.name}</p>
+                              <p className="text-[11px] text-muted-foreground capitalize">
+                                {m.role === 'org:admin' ? 'Admin' : 'Member'}
+                              </p>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant={selected ? 'secondary' : 'outline'}
+                              disabled={selected || isSwitching}
+                              onClick={() => handleSwitchOrganization(m.organization.id)}
+                            >
+                              {selected ? 'Active' : isSwitching ? 'Switching...' : 'Switch'}
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {isAdmin && organization && (
+                  <form onSubmit={handleSaveOrgName} className="space-y-2">
+                    <p className="text-xs text-muted-foreground">Organization name</p>
+                    <div className="flex gap-2">
+                      <Input
+                        value={orgName}
+                        onChange={(e) => setOrgName(e.target.value)}
+                        disabled={savingOrgName}
+                        placeholder="Your organization name"
+                        className="flex-1"
+                      />
+                      <Button
+                        type="submit"
+                        size="sm"
+                        disabled={savingOrgName || !orgName.trim() || orgName.trim() === organization.name}
+                      >
+                        {savingOrgName ? 'Saving...' : 'Save'}
+                      </Button>
+                    </div>
+                  </form>
+                )}
+              </CardContent>
+            </Card>
 
             {/* Org Invitations — admin only */}
             {isAdmin && (

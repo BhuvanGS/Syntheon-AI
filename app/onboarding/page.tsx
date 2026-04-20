@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useOrganizationList, useUser } from '@clerk/nextjs';
 import { Building2, Users, ArrowRight, Loader2, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,7 +10,6 @@ import { cn } from '@/lib/utils';
 type Step = 'choose' | 'create' | 'join';
 
 export default function OnboardingPage() {
-  const router = useRouter();
   const { user } = useUser();
   const { createOrganization, setActive, userMemberships } = useOrganizationList({
     userMemberships: true,
@@ -22,6 +20,21 @@ export default function OnboardingPage() {
   const [inviteCode, setInviteCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const memberships = userMemberships.data ?? [];
+
+  async function handleSelectOrg(selectedOrgId: string) {
+    if (!setActive) return;
+    setLoading(true);
+    setError('');
+    try {
+      await setActive({ organization: selectedOrgId });
+      window.location.assign('/dashboard');
+    } catch (err: any) {
+      setError(err?.errors?.[0]?.message || 'Failed to switch organization');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function handleCreateOrg(e: React.FormEvent) {
     e.preventDefault();
@@ -31,7 +44,7 @@ export default function OnboardingPage() {
     try {
       const org = await createOrganization({ name: orgName.trim() });
       await setActive({ organization: org.id });
-      router.push('/dashboard');
+      window.location.assign('/dashboard');
     } catch (err: any) {
       setError(err?.errors?.[0]?.message || 'Failed to create organization');
     } finally {
@@ -81,6 +94,35 @@ export default function OnboardingPage() {
                 Get started by setting up your organization workspace.
               </p>
             </div>
+
+            {memberships.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                  Continue with an existing organization
+                </p>
+                <div className="space-y-2">
+                  {memberships.map((membership) => (
+                    <button
+                      key={membership.id}
+                      type="button"
+                      disabled={loading}
+                      onClick={() => handleSelectOrg(membership.organization.id)}
+                      className="w-full flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 text-left transition-all hover:border-primary/40 hover:shadow-sm disabled:opacity-60"
+                    >
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">
+                          {membership.organization.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground capitalize">
+                          {membership.role === 'org:admin' ? 'Admin' : 'Member'}
+                        </p>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="grid gap-3">
               <button

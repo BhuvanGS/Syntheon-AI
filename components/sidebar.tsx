@@ -14,12 +14,13 @@ import {
   Home,
   Video,
   ShieldCheck,
+  LogOut,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useUser, useOrganization } from '@clerk/nextjs';
+import { useClerk, useUser, useOrganization } from '@clerk/nextjs';
 import { useSearchParams } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 
@@ -80,6 +81,7 @@ export function Sidebar({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { user } = useUser();
+  const { signOut } = useClerk();
   const { membership, organization } = useOrganization();
 
   const isAdmin = membership?.role === 'org:admin';
@@ -241,6 +243,14 @@ export function Sidebar({
             </p>
           </div>
         </div>
+        <Button
+          variant="ghost"
+          className="mt-1 w-full justify-start gap-2 px-2 text-muted-foreground hover:text-foreground"
+          onClick={() => signOut({ redirectUrl: '/sign-in' })}
+        >
+          <LogOut className="h-3.5 w-3.5" />
+          Log out
+        </Button>
       </div>
     </aside>
   );

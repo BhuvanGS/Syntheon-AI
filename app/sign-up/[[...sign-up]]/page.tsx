@@ -37,7 +37,7 @@ export default function SignUpPage() {
             Syntheon
           </span>
         </div>
-        <SignUp />
+        <SignUp forceRedirectUrl="/onboarding" signInForceRedirectUrl="/onboarding" />
       </div>
     </div>
   );

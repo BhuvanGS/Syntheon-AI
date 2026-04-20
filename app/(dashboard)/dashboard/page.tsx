@@ -12,7 +12,6 @@ import {
   BarChart3,
   Clock,
   AlertCircle,
-  Home as HomeIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sidebar } from '@/components/sidebar';
@@ -91,7 +90,6 @@ function DashboardContent() {
   const { user } = useUser();
   const { membership, organization } = useOrganization();
   const isAdmin = membership?.role === 'org:admin';
-
   // Admin-only: load memberships lazily
   const { memberships } = useOrganization(
     isAdmin ? { memberships: { infinite: true, pageSize: 50 } } : {}
