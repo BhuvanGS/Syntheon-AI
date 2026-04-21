@@ -81,9 +81,7 @@ export function AssigneePicker({ value, onChange, disabled }: AssigneePickerProp
         {user && (
           <>
             <DropdownMenuItem
-              onClick={() =>
-                onChange({ userId: user.id, displayName: myDisplayName })
-              }
+              onClick={() => onChange({ userId: user.id, displayName: myDisplayName })}
               className="gap-2 cursor-pointer"
             >
               {user.imageUrl ? (
@@ -130,7 +128,10 @@ export function AssigneePicker({ value, onChange, disabled }: AssigneePickerProp
         )}
 
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => onChange(null)} className="gap-2 cursor-pointer text-muted-foreground">
+        <DropdownMenuItem
+          onClick={() => onChange(null)}
+          className="gap-2 cursor-pointer text-muted-foreground"
+        >
           <X className="h-4 w-4" />
           Unassign
         </DropdownMenuItem>

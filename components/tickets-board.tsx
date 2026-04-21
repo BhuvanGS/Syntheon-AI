@@ -13,7 +13,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Loader2, Clock, CheckCircle, AlertCircle, Circle, Pencil } from 'lucide-react';
+import {
+  Loader2,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  Circle,
+  Pencil,
+  LayoutGrid,
+  List,
+} from 'lucide-react';
 import { AssigneePicker, type AssigneeValue } from '@/components/assignee-picker';
 import { TicketDependencyPanel } from '@/components/ticket-dependency-panel';
 import { DependencyBlockerModal } from '@/components/dependency-blocker-modal';
@@ -44,6 +53,7 @@ interface TicketsBoardProps {
 
 export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: TicketsBoardProps) {
   const { user } = useUser();
+  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
   const [assigneeFilter, setAssigneeFilter] = useState<'all' | 'mine' | 'unassigned'>('all');
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
@@ -447,26 +457,52 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1 rounded-lg border border-border p-0.5 bg-muted/40">
-          {(
-            [
-              { key: 'all', label: 'All' },
-              { key: 'mine', label: 'Mine' },
-              { key: 'unassigned', label: 'Unassigned' },
-            ] as const
-          ).map(({ key, label }) => (
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 rounded-lg border border-border p-0.5 bg-muted/40">
+            {(
+              [
+                { key: 'all', label: 'All' },
+                { key: 'mine', label: 'Mine' },
+                { key: 'unassigned', label: 'Unassigned' },
+              ] as const
+            ).map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setAssigneeFilter(key)}
+                className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                  assigneeFilter === key
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-1 rounded-lg border border-border p-0.5 bg-muted/40">
             <button
-              key={key}
-              onClick={() => setAssigneeFilter(key)}
-              className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-                assigneeFilter === key
+              onClick={() => setViewMode('list')}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                viewMode === 'list'
                   ? 'bg-background text-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              {label}
+              <List className="w-3 h-3" />
+              List
             </button>
-          ))}
+            <button
+              onClick={() => setViewMode('kanban')}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                viewMode === 'kanban'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <LayoutGrid className="w-3 h-3" />
+              Kanban
+            </button>
+          </div>
         </div>
         {hasPendingChanges && (
           <div className="flex items-center gap-2">
@@ -688,29 +724,19 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
         </DialogContent>
       </Dialog>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        {columns.map((column) => {
-          const filteredTickets = tickets.filter((ticket) => {
-            if (assigneeFilter === 'mine') return ticket.assignee_user_id === user?.id;
-            if (assigneeFilter === 'unassigned') return !ticket.assignee_user_id;
-            return true;
-          });
-          const columnTickets = filteredTickets.filter((ticket) => ticket.status === column.key);
+      {viewMode === 'kanban' && (
+        <div className="flex gap-4 overflow-x-auto pb-4 items-start">
+          {columns.map((column) => {
+            const filteredTickets = tickets.filter((ticket) => {
+              if (assigneeFilter === 'mine') return ticket.assignee_user_id === user?.id;
+              if (assigneeFilter === 'unassigned') return !ticket.assignee_user_id;
+              return true;
+            });
+            const columnTickets = filteredTickets.filter((ticket) => ticket.status === column.key);
 
-          return (
-            <div key={column.key} className="flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 font-medium text-foreground">
-                  {column.icon}
-                  {column.title}
-                </div>
-                <Badge className={`text-xs px-2 py-0.5 rounded-full font-medium ${column.badge}`}>
-                  {columnTickets.length}
-                </Badge>
-              </div>
-
+            return (
               <div
-                className={`flex flex-col gap-3 min-h-[220px] rounded-2xl p-3 border ${column.color}`}
+                key={column.key}
                 onDragOver={(e) => {
                   e.preventDefault();
                   setDragOverColumn(column.key);
@@ -725,91 +751,173 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                   setDragOverColumn(null);
                   setDraggedTicketId(null);
                 }}
+                className={`min-w-[280px] w-[280px] rounded-2xl border-2 transition-colors h-fit flex flex-col ${
+                  dragOverColumn === column.key
+                    ? 'border-primary/50 bg-primary/5'
+                    : 'border-border bg-muted/40'
+                }`}
               >
-                {columnTickets.length === 0 && (
-                  <p className="text-xs text-muted-foreground text-center py-8">No tickets here</p>
-                )}
+                <div className="flex items-center justify-between px-4 pt-4 pb-2">
+                  <div className="flex items-center gap-2 font-semibold text-sm">
+                    {column.icon}
+                    <span
+                      style={{
+                        color: {
+                          backlog: '#8a8a80',
+                          in_progress: '#3d7abf',
+                          blocked: '#b84040',
+                          done: '#3d8a5e',
+                        }[column.key],
+                      }}
+                    >
+                      {column.title}
+                    </span>
+                  </div>
+                  <span className="text-xs font-bold text-muted-foreground bg-card rounded-full px-2 py-0.5 border border-border">
+                    {columnTickets.length}
+                  </span>
+                </div>
 
-                {columnTickets.map((ticket) => (
-                  <div
-                    key={ticket.id}
-                    draggable
-                    onDragStart={(e) => {
-                      setDraggedTicketId(ticket.id);
-                      e.dataTransfer.setData('text/plain', ticket.id);
-                      e.dataTransfer.effectAllowed = 'move';
-                    }}
-                    onDragEnd={() => {
-                      setDraggedTicketId(null);
-                      setDragOverColumn(null);
-                    }}
-                    className={`bg-white rounded-xl p-4 border border-border transition-all duration-200 group ${
-                      ticket.meeting_id
-                        ? 'hover:border-primary/30 hover:shadow-md cursor-pointer'
-                        : ticket.projectId
-                          ? 'hover:border-primary/30 hover:shadow-md cursor-pointer'
-                          : 'cursor-default'
-                    }`}
-                    onClick={() => {
-                      openTicketSource(ticket);
-                    }}
-                  >
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <h3 className="font-playfair font-bold text-foreground group-hover:text-primary transition-colors text-sm leading-snug">
-                        {ticket.title}
-                      </h3>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[11px] uppercase tracking-wide text-muted-foreground whitespace-nowrap">
-                          {column.title}
-                        </span>
+                <div className="flex flex-col gap-2 p-3">
+                  {columnTickets.length === 0 && (
+                    <div className="flex-1 flex items-center justify-center py-8">
+                      <p className="text-xs text-muted-foreground/50">Drop tickets here</p>
+                    </div>
+                  )}
+
+                  {columnTickets.map((ticket) => (
+                    <div
+                      key={ticket.id}
+                      draggable
+                      onDragStart={(e) => {
+                        setDraggedTicketId(ticket.id);
+                        e.dataTransfer.setData('text/plain', ticket.id);
+                        e.dataTransfer.effectAllowed = 'move';
+                      }}
+                      onDragEnd={() => {
+                        setDraggedTicketId(null);
+                        setDragOverColumn(null);
+                      }}
+                      className={`rounded-xl border border-border bg-card p-3 cursor-grab active:cursor-grabbing shadow-sm hover:shadow-md transition-shadow text-left ${
+                        draggedTicketId === ticket.id ? 'opacity-50' : ''
+                      }`}
+                      onClick={() => openTicketSource(ticket)}
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <p className="text-sm font-medium text-foreground line-clamp-2">
+                          {ticket.title}
+                        </p>
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             openTicketEditor(ticket);
                           }}
-                          className="rounded-full border border-primary/20 bg-primary/5 p-1.5 text-primary hover:bg-primary/10"
+                          className="shrink-0 rounded-full border border-primary/20 bg-primary/5 p-1 text-primary hover:bg-primary/10"
                           aria-label="Update ticket"
                         >
-                          <Pencil className="w-3.5 h-3.5" />
+                          <Pencil className="w-3 h-3" />
                         </button>
                       </div>
+                      {ticket.description && (
+                        <p className="text-xs text-muted-foreground line-clamp-1">
+                          {stripHtml(ticket.description)}
+                        </p>
+                      )}
+                      <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
+                        <span>{getMeetingName(ticket.meeting_id)}</span>
+                        <span>{ticket.assignee ? `@${ticket.assignee}` : 'Unassigned'}</span>
+                      </div>
                     </div>
+                  ))}
 
-                    {ticket.description && (
-                      <p className="text-xs text-muted-foreground leading-5 line-clamp-3">
-                        {stripHtml(ticket.description)}
-                      </p>
-                    )}
+                  {dragOverColumn === column.key && columnTickets.length > 0 && (
+                    <div className="rounded-xl border border-dashed border-primary/40 bg-primary/5 py-3 text-center text-xs text-primary">
+                      Drop here
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
-                    <div className="mt-3 flex items-center justify-between gap-2 text-xs">
+      {viewMode === 'list' &&
+        (() => {
+          const filteredTickets = tickets.filter((ticket) => {
+            if (assigneeFilter === 'mine') return ticket.assignee_user_id === user?.id;
+            if (assigneeFilter === 'unassigned') return !ticket.assignee_user_id;
+            return true;
+          });
+          const statusColors: Record<TicketStatus, { color: string; bg: string }> = {
+            backlog: { color: '#8a8a80', bg: '#f3f3f0' },
+            in_progress: { color: '#3d7abf', bg: '#eff5ff' },
+            done: { color: '#3d8a5e', bg: '#edf7f1' },
+            blocked: { color: '#b84040', bg: '#fdf0f0' },
+          };
+          const statusLabel: Record<TicketStatus, string> = {
+            backlog: 'Backlog',
+            in_progress: 'In Progress',
+            done: 'Done',
+            blocked: 'Blocked',
+          };
+          return (
+            <div className="rounded-2xl border border-border bg-card overflow-hidden">
+              <div className="grid grid-cols-[1fr_120px_160px_80px_40px] items-center px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground border-b border-border/60 bg-muted/40">
+                <span>Title</span>
+                <span>Status</span>
+                <span>Source</span>
+                <span>Assignee</span>
+                <span />
+              </div>
+              {filteredTickets.length === 0 ? (
+                <div className="px-4 py-10 text-center text-sm text-muted-foreground">
+                  No tickets found.
+                </div>
+              ) : (
+                filteredTickets.map((ticket, i) => {
+                  const s = statusColors[ticket.status];
+                  return (
+                    <div
+                      key={ticket.id}
+                      className={`grid grid-cols-[1fr_120px_160px_80px_40px] items-center px-4 py-3 gap-2 hover:bg-muted/40 transition-colors ${
+                        i < filteredTickets.length - 1 ? 'border-b border-border/40' : ''
+                      }`}
+                    >
                       <span
-                        className={`font-medium ${
-                          ticket.meeting_id
-                            ? 'text-primary hover:underline'
-                            : 'text-muted-foreground'
-                        }`}
+                        className="font-medium text-sm text-foreground truncate cursor-pointer hover:text-primary transition-colors"
+                        onClick={() => openTicketSource(ticket)}
                       >
+                        {ticket.title}
+                      </span>
+                      <span
+                        className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium w-fit"
+                        style={{ background: s.bg, color: s.color }}
+                      >
+                        {statusLabel[ticket.status]}
+                      </span>
+                      <span className="text-xs text-muted-foreground truncate">
                         {getMeetingName(ticket.meeting_id)}
                       </span>
-                      <span className="text-muted-foreground">
-                        {ticket.assignee ? `@${ticket.assignee}` : 'Unassigned'}
+                      <span className="text-xs text-muted-foreground truncate">
+                        {ticket.assignee ? `@${ticket.assignee}` : '—'}
                       </span>
-                      <span className="text-primary font-medium">{getSourceCta(ticket)}</span>
+                      <button
+                        type="button"
+                        onClick={() => openTicketEditor(ticket)}
+                        className="rounded-full border border-primary/20 bg-primary/5 p-1 text-primary hover:bg-primary/10 justify-self-end"
+                        aria-label="Edit ticket"
+                      >
+                        <Pencil className="w-3 h-3" />
+                      </button>
                     </div>
-                  </div>
-                ))}
-
-                {dragOverColumn === column.key && (
-                  <div className="rounded-xl border border-dashed border-primary/40 bg-primary/5 py-4 text-center text-xs text-primary">
-                    Drop here to move
-                  </div>
-                )}
-              </div>
+                  );
+                })
+              )}
             </div>
           );
-        })}
-      </div>
+        })()}
 
       {/* Dependency Blocker Modal */}
       {blockerModalData && (

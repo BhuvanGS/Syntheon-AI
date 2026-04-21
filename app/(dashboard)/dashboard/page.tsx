@@ -299,7 +299,7 @@ function DashboardContent() {
                   {organization?.name ?? 'Organization'} Overview
                 </h2>
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  Everything happening across your org
+                  Everything happening across your organization
                 </p>
               </div>
 
@@ -423,7 +423,9 @@ function DashboardContent() {
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle className="text-sm font-semibold">Projects</CardTitle>
-                      <CardDescription className="text-xs mt-0.5">All org projects</CardDescription>
+                      <CardDescription className="text-xs mt-0.5">
+                        All organization projects
+                      </CardDescription>
                     </div>
                     <Button
                       variant="ghost"

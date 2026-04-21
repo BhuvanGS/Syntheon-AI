@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  getProjectById,
-  addProjectMember,
-  removeProjectMember,
-  getProjectMembers,
-} from '@/lib/db';
+import { getProjectById, addProjectMember, removeProjectMember, getProjectMembers } from '@/lib/db';
 import { requireAuth, isOrgAdmin, canAdminProject } from '@/lib/rbac';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

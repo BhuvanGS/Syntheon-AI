@@ -155,9 +155,9 @@ export function ProjectsWorkspace({
   const { membership } = useOrganization();
   const { user } = useUser();
   const isAdmin = membership?.role === 'org:admin';
-  const [kanbanAssigneeFilter, setKanbanAssigneeFilter] = useState<
-    'all' | 'unassigned' | 'mine'
-  >('all');
+  const [kanbanAssigneeFilter, setKanbanAssigneeFilter] = useState<'all' | 'unassigned' | 'mine'>(
+    'all'
+  );
   const [projectTab, setProjectTab] = useState<ProjectTab>('kanban');
   const [draggedTicketId, setDraggedTicketId] = useState<string | null>(null);
   const [draggedStageId, setDraggedStageId] = useState<string | null>(null);
@@ -951,20 +951,19 @@ export function ProjectsWorkspace({
     );
   }
 
-  const allTabs: { id: ProjectTab; label: string; icon: React.ReactNode; adminOnly?: boolean }[] =
-    [
-      { id: 'kanban', label: 'Kanban', icon: <KanbanSquare className="h-4 w-4" /> },
-      { id: 'tickets', label: 'Tickets', icon: <Ticket className="h-4 w-4" /> },
-      { id: 'list', label: 'List', icon: <LayoutList className="h-4 w-4" /> },
-      { id: 'meetings', label: 'Meetings', icon: <Calendar className="h-4 w-4" /> },
-      {
-        id: 'analytics',
-        label: 'Analytics',
-        icon: <BarChart3 className="h-4 w-4" />,
-        adminOnly: true,
-      },
-      { id: 'dependencies', label: 'Dependencies', icon: <GitBranch className="h-4 w-4" /> },
-    ];
+  const allTabs: { id: ProjectTab; label: string; icon: React.ReactNode; adminOnly?: boolean }[] = [
+    { id: 'kanban', label: 'Kanban', icon: <KanbanSquare className="h-4 w-4" /> },
+    { id: 'tickets', label: 'Tickets', icon: <Ticket className="h-4 w-4" /> },
+    { id: 'list', label: 'List', icon: <LayoutList className="h-4 w-4" /> },
+    { id: 'meetings', label: 'Meetings', icon: <Calendar className="h-4 w-4" /> },
+    {
+      id: 'analytics',
+      label: 'Analytics',
+      icon: <BarChart3 className="h-4 w-4" />,
+      adminOnly: true,
+    },
+    { id: 'dependencies', label: 'Dependencies', icon: <GitBranch className="h-4 w-4" /> },
+  ];
   const tabs = allTabs.filter((t) => !t.adminOnly || isAdmin);
 
   const statusConfig: Record<
@@ -1370,7 +1369,7 @@ export function ProjectsWorkspace({
                 ))}
               </div>
             </div>
-            <div className="flex gap-4 overflow-x-auto pb-2">
+            <div className="flex gap-4 overflow-x-auto pb-4 items-start">
               {stages.map((stage) => {
                 const colTickets = rootProjectTickets.filter(
                   (ticket) => resolveTicketStage(ticket).id === stage.id
@@ -1449,7 +1448,7 @@ export function ProjectsWorkspace({
                       </div>
                     </div>
 
-                    <div className="flex flex-col gap-2 p-3 flex-1">
+                    <div className="flex flex-col gap-2 p-3">
                       {colTickets.map((ticket) => (
                         <button
                           key={ticket.id}

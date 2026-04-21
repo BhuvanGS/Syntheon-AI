@@ -134,7 +134,10 @@ function SettingsContent() {
     try {
       await organization.update({ name: orgName.trim() });
       await organization.reload();
-      toast({ title: 'Organization updated', description: 'Organization name saved successfully.' });
+      toast({
+        title: 'Organization updated',
+        description: 'Organization name saved successfully.',
+      });
     } catch (err: any) {
       toast({
         title: 'Failed to update organization',
@@ -361,7 +364,9 @@ function SettingsContent() {
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground">Switch organization</p>
                   {memberships.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">You are not part of any organizations yet.</p>
+                    <p className="text-sm text-muted-foreground">
+                      You are not part of any organizations yet.
+                    </p>
                   ) : (
                     <div className="space-y-2">
                       {memberships.map((m) => {
@@ -407,7 +412,9 @@ function SettingsContent() {
                       <Button
                         type="submit"
                         size="sm"
-                        disabled={savingOrgName || !orgName.trim() || orgName.trim() === organization.name}
+                        disabled={
+                          savingOrgName || !orgName.trim() || orgName.trim() === organization.name
+                        }
                       >
                         {savingOrgName ? 'Saving...' : 'Save'}
                       </Button>
