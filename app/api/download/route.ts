@@ -24,9 +24,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Download file from Supabase storage
-    const { data, error } = await supabaseAdmin.storage
-      .from('ticket-attachments')
-      .download(path);
+    const { data, error } = await supabaseAdmin.storage.from('ticket-attachments').download(path);
 
     if (error || !data) {
       console.error('Download error:', error);

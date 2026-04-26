@@ -1,800 +1,911 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import * as d3 from 'd3';
+import { useEffect, useRef, useState } from 'react';
+import {
+  Bot,
+  Sparkles,
+  GitBranch,
+  Layers,
+  Zap,
+  BookOpen,
+  CreditCard,
+  Scale,
+  ArrowUpRight,
+} from 'lucide-react';
+
+// React Bits components (JS — inferred prop types are loose, cast to any)
+import OrbRaw from '@/components/Orb';
+import MagicRingsRaw from '@/components/MagicRings';
+import AntigravityRaw from '@/components/Antigravity';
+import LogoLoopRaw from '@/components/LogoLoop';
+import GlassIconsRaw from '@/components/GlassIcons';
+import VerticalDockRaw from '@/components/VerticalDock';
+import DecryptedTextRaw from '@/components/DecryptedText';
+
+const Orb = OrbRaw as any;
+const MagicRings = MagicRingsRaw as any;
+const Antigravity = AntigravityRaw as any;
+const LogoLoop = LogoLoopRaw as any;
+const GlassIcons = GlassIconsRaw as any;
+const VerticalDock = VerticalDockRaw as any;
+const DecryptedText = DecryptedTextRaw as any;
+
+// ─── Theme tokens (monochrome — black & white only) ──────────────
+const C = {
+  ink: '#000000', // pure black
+  inkSoft: '#0d0d0d',
+  cream: '#ffffff',
+  creamWarm: '#fafafa',
+  matcha: '#000000', // primary == black
+  matchaMid: '#525252',
+  matchaLight: '#a3a3a3',
+  mint: '#e5e5e5',
+  beige: '#e5e5e5',
+  text: '#0a0a0a',
+  muted: '#737373',
+};
 
 export default function LandingPage() {
-  const [dark, setDark] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const svgRef = useRef<SVGSVGElement>(null);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
-  useEffect(() => {
-    const stored = localStorage.getItem('syntheon-theme');
-    if (stored === 'dark') {
-      setDark(true);
-      document.documentElement.classList.add('dark');
-    }
-  }, []);
+  // Tech stack for LogoLoop (text nodes — clean & monochrome)
+  const techLogos = [
+    { node: <TechBadge label="Next.js" /> },
+    { node: <TechBadge label="Supabase" /> },
+    { node: <TechBadge label="Clerk" /> },
+    { node: <TechBadge label="OpenAI" /> },
+    { node: <TechBadge label="GitHub" /> },
+    { node: <TechBadge label="Vercel" /> },
+    { node: <TechBadge label="Three.js" /> },
+    { node: <TechBadge label="Tiptap" /> },
+    { node: <TechBadge label="shadcn/ui" /> },
+    { node: <TechBadge label="TailwindCSS" /> },
+  ];
 
-  function toggleTheme() {
-    const next = !dark;
-    setDark(next);
-    document.documentElement.classList.toggle('dark', next);
-    localStorage.setItem('syntheon-theme', next ? 'dark' : 'light');
-  }
+  // GlassIcons feature row
+  const glassItems = [
+    { icon: <Bot size={22} />, color: 'green', label: 'Bot joins' },
+    { icon: <Sparkles size={22} />, color: 'green', label: 'Specs extracted' },
+    { icon: <GitBranch size={22} />, color: 'green', label: 'PR opened' },
+    { icon: <Layers size={22} />, color: 'green', label: 'MCT context' },
+    { icon: <Zap size={22} />, color: 'green', label: 'Live preview' },
+  ];
 
-  useEffect(() => {
-    if (!svgRef.current) return;
-    const svg = d3.select(svgRef.current);
-    svg.selectAll('*').remove();
-
-    const width = svgRef.current.clientWidth || 700;
-    const height = 320;
-
-    const nodes = [
-      { id: 'meeting', label: 'Meeting', x: 60, y: 140, color: '#5c7c5d' },
-      { id: 'bot', label: 'Bot joins', x: 190, y: 80, color: '#8aab7e' },
-      { id: 'transcript', label: 'Transcript', x: 320, y: 140, color: '#5c7c5d' },
-      { id: 'specs', label: 'Spec blocks', x: 450, y: 80, color: '#8aab7e' },
-      { id: 'code', label: 'Code gen', x: 580, y: 140, color: '#3d5a3e' },
-      { id: 'deploy', label: 'Deployed', x: 650, y: 220, color: '#3d5a3e' },
-    ];
-
-    const links = [
-      { source: 'meeting', target: 'bot' },
-      { source: 'bot', target: 'transcript' },
-      { source: 'transcript', target: 'specs' },
-      { source: 'specs', target: 'code' },
-      { source: 'code', target: 'deploy' },
-    ];
-
-    const nodeMap: Record<string, (typeof nodes)[0]> = {};
-    nodes.forEach((n) => (nodeMap[n.id] = n));
-
-    // Draw links
-    links.forEach((l) => {
-      const s = nodeMap[l.source];
-      const t = nodeMap[l.target];
-      svg
-        .append('line')
-        .attr('x1', s.x)
-        .attr('y1', s.y)
-        .attr('x2', t.x)
-        .attr('y2', t.y)
-        .attr('stroke', dark ? '#4a6b4b' : '#c8dbc4')
-        .attr('stroke-width', 2)
-        .attr('stroke-dasharray', '6,4')
-        .attr('opacity', 0)
-        .transition()
-        .duration(600)
-        .delay((_d, i) => i * 200)
-        .attr('opacity', 1);
-    });
-
-    // Animated particles along links
-    links.forEach((l, i) => {
-      const s = nodeMap[l.source];
-      const t = nodeMap[l.target];
-
-      const particle = svg
-        .append('circle')
-        .attr('r', 4)
-        .attr('fill', '#8aab7e')
-        .attr('cx', s.x)
-        .attr('cy', s.y)
-        .attr('opacity', 0);
-
-      function animate() {
-        particle
-          .attr('cx', s.x)
-          .attr('cy', s.y)
-          .attr('opacity', 1)
-          .transition()
-          .duration(1200)
-          .delay(i * 300)
-          .attr('cx', t.x)
-          .attr('cy', t.y)
-          .transition()
-          .duration(0)
-          .attr('opacity', 0)
-          .on('end', animate);
-      }
-      setTimeout(animate, i * 400);
-    });
-
-    // Draw nodes
-    nodes.forEach((n, i) => {
-      const g = svg.append('g').attr('transform', `translate(${n.x}, ${n.y})`).attr('opacity', 0);
-
-      g.transition()
-        .duration(500)
-        .delay(i * 150)
-        .attr('opacity', 1);
-
-      g.append('circle')
-        .attr('r', 36)
-        .attr('fill', dark ? '#1e2a1f' : '#eaf2e8')
-        .attr('stroke', n.color)
-        .attr('stroke-width', 2);
-
-      g.append('text')
-        .attr('text-anchor', 'middle')
-        .attr('dy', '0.35em')
-        .attr('font-size', '11px')
-        .attr('font-family', 'DM Sans, sans-serif')
-        .attr('font-weight', '500')
-        .attr('fill', dark ? '#c8dbc4' : '#3d5a3e')
-        .text(n.label);
-
-      // Pulse ring
-      g.append('circle')
-        .attr('r', 36)
-        .attr('fill', 'none')
-        .attr('stroke', n.color)
-        .attr('stroke-width', 1)
-        .attr('opacity', 0.5)
-        .transition()
-        .duration(1500)
-        .delay(i * 200)
-        .ease(d3.easeSinInOut)
-        .attr('r', 50)
-        .attr('opacity', 0)
-        .on('end', function () {
-          d3.select(this).attr('r', 36).attr('opacity', 0.5);
-        });
-    });
-  }, [dark]);
-
-  const features = [
+  // Side Dock — vertical
+  const dockItems = [
     {
-      icon: '◎',
-      title: 'Bot joins your meeting',
-      desc: 'One click sends an AI bot to any Google Meet, Zoom, or Teams call. It listens, transcribes, and understands everything discussed.',
+      icon: <BookOpen size={20} color={C.cream} />,
+      label: 'How it works',
+      onClick: () => (window.location.href = '/how-it-works'),
     },
     {
-      icon: '◈',
-      title: 'Specs extracted automatically',
-      desc: 'Every feature, idea, and constraint discussed is captured as a structured spec block. Nothing gets lost between the meeting and the backlog.',
+      icon: <CreditCard size={20} color={C.cream} />,
+      label: 'Pricing',
+      onClick: () => (window.location.href = '/pricing'),
     },
     {
-      icon: '◉',
-      title: 'Code generated and shipped',
-      desc: 'Approve the specs you want built. Syntheon generates the code, opens a GitHub PR, creates Linear tickets, and deploys a live preview.',
+      icon: <Scale size={20} color={C.cream} />,
+      label: 'Legal',
+      onClick: () => (window.location.href = '/legal'),
     },
     {
-      icon: '⬡',
-      title: 'Meeting Context Transfer',
-      desc: 'Follow-up meetings build on existing code. Syntheon remembers the full project history and generates only the precise changes needed.',
+      icon: <ArrowUpRight size={20} color={C.cream} />,
+      label: 'Open App',
+      onClick: () => (window.location.href = '/dashboard'),
     },
   ];
 
   return (
     <div
-      className={dark ? 'dark' : ''}
       style={{
         minHeight: '100vh',
-        background: dark ? '#0f1410' : '#faf8f4',
-        color: dark ? '#e8ede6' : '#2c2c28',
-        fontFamily: "'DM Sans', sans-serif",
-        transition: 'background 0.3s, color 0.3s',
+        background: C.cream,
+        color: C.text,
+        fontFamily: "'Inter', 'DM Sans', system-ui, sans-serif",
+        overflowX: 'hidden',
       }}
     >
-      {/* Nav */}
-      <nav
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 50,
-          borderBottom: `1px solid ${dark ? '#1e2a1f' : '#e8dfd0'}`,
-          background: dark ? 'rgba(15,20,16,0.95)' : 'rgba(250,248,244,0.95)',
-          backdropFilter: 'blur(12px)',
-          padding: '0 2rem',
-          height: '60px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <img
-            src="/logo.png"
-            alt="Syntheon"
-            style={{ width: '32px', height: '32px', objectFit: 'contain' }}
-          />
-          <span
-            style={{
-              fontFamily: "'DM Serif Display', serif",
-              fontSize: '18px',
-              fontWeight: '400',
-              color: dark ? '#c8dbc4' : '#3d5a3e',
-            }}
-          >
-            Syntheon
-          </span>
-        </div>
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+        html {
+          scroll-behavior: smooth;
+        }
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-          <Link
-            href="/how-it-works"
-            style={{
-              fontSize: '14px',
-              color: dark ? '#8aab7e' : '#5c7c5d',
-              textDecoration: 'none',
-            }}
-          >
-            How it works
-          </Link>
-          <Link
-            href="/pricing"
-            style={{
-              fontSize: '14px',
-              color: dark ? '#8aab7e' : '#5c7c5d',
-              textDecoration: 'none',
-            }}
-          >
-            Pricing
-          </Link>
-          <Link
-            href="/legal"
-            style={{
-              fontSize: '14px',
-              color: dark ? '#8aab7e' : '#5c7c5d',
-              textDecoration: 'none',
-            }}
-          >
-            Legal
-          </Link>
-          <button
-            onClick={toggleTheme}
-            style={{
-              background: 'none',
-              border: `1px solid ${dark ? '#3d5a3e' : '#c8dbc4'}`,
-              borderRadius: '20px',
-              padding: '4px 12px',
-              fontSize: '13px',
-              cursor: 'pointer',
-              color: dark ? '#8aab7e' : '#5c7c5d',
-            }}
-          >
-            {dark ? '☀ Light' : '☽ Dark'}
-          </button>
-          <Link
-            href="/dashboard"
-            style={{
-              background: '#3d5a3e',
-              color: '#eaf2e8',
-              padding: '8px 18px',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: '500',
-              textDecoration: 'none',
-            }}
-          >
-            Open App
-          </Link>
-        </div>
-      </nav>
+        /* Fix GlassIcons for monochrome theme — horizontal row, always-visible labels, glass look */
+        .syntheon-glass .icon-btns {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: center;
+          gap: 2.5rem;
+          grid-gap: 0;
+          padding: 1rem 0 3rem;
+          grid-template-columns: none;
+        }
+        .syntheon-glass .icon-btn {
+          width: 5.5em;
+          height: 5.5em;
+        }
+        .syntheon-glass .icon-btn__back {
+          background: linear-gradient(135deg, #2a2a2a, #000000) !important;
+          box-shadow: 0.4em -0.4em 1em rgba(0, 0, 0, 0.22);
+        }
+        .syntheon-glass .icon-btn__front {
+          background: rgba(255, 255, 255, 0.4) !important;
+          box-shadow:
+            0 0 0 0.08em rgba(255, 255, 255, 0.6) inset,
+            0 8px 24px rgba(0, 0, 0, 0.12);
+          color: #ffffff;
+        }
+        .syntheon-glass .icon-btn__icon {
+          color: #ffffff;
+          width: 1.75em;
+          height: 1.75em;
+        }
+        .syntheon-glass .icon-btn__label {
+          font-family: 'Inter', sans-serif;
+          font-size: 0.78rem;
+          font-weight: 500;
+          letter-spacing: 0.04em;
+          color: #5a5a52;
+          opacity: 1 !important;
+          transform: translateY(30%) !important;
+          top: 100%;
+        }
+        .syntheon-glass .icon-btn:hover .icon-btn__label {
+          color: #000000;
+        }
 
-      {/* Hero */}
+        /* Smooth section reveal */
+        .reveal-section {
+          opacity: 0;
+          transform: translateY(30px);
+          transition:
+            opacity 0.8s ease-out,
+            transform 0.8s ease-out;
+        }
+        .reveal-section.in-view {
+          opacity: 1;
+          transform: translateY(0);
+        }
+
+        @keyframes recPulse {
+          0%,
+          100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.3;
+          }
+        }
+      `}</style>
+
+      {/* ─── HERO with Orb background + "Syntheon" centered ───────── */}
       <section
         style={{
-          paddingTop: '140px',
-          paddingBottom: '80px',
-          textAlign: 'center',
-          maxWidth: '860px',
-          margin: '0 auto',
-          padding: '140px 2rem 80px',
+          position: 'relative',
+          minHeight: '100vh',
+          background: C.ink,
+          overflow: 'hidden',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
         }}
       >
+        {/* Orb — oversized to fill & extend past hero */}
         <div
           style={{
-            display: 'inline-block',
-            background: dark ? '#1e2a1f' : '#eaf2e8',
-            border: `1px solid ${dark ? '#3d5a3e' : '#c8dbc4'}`,
-            borderRadius: '20px',
-            padding: '6px 16px',
-            fontSize: '13px',
-            color: dark ? '#8aab7e' : '#5c7c5d',
-            marginBottom: '2rem',
-            fontWeight: '500',
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: 'min(115vmin, 1200px)',
+            height: 'min(115vmin, 1200px)',
+            opacity: 0.9,
           }}
         >
-          Meeting Context Transfer — now available
+          {mounted && (
+            <Orb hue={0} hoverIntensity={0.25} rotateOnHover={true} forceHoverState={false} />
+          )}
         </div>
 
-        <h1
-          style={{
-            fontFamily: "'DM Serif Display', serif",
-            fontSize: 'clamp(2.5rem, 6vw, 4.5rem)',
-            fontWeight: '400',
-            lineHeight: '1.1',
-            marginBottom: '1.5rem',
-            color: dark ? '#eaf2e8' : '#2c2c28',
-          }}
-        >
-          Your meetings deserve
-          <br />
-          <span style={{ color: '#5c7c5d', fontStyle: 'italic' }}>better than Jira.</span>
-        </h1>
-
-        <p
-          style={{
-            fontSize: '1.2rem',
-            lineHeight: '1.7',
-            color: dark ? '#8aab7e' : '#5a5a52',
-            maxWidth: '600px',
-            margin: '0 auto 2.5rem',
-            fontWeight: '300',
-          }}
-        >
-          Syntheon joins your meetings, extracts every idea discussed, generates the code, opens the
-          PR, creates the tickets, and deploys a live preview — automatically.
-        </p>
-
-        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Link
-            href="/dashboard"
-            style={{
-              background: '#3d5a3e',
-              color: '#eaf2e8',
-              padding: '14px 32px',
-              borderRadius: '10px',
-              fontSize: '16px',
-              fontWeight: '600',
-              textDecoration: 'none',
-              letterSpacing: '0.01em',
-            }}
-          >
-            Start free
-          </Link>
-          <Link
-            href="/how-it-works"
-            style={{
-              background: 'none',
-              border: `2px solid ${dark ? '#3d5a3e' : '#c8dbc4'}`,
-              color: dark ? '#8aab7e' : '#5c7c5d',
-              padding: '14px 32px',
-              borderRadius: '10px',
-              fontSize: '16px',
-              fontWeight: '600',
-              textDecoration: 'none',
-            }}
-          >
-            See how it works
-          </Link>
-        </div>
-      </section>
-
-      {/* D3 Pipeline */}
-      <section style={{ maxWidth: '900px', margin: '0 auto', padding: '0 2rem 80px' }}>
+        {/* Subtle vignette overlay */}
         <div
           style={{
-            background: dark ? '#111a12' : '#f5f0e8',
-            border: `1px solid ${dark ? '#1e2a1f' : '#e8dfd0'}`,
-            borderRadius: '16px',
-            padding: '2rem',
-            position: 'relative',
-            overflow: 'hidden',
+            position: 'absolute',
+            inset: 0,
+            background:
+              'radial-gradient(ellipse at center, transparent 35%, rgba(15,20,16,0.6) 95%)',
+            pointerEvents: 'none',
           }}
-        >
-          <p
-            style={{
-              textAlign: 'center',
-              fontSize: '13px',
-              fontWeight: '500',
-              color: dark ? '#5c7c5d' : '#8aab7e',
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-              marginBottom: '1rem',
-            }}
-          >
-            The Syntheon pipeline
-          </p>
-          <svg ref={svgRef} style={{ width: '100%', height: '320px', display: 'block' }} />
-        </div>
-      </section>
+        />
 
-      {/* Features */}
-      <section style={{ maxWidth: '1000px', margin: '0 auto', padding: '0 2rem 100px' }}>
-        <h2
-          style={{
-            fontFamily: "'DM Serif Display', serif",
-            fontSize: '2.5rem',
-            fontWeight: '400',
-            textAlign: 'center',
-            marginBottom: '3rem',
-            color: dark ? '#eaf2e8' : '#2c2c28',
-          }}
-        >
-          Everything in one pipeline
-        </h2>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-            gap: '1.5rem',
-          }}
-        >
-          {features.map((f, i) => (
-            <div
-              key={i}
-              style={{
-                background: dark ? '#111a12' : '#ffffff',
-                border: `1px solid ${dark ? '#1e2a1f' : '#e8dfd0'}`,
-                borderRadius: '12px',
-                padding: '1.75rem',
-                transition: 'transform 0.2s, box-shadow 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-4px)';
-                (e.currentTarget as HTMLDivElement).style.boxShadow =
-                  `0 12px 40px ${dark ? 'rgba(0,0,0,0.4)' : 'rgba(61,90,62,0.12)'}`;
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLDivElement).style.transform = 'none';
-                (e.currentTarget as HTMLDivElement).style.boxShadow = 'none';
-              }}
-            >
-              <div style={{ fontSize: '24px', marginBottom: '1rem', color: '#5c7c5d' }}>
-                {f.icon}
-              </div>
-              <h3
-                style={{
-                  fontFamily: "'DM Serif Display', serif",
-                  fontSize: '1.2rem',
-                  fontWeight: '400',
-                  marginBottom: '0.75rem',
-                  color: dark ? '#eaf2e8' : '#2c2c28',
-                }}
-              >
-                {f.title}
-              </h3>
-              <p
-                style={{
-                  fontSize: '14px',
-                  lineHeight: '1.7',
-                  color: dark ? '#6a7a68' : '#5a5a52',
-                  fontWeight: '300',
-                }}
-              >
-                {f.desc}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* MCT Section */}
-      <section style={{ background: dark ? '#111a12' : '#eaf2e8', padding: '80px 2rem' }}>
-        <div style={{ maxWidth: '800px', margin: '0 auto', textAlign: 'center' }}>
-          <div
-            style={{
-              display: 'inline-block',
-              background: dark ? '#1e2a1f' : '#ffffff',
-              border: `1px solid ${dark ? '#3d5a3e' : '#c8dbc4'}`,
-              borderRadius: '20px',
-              padding: '6px 16px',
-              fontSize: '13px',
-              color: dark ? '#8aab7e' : '#5c7c5d',
-              marginBottom: '1.5rem',
-              fontWeight: '500',
-            }}
-          >
-            MCT — Meeting Context Transfer
-          </div>
-          <h2
-            style={{
-              fontFamily: "'DM Serif Display', serif",
-              fontSize: '2.5rem',
-              fontWeight: '400',
-              marginBottom: '1.5rem',
-              color: dark ? '#eaf2e8' : '#2c2c28',
-            }}
-          >
-            Big projects span
-            <br />
-            multiple meetings.
-          </h2>
-          <p
-            style={{
-              fontSize: '1.1rem',
-              lineHeight: '1.8',
-              color: dark ? '#8aab7e' : '#5a5a52',
-              fontWeight: '300',
-              marginBottom: '2rem',
-            }}
-          >
-            Syntheon remembers everything. When you have a follow-up meeting, the bot joins with the
-            full context of your project — every spec discussed, every file built. It generates only
-            the precise changes needed, not a full rewrite.
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
-            {[
-              { label: 'Meeting 1', desc: 'Basic calculator built' },
-              { label: 'Meeting 2', desc: 'Scientific mode added' },
-              { label: 'Meeting 3', desc: 'Dark mode + history' },
-            ].map((step, i) => (
-              <div
-                key={i}
-                style={{
-                  background: dark ? '#0f1410' : '#ffffff',
-                  border: `1px solid ${dark ? '#1e2a1f' : '#c8dbc4'}`,
-                  borderRadius: '10px',
-                  padding: '1.25rem',
-                }}
-              >
-                <p
-                  style={{
-                    fontSize: '12px',
-                    fontWeight: '500',
-                    color: dark ? '#5c7c5d' : '#8aab7e',
-                    letterSpacing: '0.08em',
-                    textTransform: 'uppercase',
-                    marginBottom: '0.5rem',
-                  }}
-                >
-                  {step.label}
-                </p>
-                <p
-                  style={{
-                    fontSize: '14px',
-                    color: dark ? '#c8dbc4' : '#3d5a3e',
-                    fontWeight: '500',
-                  }}
-                >
-                  {step.desc}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Stats */}
-      <section style={{ maxWidth: '900px', margin: '0 auto', padding: '80px 2rem' }}>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-            gap: '2rem',
-            textAlign: 'center',
-          }}
-        >
-          {[
-            { value: '< 2min', label: 'From meeting end to specs' },
-            { value: '0', label: 'Manual tickets written' },
-            { value: '100%', label: 'Ideas captured, nothing lost' },
-            { value: '1 click', label: 'From spec to deployed code' },
-          ].map((stat, i) => (
-            <div key={i}>
-              <p
-                style={{
-                  fontFamily: "'DM Serif Display', serif",
-                  fontSize: '2.5rem',
-                  fontWeight: '400',
-                  color: '#5c7c5d',
-                  marginBottom: '0.5rem',
-                }}
-              >
-                {stat.value}
-              </p>
-              <p
-                style={{ fontSize: '14px', color: dark ? '#6a7a68' : '#8a8a80', fontWeight: '300' }}
-              >
-                {stat.label}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section style={{ background: '#3d5a3e', padding: '80px 2rem', textAlign: 'center' }}>
-        <h2
-          style={{
-            fontFamily: "'DM Serif Display', serif",
-            fontSize: '2.5rem',
-            fontWeight: '400',
-            color: '#eaf2e8',
-            marginBottom: '1rem',
-          }}
-        >
-          Ready to stop writing tickets?
-        </h2>
-        <p
-          style={{ fontSize: '1.1rem', color: '#8aab7e', marginBottom: '2rem', fontWeight: '300' }}
-        >
-          Start free. No credit card required.
-        </p>
+        {/* Start free — top right, localized to hero */}
         <Link
           href="/dashboard"
           style={{
-            background: '#eaf2e8',
-            color: '#3d5a3e',
-            padding: '16px 40px',
-            borderRadius: '10px',
-            fontSize: '16px',
-            fontWeight: '600',
+            position: 'absolute',
+            top: '1.75rem',
+            right: '1.75rem',
+            zIndex: 5,
+            background: C.cream,
+            color: C.ink,
+            padding: '11px 24px',
+            borderRadius: '999px',
+            fontSize: '14px',
+            fontWeight: 500,
             textDecoration: 'none',
-            display: 'inline-block',
+            letterSpacing: '0.01em',
+            boxShadow: '0 8px 28px rgba(0,0,0,0.35)',
+            transition: 'transform 0.2s',
+          }}
+          onMouseEnter={(e) =>
+            ((e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)')
+          }
+          onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.transform = 'none')}
+        >
+          Start free →
+        </Link>
+
+        {/* Hero content */}
+        <div
+          style={{
+            position: 'relative',
+            zIndex: 2,
+            textAlign: 'center',
+            maxWidth: '900px',
+            padding: '0 2rem',
+            pointerEvents: 'none',
           }}
         >
-          Get started free
-        </Link>
+          <h1
+            style={{
+              fontFamily: "'Fraunces', 'DM Serif Display', serif",
+              fontSize: 'clamp(4rem, 14vw, 11rem)',
+              fontWeight: 300,
+              lineHeight: 0.95,
+              letterSpacing: '-0.04em',
+              color: C.cream,
+              margin: 0,
+              textShadow: '0 8px 60px rgba(255,255,255,0.18)',
+            }}
+          >
+            Syntheon
+          </h1>
+
+          <p
+            style={{
+              fontFamily: "'Fraunces', serif",
+              fontSize: 'clamp(1.1rem, 2vw, 1.5rem)',
+              fontStyle: 'italic',
+              fontWeight: 300,
+              color: C.matchaLight,
+              marginTop: '1.5rem',
+              marginBottom: '2.5rem',
+              letterSpacing: '0.01em',
+            }}
+          >
+            Conversations, compiled into software.
+          </p>
+        </div>
+
+        {/* scroll indicator */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '2rem',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            color: C.matchaLight,
+            fontSize: '11px',
+            letterSpacing: '0.2em',
+            textTransform: 'uppercase',
+            opacity: 0.6,
+          }}
+        >
+          ↓ scroll
+        </div>
       </section>
 
-      {/* Footer */}
-      <footer
+      {/* ─── Smooth transition from ink → cream ───────────────────── */}
+      <div
+        aria-hidden
         style={{
-          borderTop: `1px solid ${dark ? '#1e2a1f' : '#e8dfd0'}`,
-          padding: '3rem 2rem',
-          background: dark ? '#0f1410' : '#faf8f4',
+          height: '200px',
+          background: `linear-gradient(180deg, ${C.ink} 0%, ${C.cream} 100%)`,
+        }}
+      />
+
+      {/* ─── GlassIcons feature row ───────────────────────────────── */}
+      <section
+        className="syntheon-glass"
+        style={{
+          background: C.cream,
+          padding: '2rem 2rem 7rem',
+        }}
+      >
+        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+          <SectionLabel>Pipeline</SectionLabel>
+          <h2 style={sectionH2}>Five steps. Zero tickets written.</h2>
+          <p
+            style={{
+              fontSize: '1rem',
+              color: C.muted,
+              maxWidth: '560px',
+              margin: '1.25rem auto 0',
+              lineHeight: 1.7,
+              fontWeight: 300,
+              textAlign: 'center',
+            }}
+          >
+            Every conversation — compiled, shipped, remembered.
+          </p>
+          <div
+            style={{
+              marginTop: '3rem',
+              display: 'flex',
+              justifyContent: 'center',
+            }}
+          >
+            <GlassIcons items={glassItems} />
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Antigravity showcase ─────────────────────────────────── */}
+      <section
+        style={{
+          background: C.inkSoft,
+          color: C.cream,
+          padding: '8rem 2rem',
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+      >
+        <div
+          style={{
+            maxWidth: '1200px',
+            margin: '0 auto',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+            gap: '3rem',
+            alignItems: 'center',
+          }}
+        >
+          <div>
+            <div
+              style={{
+                fontSize: '12px',
+                letterSpacing: '0.18em',
+                textTransform: 'uppercase',
+                color: C.matchaLight,
+                marginBottom: '1.5rem',
+                fontWeight: 500,
+              }}
+            >
+              Meeting Context Transfer
+            </div>
+            <h2
+              style={{
+                fontFamily: "'Fraunces', serif",
+                fontSize: 'clamp(2rem, 4.5vw, 3.2rem)',
+                fontWeight: 300,
+                lineHeight: 1.1,
+                letterSpacing: '-0.02em',
+                marginBottom: '1.5rem',
+              }}
+            >
+              Every conversation, <em style={{ color: C.matchaLight }}>remembered.</em>
+            </h2>
+            <p
+              style={{
+                fontSize: '1.05rem',
+                lineHeight: 1.8,
+                color: 'rgba(250,248,244,0.7)',
+                fontWeight: 300,
+                marginBottom: '2rem',
+              }}
+            >
+              Big projects span multiple meetings. Syntheon remembers everything — every spec
+              discussed, every file built. Follow-up meetings generate only the precise changes
+              needed, not a full rewrite.
+            </p>
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+              {[
+                'Meeting 1 · Calculator',
+                'Meeting 2 · Scientific mode',
+                'Meeting 3 · Dark mode',
+              ].map((s) => (
+                <span
+                  key={s}
+                  style={{
+                    background: 'rgba(255,255,255,0.06)',
+                    border: `1px solid rgba(255,255,255,0.18)`,
+                    borderRadius: '999px',
+                    padding: '6px 14px',
+                    fontSize: '13px',
+                    color: C.matchaLight,
+                  }}
+                >
+                  {s}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div style={{ height: '460px', position: 'relative' }}>
+            {mounted && (
+              <Antigravity
+                count={280}
+                magnetRadius={6}
+                ringRadius={6}
+                waveSpeed={0.4}
+                waveAmplitude={1}
+                particleSize={1.4}
+                lerpSpeed={0.05}
+                color={C.matchaLight}
+                autoAnimate={true}
+                particleVariance={1}
+              />
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── MagicRings — recording animation showcase ────────────── */}
+      <section
+        style={{
+          background: C.cream,
+          padding: '8rem 2rem',
+          textAlign: 'center',
+        }}
+      >
+        <SectionLabel>Live capture</SectionLabel>
+        <h2 style={sectionH2}>The bot is listening.</h2>
+        <p
+          style={{
+            fontSize: '1.05rem',
+            color: C.muted,
+            maxWidth: '560px',
+            margin: '1.25rem auto 3rem',
+            lineHeight: 1.7,
+            fontWeight: 300,
+          }}
+        >
+          One click sends Syntheon into any Google Meet, Zoom, or Teams call. It transcribes,
+          extracts intent, and structures everything in real-time.
+        </p>
+        <div
+          style={{
+            position: 'relative',
+            width: '100%',
+            maxWidth: '1200px',
+            height: 'min(780px, 80vh)',
+            margin: '0 auto',
+            borderRadius: '32px',
+            overflow: 'hidden',
+            background: C.ink,
+            border: `1px solid ${C.beige}`,
+            boxShadow: '0 40px 120px rgba(0,0,0,0.35)',
+          }}
+        >
+          {mounted && (
+            <MagicRings
+              color={C.matchaLight}
+              colorTwo={C.mint}
+              ringCount={8}
+              speed={0.85}
+              baseRadius={0.42}
+              radiusStep={0.11}
+              ringGap={1.4}
+              opacity={1}
+              noiseAmount={0.07}
+              lineThickness={2.2}
+              attenuation={9}
+            />
+          )}
+          {/* Center text — DecryptedText */}
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              pointerEvents: 'none',
+              padding: '0 2rem',
+            }}
+          >
+            <div
+              style={{
+                fontFamily: "'JetBrains Mono', 'Fraunces', serif",
+                fontSize: 'clamp(1.2rem, 3.2vw, 2.4rem)',
+                color: C.cream,
+                fontWeight: 400,
+                letterSpacing: '0.01em',
+                textAlign: 'center',
+                maxWidth: '900px',
+                lineHeight: 1.3,
+                textShadow: '0 6px 40px rgba(0,0,0,0.6)',
+                pointerEvents: 'auto',
+              }}
+            >
+              {mounted && <LoopingDecrypt />}
+            </div>
+          </div>
+          {/* REC indicator badge */}
+          <div
+            style={{
+              position: 'absolute',
+              top: '1.5rem',
+              left: '1.5rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              background: 'rgba(15,20,16,0.6)',
+              border: '1px solid rgba(220,38,38,0.4)',
+              borderRadius: '999px',
+              padding: '6px 14px',
+              fontSize: '11px',
+              fontFamily: "'JetBrains Mono', monospace",
+              letterSpacing: '0.18em',
+              color: '#f5a5a5',
+              textTransform: 'uppercase',
+              backdropFilter: 'blur(10px)',
+            }}
+          >
+            <span
+              style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: '#dc2626',
+                boxShadow: '0 0 8px #dc2626',
+                animation: 'recPulse 1.4s infinite',
+              }}
+            />
+            REC
+          </div>
+        </div>
+      </section>
+
+      {/* ─── LogoLoop tech stack ──────────────────────────────────── */}
+      <section
+        style={{
+          background: C.creamWarm,
+          padding: '5rem 0',
+          borderTop: `1px solid ${C.beige}`,
+          borderBottom: `1px solid ${C.beige}`,
+        }}
+      >
+        <div style={{ textAlign: 'center', marginBottom: '2.5rem', padding: '0 2rem' }}>
+          <SectionLabel>Built on</SectionLabel>
+        </div>
+        <div style={{ height: '60px' }}>
+          <LogoLoop
+            logos={techLogos}
+            speed={50}
+            direction="left"
+            logoHeight={32}
+            gap={56}
+            pauseOnHover={true}
+            fadeOut={true}
+            fadeOutColor={C.creamWarm}
+            ariaLabel="Built with"
+          />
+        </div>
+      </section>
+
+      {/* ─── Stats ────────────────────────────────────────────────── */}
+      <section
+        style={{
+          background: C.cream,
+          padding: '6rem 2rem',
         }}
       >
         <div
           style={{
             maxWidth: '1000px',
             margin: '0 auto',
-            display: 'flex',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: '2rem',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gap: '2.5rem',
+            textAlign: 'center',
+          }}
+        >
+          {[
+            { v: '< 2 min', l: 'meeting → specs' },
+            { v: '0', l: 'tickets written by hand' },
+            { v: '100%', l: 'ideas captured' },
+            { v: '1 click', l: 'spec → deployed' },
+          ].map((s) => (
+            <div key={s.l}>
+              <div
+                style={{
+                  fontFamily: "'Fraunces', serif",
+                  fontSize: '3rem',
+                  fontWeight: 300,
+                  color: C.matcha,
+                  letterSpacing: '-0.03em',
+                  lineHeight: 1,
+                }}
+              >
+                {s.v}
+              </div>
+              <div
+                style={{
+                  marginTop: '0.5rem',
+                  fontSize: '13px',
+                  color: C.muted,
+                  letterSpacing: '0.02em',
+                  fontWeight: 400,
+                }}
+              >
+                {s.l}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ─── CTA ─────────────────────────────────────────────────── */}
+      <section
+        style={{
+          background: C.matcha,
+          padding: '6rem 2rem',
+          textAlign: 'center',
+          color: C.cream,
+        }}
+      >
+        <h2
+          style={{
+            fontFamily: "'Fraunces', serif",
+            fontSize: 'clamp(2rem, 5vw, 3rem)',
+            fontWeight: 300,
+            letterSpacing: '-0.02em',
+            marginBottom: '1rem',
+          }}
+        >
+          Ready to stop writing tickets?
+        </h2>
+        <p style={{ color: C.matchaLight, marginBottom: '2rem', fontWeight: 300 }}>
+          Start free. No credit card required.
+        </p>
+        <Link
+          href="/dashboard"
+          style={{
+            background: C.cream,
+            color: C.matcha,
+            padding: '16px 40px',
+            borderRadius: '999px',
+            fontSize: '15px',
+            fontWeight: 500,
+            textDecoration: 'none',
+            display: 'inline-block',
+          }}
+        >
+          Get started free →
+        </Link>
+      </section>
+
+      {/* ─── Footer ──────────────────────────────────────────────── */}
+      <footer
+        style={{
+          background: C.ink,
+          color: 'rgba(250,248,244,0.6)',
+          padding: '4rem 2rem 8rem',
+        }}
+      >
+        <div
+          style={{
+            maxWidth: '1100px',
+            margin: '0 auto',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '2.5rem',
           }}
         >
           <div>
             <div
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.5rem' }}
+              style={{
+                fontFamily: "'Fraunces', serif",
+                fontSize: '1.25rem',
+                color: C.cream,
+                marginBottom: '0.5rem',
+                fontWeight: 400,
+              }}
             >
-              <img
-                src="/logo.png"
-                alt="Syntheon"
-                style={{ width: '32px', height: '32px', objectFit: 'contain' }}
-              />
-              <span
-                style={{
-                  fontFamily: "'DM Serif Display', serif",
-                  fontSize: '16px',
-                  color: dark ? '#c8dbc4' : '#3d5a3e',
-                }}
-              >
-                Syntheon
-              </span>
+              Syntheon
             </div>
-            <p style={{ fontSize: '13px', color: dark ? '#5c7c5d' : '#8a8a80', fontWeight: '300' }}>
-              Turns conversations into software.
-            </p>
-            <p
-              style={{ fontSize: '12px', color: dark ? '#404840' : '#c9bfaf', marginTop: '0.5rem' }}
-            >
-              Bengaluru, India
+            <p style={{ fontSize: '13px', lineHeight: 1.6 }}>
+              Turns conversations into software. Bengaluru, India.
             </p>
           </div>
-
-          <div style={{ display: 'flex', gap: '3rem', flexWrap: 'wrap' }}>
-            <div>
-              <p
-                style={{
-                  fontSize: '12px',
-                  fontWeight: '500',
-                  color: dark ? '#5c7c5d' : '#8aab7e',
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase',
-                  marginBottom: '0.75rem',
-                }}
-              >
-                Product
-              </p>
-              {[
-                { label: 'How it works', href: '/how-it-works' },
-                { label: 'Pricing', href: '/pricing' },
-                { label: 'Dashboard', href: '/dashboard' },
-              ].map((l) => (
-                <div key={l.label} style={{ marginBottom: '0.5rem' }}>
-                  <Link
-                    href={l.href}
-                    style={{
-                      fontSize: '14px',
-                      color: dark ? '#6a7a68' : '#5a5a52',
-                      textDecoration: 'none',
-                    }}
-                  >
-                    {l.label}
-                  </Link>
-                </div>
-              ))}
-            </div>
-
-            <div>
-              <p
-                style={{
-                  fontSize: '12px',
-                  fontWeight: '500',
-                  color: dark ? '#5c7c5d' : '#8aab7e',
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase',
-                  marginBottom: '0.75rem',
-                }}
-              >
-                Legal
-              </p>
-              {[
-                { label: 'Privacy Policy', href: '/legal#privacy' },
-                { label: 'Terms of Service', href: '/legal#terms' },
-                { label: 'Refund Policy', href: '/legal#refund' },
-                { label: 'DPA', href: '/legal#dpa' },
-              ].map((l) => (
-                <div key={l.label} style={{ marginBottom: '0.5rem' }}>
-                  <Link
-                    href={l.href}
-                    style={{
-                      fontSize: '14px',
-                      color: dark ? '#6a7a68' : '#5a5a52',
-                      textDecoration: 'none',
-                    }}
-                  >
-                    {l.label}
-                  </Link>
-                </div>
-              ))}
-            </div>
-
-            <div>
-              <p
-                style={{
-                  fontSize: '12px',
-                  fontWeight: '500',
-                  color: dark ? '#5c7c5d' : '#8aab7e',
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase',
-                  marginBottom: '0.75rem',
-                }}
-              >
-                Contact
-              </p>
-              {[
-                { label: 'support@syntheon.ai', href: 'mailto:support@syntheon.ai' },
-                { label: 'privacy@syntheon.ai', href: 'mailto:privacy@syntheon.ai' },
-              ].map((l) => (
-                <div key={l.label} style={{ marginBottom: '0.5rem' }}>
-                  <a
-                    href={l.href}
-                    style={{
-                      fontSize: '14px',
-                      color: dark ? '#6a7a68' : '#5a5a52',
-                      textDecoration: 'none',
-                    }}
-                  >
-                    {l.label}
-                  </a>
-                </div>
-              ))}
-            </div>
-          </div>
+          <FooterCol
+            title="Product"
+            links={[
+              { label: 'How it works', href: '/how-it-works' },
+              { label: 'Pricing', href: '/pricing' },
+              { label: 'Dashboard', href: '/dashboard' },
+            ]}
+          />
+          <FooterCol
+            title="Legal"
+            links={[
+              { label: 'Privacy', href: '/legal#privacy' },
+              { label: 'Terms', href: '/legal#terms' },
+              { label: 'Refund', href: '/legal#refund' },
+              { label: 'DPA', href: '/legal#dpa' },
+            ]}
+          />
+          <FooterCol
+            title="Contact"
+            links={[
+              { label: 'support@syntheon.ai', href: 'mailto:support@syntheon.ai' },
+              { label: 'privacy@syntheon.ai', href: 'mailto:privacy@syntheon.ai' },
+            ]}
+          />
         </div>
-
         <div
           style={{
-            maxWidth: '1000px',
-            margin: '2rem auto 0',
+            maxWidth: '1100px',
+            margin: '3rem auto 0',
             paddingTop: '2rem',
-            borderTop: `1px solid ${dark ? '#1e2a1f' : '#e8dfd0'}`,
+            borderTop: '1px solid rgba(250,248,244,0.08)',
+            fontSize: '12px',
+            color: 'rgba(250,248,244,0.4)',
             display: 'flex',
             justifyContent: 'space-between',
             flexWrap: 'wrap',
             gap: '1rem',
           }}
         >
-          <p style={{ fontSize: '12px', color: dark ? '#404840' : '#c9bfaf' }}>
-            2026 Syntheon AI. All rights reserved.
-          </p>
-          <p style={{ fontSize: '12px', color: dark ? '#404840' : '#c9bfaf' }}>
-            Governed by Indian law. Courts of Bengaluru, Karnataka.
-          </p>
+          <span>© 2026 Syntheon AI</span>
+          <span>Governed by Indian law · Courts of Bengaluru</span>
         </div>
       </footer>
+
+      {/* ─── Floating Vertical Dock (right side) ─────────────────── */}
+      <div
+        style={{
+          position: 'fixed',
+          right: '1.25rem',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          zIndex: 100,
+          pointerEvents: 'auto',
+          height: 'auto',
+        }}
+      >
+        <VerticalDock
+          items={dockItems}
+          panelWidth={60}
+          baseItemSize={44}
+          magnification={60}
+          distance={160}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ─── Helper components ──────────────────────────────────────────────
+
+// Looping decrypt: uses animateOn="click" + clickMode="toggle" and fires
+// programmatic clicks on a timer. Toggle alternates forward (decrypt) and
+// reverse (encrypt) animations — so it's truly bidirectional.
+function LoopingDecrypt() {
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    // Sequence: scrambled → click (forward decrypt ~2.1s) → dwell ~1.5s →
+    // click (reverse encrypt ~2.1s) → dwell ~1.5s → repeat.
+    const tick = () => {
+      const target = wrapperRef.current?.querySelector(
+        '[data-decrypt-target]'
+      ) as HTMLElement | null;
+      target?.click();
+    };
+    // First click after a short delay so initial scrambled state is visible.
+    const first = setTimeout(tick, 800);
+    const id = setInterval(tick, 3600);
+    return () => {
+      clearTimeout(first);
+      clearInterval(id);
+    };
+  }, []);
+  return (
+    <div ref={wrapperRef} style={{ display: 'inline-block' }}>
+      <DecryptedText
+        text="Messy meetings to structured execution"
+        animateOn="click"
+        clickMode="toggle"
+        sequential={true}
+        revealDirection="start"
+        speed={55}
+        characters="ABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()_+"
+        parentClassName="inline-block"
+        encryptedClassName="opacity-70"
+        data-decrypt-target=""
+      />
+    </div>
+  );
+}
+
+function TechBadge({ label }: { label: string }) {
+  return (
+    <span
+      style={{
+        fontFamily: "'Inter', sans-serif",
+        fontSize: '15px',
+        fontWeight: 500,
+        color: C.matcha,
+        letterSpacing: '-0.01em',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {label}
+    </span>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        textAlign: 'center',
+        fontSize: '11px',
+        letterSpacing: '0.2em',
+        textTransform: 'uppercase',
+        color: C.matchaMid,
+        fontWeight: 500,
+        marginBottom: '1rem',
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+const sectionH2: React.CSSProperties = {
+  fontFamily: "'Fraunces', serif",
+  fontSize: 'clamp(2rem, 4.5vw, 3rem)',
+  fontWeight: 300,
+  textAlign: 'center',
+  letterSpacing: '-0.02em',
+  color: C.text,
+  margin: 0,
+  lineHeight: 1.15,
+};
+
+function FooterCol({ title, links }: { title: string; links: { label: string; href: string }[] }) {
+  return (
+    <div>
+      <div
+        style={{
+          fontSize: '11px',
+          letterSpacing: '0.18em',
+          textTransform: 'uppercase',
+          color: C.matchaLight,
+          marginBottom: '1rem',
+          fontWeight: 500,
+        }}
+      >
+        {title}
+      </div>
+      {links.map((l) => (
+        <div key={l.label} style={{ marginBottom: '0.5rem' }}>
+          <Link
+            href={l.href}
+            style={{
+              fontSize: '14px',
+              color: 'rgba(250,248,244,0.6)',
+              textDecoration: 'none',
+            }}
+          >
+            {l.label}
+          </Link>
+        </div>
+      ))}
     </div>
   );
 }

@@ -284,7 +284,10 @@ function DashboardContent() {
           </h1>
           <DynamicIslandSearch
             onSelectTicket={(id) => handleViewChange('tickets')}
-            onSelectMeeting={(id) => { setSelectedMeeting(id); handleViewChange('ticket-detail'); }}
+            onSelectMeeting={(id) => {
+              setSelectedMeeting(id);
+              handleViewChange('ticket-detail');
+            }}
             onSelectProject={(id) => handleProjectSelect(id)}
           />
         </header>

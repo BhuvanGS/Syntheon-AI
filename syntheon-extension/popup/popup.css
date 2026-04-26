@@ -23,7 +23,7 @@
   --input: #e4e4e7;
   --ring: #18181b;
   --radius: 0.75rem;
-  
+
   /* Status colors */
   --status-backlog: #8a8a80;
   --status-progress: #3d7abf;
@@ -39,7 +39,11 @@
 }
 
 body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family:
+    'Inter',
+    system-ui,
+    -apple-system,
+    sans-serif;
   background: var(--background);
   color: var(--foreground);
   width: 320px;
@@ -444,7 +448,7 @@ body {
     background: var(--background);
     color: var(--foreground);
   }
-  
+
   .settings-input:focus {
     box-shadow: 0 0 0 2px rgba(212, 212, 216, 0.1);
   }

@@ -216,7 +216,10 @@ function ProjectContent() {
             {currentView === 'project' ? 'Project Workspace' : 'Meeting Tickets'}
           </h1>
           <DynamicIslandSearch
-            onSelectMeeting={(id) => { setSelectedMeeting(id); setCurrentView('ticket-detail'); }}
+            onSelectMeeting={(id) => {
+              setSelectedMeeting(id);
+              setCurrentView('ticket-detail');
+            }}
           />
         </header>
 

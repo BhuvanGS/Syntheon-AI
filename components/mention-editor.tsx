@@ -148,8 +148,16 @@ export function MentionEditor({
       let triggerIdx = -1;
       let type: MentionType = null;
       for (let i = text.length - 1; i >= 0; i--) {
-        if (text[i] === '@') { triggerIdx = i; type = '@'; break; }
-        if (text[i] === '#') { triggerIdx = i; type = '#'; break; }
+        if (text[i] === '@') {
+          triggerIdx = i;
+          type = '@';
+          break;
+        }
+        if (text[i] === '#') {
+          triggerIdx = i;
+          type = '#';
+          break;
+        }
         if (text[i] === ' ' || text[i] === '\n') break;
       }
 
@@ -250,7 +258,9 @@ export function MentionEditor({
 
       editor.commands.focus();
       // Allow a tick before re-enabling trigger detection
-      setTimeout(() => { isInsertingRef.current = false; }, 50);
+      setTimeout(() => {
+        isInsertingRef.current = false;
+      }, 50);
     },
     [editor, mentionType]
   );
@@ -336,22 +346,82 @@ export function MentionEditor({
     <div ref={editorWrapRef} className="relative rounded-md border border-input bg-background">
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-1 border-b border-input px-2 py-1">
-        <ToolbarButton onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} icon={Bold} title="Bold" />
-        <ToolbarButton onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')} icon={Italic} title="Italic" />
-        <ToolbarButton onClick={() => editor.chain().focus().toggleUnderline().run()} active={editor.isActive('underline')} icon={UnderlineIcon} title="Underline" />
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleBold().run()}
+          active={editor.isActive('bold')}
+          icon={Bold}
+          title="Bold"
+        />
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleItalic().run()}
+          active={editor.isActive('italic')}
+          icon={Italic}
+          title="Italic"
+        />
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleUnderline().run()}
+          active={editor.isActive('underline')}
+          icon={UnderlineIcon}
+          title="Underline"
+        />
         <div className="mx-1 h-4 w-px bg-border" />
-        <ToolbarButton onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} active={editor.isActive('heading', { level: 1 })} icon={Heading1} title="Heading 1" />
-        <ToolbarButton onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} active={editor.isActive('heading', { level: 2 })} icon={Heading2} title="Heading 2" />
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+          active={editor.isActive('heading', { level: 1 })}
+          icon={Heading1}
+          title="Heading 1"
+        />
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+          active={editor.isActive('heading', { level: 2 })}
+          icon={Heading2}
+          title="Heading 2"
+        />
         <div className="mx-1 h-4 w-px bg-border" />
-        <ToolbarButton onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive('bulletList')} icon={List} title="Bullet List" />
-        <ToolbarButton onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive('orderedList')} icon={ListOrdered} title="Numbered List" />
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleBulletList().run()}
+          active={editor.isActive('bulletList')}
+          icon={List}
+          title="Bullet List"
+        />
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleOrderedList().run()}
+          active={editor.isActive('orderedList')}
+          icon={ListOrdered}
+          title="Numbered List"
+        />
         <div className="mx-1 h-4 w-px bg-border" />
-        <ToolbarButton onClick={() => editor.chain().focus().toggleBlockquote().run()} active={editor.isActive('blockquote')} icon={Quote} title="Quote" />
-        <ToolbarButton onClick={() => editor.chain().focus().toggleCode().run()} active={editor.isActive('code')} icon={Code} title="Inline Code" />
-        <ToolbarButton onClick={setLink} active={editor.isActive('link')} icon={LinkIcon} title="Link" />
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleBlockquote().run()}
+          active={editor.isActive('blockquote')}
+          icon={Quote}
+          title="Quote"
+        />
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleCode().run()}
+          active={editor.isActive('code')}
+          icon={Code}
+          title="Inline Code"
+        />
+        <ToolbarButton
+          onClick={setLink}
+          active={editor.isActive('link')}
+          icon={LinkIcon}
+          title="Link"
+        />
         <div className="mx-1 h-4 w-px bg-border" />
-        <ToolbarButton onClick={() => editor.chain().focus().undo().run()} icon={Undo} title="Undo" disabled={!editor.can().chain().focus().undo().run() || disabled} />
-        <ToolbarButton onClick={() => editor.chain().focus().redo().run()} icon={Redo} title="Redo" disabled={!editor.can().chain().focus().redo().run() || disabled} />
+        <ToolbarButton
+          onClick={() => editor.chain().focus().undo().run()}
+          icon={Undo}
+          title="Undo"
+          disabled={!editor.can().chain().focus().undo().run() || disabled}
+        />
+        <ToolbarButton
+          onClick={() => editor.chain().focus().redo().run()}
+          icon={Redo}
+          title="Redo"
+          disabled={!editor.can().chain().focus().redo().run() || disabled}
+        />
       </div>
 
       {/* Editor body */}
@@ -406,7 +476,11 @@ export function MentionEditor({
                     }`}
                   >
                     {m.imageUrl ? (
-                      <img src={m.imageUrl} alt={m.displayName} className="h-5 w-5 rounded-full object-cover shrink-0" />
+                      <img
+                        src={m.imageUrl}
+                        alt={m.displayName}
+                        className="h-5 w-5 rounded-full object-cover shrink-0"
+                      />
                     ) : (
                       <span className="h-5 w-5 rounded-full bg-green-200 text-green-700 text-[10px] font-bold flex items-center justify-center shrink-0">
                         {m.displayName[0]?.toUpperCase()}
@@ -431,7 +505,9 @@ export function MentionEditor({
                   >
                     <Hash className="h-3.5 w-3.5 shrink-0 text-purple-400" />
                     <span className="truncate">{t.title}</span>
-                    <span className="ml-auto text-[10px] text-muted-foreground capitalize shrink-0">{t.status.replace('_', ' ')}</span>
+                    <span className="ml-auto text-[10px] text-muted-foreground capitalize shrink-0">
+                      {t.status.replace('_', ' ')}
+                    </span>
                   </button>
                 ))}
           </div>

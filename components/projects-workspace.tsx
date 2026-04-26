@@ -154,7 +154,9 @@ export function ProjectsWorkspace({
   onDeleteProject,
   onRefresh,
 }: ProjectsWorkspaceProps) {
-  const { membership, memberships } = useOrganization({ memberships: { infinite: true, pageSize: 50 } });
+  const { membership, memberships } = useOrganization({
+    memberships: { infinite: true, pageSize: 50 },
+  });
   const { user } = useUser();
   const isAdmin = membership?.role === 'org:admin';
   const [kanbanAssigneeFilter, setKanbanAssigneeFilter] = useState<'all' | 'unassigned' | 'mine'>(
@@ -803,9 +805,7 @@ export function ProjectsWorkspace({
       } else if (mode === 'delete_all') {
         // Delete all subtasks first
         await Promise.all(
-          subtasks.map((child) =>
-            fetch(`/api/tickets/${child.id}`, { method: 'DELETE' })
-          )
+          subtasks.map((child) => fetch(`/api/tickets/${child.id}`, { method: 'DELETE' }))
         );
         setTicketStageMap((prev) => {
           const next = { ...prev };
@@ -2009,7 +2009,12 @@ export function ProjectsWorkspace({
                     disabled={Boolean(savingTicketId)}
                     members={(memberships?.data ?? []).map((m) => ({
                       userId: m.publicUserData?.userId ?? '',
-                      displayName: [m.publicUserData?.firstName, m.publicUserData?.lastName].filter(Boolean).join(' ') || m.publicUserData?.identifier || 'Unknown',
+                      displayName:
+                        [m.publicUserData?.firstName, m.publicUserData?.lastName]
+                          .filter(Boolean)
+                          .join(' ') ||
+                        m.publicUserData?.identifier ||
+                        'Unknown',
                       imageUrl: m.publicUserData?.imageUrl,
                     }))}
                     tickets={projectTickets.map((t) => ({
@@ -2242,8 +2247,8 @@ export function ProjectsWorkspace({
               {deleteMode === 'reassign'
                 ? 'Choose an existing ticket to move the subtasks to before deleting.'
                 : deleteMode === 'confirm'
-                ? `"${ticketToDelete?.title}" has ${(childrenByParentId[ticketToDelete?.id ?? ''] ?? []).length} subtask(s). Choose what to do with them.`
-                : `This will permanently remove "${ticketToDelete?.title}" from this project.`}
+                  ? `"${ticketToDelete?.title}" has ${(childrenByParentId[ticketToDelete?.id ?? ''] ?? []).length} subtask(s). Choose what to do with them.`
+                  : `This will permanently remove "${ticketToDelete?.title}" from this project.`}
             </DialogDescription>
           </DialogHeader>
 
@@ -2251,10 +2256,15 @@ export function ProjectsWorkspace({
           {deleteMode === 'confirm' && (
             <div className="rounded-lg border border-border bg-muted/40 max-h-40 overflow-y-auto">
               {(childrenByParentId[ticketToDelete?.id ?? ''] ?? []).map((child) => (
-                <div key={child.id} className="flex items-center gap-2 border-b border-border/50 px-3 py-2 last:border-b-0 text-sm">
+                <div
+                  key={child.id}
+                  className="flex items-center gap-2 border-b border-border/50 px-3 py-2 last:border-b-0 text-sm"
+                >
                   <span className="w-2 h-2 rounded-full bg-muted-foreground/40 shrink-0" />
                   <span className="text-foreground truncate">{child.title}</span>
-                  <span className="ml-auto text-[11px] text-muted-foreground capitalize shrink-0">{child.status.replace('_', ' ')}</span>
+                  <span className="ml-auto text-[11px] text-muted-foreground capitalize shrink-0">
+                    {child.status.replace('_', ' ')}
+                  </span>
                 </div>
               ))}
             </div>
@@ -2273,7 +2283,9 @@ export function ProjectsWorkspace({
                 {projectTickets
                   .filter((t) => t.id !== ticketToDelete?.id && !t.dependency_ticket_id)
                   .map((t) => (
-                    <option key={t.id} value={t.id}>{t.title}</option>
+                    <option key={t.id} value={t.id}>
+                      {t.title}
+                    </option>
                   ))}
               </select>
             </div>

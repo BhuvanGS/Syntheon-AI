@@ -668,9 +668,15 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                 startDate={ticketEditForm.start_date || undefined}
                 dueDate={ticketEditForm.due_date || undefined}
                 deadlineTime={ticketEditForm.deadline_time || undefined}
-                onStartDateChange={(date) => setTicketEditForm((prev) => ({ ...prev, start_date: date || '' }))}
-                onDueDateChange={(date) => setTicketEditForm((prev) => ({ ...prev, due_date: date || '' }))}
-                onDeadlineTimeChange={(time) => setTicketEditForm((prev) => ({ ...prev, deadline_time: time || '' }))}
+                onStartDateChange={(date) =>
+                  setTicketEditForm((prev) => ({ ...prev, start_date: date || '' }))
+                }
+                onDueDateChange={(date) =>
+                  setTicketEditForm((prev) => ({ ...prev, due_date: date || '' }))
+                }
+                onDeadlineTimeChange={(time) =>
+                  setTicketEditForm((prev) => ({ ...prev, deadline_time: time || '' }))
+                }
                 disabled={Boolean(updatingTicketId)}
               />
             </div>
@@ -867,19 +873,29 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                         <span>{getMeetingName(ticket.meeting_id)}</span>
                         <span>{ticket.assignee ? `@${ticket.assignee}` : 'Unassigned'}</span>
                       </div>
-                      {ticket.due_date && (() => {
-                        const d = parseISO(ticket.due_date);
-                        const overdue = isPast(d) && !isToday(d);
-                        const todayOrTomorrow = isToday(d) || isTomorrow(d);
-                        return (
-                          <div className={`mt-1.5 flex items-center gap-1 text-[10px] font-medium ${
-                            overdue ? 'text-red-500' : todayOrTomorrow ? 'text-amber-500' : 'text-muted-foreground'
-                          }`}>
-                            <Clock className="w-3 h-3" />
-                            <span>Due {format(d, 'MMM d')}{ticket.deadline_time ? ` at ${ticket.deadline_time}` : ''}</span>
-                          </div>
-                        );
-                      })()}
+                      {ticket.due_date &&
+                        (() => {
+                          const d = parseISO(ticket.due_date);
+                          const overdue = isPast(d) && !isToday(d);
+                          const todayOrTomorrow = isToday(d) || isTomorrow(d);
+                          return (
+                            <div
+                              className={`mt-1.5 flex items-center gap-1 text-[10px] font-medium ${
+                                overdue
+                                  ? 'text-red-500'
+                                  : todayOrTomorrow
+                                    ? 'text-amber-500'
+                                    : 'text-muted-foreground'
+                              }`}
+                            >
+                              <Clock className="w-3 h-3" />
+                              <span>
+                                Due {format(d, 'MMM d')}
+                                {ticket.deadline_time ? ` at ${ticket.deadline_time}` : ''}
+                              </span>
+                            </div>
+                          );
+                        })()}
                     </div>
                   ))}
 
@@ -953,15 +969,19 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                       <span className="text-xs text-muted-foreground truncate">
                         {getMeetingName(ticket.meeting_id)}
                       </span>
-                      <span className={`text-xs font-medium truncate ${
-                        ticket.due_date
-                          ? isPast(parseISO(ticket.due_date)) && !isToday(parseISO(ticket.due_date))
-                            ? 'text-red-500'
-                            : isToday(parseISO(ticket.due_date)) || isTomorrow(parseISO(ticket.due_date))
-                              ? 'text-amber-500'
-                              : 'text-muted-foreground'
-                          : 'text-muted-foreground'
-                      }`}>
+                      <span
+                        className={`text-xs font-medium truncate ${
+                          ticket.due_date
+                            ? isPast(parseISO(ticket.due_date)) &&
+                              !isToday(parseISO(ticket.due_date))
+                              ? 'text-red-500'
+                              : isToday(parseISO(ticket.due_date)) ||
+                                  isTomorrow(parseISO(ticket.due_date))
+                                ? 'text-amber-500'
+                                : 'text-muted-foreground'
+                            : 'text-muted-foreground'
+                        }`}
+                      >
                         {ticket.due_date ? format(parseISO(ticket.due_date), 'MMM d') : '—'}
                       </span>
                       <span className="text-xs text-muted-foreground truncate">

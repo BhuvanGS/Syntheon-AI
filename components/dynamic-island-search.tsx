@@ -84,12 +84,21 @@ export function DynamicIslandSearch({
 
         const q = query.toLowerCase();
 
-        const ticketsArr: any[] = Array.isArray(ticketsData) ? ticketsData : (ticketsData.tickets ?? []);
-        const meetingsArr: any[] = Array.isArray(meetingsData) ? meetingsData : (meetingsData.meetings ?? []);
-        const projectsArr: any[] = Array.isArray(projectsData) ? projectsData : (projectsData.projects ?? []);
+        const ticketsArr: any[] = Array.isArray(ticketsData)
+          ? ticketsData
+          : (ticketsData.tickets ?? []);
+        const meetingsArr: any[] = Array.isArray(meetingsData)
+          ? meetingsData
+          : (meetingsData.meetings ?? []);
+        const projectsArr: any[] = Array.isArray(projectsData)
+          ? projectsData
+          : (projectsData.projects ?? []);
 
         const ticketResults: SearchResult[] = ticketsArr
-          .filter((t: any) => t.title?.toLowerCase().includes(q) || t.description?.toLowerCase().includes(q))
+          .filter(
+            (t: any) =>
+              t.title?.toLowerCase().includes(q) || t.description?.toLowerCase().includes(q)
+          )
           .slice(0, 4)
           .map((t: any) => ({
             id: t.id,
@@ -166,17 +175,22 @@ export function DynamicIslandSearch({
         className={`
           relative flex items-center bg-foreground overflow-hidden
           transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]
-          ${expanded
-            ? 'w-72 rounded-2xl shadow-2xl shadow-black/20'
-            : 'w-8 h-8 rounded-full cursor-pointer hover:scale-110'
+          ${
+            expanded
+              ? 'w-72 rounded-2xl shadow-2xl shadow-black/20'
+              : 'w-8 h-8 rounded-full cursor-pointer hover:scale-110'
           }
         `}
         style={{ minHeight: '2rem' }}
         onClick={!expanded ? open : undefined}
       >
         {/* Search icon — always visible, left side when expanded */}
-        <div className={`flex items-center justify-center shrink-0 transition-all duration-300 ${expanded ? 'pl-3 pr-1' : 'w-full h-full'}`}>
-          <Search className={`text-background transition-all duration-300 ${expanded ? 'h-3.5 w-3.5' : 'h-3.5 w-3.5'}`} />
+        <div
+          className={`flex items-center justify-center shrink-0 transition-all duration-300 ${expanded ? 'pl-3 pr-1' : 'w-full h-full'}`}
+        >
+          <Search
+            className={`text-background transition-all duration-300 ${expanded ? 'h-3.5 w-3.5' : 'h-3.5 w-3.5'}`}
+          />
         </div>
 
         {/* Input */}
@@ -204,9 +218,7 @@ export function DynamicIslandSearch({
       {/* Results dropdown */}
       {expanded && (
         <div className="absolute top-10 right-0 w-72 bg-popover border border-border rounded-2xl shadow-xl overflow-hidden z-50">
-          {loading && (
-            <div className="px-4 py-3 text-xs text-muted-foreground">Searching…</div>
-          )}
+          {loading && <div className="px-4 py-3 text-xs text-muted-foreground">Searching…</div>}
 
           {!loading && query && results.length === 0 && (
             <div className="px-4 py-3 text-xs text-muted-foreground">No results for "{query}"</div>
@@ -233,7 +245,9 @@ export function DynamicIslandSearch({
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-foreground truncate">{result.title}</p>
                     {result.subtitle && (
-                      <p className="text-[11px] text-muted-foreground capitalize">{result.subtitle}</p>
+                      <p className="text-[11px] text-muted-foreground capitalize">
+                        {result.subtitle}
+                      </p>
                     )}
                   </div>
                 </button>
@@ -243,13 +257,22 @@ export function DynamicIslandSearch({
 
           <div className="border-t border-border/60 px-4 py-2 flex items-center gap-3 bg-muted/30">
             <span className="text-[10px] text-muted-foreground">
-              <kbd className="font-mono bg-background border border-border rounded px-1 py-0.5">↑↓</kbd> navigate
+              <kbd className="font-mono bg-background border border-border rounded px-1 py-0.5">
+                ↑↓
+              </kbd>{' '}
+              navigate
             </span>
             <span className="text-[10px] text-muted-foreground">
-              <kbd className="font-mono bg-background border border-border rounded px-1 py-0.5">↵</kbd> select
+              <kbd className="font-mono bg-background border border-border rounded px-1 py-0.5">
+                ↵
+              </kbd>{' '}
+              select
             </span>
             <span className="text-[10px] text-muted-foreground">
-              <kbd className="font-mono bg-background border border-border rounded px-1 py-0.5">esc</kbd> close
+              <kbd className="font-mono bg-background border border-border rounded px-1 py-0.5">
+                esc
+              </kbd>{' '}
+              close
             </span>
           </div>
         </div>
