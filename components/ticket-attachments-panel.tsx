@@ -226,10 +226,8 @@ export function TicketAttachmentsPanel({ ticketId }: TicketAttachmentsPanelProps
 
               <div className="flex-1 min-w-0">
                 <a
-                  href={attachment.file_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm font-medium text-foreground hover:underline truncate block"
+                  href={`/api/download?path=${encodeURIComponent(attachment.file_url.split('/').slice(-3).join('/'))}&filename=${encodeURIComponent(attachment.filename)}`}
+                  className="text-sm font-medium text-foreground hover:underline truncate block cursor-pointer"
                 >
                   {attachment.filename}
                 </a>
