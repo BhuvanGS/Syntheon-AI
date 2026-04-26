@@ -471,7 +471,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
 
   if (tickets.length === 0) {
     return (
-      <div className="bg-card rounded-2xl p-12 border border-border text-center">
+      <div className="bg-card rounded-2xl p-12 border border-border text-center animate-fade-in-up">
         <p className="text-2xl font-playfair font-bold text-foreground mb-2">No tickets yet</p>
         <p className="text-muted-foreground">Record a meeting to extract Jira-like tickets.</p>
       </div>
@@ -843,8 +843,8 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                         setDraggedTicketId(null);
                         setDragOverColumn(null);
                       }}
-                      className={`rounded-xl border border-border bg-card p-3 cursor-grab active:cursor-grabbing shadow-sm hover:shadow-md transition-shadow text-left ${
-                        draggedTicketId === ticket.id ? 'opacity-50' : ''
+                      className={`rounded-xl border border-border bg-card p-3 cursor-grab active:cursor-grabbing shadow-sm hover-lift text-left ${
+                        draggedTicketId === ticket.id ? 'opacity-40 scale-[0.98]' : ''
                       }`}
                       onClick={() => openTicketSource(ticket)}
                     >

@@ -292,7 +292,7 @@ function DashboardContent() {
           />
         </header>
 
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto animate-fade-in-up">
           {/* ── ADMIN DASHBOARD ── */}
           {currentView === 'dashboard' && isAdmin && (
             <div className="p-6 space-y-5 max-w-5xl mx-auto w-full">

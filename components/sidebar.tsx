@@ -92,14 +92,17 @@ export function Sidebar({
   const userName = user?.fullName ?? user?.emailAddresses?.[0]?.emailAddress ?? 'User';
 
   return (
-    <aside className="w-[220px] min-w-[220px] h-screen flex flex-col bg-sidebar border-r border-sidebar-border">
+    <aside className="w-[220px] min-w-[220px] h-screen flex flex-col bg-sidebar border-r border-sidebar-border animate-fade-in">
       {/* Logo + Org */}
       <div className="h-14 flex items-center px-4 shrink-0 gap-2">
-        <Link href="/" className="flex items-center gap-2.5 flex-1 min-w-0">
+        <Link
+          href="/"
+          className="flex items-center gap-2.5 flex-1 min-w-0 group rounded-md -ml-1 pl-1 py-1 hover:bg-accent/40"
+        >
           <img
             src="/logo.png"
             alt="Syntheon"
-            className="w-6 h-6 object-contain shrink-0"
+            className="w-6 h-6 object-contain shrink-0 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3"
             onError={(e) => {
               (e.target as HTMLImageElement).style.display = 'none';
             }}
@@ -140,7 +143,7 @@ export function Sidebar({
       </div>
 
       {/* Main nav */}
-      <nav className="px-2 pt-1.5 space-y-0.5 shrink-0">
+      <nav className="px-2 pt-1.5 space-y-0.5 shrink-0 stagger-children">
         {navItems.map((item) => {
           const Icon = item.icon;
           const currentView = searchParams.get('view');
@@ -155,14 +158,27 @@ export function Sidebar({
               key={item.id}
               onClick={() => router.push(item.href)}
               className={cn(
-                'w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors',
+                'group relative w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm press-down',
                 active
-                  ? 'bg-primary text-primary-foreground font-medium'
+                  ? 'bg-primary text-primary-foreground font-medium shadow-sm'
                   : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
               )}
             >
-              <Icon className="h-4 w-4 shrink-0" />
-              {item.label}
+              {/* Active indicator bar */}
+              <span
+                className={cn(
+                  'absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-primary transition-all duration-300',
+                  active ? 'opacity-100 scale-y-100' : 'opacity-0 scale-y-50'
+                )}
+                aria-hidden
+              />
+              <Icon
+                className={cn(
+                  'h-4 w-4 shrink-0 transition-transform duration-200',
+                  !active && 'group-hover:scale-110'
+                )}
+              />
+              <span className="truncate">{item.label}</span>
             </button>
           );
         })}
@@ -191,7 +207,7 @@ export function Sidebar({
 
         <ScrollArea className="flex-1 -mx-1 px-1">
           {projects.length === 0 ? (
-            <div className="mx-1 border border-dashed border-border rounded-lg p-3 text-center">
+            <div className="mx-1 border border-dashed border-border rounded-lg p-3 text-center animate-fade-in">
               <p className="text-[11px] text-muted-foreground leading-relaxed">
                 {isAdmin
                   ? 'No projects yet. Create one to get started.'
@@ -199,7 +215,7 @@ export function Sidebar({
               </p>
             </div>
           ) : (
-            <div className="space-y-0.5 pb-2">
+            <div className="space-y-0.5 pb-2 stagger-children">
               {projects.slice(0, 8).map((project) => {
                 const active = pathname === '/project' && project.id === selectedProjectId;
                 return (
@@ -210,13 +226,18 @@ export function Sidebar({
                       onSelectProject?.(project.id);
                     }}
                     className={cn(
-                      'w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md transition-colors text-left',
+                      'group w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-left press-down',
                       active
                         ? 'bg-accent text-foreground font-medium'
                         : 'text-muted-foreground hover:bg-accent hover:text-foreground'
                     )}
                   >
-                    <FolderKanban className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+                    <FolderKanban
+                      className={cn(
+                        'h-3.5 w-3.5 shrink-0 text-primary/70 transition-transform duration-200',
+                        active ? 'scale-110' : 'group-hover:scale-110'
+                      )}
+                    />
                     <span className="truncate text-[13px]">{project.name}</span>
                   </button>
                 );
@@ -229,8 +250,8 @@ export function Sidebar({
       {/* Footer / User */}
       <Separator />
       <div className="p-3 shrink-0">
-        <div className="flex items-center gap-2.5 px-2 py-2 rounded-md hover:bg-accent cursor-pointer transition-colors">
-          <Avatar className="h-7 w-7 shrink-0">
+        <div className="group flex items-center gap-2.5 px-2 py-2 rounded-md hover:bg-accent cursor-pointer">
+          <Avatar className="h-7 w-7 shrink-0 ring-2 ring-transparent group-hover:ring-primary/20 transition-all duration-200">
             <AvatarImage src={user?.imageUrl} />
             <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
               {userInitial}
@@ -245,7 +266,7 @@ export function Sidebar({
         </div>
         <Button
           variant="ghost"
-          className="mt-1 w-full justify-start gap-2 px-2 text-muted-foreground hover:text-foreground"
+          className="mt-1 w-full justify-start gap-2 px-2 text-muted-foreground hover:text-foreground press-down"
           onClick={() => signOut({ redirectUrl: '/sign-in' })}
         >
           <LogOut className="h-3.5 w-3.5" />

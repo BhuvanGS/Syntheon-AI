@@ -169,55 +169,67 @@ export function DynamicIslandSearch({
     return 'text-emerald-500';
   };
 
-  return (
-    <div ref={containerRef} className="relative flex items-center justify-end">
-      <div
-        className={`
-          relative flex items-center bg-foreground overflow-hidden
-          transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]
-          ${
-            expanded
-              ? 'w-72 rounded-2xl shadow-2xl shadow-black/20'
-              : 'w-8 h-8 rounded-full cursor-pointer hover:scale-110'
-          }
-        `}
-        style={{ minHeight: '2rem' }}
-        onClick={!expanded ? open : undefined}
-      >
-        {/* Search icon — always visible, left side when expanded */}
-        <div
-          className={`flex items-center justify-center shrink-0 transition-all duration-300 ${expanded ? 'pl-3 pr-1' : 'w-full h-full'}`}
-        >
-          <Search
-            className={`text-background transition-all duration-300 ${expanded ? 'h-3.5 w-3.5' : 'h-3.5 w-3.5'}`}
-          />
-        </div>
+  // Detect if we should show ⌘ or Ctrl based on platform
+  const [isMac, setIsMac] = useState(true);
+  useEffect(() => {
+    if (typeof navigator !== 'undefined') {
+      setIsMac(/Mac|iPod|iPhone|iPad/.test(navigator.platform));
+    }
+  }, []);
 
-        {/* Input */}
-        {expanded && (
-          <>
-            <input
-              ref={inputRef}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Search tickets, meetings, projects…"
-              className="flex-1 bg-transparent text-background placeholder:text-background/40 text-xs outline-none py-2 pr-1 min-w-0"
-            />
+  return (
+    <div ref={containerRef} className="relative">
+      {/* Collapsed pill — clear search affordance */}
+      {!expanded && (
+        <button
+          type="button"
+          onClick={open}
+          aria-label="Open search"
+          className="group flex items-center gap-2 h-9 pl-3 pr-2 rounded-full border border-border bg-card hover:bg-accent hover:border-foreground/20 text-muted-foreground hover:text-foreground press-down min-w-[220px]"
+        >
+          <Search className="h-3.5 w-3.5 shrink-0" />
+          <span className="text-xs flex-1 text-left">Search…</span>
+          <kbd className="hidden sm:inline-flex items-center gap-0.5 font-mono text-[10px] font-medium text-muted-foreground bg-muted/60 border border-border rounded px-1.5 py-0.5 shrink-0">
+            <span className="text-[11px] leading-none">{isMac ? '⌘' : 'Ctrl'}</span>
+            <span className="leading-none">K</span>
+          </kbd>
+        </button>
+      )}
+
+      {/* Expanded input */}
+      {expanded && (
+        <div className="flex items-center gap-2 h-9 pl-3 pr-1.5 rounded-full border border-foreground/30 bg-card shadow-lg shadow-black/10 ring-2 ring-foreground/10 w-80 animate-scale-in">
+          <Search className="h-3.5 w-3.5 shrink-0 text-foreground" />
+          <input
+            ref={inputRef}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Search tickets, meetings, projects…"
+            className="flex-1 bg-transparent text-foreground placeholder:text-muted-foreground/70 text-xs outline-none min-w-0"
+          />
+          {query && (
             <button
               type="button"
-              onClick={close}
-              className="flex items-center justify-center h-8 w-8 shrink-0 text-background/60 hover:text-background transition-colors"
+              onClick={() => {
+                setQuery('');
+                inputRef.current?.focus();
+              }}
+              aria-label="Clear search"
+              className="flex items-center justify-center h-6 w-6 shrink-0 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
             >
               <X className="h-3 w-3" />
             </button>
-          </>
-        )}
-      </div>
+          )}
+          <kbd className="font-mono text-[10px] font-medium text-muted-foreground bg-muted/60 border border-border rounded px-1.5 py-0.5 shrink-0">
+            esc
+          </kbd>
+        </div>
+      )}
 
       {/* Results dropdown */}
       {expanded && (
-        <div className="absolute top-10 right-0 w-72 bg-popover border border-border rounded-2xl shadow-xl overflow-hidden z-50">
+        <div className="absolute top-11 right-0 w-80 bg-popover border border-border rounded-2xl shadow-xl overflow-hidden z-50 animate-fade-in-down">
           {loading && <div className="px-4 py-3 text-xs text-muted-foreground">Searching…</div>}
 
           {!loading && query && results.length === 0 && (

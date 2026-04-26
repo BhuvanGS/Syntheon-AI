@@ -308,7 +308,7 @@ function SettingsContent() {
           <DynamicIslandSearch />
         </header>
 
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto animate-fade-in-up">
           <div className="p-6 space-y-5 max-w-2xl mx-auto w-full">
             <div>
               <h2 className="text-xl font-semibold text-foreground">Settings</h2>

@@ -223,7 +223,7 @@ function ProjectContent() {
           />
         </header>
 
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto animate-fade-in-up">
           {currentView === 'ticket-detail' && selectedMeeting && (
             <div className="p-6 max-w-5xl mx-auto">
               <Button

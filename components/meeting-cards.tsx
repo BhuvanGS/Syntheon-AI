@@ -72,7 +72,7 @@ export function MeetingCards({ onSelectMeeting, onCreateTicket }: MeetingCardsPr
 
   if (error)
     return (
-      <div className="bg-card rounded-2xl p-8 border border-border text-center">
+      <div className="bg-card rounded-2xl p-8 border border-border text-center animate-fade-in">
         <p className="text-destructive">{error}</p>
         <Button onClick={fetchMeetings} className="mt-4">
           Retry
@@ -82,7 +82,7 @@ export function MeetingCards({ onSelectMeeting, onCreateTicket }: MeetingCardsPr
 
   if (meetings.length === 0)
     return (
-      <div className="bg-card rounded-2xl p-12 border border-border text-center">
+      <div className="bg-card rounded-2xl p-12 border border-border text-center animate-fade-in-up">
         <p className="text-2xl font-playfair font-bold text-foreground mb-2">No meetings yet</p>
         <p className="text-muted-foreground">
           Start recording a meeting with the Syntheon extension.
@@ -91,11 +91,11 @@ export function MeetingCards({ onSelectMeeting, onCreateTicket }: MeetingCardsPr
     );
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 stagger-children">
       {meetings.map((meeting) => (
         <div
           key={meeting.id}
-          className="bg-card rounded-2xl p-6 border border-border hover:border-primary/30 transition-all duration-200 hover:shadow-lg cursor-pointer group"
+          className="bg-card rounded-2xl p-6 border border-border hover:border-primary/30 hover-lift cursor-pointer group press-down"
           onClick={() => onSelectMeeting(meeting.id)}
         >
           <div className="flex justify-between items-start mb-4">
