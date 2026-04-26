@@ -8,6 +8,7 @@ import { ProjectCreateDialog } from '@/components/project-create-dialog';
 import { ManualTicketDialog } from '@/components/manual-ticket-dialog';
 import { TicketDetail } from '@/components/ticket-detail';
 import { Button } from '@/components/ui/button';
+import { DynamicIslandSearch } from '@/components/dynamic-island-search';
 import { toast } from '@/hooks/use-toast';
 
 type ViewType = 'project' | 'ticket-detail';
@@ -214,13 +215,9 @@ function ProjectContent() {
           <h1 className="text-sm font-semibold text-foreground">
             {currentView === 'project' ? 'Project Workspace' : 'Meeting Tickets'}
           </h1>
-          <div className="flex items-center gap-1.5">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-60" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
-            </span>
-            <span className="text-xs text-muted-foreground">Live</span>
-          </div>
+          <DynamicIslandSearch
+            onSelectMeeting={(id) => { setSelectedMeeting(id); setCurrentView('ticket-detail'); }}
+          />
         </header>
 
         <main className="flex-1 overflow-auto">

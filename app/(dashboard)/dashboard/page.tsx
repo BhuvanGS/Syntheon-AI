@@ -21,6 +21,7 @@ import { TicketsBoard } from '@/components/tickets-board';
 import { ProjectsWorkspace } from '@/components/projects-workspace';
 import { ProjectCreateDialog } from '@/components/project-create-dialog';
 import { ManualTicketDialog } from '@/components/manual-ticket-dialog';
+import { DynamicIslandSearch } from '@/components/dynamic-island-search';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -281,13 +282,11 @@ function DashboardContent() {
             {currentView === 'calendar' && 'Calendar'}
             {currentView === 'ticket-detail' && 'Meeting Tickets'}
           </h1>
-          <div className="flex items-center gap-1.5">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-60" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
-            </span>
-            <span className="text-xs text-muted-foreground">Live</span>
-          </div>
+          <DynamicIslandSearch
+            onSelectTicket={(id) => handleViewChange('tickets')}
+            onSelectMeeting={(id) => { setSelectedMeeting(id); handleViewChange('ticket-detail'); }}
+            onSelectProject={(id) => handleProjectSelect(id)}
+          />
         </header>
 
         <main className="flex-1 overflow-auto">

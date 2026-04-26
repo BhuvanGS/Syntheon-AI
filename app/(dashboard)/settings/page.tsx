@@ -14,6 +14,7 @@ import { GitHubConnectButton } from '@/components/github-connect-button';
 import { ApiKeyManager } from '@/components/api-key-manager';
 import { LinearConnectButton } from '@/components/linear-connect-button';
 import { ProjectCreateDialog } from '@/components/project-create-dialog';
+import { DynamicIslandSearch } from '@/components/dynamic-island-search';
 import { useOrganization, useOrganizationList } from '@clerk/nextjs';
 
 interface Project {
@@ -304,13 +305,7 @@ function SettingsContent() {
         {/* Header */}
         <header className="h-14 border-b border-border flex items-center justify-between px-6 shrink-0 bg-background">
           <h1 className="text-sm font-semibold text-foreground">Settings</h1>
-          <div className="flex items-center gap-1.5">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-60" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
-            </span>
-            <span className="text-xs text-muted-foreground">Live</span>
-          </div>
+          <DynamicIslandSearch />
         </header>
 
         <main className="flex-1 overflow-auto">
