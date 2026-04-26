@@ -40,6 +40,7 @@ import { TicketTimelinePanel } from '@/components/ticket-timeline-panel';
 import { DateRangePicker } from '@/components/date-range-picker';
 import { DependencyBlockerModal } from '@/components/dependency-blocker-modal';
 import { TipTapEditor } from '@/components/tiptap-editor';
+import { MentionEditor } from '@/components/mention-editor';
 import { useToast } from '@/components/island-toast';
 import { ProjectTicketImportDialog } from '@/components/project-ticket-import-dialog';
 import { ProjectMeetingDialog } from '@/components/project-meeting-dialog';
@@ -153,7 +154,7 @@ export function ProjectsWorkspace({
   onDeleteProject,
   onRefresh,
 }: ProjectsWorkspaceProps) {
-  const { membership } = useOrganization();
+  const { membership, memberships } = useOrganization({ memberships: { infinite: true, pageSize: 50 } });
   const { user } = useUser();
   const isAdmin = membership?.role === 'org:admin';
   const [kanbanAssigneeFilter, setKanbanAssigneeFilter] = useState<'all' | 'unassigned' | 'mine'>(
@@ -724,22 +725,17 @@ export function ProjectsWorkspace({
         }
 
         if (!res.ok) {
-          const finalData = await res.json().catch(() => data || {});
-          if (res.status === 422 && finalData?.error === 'hard_blocked') {
-            const isHard = true;
-            const blockersWithTitles = (finalData?.blockers || []).map((b: any) => ({
+          if (res.status === 422 && data?.error === 'hard_blocked') {
+            const blockersWithTitles = (data?.blockers || []).map((b: any) => ({
               ...b,
               title: projectTickets.find((t) => t.id === b.depends_on)?.title,
             }));
             setBlockerModalData({
-              message:
-                finalData?.message ||
-                `Blocked by unresolved ${isHard ? 'hard' : 'soft'} dependencies.`,
+              message: data?.message || 'Blocked by unresolved hard dependencies.',
               blockers: blockersWithTitles,
-              isHardBlock: isHard,
+              isHardBlock: true,
               onRevert: () => {
                 setBlockerModalOpen(false);
-                // Revert the status in the form
                 setTicketEditForm((prev) => ({
                   ...prev,
                   status: ticketToEdit.status,
@@ -749,11 +745,13 @@ export function ProjectsWorkspace({
             setBlockerModalOpen(true);
             return;
           }
-          if (res.status === 422 && finalData?.error === 'soft_blocked') {
-            window.alert(finalData?.message || 'Blocked by unresolved soft dependencies.');
+          if (res.status === 422 && data?.error === 'soft_blocked') {
+            window.alert(data?.message || 'Blocked by unresolved soft dependencies.');
             return;
           }
-          throw new Error(finalData?.error || 'Failed to update ticket');
+          console.error('Ticket update failed:', data);
+          showToast(data?.error || `Save failed (${res.status})`, 'error');
+          return;
         }
       }
 
@@ -1999,7 +1997,7 @@ export function ProjectsWorkspace({
 
                 <div className="space-y-1">
                   <label className="block text-sm text-muted-foreground">Description</label>
-                  <TipTapEditor
+                  <MentionEditor
                     content={ticketEditForm.description}
                     onChange={(html) =>
                       setTicketEditForm((prev) => ({
@@ -2009,6 +2007,16 @@ export function ProjectsWorkspace({
                     }
                     placeholder="Describe the ticket..."
                     disabled={Boolean(savingTicketId)}
+                    members={(memberships?.data ?? []).map((m) => ({
+                      userId: m.publicUserData?.userId ?? '',
+                      displayName: [m.publicUserData?.firstName, m.publicUserData?.lastName].filter(Boolean).join(' ') || m.publicUserData?.identifier || 'Unknown',
+                      imageUrl: m.publicUserData?.imageUrl,
+                    }))}
+                    tickets={projectTickets.map((t) => ({
+                      id: t.id,
+                      title: t.title,
+                      status: t.status,
+                    }))}
                   />
                 </div>
 

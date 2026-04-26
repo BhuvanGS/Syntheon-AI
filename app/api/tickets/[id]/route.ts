@@ -24,7 +24,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     const { id } = await params;
     const userTickets = orgId ? await getAllTicketsByOrg(orgId) : await getAllTickets(userId);
-    const ticket = userTickets.find((item) => item.id === id);
+    let ticket = userTickets.find((item) => item.id === id);
+
+    // Fallback: ticket may have been created before org_id was set — look up directly
+    if (!ticket) {
+      ticket = await getTicketById(id) ?? undefined;
+    }
 
     if (!ticket) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
@@ -201,7 +206,11 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     const { id } = await params;
     const userTickets = await getAllTicketsByOrg(ctx.orgId);
-    const ticket = userTickets.find((item) => item.id === id);
+    let ticket = userTickets.find((item) => item.id === id);
+
+    if (!ticket) {
+      ticket = await getTicketById(id) ?? undefined;
+    }
 
     if (!ticket) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
