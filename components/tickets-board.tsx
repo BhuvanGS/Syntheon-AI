@@ -27,6 +27,7 @@ import { AssigneePicker, type AssigneeValue } from '@/components/assignee-picker
 import { TicketDependencyPanel } from '@/components/ticket-dependency-panel';
 import { DependencyBlockerModal } from '@/components/dependency-blocker-modal';
 import { DateRangePicker } from '@/components/date-range-picker';
+import { MentionEditor } from '@/components/mention-editor';
 import { format, parseISO, isToday, isPast, isTomorrow } from 'date-fns';
 
 type TicketStatus = 'backlog' | 'in_progress' | 'done' | 'blocked';
@@ -613,20 +614,22 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
               />
             </label>
 
-            <label className="block text-sm text-muted-foreground">
-              Description
-              <textarea
-                value={ticketEditForm.description}
-                onChange={(e) =>
+            <div className="space-y-1">
+              <label className="block text-sm text-muted-foreground">Description</label>
+              <MentionEditor
+                content={ticketEditForm.description}
+                onChange={(html) =>
                   setTicketEditForm((prev) => ({
                     ...prev,
-                    description: e.target.value,
+                    description: html,
                   }))
                 }
-                className="mt-1 min-h-24 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-                placeholder="Describe the ticket"
+                placeholder="Describe the ticket..."
+                disabled={Boolean(updatingTicketId)}
+                members={[]} // Global board doesn't have project-scoped members
+                tickets={[]} // Global board doesn't have project-scoped tickets
               />
-            </label>
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <label className="block text-sm text-muted-foreground">
