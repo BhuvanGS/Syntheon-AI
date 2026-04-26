@@ -69,6 +69,7 @@ import {
   ChevronDown,
   ChevronRight,
   X,
+  Loader2,
 } from 'lucide-react';
 
 type ProjectTab = 'meetings' | 'tickets' | 'list' | 'kanban' | 'analytics' | 'dependencies';
@@ -169,6 +170,8 @@ export function ProjectsWorkspace({
   const [projectNameDraft, setProjectNameDraft] = useState('');
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [ticketToDelete, setTicketToDelete] = useState<Ticket | null>(null);
+  const [deleteMode, setDeleteMode] = useState<'confirm' | 'reassign' | null>(null);
+  const [subtaskReassignTargetId, setSubtaskReassignTargetId] = useState<string>('');
   const [ticketToEdit, setTicketToEdit] = useState<Ticket | null>(null);
   const [ticketEditorHistory, setTicketEditorHistory] = useState<Ticket[]>([]);
   const [ticketEditForm, setTicketEditForm] = useState<{
@@ -774,13 +777,47 @@ export function ProjectsWorkspace({
     }
   }
 
-  async function handleDeleteTicket() {
+  function promptDeleteTicket(ticket: Ticket) {
+    const subtasks = childrenByParentId[ticket.id] ?? [];
+    setTicketToDelete(ticket);
+    setDeleteMode(subtasks.length > 0 ? 'confirm' : null);
+    setSubtaskReassignTargetId('');
+  }
+
+  async function handleDeleteTicket(mode: 'delete_all' | 'reassign' | 'simple') {
     if (!ticketToDelete) return;
 
     setSavingTicketId(ticketToDelete.id);
     try {
-      const res = await fetch(`/api/tickets/${ticketToDelete.id}`, { method: 'DELETE' });
+      const subtasks = childrenByParentId[ticketToDelete.id] ?? [];
 
+      if (mode === 'reassign' && subtaskReassignTargetId) {
+        // Re-parent all subtasks to the chosen ticket
+        await Promise.all(
+          subtasks.map((child) =>
+            fetch(`/api/tickets/${child.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ dependencyTicketId: subtaskReassignTargetId }),
+            })
+          )
+        );
+      } else if (mode === 'delete_all') {
+        // Delete all subtasks first
+        await Promise.all(
+          subtasks.map((child) =>
+            fetch(`/api/tickets/${child.id}`, { method: 'DELETE' })
+          )
+        );
+        setTicketStageMap((prev) => {
+          const next = { ...prev };
+          for (const child of subtasks) delete next[child.id];
+          return next;
+        });
+      }
+
+      // Delete the parent ticket
+      const res = await fetch(`/api/tickets/${ticketToDelete.id}`, { method: 'DELETE' });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data?.error || 'Failed to delete ticket');
@@ -792,6 +829,8 @@ export function ProjectsWorkspace({
         return next;
       });
       setTicketToDelete(null);
+      setDeleteMode(null);
+      setSubtaskReassignTargetId('');
       await onRefresh();
       showToast('Ticket deleted', 'success');
     } finally {
@@ -1050,7 +1089,7 @@ export function ProjectsWorkspace({
             variant="ghost"
             size="icon"
             className="h-6 w-6 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100"
-            onClick={() => setTicketToDelete(ticket)}
+            onClick={() => promptDeleteTicket(ticket)}
           >
             <X className="h-3.5 w-3.5" />
           </Button>
@@ -2150,7 +2189,7 @@ export function ProjectsWorkspace({
               variant="destructive"
               onClick={() => {
                 if (!ticketToEdit) return;
-                setTicketToDelete(ticketToEdit);
+                promptDeleteTicket(ticketToEdit);
                 closeTicketEditor();
               }}
               disabled={Boolean(savingTicketId)}
@@ -2179,37 +2218,134 @@ export function ProjectsWorkspace({
       <Dialog
         open={Boolean(ticketToDelete)}
         onOpenChange={(open) => {
-          if (!open) setTicketToDelete(null);
+          if (!open) {
+            setTicketToDelete(null);
+            setDeleteMode(null);
+            setSubtaskReassignTargetId('');
+          }
         }}
       >
         <DialogContent className="sm:max-w-xl border-border bg-background shadow-2xl">
           <DialogHeader>
             <DialogTitle className="font-playfair text-2xl text-foreground">
-              Delete this ticket?
+              {deleteMode === 'reassign' ? 'Move subtasks before deleting' : 'Delete this ticket?'}
             </DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              This will permanently remove &quot;{ticketToDelete?.title}&quot; from this project.
+              {deleteMode === 'reassign'
+                ? 'Choose an existing ticket to move the subtasks to before deleting.'
+                : deleteMode === 'confirm'
+                ? `"${ticketToDelete?.title}" has ${(childrenByParentId[ticketToDelete?.id ?? ''] ?? []).length} subtask(s). Choose what to do with them.`
+                : `This will permanently remove "${ticketToDelete?.title}" from this project.`}
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="pt-2">
+
+          {/* Subtask list shown in confirm mode */}
+          {deleteMode === 'confirm' && (
+            <div className="rounded-lg border border-border bg-muted/40 max-h-40 overflow-y-auto">
+              {(childrenByParentId[ticketToDelete?.id ?? ''] ?? []).map((child) => (
+                <div key={child.id} className="flex items-center gap-2 border-b border-border/50 px-3 py-2 last:border-b-0 text-sm">
+                  <span className="w-2 h-2 rounded-full bg-muted-foreground/40 shrink-0" />
+                  <span className="text-foreground truncate">{child.title}</span>
+                  <span className="ml-auto text-[11px] text-muted-foreground capitalize shrink-0">{child.status.replace('_', ' ')}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Reassign dropdown */}
+          {deleteMode === 'reassign' && (
+            <div className="py-1">
+              <label className="block text-sm text-muted-foreground mb-1">Move subtasks to</label>
+              <select
+                value={subtaskReassignTargetId}
+                onChange={(e) => setSubtaskReassignTargetId(e.target.value)}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+              >
+                <option value="">Select a ticket…</option>
+                {projectTickets
+                  .filter((t) => t.id !== ticketToDelete?.id && !t.dependency_ticket_id)
+                  .map((t) => (
+                    <option key={t.id} value={t.id}>{t.title}</option>
+                  ))}
+              </select>
+            </div>
+          )}
+
+          <DialogFooter className="pt-2 flex-wrap gap-2">
             <Button
               type="button"
               variant="outline"
-              onClick={() => setTicketToDelete(null)}
+              onClick={() => {
+                setTicketToDelete(null);
+                setDeleteMode(null);
+                setSubtaskReassignTargetId('');
+              }}
               className="rounded-full"
               disabled={Boolean(savingTicketId)}
             >
               Cancel
             </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={handleDeleteTicket}
-              className="rounded-full"
-              disabled={Boolean(savingTicketId)}
-            >
-              Delete ticket
-            </Button>
+
+            {deleteMode === 'confirm' && (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setDeleteMode('reassign')}
+                  className="rounded-full"
+                  disabled={Boolean(savingTicketId)}
+                >
+                  Move subtasks
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => handleDeleteTicket('delete_all')}
+                  className="rounded-full gap-2"
+                  disabled={Boolean(savingTicketId)}
+                >
+                  {savingTicketId ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  Delete all
+                </Button>
+              </>
+            )}
+
+            {deleteMode === 'reassign' && (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setDeleteMode('confirm')}
+                  className="rounded-full"
+                  disabled={Boolean(savingTicketId)}
+                >
+                  Back
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => handleDeleteTicket('reassign')}
+                  className="rounded-full gap-2"
+                  disabled={Boolean(savingTicketId) || !subtaskReassignTargetId}
+                >
+                  {savingTicketId ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  Move &amp; delete
+                </Button>
+              </>
+            )}
+
+            {!deleteMode && (
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => handleDeleteTicket('simple')}
+                className="rounded-full gap-2"
+                disabled={Boolean(savingTicketId)}
+              >
+                {savingTicketId ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                Delete ticket
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

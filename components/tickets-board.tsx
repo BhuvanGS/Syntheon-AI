@@ -26,6 +26,8 @@ import {
 import { AssigneePicker, type AssigneeValue } from '@/components/assignee-picker';
 import { TicketDependencyPanel } from '@/components/ticket-dependency-panel';
 import { DependencyBlockerModal } from '@/components/dependency-blocker-modal';
+import { DateRangePicker } from '@/components/date-range-picker';
+import { format, parseISO, isToday, isPast, isTomorrow } from 'date-fns';
 
 type TicketStatus = 'backlog' | 'in_progress' | 'done' | 'blocked';
 
@@ -38,6 +40,9 @@ interface Ticket {
   assignee_user_id?: string | null;
   projectId?: string | null;
   meeting_id: string | null;
+  start_date?: string | null;
+  due_date?: string | null;
+  deadline_time?: string | null;
 }
 
 interface Meeting {
@@ -70,11 +75,17 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
     description: string;
     assignee: AssigneeValue | null;
     status: TicketStatus;
+    start_date: string;
+    due_date: string;
+    deadline_time: string;
   }>({
     title: '',
     description: '',
     assignee: null,
     status: 'backlog',
+    start_date: '',
+    due_date: '',
+    deadline_time: '',
   });
   const [updatingTicketId, setUpdatingTicketId] = useState<string | null>(null);
   const [ticketToDelete, setTicketToDelete] = useState<Ticket | null>(null);
@@ -129,6 +140,9 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
           ? { userId: ticket.assignee_user_id, displayName: ticket.assignee }
           : null,
       status: ticket.status,
+      start_date: ticket.start_date || '',
+      due_date: ticket.due_date || '',
+      deadline_time: ticket.deadline_time || '',
     });
   }
 
@@ -146,6 +160,9 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
           assignee: ticketEditForm.assignee?.displayName ?? null,
           assigneeUserId: ticketEditForm.assignee?.userId ?? null,
           status: ticketEditForm.status,
+          start_date: ticketEditForm.start_date || null,
+          due_date: ticketEditForm.due_date || null,
+          deadline_time: ticketEditForm.deadline_time || null,
         }),
       });
 
@@ -166,6 +183,9 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                 assignee: ticketEditForm.assignee?.displayName ?? null,
                 assigneeUserId: ticketEditForm.assignee?.userId ?? null,
                 status: ticketEditForm.status,
+                start_date: ticketEditForm.start_date || null,
+                due_date: ticketEditForm.due_date || null,
+                deadline_time: ticketEditForm.deadline_time || null,
                 bypassGate: true,
               }),
             });
@@ -216,6 +236,9 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                 assignee: ticketEditForm.assignee?.displayName ?? null,
                 assignee_user_id: ticketEditForm.assignee?.userId ?? null,
                 status: ticketEditForm.status,
+                start_date: ticketEditForm.start_date || null,
+                due_date: ticketEditForm.due_date || null,
+                deadline_time: ticketEditForm.deadline_time || null,
               }
             : ticket
         )
@@ -636,6 +659,19 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
               </label>
             </div>
 
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">Dates</p>
+              <DateRangePicker
+                startDate={ticketEditForm.start_date || undefined}
+                dueDate={ticketEditForm.due_date || undefined}
+                deadlineTime={ticketEditForm.deadline_time || undefined}
+                onStartDateChange={(date) => setTicketEditForm((prev) => ({ ...prev, start_date: date || '' }))}
+                onDueDateChange={(date) => setTicketEditForm((prev) => ({ ...prev, due_date: date || '' }))}
+                onDeadlineTimeChange={(time) => setTicketEditForm((prev) => ({ ...prev, deadline_time: time || '' }))}
+                disabled={Boolean(updatingTicketId)}
+              />
+            </div>
+
             {ticketToEdit && (
               <div className="border-t border-border/60 pt-4">
                 <TicketDependencyPanel
@@ -828,6 +864,19 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                         <span>{getMeetingName(ticket.meeting_id)}</span>
                         <span>{ticket.assignee ? `@${ticket.assignee}` : 'Unassigned'}</span>
                       </div>
+                      {ticket.due_date && (() => {
+                        const d = parseISO(ticket.due_date);
+                        const overdue = isPast(d) && !isToday(d);
+                        const todayOrTomorrow = isToday(d) || isTomorrow(d);
+                        return (
+                          <div className={`mt-1.5 flex items-center gap-1 text-[10px] font-medium ${
+                            overdue ? 'text-red-500' : todayOrTomorrow ? 'text-amber-500' : 'text-muted-foreground'
+                          }`}>
+                            <Clock className="w-3 h-3" />
+                            <span>Due {format(d, 'MMM d')}{ticket.deadline_time ? ` at ${ticket.deadline_time}` : ''}</span>
+                          </div>
+                        );
+                      })()}
                     </div>
                   ))}
 
@@ -864,10 +913,11 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
           };
           return (
             <div className="rounded-2xl border border-border bg-card overflow-hidden">
-              <div className="grid grid-cols-[1fr_120px_160px_80px_40px] items-center px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground border-b border-border/60 bg-muted/40">
+              <div className="grid grid-cols-[1fr_120px_160px_100px_80px_40px] items-center px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground border-b border-border/60 bg-muted/40">
                 <span>Title</span>
                 <span>Status</span>
                 <span>Source</span>
+                <span>Due</span>
                 <span>Assignee</span>
                 <span />
               </div>
@@ -881,7 +931,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                   return (
                     <div
                       key={ticket.id}
-                      className={`grid grid-cols-[1fr_120px_160px_80px_40px] items-center px-4 py-3 gap-2 hover:bg-muted/40 transition-colors ${
+                      className={`grid grid-cols-[1fr_120px_160px_100px_80px_40px] items-center px-4 py-3 gap-2 hover:bg-muted/40 transition-colors ${
                         i < filteredTickets.length - 1 ? 'border-b border-border/40' : ''
                       }`}
                     >
@@ -899,6 +949,17 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                       </span>
                       <span className="text-xs text-muted-foreground truncate">
                         {getMeetingName(ticket.meeting_id)}
+                      </span>
+                      <span className={`text-xs font-medium truncate ${
+                        ticket.due_date
+                          ? isPast(parseISO(ticket.due_date)) && !isToday(parseISO(ticket.due_date))
+                            ? 'text-red-500'
+                            : isToday(parseISO(ticket.due_date)) || isTomorrow(parseISO(ticket.due_date))
+                              ? 'text-amber-500'
+                              : 'text-muted-foreground'
+                          : 'text-muted-foreground'
+                      }`}>
+                        {ticket.due_date ? format(parseISO(ticket.due_date), 'MMM d') : '—'}
                       </span>
                       <span className="text-xs text-muted-foreground truncate">
                         {ticket.assignee ? `@${ticket.assignee}` : '—'}
