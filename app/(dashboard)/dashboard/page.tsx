@@ -22,6 +22,7 @@ import { ProjectsWorkspace } from '@/components/projects-workspace';
 import { ProjectCreateDialog } from '@/components/project-create-dialog';
 import { ManualTicketDialog } from '@/components/manual-ticket-dialog';
 import { DynamicIslandSearch } from '@/components/dynamic-island-search';
+import { GanttCalendar } from '@/components/gantt-calendar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -757,20 +758,29 @@ function DashboardContent() {
             </div>
           )}
 
-          {/* ── CALENDAR placeholder ── */}
+          {/* ── CALENDAR — Gantt timeline ── */}
           {currentView === 'calendar' && (
-            <div className="p-6 max-w-4xl mx-auto w-full">
-              <div className="mb-5">
-                <h2 className="text-xl font-semibold text-foreground">Calendar</h2>
+            <div className="p-6 h-full flex flex-col">
+              <div className="mb-5 shrink-0">
+                <h2 className="text-xl font-semibold text-foreground">Timeline</h2>
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  Scheduled meetings and events
+                  Gantt view of every ticket across your projects
                 </p>
               </div>
-              <div className="border border-dashed border-border rounded-xl p-16 text-center">
-                <p className="text-sm font-medium text-foreground mb-1">Coming soon</p>
-                <p className="text-xs text-muted-foreground">
-                  In-app meeting scheduling — Phase 2.
-                </p>
+              <div className="flex-1 min-h-[600px]">
+                <GanttCalendar
+                  tickets={tickets as any}
+                  projects={projects as any}
+                  onSelectTicket={(id) => {
+                    const t = tickets.find((x) => x.id === id);
+                    if (t?.meeting_id) {
+                      setSelectedMeeting(t.meeting_id);
+                      handleViewChange('ticket-detail');
+                    } else {
+                      handleViewChange('tickets');
+                    }
+                  }}
+                />
               </div>
             </div>
           )}
