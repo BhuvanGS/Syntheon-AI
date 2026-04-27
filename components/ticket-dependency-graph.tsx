@@ -26,32 +26,32 @@ interface TicketDependencyGraphProps {
   onTicketClick?: (ticketId: string) => void;
 }
 
-const STATUS_COLORS: Record<string, { bg: string; border: string; text: string; dot: string }> = {
-  done: {
-    bg: '#f0fdf4',
-    border: '#86efac',
-    text: '#166534',
-    dot: '#22c55e',
-  },
-  in_progress: {
-    bg: '#eff6ff',
-    border: '#93c5fd',
-    text: '#1e40af',
-    dot: '#3b82f6',
-  },
-  blocked: {
-    bg: '#fef2f2',
-    border: '#fca5a5',
-    text: '#991b1b',
-    dot: '#ef4444',
-  },
-  backlog: {
-    bg: '#fafaf9',
-    border: '#d6d3d1',
-    text: '#44403c',
-    dot: '#a8a29e',
-  },
+const STATUS_COLORS_LIGHT: Record<string, { bg: string; border: string; text: string; dot: string }> = {
+  done: { bg: '#f0fdf4', border: '#86efac', text: '#166534', dot: '#22c55e' },
+  in_progress: { bg: '#eff6ff', border: '#93c5fd', text: '#1e40af', dot: '#3b82f6' },
+  blocked: { bg: '#fef2f2', border: '#fca5a5', text: '#991b1b', dot: '#ef4444' },
+  backlog: { bg: '#fafaf9', border: '#d6d3d1', text: '#44403c', dot: '#a8a29e' },
 };
+
+const STATUS_COLORS_DARK: Record<string, { bg: string; border: string; text: string; dot: string }> = {
+  done: { bg: '#052e16', border: '#166534', text: '#86efac', dot: '#22c55e' },
+  in_progress: { bg: '#0c1a3d', border: '#1e40af', text: '#93c5fd', dot: '#3b82f6' },
+  blocked: { bg: '#2a0a0a', border: '#991b1b', text: '#fca5a5', dot: '#ef4444' },
+  backlog: { bg: '#1c1917', border: '#44403c', text: '#a8a29e', dot: '#78716c' },
+};
+
+function useIsDark() {
+  const [dark, setDark] = useState(false);
+  useEffect(() => {
+    const el = document.documentElement;
+    const check = () => setDark(el.classList.contains('dark'));
+    check();
+    const obs = new MutationObserver(check);
+    obs.observe(el, { attributes: true, attributeFilter: ['class'] });
+    return () => obs.disconnect();
+  }, []);
+  return dark;
+}
 
 const NODE_W = 180;
 const NODE_H = 64;
@@ -124,6 +124,10 @@ export function TicketDependencyGraph({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const isDark = useIsDark();
+  const STATUS_COLORS = isDark ? STATUS_COLORS_DARK : STATUS_COLORS_LIGHT;
+  const softStroke = isDark ? '#a8a29e' : '#1a1a1a';
+  const subtitleFill = isDark ? '#a8a29e' : '#78716c';
 
   const fetchGraph = useCallback(async () => {
     setLoading(true);
@@ -200,7 +204,7 @@ export function TicketDependencyGraph({
   }
 
   return (
-    <div className="relative w-full rounded-2xl border border-border bg-[#fafaf9] overflow-hidden">
+    <div className="relative w-full rounded-2xl border border-border bg-card overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-border/70 bg-card">
         <div className="flex items-center gap-2 text-sm font-medium text-foreground">
           <GitBranch className="w-4 h-4 text-primary" />
@@ -268,7 +272,7 @@ export function TicketDependencyGraph({
               refY="3"
               orient="auto"
             >
-              <polygon points="0 0, 8 3, 0 6" fill="#1a1a1a" />
+              <polygon points="0 0, 8 3, 0 6" fill={softStroke} />
             </marker>
           </defs>
 
@@ -288,7 +292,7 @@ export function TicketDependencyGraph({
               const mx = (x1 + x2) / 2;
 
               const isHard = dep.strength === 'hard' || dep.escalated;
-              const strokeColor = isHard ? '#ef4444' : '#1a1a1a';
+              const strokeColor = isHard ? '#ef4444' : softStroke;
               const markerId = isHard ? 'arrowhead-hard' : 'arrowhead-soft';
 
               return (
@@ -354,7 +358,7 @@ export function TicketDependencyGraph({
                     x={28}
                     y={NODE_H / 2 + 7}
                     fontSize={9.5}
-                    fill="#a8a29e"
+                    fill={subtitleFill}
                     fontFamily="inherit"
                   >
                     {ticket.status.replace('_', ' ')}
@@ -404,7 +408,7 @@ export function TicketDependencyGraph({
               className="inline-block w-5 h-0.5"
               style={{
                 backgroundImage:
-                  'repeating-linear-gradient(to right,#a8a29e 0,#a8a29e 4px,transparent 4px,transparent 7px)',
+                  `repeating-linear-gradient(to right,${subtitleFill} 0,${subtitleFill} 4px,transparent 4px,transparent 7px)`,
               }}
             />
             Soft

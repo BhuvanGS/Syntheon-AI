@@ -221,33 +221,6 @@ export default function LandingPage() {
           }}
         />
 
-        {/* Start free — top right, localized to hero */}
-        <Link
-          href="/dashboard"
-          style={{
-            position: 'absolute',
-            top: '1.75rem',
-            right: '1.75rem',
-            zIndex: 5,
-            background: C.cream,
-            color: C.ink,
-            padding: '11px 24px',
-            borderRadius: '999px',
-            fontSize: '14px',
-            fontWeight: 500,
-            textDecoration: 'none',
-            letterSpacing: '0.01em',
-            boxShadow: '0 8px 28px rgba(0,0,0,0.35)',
-            transition: 'transform 0.2s',
-          }}
-          onMouseEnter={(e) =>
-            ((e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)')
-          }
-          onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.transform = 'none')}
-        >
-          Start free →
-        </Link>
-
         {/* Hero content */}
         <div
           style={{
@@ -288,6 +261,34 @@ export default function LandingPage() {
           >
             Meetings to tickets, automatically.
           </p>
+
+          <Link
+            href="/dashboard"
+            style={{
+              pointerEvents: 'auto',
+              display: 'inline-block',
+              background: C.cream,
+              color: C.matcha,
+              padding: '14px 40px',
+              borderRadius: '999px',
+              fontSize: '15px',
+              fontWeight: 500,
+              letterSpacing: '0.01em',
+              textDecoration: 'none',
+              boxShadow: '0 6px 24px rgba(0,0,0,0.3)',
+              transition: 'transform 0.2s, box-shadow 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)';
+              (e.currentTarget as HTMLElement).style.boxShadow = '0 10px 32px rgba(0,0,0,0.4)';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.transform = 'none';
+              (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 24px rgba(0,0,0,0.3)';
+            }}
+          >
+            Start free
+          </Link>
         </div>
 
         {/* scroll indicator */}

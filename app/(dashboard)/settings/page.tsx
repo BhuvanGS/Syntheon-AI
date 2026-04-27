@@ -2,8 +2,23 @@
 
 import { useCallback, useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { useTheme } from 'next-themes';
 import { Sidebar } from '@/components/sidebar';
-import { Github, CheckCircle2, Link2Off, Users, Copy, RefreshCw, Trash2 } from 'lucide-react';
+import {
+  Github,
+  CheckCircle2,
+  Link2Off,
+  Users,
+  Copy,
+  RefreshCw,
+  Trash2,
+  Link,
+  Building2,
+  Palette,
+  Sun,
+  Moon,
+  Monitor,
+} from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +32,14 @@ import { ProjectCreateDialog } from '@/components/project-create-dialog';
 import { DynamicIslandSearch } from '@/components/dynamic-island-search';
 import { useOrganization, useOrganizationList } from '@clerk/nextjs';
 
+const TABS = [
+  { id: 'connections', label: 'Connections', icon: Link },
+  { id: 'organization', label: 'Organization', icon: Building2 },
+  { id: 'appearance', label: 'Appearance', icon: Palette },
+] as const;
+
+type TabId = (typeof TABS)[number]['id'];
+
 interface Project {
   id: string;
   name: string;
@@ -25,6 +48,8 @@ interface Project {
 function SettingsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { theme, setTheme } = useTheme();
+  const [activeTab, setActiveTab] = useState<TabId>('connections');
   const { setActive, userMemberships, createOrganization } = useOrganizationList({
     userMemberships: true,
   });
@@ -292,6 +317,12 @@ function SettingsContent() {
     [router]
   );
 
+  const themeOptions = [
+    { value: 'light', label: 'Light', icon: Sun, description: 'Clean light interface' },
+    { value: 'dark', label: 'Dark', icon: Moon, description: 'Easy on the eyes' },
+    { value: 'system', label: 'System', icon: Monitor, description: 'Match your OS preference' },
+  ] as const;
+
   return (
     <div className="flex h-screen bg-background">
       <Sidebar
@@ -309,296 +340,398 @@ function SettingsContent() {
         </header>
 
         <main className="flex-1 overflow-auto animate-fade-in-up">
-          <div className="p-6 space-y-5 max-w-2xl mx-auto w-full">
-            <div>
+          <div className="p-6 max-w-2xl mx-auto w-full">
+            <div className="mb-6">
               <h2 className="text-xl font-semibold text-foreground">Settings</h2>
               <p className="text-sm text-muted-foreground mt-0.5">
                 Manage your integrations and workspace preferences
               </p>
             </div>
 
-            <Card className="border-border/60 shadow-none">
-              <CardHeader className="pb-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                    <Users className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-sm font-semibold">Organization Settings</CardTitle>
-                    <CardDescription className="text-xs mt-0.5">
-                      Manage your active organization workspace
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <Separator />
-              <CardContent className="pt-4 space-y-4">
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Current organization</p>
-                  <p className="text-sm font-medium text-foreground">
-                    {organization?.name ?? 'No organization selected'}
-                  </p>
-                </div>
+            {/* ── Segmented control ─────────────────────────────── */}
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-muted/60 border border-border/50 mb-6">
+              {TABS.map((tab) => {
+                const Icon = tab.icon;
+                const active = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`
+                      flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium
+                      transition-all duration-200 cursor-pointer
+                      ${active
+                        ? 'bg-background text-foreground shadow-sm border border-border/60'
+                        : 'text-muted-foreground hover:text-foreground'
+                      }
+                    `}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span className="hidden sm:inline">{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
 
-                <form onSubmit={handleCreateOrganization} className="space-y-2">
-                  <p className="text-xs text-muted-foreground">Create new organization</p>
-                  <div className="flex gap-2">
-                    <Input
-                      value={newOrgName}
-                      onChange={(e) => setNewOrgName(e.target.value)}
-                      disabled={creatingOrg}
-                      placeholder="e.g. Acme Labs"
-                      className="flex-1"
-                    />
-                    <Button type="submit" size="sm" disabled={creatingOrg || !newOrgName.trim()}>
-                      {creatingOrg ? 'Creating...' : 'Create'}
-                    </Button>
-                  </div>
-                </form>
+            {/* ── Connections tab ───────────────────────────────── */}
+            {activeTab === 'connections' && (
+              <div className="space-y-5 animate-fade-in-up">
+                {/* GitHub */}
+                <Card className="border-border/60 shadow-none">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                          <Github className="h-5 w-5 text-foreground" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-sm font-semibold">GitHub</CardTitle>
+                          <CardDescription className="text-xs mt-0.5">
+                            Create branches, commits, and pull requests
+                          </CardDescription>
+                        </div>
+                      </div>
+                      {githubConnected && (
+                        <Badge variant="default" className="text-[10px] gap-1">
+                          <CheckCircle2 className="h-3 w-3" /> Connected
+                        </Badge>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <Separator />
+                  <CardContent className="pt-4">
+                    {githubConnected ? (
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">
+                            Connected as{' '}
+                            <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono">
+                              @{githubUser}
+                            </code>
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            GitHub account is linked to Syntheon
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleDisconnectGithub}
+                          className="text-destructive hover:text-destructive gap-1.5"
+                        >
+                          <Link2Off className="h-3.5 w-3.5" /> Disconnect
+                        </Button>
+                      </div>
+                    ) : (
+                      <GitHubConnectButton onSuccess={() => setGithubConnected(true)} />
+                    )}
+                  </CardContent>
+                </Card>
 
-                <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground">Switch organization</p>
-                  {memberships.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      You are not part of any organizations yet.
-                    </p>
-                  ) : (
+                {/* Linear */}
+                <Card className="border-border/60 shadow-none">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center shrink-0 font-bold text-muted-foreground text-sm">
+                          L
+                        </div>
+                        <div>
+                          <CardTitle className="text-sm font-semibold">Linear</CardTitle>
+                          <CardDescription className="text-xs mt-0.5">
+                            Create and sync issue tickets from meeting transcripts
+                          </CardDescription>
+                        </div>
+                      </div>
+                      {linearConnected && (
+                        <Badge variant="default" className="text-[10px] gap-1">
+                          <CheckCircle2 className="h-3 w-3" /> Connected
+                        </Badge>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <Separator />
+                  <CardContent className="pt-4">
+                    {linearConnected ? (
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">
+                            Linear account connected
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {linearTeam
+                              ? `Default team: ${linearTeam}`
+                              : 'Default team from your workspace'}
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleDisconnectLinear}
+                          className="text-destructive hover:text-destructive gap-1.5"
+                        >
+                          <Link2Off className="h-3.5 w-3.5" /> Disconnect
+                        </Button>
+                      </div>
+                    ) : (
+                      <LinearConnectButton onSuccess={() => setLinearConnected(true)} />
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* API Key */}
+                <ApiKeyManager />
+              </div>
+            )}
+
+            {/* ── Organization tab ─────────────────────────────── */}
+            {activeTab === 'organization' && (
+              <div className="space-y-5 animate-fade-in-up">
+                <Card className="border-border/60 shadow-none">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <Building2 className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-sm font-semibold">Organization</CardTitle>
+                        <CardDescription className="text-xs mt-0.5">
+                          Manage your active organization workspace
+                        </CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <Separator />
+                  <CardContent className="pt-4 space-y-4">
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Current organization</p>
+                      <p className="text-sm font-medium text-foreground">
+                        {organization?.name ?? 'No organization selected'}
+                      </p>
+                    </div>
+
+                    <form onSubmit={handleCreateOrganization} className="space-y-2">
+                      <p className="text-xs text-muted-foreground">Create new organization</p>
+                      <div className="flex gap-2">
+                        <Input
+                          value={newOrgName}
+                          onChange={(e) => setNewOrgName(e.target.value)}
+                          disabled={creatingOrg}
+                          placeholder="e.g. Acme Labs"
+                          className="flex-1"
+                        />
+                        <Button type="submit" size="sm" disabled={creatingOrg || !newOrgName.trim()}>
+                          {creatingOrg ? 'Creating...' : 'Create'}
+                        </Button>
+                      </div>
+                    </form>
+
                     <div className="space-y-2">
-                      {memberships.map((m) => {
-                        const selected = m.organization.id === organization?.id;
-                        const isSwitching = switchingOrgId === m.organization.id;
-                        return (
-                          <div
-                            key={m.id}
-                            className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2"
+                      <p className="text-xs text-muted-foreground">Switch organization</p>
+                      {memberships.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                          You are not part of any organizations yet.
+                        </p>
+                      ) : (
+                        <div className="space-y-2">
+                          {memberships.map((m) => {
+                            const selected = m.organization.id === organization?.id;
+                            const isSwitching = switchingOrgId === m.organization.id;
+                            return (
+                              <div
+                                key={m.id}
+                                className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2"
+                              >
+                                <div>
+                                  <p className="text-sm text-foreground">{m.organization.name}</p>
+                                  <p className="text-[11px] text-muted-foreground capitalize">
+                                    {m.role === 'org:admin' ? 'Admin' : 'Member'}
+                                  </p>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant={selected ? 'secondary' : 'outline'}
+                                  disabled={selected || isSwitching}
+                                  onClick={() => handleSwitchOrganization(m.organization.id)}
+                                >
+                                  {selected ? 'Active' : isSwitching ? 'Switching...' : 'Switch'}
+                                </Button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {isAdmin && organization && (
+                      <form onSubmit={handleSaveOrgName} className="space-y-2">
+                        <p className="text-xs text-muted-foreground">Organization name</p>
+                        <div className="flex gap-2">
+                          <Input
+                            value={orgName}
+                            onChange={(e) => setOrgName(e.target.value)}
+                            disabled={savingOrgName}
+                            placeholder="Your organization name"
+                            className="flex-1"
+                          />
+                          <Button
+                            type="submit"
+                            size="sm"
+                            disabled={
+                              savingOrgName || !orgName.trim() || orgName.trim() === organization.name
+                            }
                           >
-                            <div>
-                              <p className="text-sm text-foreground">{m.organization.name}</p>
-                              <p className="text-[11px] text-muted-foreground capitalize">
-                                {m.role === 'org:admin' ? 'Admin' : 'Member'}
+                            {savingOrgName ? 'Saving...' : 'Save'}
+                          </Button>
+                        </div>
+                      </form>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Team Invitations — admin only */}
+                {isAdmin && (
+                  <Card className="border-border/60 shadow-none">
+                    <CardHeader className="pb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                          <Users className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-sm font-semibold">Team Invitations</CardTitle>
+                          <CardDescription className="text-xs mt-0.5">
+                            Invite members to {organization?.name ?? 'your org'} via email
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <Separator />
+                    <CardContent className="pt-4 space-y-4">
+                      <form onSubmit={handleInvite} className="flex gap-2">
+                        <Input
+                          type="email"
+                          placeholder="colleague@company.com"
+                          value={inviteEmail}
+                          onChange={(e) => setInviteEmail(e.target.value)}
+                          disabled={inviting}
+                          className="flex-1"
+                        />
+                        <Button
+                          type="submit"
+                          size="sm"
+                          disabled={inviting || !inviteEmail.trim()}
+                          className="shrink-0"
+                        >
+                          {inviting ? (
+                            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            'Send invite'
+                          )}
+                        </Button>
+                      </form>
+
+                      {(invitations?.data?.length ?? 0) > 0 && (
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground mb-2">
+                            Pending invitations
+                          </p>
+                          <div className="space-y-2">
+                            {invitations!.data!.map((inv) => (
+                              <div
+                                key={inv.id}
+                                className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2"
+                              >
+                                <div>
+                                  <p className="text-sm text-foreground">{inv.emailAddress}</p>
+                                  <p className="text-[11px] text-muted-foreground">
+                                    Invited · expires{' '}
+                                    {new Date(inv.createdAt).toLocaleDateString()}
+                                  </p>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                  onClick={() => handleRevokeInvite(inv.id)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
+
+            {/* ── Appearance tab ────────────────────────────────── */}
+            {activeTab === 'appearance' && (
+              <div className="space-y-5 animate-fade-in-up">
+                <Card className="border-border/60 shadow-none">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <Palette className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-sm font-semibold">Theme</CardTitle>
+                        <CardDescription className="text-xs mt-0.5">
+                          Choose how Syntheon looks for you
+                        </CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <Separator />
+                  <CardContent className="pt-5">
+                    <div className="grid grid-cols-3 gap-3">
+                      {themeOptions.map((opt) => {
+                        const Icon = opt.icon;
+                        const active = theme === opt.value;
+                        return (
+                          <button
+                            key={opt.value}
+                            onClick={() => setTheme(opt.value)}
+                            className={`
+                              group relative flex flex-col items-center gap-3 rounded-xl border-2 p-5
+                              transition-all duration-200 cursor-pointer
+                              ${active
+                                ? 'border-primary bg-primary/5 shadow-sm'
+                                : 'border-border/60 hover:border-border hover:bg-muted/30'
+                              }
+                            `}
+                          >
+                            <div
+                              className={`
+                                h-10 w-10 rounded-lg flex items-center justify-center transition-colors
+                                ${active ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground group-hover:text-foreground'}
+                              `}
+                            >
+                              <Icon className="h-5 w-5" />
+                            </div>
+                            <div className="text-center">
+                              <p className={`text-sm font-medium ${active ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground'}`}>
+                                {opt.label}
+                              </p>
+                              <p className="text-[11px] text-muted-foreground mt-0.5">
+                                {opt.description}
                               </p>
                             </div>
-                            <Button
-                              size="sm"
-                              variant={selected ? 'secondary' : 'outline'}
-                              disabled={selected || isSwitching}
-                              onClick={() => handleSwitchOrganization(m.organization.id)}
-                            >
-                              {selected ? 'Active' : isSwitching ? 'Switching...' : 'Switch'}
-                            </Button>
-                          </div>
+                            {active && (
+                              <div className="absolute top-2.5 right-2.5">
+                                <CheckCircle2 className="h-4 w-4 text-primary" />
+                              </div>
+                            )}
+                          </button>
                         );
                       })}
                     </div>
-                  )}
-                </div>
-
-                {isAdmin && organization && (
-                  <form onSubmit={handleSaveOrgName} className="space-y-2">
-                    <p className="text-xs text-muted-foreground">Organization name</p>
-                    <div className="flex gap-2">
-                      <Input
-                        value={orgName}
-                        onChange={(e) => setOrgName(e.target.value)}
-                        disabled={savingOrgName}
-                        placeholder="Your organization name"
-                        className="flex-1"
-                      />
-                      <Button
-                        type="submit"
-                        size="sm"
-                        disabled={
-                          savingOrgName || !orgName.trim() || orgName.trim() === organization.name
-                        }
-                      >
-                        {savingOrgName ? 'Saving...' : 'Save'}
-                      </Button>
-                    </div>
-                  </form>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Org Invitations — admin only */}
-            {isAdmin && (
-              <Card className="border-border/60 shadow-none">
-                <CardHeader className="pb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                      <Users className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-sm font-semibold">Team Invitations</CardTitle>
-                      <CardDescription className="text-xs mt-0.5">
-                        Invite members to {organization?.name ?? 'your org'} via email
-                      </CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <Separator />
-                <CardContent className="pt-4 space-y-4">
-                  <form onSubmit={handleInvite} className="flex gap-2">
-                    <Input
-                      type="email"
-                      placeholder="colleague@company.com"
-                      value={inviteEmail}
-                      onChange={(e) => setInviteEmail(e.target.value)}
-                      disabled={inviting}
-                      className="flex-1"
-                    />
-                    <Button
-                      type="submit"
-                      size="sm"
-                      disabled={inviting || !inviteEmail.trim()}
-                      className="shrink-0"
-                    >
-                      {inviting ? (
-                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        'Send invite'
-                      )}
-                    </Button>
-                  </form>
-
-                  {(invitations?.data?.length ?? 0) > 0 && (
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-2">
-                        Pending invitations
-                      </p>
-                      <div className="space-y-2">
-                        {invitations!.data!.map((inv) => (
-                          <div
-                            key={inv.id}
-                            className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2"
-                          >
-                            <div>
-                              <p className="text-sm text-foreground">{inv.emailAddress}</p>
-                              <p className="text-[11px] text-muted-foreground">
-                                Invited · expires {new Date(inv.createdAt).toLocaleDateString()}
-                              </p>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                              onClick={() => handleRevokeInvite(inv.id)}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </div>
             )}
-
-            {/* GitHub */}
-            <Card className="border-border/60 shadow-none">
-              <CardHeader className="pb-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                      <Github className="h-5 w-5 text-foreground" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-sm font-semibold">GitHub</CardTitle>
-                      <CardDescription className="text-xs mt-0.5">
-                        Create branches, commits, and pull requests
-                      </CardDescription>
-                    </div>
-                  </div>
-                  {githubConnected && (
-                    <Badge variant="default" className="text-[10px] gap-1">
-                      <CheckCircle2 className="h-3 w-3" /> Connected
-                    </Badge>
-                  )}
-                </div>
-              </CardHeader>
-              <Separator />
-              <CardContent className="pt-4">
-                {githubConnected ? (
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">
-                        Connected as{' '}
-                        <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono">
-                          @{githubUser}
-                        </code>
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        GitHub account is linked to Syntheon
-                      </p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleDisconnectGithub}
-                      className="text-destructive hover:text-destructive gap-1.5"
-                    >
-                      <Link2Off className="h-3.5 w-3.5" /> Disconnect
-                    </Button>
-                  </div>
-                ) : (
-                  <GitHubConnectButton onSuccess={() => setGithubConnected(true)} />
-                )}
-              </CardContent>
-            </Card>
-
-            {/* API Key */}
-            <ApiKeyManager />
-
-            {/* Linear */}
-            <Card className="border-border/60 shadow-none">
-              <CardHeader className="pb-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-[#f5f0ff] flex items-center justify-center shrink-0 font-bold text-[#5c3b8a] text-sm">
-                      L
-                    </div>
-                    <div>
-                      <CardTitle className="text-sm font-semibold">Linear</CardTitle>
-                      <CardDescription className="text-xs mt-0.5">
-                        Create and sync issue tickets from meeting transcripts
-                      </CardDescription>
-                    </div>
-                  </div>
-                  {linearConnected && (
-                    <Badge variant="default" className="text-[10px] gap-1">
-                      <CheckCircle2 className="h-3 w-3" /> Connected
-                    </Badge>
-                  )}
-                </div>
-              </CardHeader>
-              <Separator />
-              <CardContent className="pt-4">
-                {linearConnected ? (
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">
-                        Linear account connected
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {linearTeam
-                          ? `Default team: ${linearTeam}`
-                          : 'Default team from your workspace'}
-                      </p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleDisconnectLinear}
-                      className="text-destructive hover:text-destructive gap-1.5"
-                    >
-                      <Link2Off className="h-3.5 w-3.5" /> Disconnect
-                    </Button>
-                  </div>
-                ) : (
-                  <LinearConnectButton onSuccess={() => setLinearConnected(true)} />
-                )}
-              </CardContent>
-            </Card>
           </div>
         </main>
       </div>
