@@ -66,11 +66,11 @@ export default function LandingPage() {
 
   // GlassIcons feature row
   const glassItems = [
-    { icon: <Bot size={22} />, color: 'green', label: 'Bot joins' },
-    { icon: <Sparkles size={22} />, color: 'green', label: 'Specs extracted' },
-    { icon: <GitBranch size={22} />, color: 'green', label: 'PR opened' },
-    { icon: <Layers size={22} />, color: 'green', label: 'MCT context' },
-    { icon: <Zap size={22} />, color: 'green', label: 'Live preview' },
+    { icon: <Bot size={22} />, color: 'green', label: 'Bot joins call' },
+    { icon: <Sparkles size={22} />, color: 'green', label: 'AI extracts tickets' },
+    { icon: <GitBranch size={22} />, color: 'green', label: 'Kanban board' },
+    { icon: <Layers size={22} />, color: 'green', label: 'Gantt timeline' },
+    { icon: <Zap size={22} />, color: 'green', label: 'Ship to GitHub' },
   ];
 
   // Side Dock — vertical
@@ -286,7 +286,7 @@ export default function LandingPage() {
               letterSpacing: '0.01em',
             }}
           >
-            Conversations, compiled into software.
+            Meetings to tickets, automatically.
           </p>
         </div>
 
@@ -326,8 +326,8 @@ export default function LandingPage() {
         }}
       >
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-          <SectionLabel>Pipeline</SectionLabel>
-          <h2 style={sectionH2}>Five steps. Zero tickets written.</h2>
+          <SectionLabel>How it works</SectionLabel>
+          <h2 style={sectionH2}>Five steps. Zero tickets written by hand.</h2>
           <p
             style={{
               fontSize: '1rem',
@@ -339,7 +339,7 @@ export default function LandingPage() {
               textAlign: 'center',
             }}
           >
-            Every conversation — compiled, shipped, remembered.
+            Record a meeting. Get a Kanban board full of tickets. Track it all on a Gantt timeline.
           </p>
           <div
             style={{
@@ -384,7 +384,7 @@ export default function LandingPage() {
                 fontWeight: 500,
               }}
             >
-              Meeting Context Transfer
+              Cross-meeting context
             </div>
             <h2
               style={{
@@ -396,7 +396,7 @@ export default function LandingPage() {
                 marginBottom: '1.5rem',
               }}
             >
-              Every conversation, <em style={{ color: C.matchaLight }}>remembered.</em>
+              Every meeting, <em style={{ color: C.matchaLight }}>connected.</em>
             </h2>
             <p
               style={{
@@ -407,15 +407,15 @@ export default function LandingPage() {
                 marginBottom: '2rem',
               }}
             >
-              Big projects span multiple meetings. Syntheon remembers everything — every spec
-              discussed, every file built. Follow-up meetings generate only the precise changes
-              needed, not a full rewrite.
+              Projects span multiple meetings. Syntheon remembers every decision and ticket
+              across sessions. Follow-up meetings only create the new tickets needed — no
+              duplicates, no lost context.
             </p>
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
               {[
-                'Meeting 1 · Calculator',
-                'Meeting 2 · Scientific mode',
-                'Meeting 3 · Dark mode',
+                'Meeting 1 · 8 tickets created',
+                'Meeting 2 · 3 new, 2 updated',
+                'Meeting 3 · 5 resolved',
               ].map((s) => (
                 <span
                   key={s}
@@ -461,7 +461,7 @@ export default function LandingPage() {
         }}
       >
         <SectionLabel>Live capture</SectionLabel>
-        <h2 style={sectionH2}>The bot is listening.</h2>
+        <h2 style={sectionH2}>Record. Transcribe. Extract tickets.</h2>
         <p
           style={{
             fontSize: '1.05rem',
@@ -472,8 +472,8 @@ export default function LandingPage() {
             fontWeight: 300,
           }}
         >
-          One click sends Syntheon into any Google Meet, Zoom, or Teams call. It transcribes,
-          extracts intent, and structures everything in real-time.
+          One click sends Syntheon into any Google Meet, Zoom, or Teams call. It transcribes
+          in real-time and turns the conversation into actionable Jira-style tickets.
         </p>
         <div
           style={{
@@ -614,10 +614,10 @@ export default function LandingPage() {
           }}
         >
           {[
-            { v: '< 2 min', l: 'meeting → specs' },
+            { v: '< 2 min', l: 'meeting → tickets' },
             { v: '0', l: 'tickets written by hand' },
-            { v: '100%', l: 'ideas captured' },
-            { v: '1 click', l: 'spec → deployed' },
+            { v: '100%', l: 'action items captured' },
+            { v: '1 click', l: 'record → kanban' },
           ].map((s) => (
             <div key={s.l}>
               <div
@@ -666,10 +666,10 @@ export default function LandingPage() {
             marginBottom: '1rem',
           }}
         >
-          Ready to stop writing tickets?
+          Ready to automate your ticket workflow?
         </h2>
         <p style={{ color: C.matchaLight, marginBottom: '2rem', fontWeight: 300 }}>
-          Start free. No credit card required.
+          Record a meeting, get a full board of tickets. Start free.
         </p>
         <Link
           href="/dashboard"
@@ -718,7 +718,7 @@ export default function LandingPage() {
               Syntheon
             </div>
             <p style={{ fontSize: '13px', lineHeight: 1.6 }}>
-              Turns conversations into software. Bengaluru, India.
+              Turns meetings into tickets, timelines, and tracked work. Bengaluru, India.
             </p>
           </div>
           <FooterCol
@@ -816,7 +816,7 @@ function LoopingDecrypt() {
   return (
     <div ref={wrapperRef} style={{ display: 'inline-block' }}>
       <DecryptedText
-        text="Messy meetings to structured execution"
+        text="Every meeting becomes a board of tickets"
         animateOn="click"
         clickMode="toggle"
         sequential={true}

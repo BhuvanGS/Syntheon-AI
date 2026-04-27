@@ -1,6 +1,6 @@
 .icon-btns {
   display: grid;
-  grid-gap: 5em;
+  grid-gap: 3em;
   grid-template-columns: repeat(2, 1fr);
   margin: auto;
   padding: 3em 0;
@@ -95,8 +95,16 @@
   transform: translateY(20%);
 }
 
-@media (min-width: 768px) {
+@media (min-width: 640px) {
   .icon-btns {
     grid-template-columns: repeat(3, 1fr);
+    grid-gap: 4em;
+  }
+}
+
+@media (min-width: 960px) {
+  .icon-btns {
+    grid-template-columns: repeat(5, 1fr);
+    grid-gap: 5em;
   }
 }
