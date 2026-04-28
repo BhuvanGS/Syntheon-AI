@@ -50,18 +50,18 @@ export default function LandingPage() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  // Tech stack for LogoLoop (text nodes — clean & monochrome)
+  // Tech stack for LogoLoop (SVG logos + label)
   const techLogos = [
-    { node: <TechBadge label="Next.js" /> },
-    { node: <TechBadge label="Supabase" /> },
-    { node: <TechBadge label="Clerk" /> },
-    { node: <TechBadge label="OpenAI" /> },
-    { node: <TechBadge label="GitHub" /> },
-    { node: <TechBadge label="Vercel" /> },
-    { node: <TechBadge label="Three.js" /> },
-    { node: <TechBadge label="Tiptap" /> },
-    { node: <TechBadge label="shadcn/ui" /> },
-    { node: <TechBadge label="TailwindCSS" /> },
+    { node: <TechLogo label="Next.js" svg={<svg viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg"><mask id="a" style={{maskType:'alpha'}} maskUnits="userSpaceOnUse" x="0" y="0" width="180" height="180"><circle cx="90" cy="90" r="90" fill="#000"/></mask><g mask="url(#a)"><circle cx="90" cy="90" r="90" fill="#000"/><path d="M149.508 157.52L69.142 54H54v71.97h12.114V69.384l73.885 95.461A90.09 90.09 0 0 0 149.508 157.52Z" fill="url(#b)"/><rect x="115" y="54" width="12" height="72" fill="url(#c)"/></g><defs><linearGradient id="b" x1="109" y1="116.5" x2="144.5" y2="160.5" gradientUnits="userSpaceOnUse"><stop stopColor="#fff"/><stop offset="1" stopColor="#fff" stopOpacity="0"/></linearGradient><linearGradient id="c" x1="121" y1="54" x2="120.799" y2="106.875" gradientUnits="userSpaceOnUse"><stop stopColor="#fff"/><stop offset="1" stopColor="#fff" stopOpacity="0"/></linearGradient></defs></svg>} /> },
+    { node: <TechLogo label="Supabase" svg={<svg viewBox="0 0 109 113" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M63.708 110.284c-2.86 3.601-8.658 1.628-8.727-2.97l-1.007-67.251h45.22c8.19 0 12.758 9.46 7.665 15.874L63.708 110.284Z" fill="url(#sb-a)"/><path d="M63.708 110.284c-2.86 3.601-8.658 1.628-8.727-2.97l-1.007-67.251h45.22c8.19 0 12.758 9.46 7.665 15.874L63.708 110.284Z" fill="url(#sb-b)" fillOpacity=".2"/><path d="M45.317 2.071c2.86-3.601 8.657-1.628 8.726 2.97l.442 67.251H9.83c-8.19 0-12.759-9.46-7.665-15.875L45.317 2.072Z" fill="#3ECF8E"/><defs><linearGradient id="sb-a" x1="53.974" y1="54.974" x2="94.163" y2="71.829" gradientUnits="userSpaceOnUse"><stop stopColor="#249361"/><stop offset="1" stopColor="#3ECF8E"/></linearGradient><linearGradient id="sb-b" x1="36.156" y1="30.578" x2="54.484" y2="65.081" gradientUnits="userSpaceOnUse"><stop/><stop offset="1" stopOpacity="0"/></linearGradient></defs></svg>} /> },
+    { node: <TechLogo label="Clerk" svg={<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M42.685 53.556a21.333 21.333 0 0 1-21.37 0l5.333-9.238a10.667 10.667 0 0 0 10.704 0l5.333 9.238Z" fill="#1F0256"/><path d="M53.548 42.694l-9.237-5.334a10.667 10.667 0 0 0-5.352-9.26l5.334-9.238a21.333 21.333 0 0 1 9.255 23.832Z" fill="#1F0256" opacity=".5"/><path d="M44.31 37.36a10.667 10.667 0 0 1-10.703 0 10.667 10.667 0 0 1-5.353-9.26H17.588a21.333 21.333 0 0 0 32.056 18.498l-5.334-9.238Z" fill="#1F0256" opacity=".3"/></svg>} /> },
+    { node: <TechLogo label="OpenAI" svg={<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 10.68.287a6.048 6.048 0 0 0-5.77 4.166 6.004 6.004 0 0 0-4.027 2.91 6.04 6.04 0 0 0 .749 7.116 5.98 5.98 0 0 0 .516 4.911 6.05 6.05 0 0 0 6.51 2.9A6.07 6.07 0 0 0 13.32 23.714a6.05 6.05 0 0 0 5.772-4.206 5.98 5.98 0 0 0 4.023-2.867 6.04 6.04 0 0 0-.832-7.12ZM13.32 22.178a4.53 4.53 0 0 1-2.914-1.06c.037-.02.1-.056.142-.081l4.834-2.791a.786.786 0 0 0 .395-.683v-6.813l2.043 1.18a.072.072 0 0 1 .04.056v5.643a4.548 4.548 0 0 1-4.54 4.55ZM3.516 18.078a4.53 4.53 0 0 1-.543-3.046c.036.021.098.06.142.085l4.834 2.79a.782.782 0 0 0 .787 0l5.903-3.409v2.36a.074.074 0 0 1-.028.062l-4.888 2.823a4.55 4.55 0 0 1-6.207-1.665ZM2.203 7.935a4.524 4.524 0 0 1 2.368-1.99v5.75a.78.78 0 0 0 .394.681l5.903 3.408-2.042 1.18a.072.072 0 0 1-.068.005L3.87 14.147A4.55 4.55 0 0 1 2.203 7.934Zm17.093 3.976-5.904-3.409 2.043-1.18a.072.072 0 0 1 .068-.005l4.889 2.822a4.546 4.546 0 0 1-.704 8.197v-5.744a.782.782 0 0 0-.392-.681Zm2.032-3.065a6.7 6.7 0 0 0-.142-.085L16.35 6.07a.783.783 0 0 0-.788 0l-5.903 3.408V7.12a.074.074 0 0 1 .028-.062l4.889-2.82a4.545 4.545 0 0 1 6.752 4.608Zm-12.79 4.206-2.043-1.18a.074.074 0 0 1-.04-.057V6.171a4.546 4.546 0 0 1 7.453-3.49c-.037.02-.1.055-.142.081L8.932 5.553a.786.786 0 0 0-.395.683l-.001 6.816Zm1.11-2.392 2.63-1.52 2.63 1.52v3.039l-2.63 1.519-2.63-1.52V10.66Z" fill="currentColor"/></svg>} /> },
+    { node: <TechLogo label="GitHub" svg={<svg viewBox="0 0 98 96" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" clipRule="evenodd" d="M48.854 0C21.839 0 0 22 0 49.217c0 21.756 13.993 40.172 33.405 46.69 2.427.49 3.316-1.06 3.316-2.362 0-1.141-.08-5.052-.08-9.127-13.59 2.934-16.42-5.867-16.42-5.867-2.184-5.704-5.42-7.17-5.42-7.17-4.448-3.015.324-3.015.324-3.015 4.934.326 7.523 5.052 7.523 5.052 4.367 7.496 11.404 5.378 14.235 4.074.404-3.178 1.699-5.378 3.074-6.6C29.304 70.3 17.9 66.062 17.9 47.044c0-5.378 1.94-9.778 5.014-13.2-.485-1.222-2.184-6.275.486-13.038 0 0 4.125-1.304 13.426 5.052a46.97 46.97 0 0 1 12.214-1.63c4.125 0 8.33.57 12.213 1.63 9.302-6.356 13.427-5.052 13.427-5.052 2.67 6.763.97 11.816.485 13.038 3.155 3.422 5.015 7.822 5.015 13.2 0 19.018-11.497 23.175-22.428 24.396 1.78 1.548 3.316 4.481 3.316 9.126 0 6.6-.08 11.897-.08 13.526 0 1.304.89 2.853 3.316 2.364 19.412-6.52 33.405-24.935 33.405-46.691C97.707 22 75.788 0 48.854 0Z" fill="currentColor"/></svg>} /> },
+    { node: <TechLogo label="Vercel" svg={<svg viewBox="0 0 76 65" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M37.532 0L75.065 64.974H0L37.532 0Z" fill="currentColor"/></svg>} /> },
+    { node: <TechLogo label="Three.js" svg={<svg viewBox="0 0 640 640" xmlns="http://www.w3.org/2000/svg"><path d="M64 576h512L320 64 64 576Zm107.8-32L320 125l148.2 419H171.8Z" fill="currentColor"/></svg>} /> },
+    { node: <TechLogo label="Tiptap" svg={<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 5v3h5.5v12h3V8H19V5H5Z" fill="currentColor"/></svg>} /> },
+    { node: <TechLogo label="shadcn/ui" svg={<svg viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg"><path d="M 5 229 L 128 27" stroke="currentColor" strokeWidth="26" strokeLinecap="round"/><path d="M 128 229 L 251 27" stroke="currentColor" strokeWidth="26" strokeLinecap="round" opacity="0.4"/></svg>} /> },
+    { node: <TechLogo label="TailwindCSS" svg={<svg viewBox="0 0 54 33" fill="none" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" clipRule="evenodd" d="M27 0c-7.2 0-11.7 3.6-13.5 10.8 2.7-3.6 5.85-4.95 9.45-4.05 2.054.514 3.522 2.004 5.147 3.653C30.744 13.09 33.808 16.2 40.5 16.2c7.2 0 11.7-3.6 13.5-10.8-2.7 3.6-5.85 4.95-9.45 4.05-2.054-.514-3.522-2.004-5.147-3.653C36.756 3.11 33.692 0 27 0ZM13.5 16.2C6.3 16.2 1.8 19.8 0 27c2.7-3.6 5.85-4.95 9.45-4.05 2.054.514 3.522 2.004 5.147 3.653C17.244 29.29 20.308 32.4 27 32.4c7.2 0 11.7-3.6 13.5-10.8-2.7 3.6-5.85 4.95-9.45 4.05-2.054-.514-3.522-2.004-5.147-3.653C23.256 19.31 20.192 16.2 13.5 16.2Z" fill="#06B6D4"/></svg>} /> },
   ];
 
   // GlassIcons feature row
@@ -832,19 +832,30 @@ function LoopingDecrypt() {
   );
 }
 
-function TechBadge({ label }: { label: string }) {
+function TechLogo({ label, svg }: { label: string; svg: React.ReactNode }) {
   return (
     <span
       style={{
-        fontFamily: "'Inter', sans-serif",
-        fontSize: '15px',
-        fontWeight: 500,
-        color: C.matcha,
-        letterSpacing: '-0.01em',
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '8px',
         whiteSpace: 'nowrap',
       }}
     >
-      {label}
+      <span style={{ width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.matcha }}>
+        {svg}
+      </span>
+      <span
+        style={{
+          fontFamily: "'Inter', sans-serif",
+          fontSize: '15px',
+          fontWeight: 500,
+          color: C.matcha,
+          letterSpacing: '-0.01em',
+        }}
+      >
+        {label}
+      </span>
     </span>
   );
 }
