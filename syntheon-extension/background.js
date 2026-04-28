@@ -30,28 +30,34 @@ async function sendBot(meetingUrl, tabTitle) {
     throw new Error('API key not set. Open settings.');
   }
 
-  const res = await fetch(getApiUrl('/api/bot/create'), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`, // 🔥 THIS WAS MISSING
-    },
-    body: JSON.stringify({ meetingUrl, tabTitle }),
-  });
+  const url = getApiUrl('/api/bot/create');
+  let res;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({ meetingUrl, tabTitle }),
+    });
+  } catch (err) {
+    console.error('Network error reaching', url, err);
+    throw new Error(`Cannot reach server (${url}). Is your backend running?`);
+  }
 
-  // 🔥 SAFER PARSING
   const text = await res.text();
 
   let data;
   try {
     data = JSON.parse(text);
   } catch {
-    console.error('Non-JSON response:', text);
-    throw new Error('Server returned invalid response');
+    console.error(`Non-JSON ${res.status} response from ${url}:`, text.slice(0, 200));
+    throw new Error(`Server ${res.status}: invalid response (check API_BASE_URL in config.js)`);
   }
 
   if (!res.ok) {
-    throw new Error(data.error || 'Failed to send bot');
+    throw new Error(data.error || `Server ${res.status}: failed to send bot`);
   }
 
   return data;

@@ -37,9 +37,18 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider>
-      <html lang="en" suppressHydrationWarning className={`${_playfair.variable} ${_dmSans.variable} ${_dmSerif.variable}`}>
+      <html
+        lang="en"
+        suppressHydrationWarning
+        className={`${_playfair.variable} ${_dmSans.variable} ${_dmSerif.variable}`}
+      >
         <body className="font-sans antialiased bg-background text-foreground">
-          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem
+            disableTransitionOnChange
+          >
             <ToastProvider>
               {children}
               <Analytics />

@@ -12,6 +12,20 @@ import {
 } from '@/lib/db';
 import { inferProjectTicketDependencies } from '@/lib/groq';
 
+function ticketFingerprint(ticket: {
+  title: string;
+  description?: string | null;
+  status: string;
+  assignee?: string | null;
+}) {
+  return [
+    ticket.title.trim().toLowerCase(),
+    (ticket.description ?? '').trim().toLowerCase(),
+    ticket.status,
+    (ticket.assignee ?? '').trim().toLowerCase(),
+  ].join('::');
+}
+
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { userId, orgId } = await auth();
@@ -36,7 +50,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     const projectTickets = await getTicketsByProjectId(project.id);
-    if (projectTickets.some((ticket) => ticket.meeting_id === sourceMeetingId)) {
+
+    const sourceTickets = await getTicketsByMeetingId(sourceMeetingId, { originalOnly: true });
+    if (sourceTickets.length === 0) {
+      return NextResponse.json({ error: 'No tickets found for this meeting' }, { status: 400 });
+    }
+
+    const existingMeetingTickets = projectTickets.filter(
+      (ticket) => ticket.meeting_id === sourceMeetingId
+    );
+    const existingFingerprints = new Set(existingMeetingTickets.map(ticketFingerprint));
+
+    const sourceTicketsToImport = sourceTickets.filter(
+      (ticket) => !existingFingerprints.has(ticketFingerprint(ticket))
+    );
+
+    if (sourceTicketsToImport.length === 0) {
       return NextResponse.json({
         success: true,
         importedCount: 0,
@@ -45,15 +74,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       });
     }
 
-    const sourceTickets = await getTicketsByMeetingId(sourceMeetingId, { originalOnly: true });
-    if (sourceTickets.length === 0) {
-      return NextResponse.json({ error: 'No tickets found for this meeting' }, { status: 400 });
-    }
-
     const now = new Date().toISOString();
-    const importedTickets = sourceTickets.map((ticket) => ({
+    const importedTickets = sourceTicketsToImport.map((ticket) => ({
       ...ticket,
       id: randomUUID(),
+      user_id: userId,
+      org_id: project.org_id ?? orgId ?? undefined,
       projectId: project.id,
       createdAt: now,
       updatedAt: now,

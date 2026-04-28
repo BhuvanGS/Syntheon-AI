@@ -26,14 +26,20 @@ interface TicketDependencyGraphProps {
   onTicketClick?: (ticketId: string) => void;
 }
 
-const STATUS_COLORS_LIGHT: Record<string, { bg: string; border: string; text: string; dot: string }> = {
+const STATUS_COLORS_LIGHT: Record<
+  string,
+  { bg: string; border: string; text: string; dot: string }
+> = {
   done: { bg: '#f0fdf4', border: '#86efac', text: '#166534', dot: '#22c55e' },
   in_progress: { bg: '#eff6ff', border: '#93c5fd', text: '#1e40af', dot: '#3b82f6' },
   blocked: { bg: '#fef2f2', border: '#fca5a5', text: '#991b1b', dot: '#ef4444' },
   backlog: { bg: '#fafaf9', border: '#d6d3d1', text: '#44403c', dot: '#a8a29e' },
 };
 
-const STATUS_COLORS_DARK: Record<string, { bg: string; border: string; text: string; dot: string }> = {
+const STATUS_COLORS_DARK: Record<
+  string,
+  { bg: string; border: string; text: string; dot: string }
+> = {
   done: { bg: '#052e16', border: '#166534', text: '#86efac', dot: '#22c55e' },
   in_progress: { bg: '#0c1a3d', border: '#1e40af', text: '#93c5fd', dot: '#3b82f6' },
   blocked: { bg: '#2a0a0a', border: '#991b1b', text: '#fca5a5', dot: '#ef4444' },
@@ -407,8 +413,7 @@ export function TicketDependencyGraph({
             <span
               className="inline-block w-5 h-0.5"
               style={{
-                backgroundImage:
-                  `repeating-linear-gradient(to right,${subtitleFill} 0,${subtitleFill} 4px,transparent 4px,transparent 7px)`,
+                backgroundImage: `repeating-linear-gradient(to right,${subtitleFill} 0,${subtitleFill} 4px,transparent 4px,transparent 7px)`,
               }}
             />
             Soft

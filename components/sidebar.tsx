@@ -36,6 +36,13 @@ interface SidebarProps {
 const ADMIN_NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard', view: null },
   {
+    id: 'meetings',
+    label: 'Meetings',
+    icon: Video,
+    href: '/dashboard?view=meetings',
+    view: 'meetings',
+  },
+  {
     id: 'members',
     label: 'Members',
     icon: Users,

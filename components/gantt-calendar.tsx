@@ -114,6 +114,44 @@ function statusStyles(status?: string | null) {
   }
 }
 
+// ─── Urgency helpers ────────────────────────────────────────────────
+function getUrgency(dueDate: string | null | undefined, status?: string | null) {
+  if (status === 'done') return { label: 'Done', color: '', dot: '', daysLeft: null };
+  if (!dueDate) return { label: '', color: '', dot: '', daysLeft: null };
+  const due = startOfDay(parseISO(dueDate));
+  const now = startOfDay(new Date());
+  const days = differenceInCalendarDays(due, now);
+  if (days < 0)
+    return {
+      label: `${Math.abs(days)}d overdue`,
+      color: 'text-red-500 bg-red-500/10',
+      dot: 'bg-red-500',
+      daysLeft: days,
+    };
+  if (days === 0)
+    return {
+      label: 'Due today',
+      color: 'text-orange-500 bg-orange-500/10',
+      dot: 'bg-orange-500',
+      daysLeft: days,
+    };
+  if (days <= 3)
+    return {
+      label: `${days}d left`,
+      color: 'text-yellow-500 bg-yellow-500/10',
+      dot: 'bg-yellow-500',
+      daysLeft: days,
+    };
+  if (days <= 7)
+    return {
+      label: `${days}d left`,
+      color: 'text-blue-400 bg-blue-400/10',
+      dot: 'bg-blue-400',
+      daysLeft: days,
+    };
+  return { label: `${days}d`, color: 'text-muted-foreground bg-muted', dot: '', daysLeft: days };
+}
+
 // ─── Helpers ───────────────────────────────────────────────────────
 function safeParse(d?: string | null): Date | null {
   if (!d) return null;
@@ -251,6 +289,10 @@ export function GanttCalendar({ tickets, projects, onSelectTicket }: GanttCalend
             <LegendDot className="bg-foreground/55" label="Review" />
             <LegendDot className="bg-foreground/20" label="Done" />
             <LegendDot className="bg-destructive" label="Blocked" />
+            <span className="mx-0.5 text-border">│</span>
+            <LegendDot className="bg-red-500" label="Overdue" />
+            <LegendDot className="bg-orange-500" label="Today" />
+            <LegendDot className="bg-yellow-500" label="≤3d" />
           </div>
 
           {/* Zoom toggle */}
@@ -380,6 +422,7 @@ export function GanttCalendar({ tickets, projects, onSelectTicket }: GanttCalend
               const left = startOffset * dayWidth;
               const width = Math.max(lengthDays * dayWidth - 4, dayWidth - 4);
               const styles = statusStyles(ticket.status ?? 'backlog');
+              const urgency = getUrgency(ticket.due_date, ticket.status);
               const projName = ticket.projectId ? projectMap.get(ticket.projectId) : null;
 
               return (
@@ -421,6 +464,16 @@ export function GanttCalendar({ tickets, projects, onSelectTicket }: GanttCalend
                         {projName && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium truncate max-w-[120px]">
                             {projName}
+                          </span>
+                        )}
+                        {urgency.label && ticket.status !== 'done' && (
+                          <span
+                            className={cn(
+                              'text-[10px] px-1.5 py-0.5 rounded font-medium',
+                              urgency.color
+                            )}
+                          >
+                            {urgency.label}
                           </span>
                         )}
                         {ticket.assignee && (
@@ -469,6 +522,11 @@ export function GanttCalendar({ tickets, projects, onSelectTicket }: GanttCalend
                       }}
                       title={`${ticket.title}\n${format(span.start, 'MMM d')} → ${format(span.end, 'MMM d')}`}
                     >
+                      {urgency.dot && ticket.status !== 'done' && (
+                        <span
+                          className={cn('w-2 h-2 rounded-full shrink-0 animate-pulse', urgency.dot)}
+                        />
+                      )}
                       <span className={cn('truncate', styles.text)}>{ticket.title}</span>
                     </button>
                   </div>

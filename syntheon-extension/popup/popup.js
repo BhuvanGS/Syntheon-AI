@@ -28,6 +28,17 @@ class SyntheonPopup {
     this.settingsPanel = document.getElementById('settingsPanel');
     this.apiKeyInput = document.getElementById('apiKeyInput');
     this.saveApiKeyBtn = document.getElementById('saveApiKey');
+    this.settingsToast = document.getElementById('settingsToast');
+  }
+
+  showSettingsToast(message, type = 'success') {
+    if (!this.settingsToast) return;
+    this.settingsToast.textContent = message;
+    this.settingsToast.className = `settings-toast ${type}`;
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => {
+      this.settingsToast?.classList.add('hidden');
+    }, 2500);
   }
 
   bindEvents() {
@@ -53,14 +64,13 @@ class SyntheonPopup {
     this.saveApiKeyBtn?.addEventListener('click', async () => {
       const key = this.apiKeyInput?.value?.trim();
 
-      if (!key.startsWith('syn_')) {
-        alert('Invalid API key');
+      if (!key || !key.startsWith('syn_')) {
+        this.showSettingsToast('Invalid API key. It must start with syn_', 'error');
         return;
       }
 
       await chrome.storage.local.set({ apiKey: key });
-      alert('API key saved!');
-      this.settingsPanel?.classList.add('hidden');
+      this.showSettingsToast('API key saved successfully', 'success');
     });
 
     this.recordingsButton?.addEventListener('click', () => {

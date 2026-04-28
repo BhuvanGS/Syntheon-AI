@@ -360,9 +360,10 @@ function SettingsContent() {
                     className={`
                       flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium
                       transition-all duration-200 cursor-pointer
-                      ${active
-                        ? 'bg-background text-foreground shadow-sm border border-border/60'
-                        : 'text-muted-foreground hover:text-foreground'
+                      ${
+                        active
+                          ? 'bg-background text-foreground shadow-sm border border-border/60'
+                          : 'text-muted-foreground hover:text-foreground'
                       }
                     `}
                   >
@@ -520,7 +521,11 @@ function SettingsContent() {
                           placeholder="e.g. Acme Labs"
                           className="flex-1"
                         />
-                        <Button type="submit" size="sm" disabled={creatingOrg || !newOrgName.trim()}>
+                        <Button
+                          type="submit"
+                          size="sm"
+                          disabled={creatingOrg || !newOrgName.trim()}
+                        >
                           {creatingOrg ? 'Creating...' : 'Create'}
                         </Button>
                       </div>
@@ -578,7 +583,9 @@ function SettingsContent() {
                             type="submit"
                             size="sm"
                             disabled={
-                              savingOrgName || !orgName.trim() || orgName.trim() === organization.name
+                              savingOrgName ||
+                              !orgName.trim() ||
+                              orgName.trim() === organization.name
                             }
                           >
                             {savingOrgName ? 'Saving...' : 'Save'}
@@ -644,8 +651,7 @@ function SettingsContent() {
                                 <div>
                                   <p className="text-sm text-foreground">{inv.emailAddress}</p>
                                   <p className="text-[11px] text-muted-foreground">
-                                    Invited · expires{' '}
-                                    {new Date(inv.createdAt).toLocaleDateString()}
+                                    Invited · expires {new Date(inv.createdAt).toLocaleDateString()}
                                   </p>
                                 </div>
                                 <Button
@@ -697,9 +703,10 @@ function SettingsContent() {
                             className={`
                               group relative flex flex-col items-center gap-3 rounded-xl border-2 p-5
                               transition-all duration-200 cursor-pointer
-                              ${active
-                                ? 'border-primary bg-primary/5 shadow-sm'
-                                : 'border-border/60 hover:border-border hover:bg-muted/30'
+                              ${
+                                active
+                                  ? 'border-primary bg-primary/5 shadow-sm'
+                                  : 'border-border/60 hover:border-border hover:bg-muted/30'
                               }
                             `}
                           >
@@ -712,7 +719,9 @@ function SettingsContent() {
                               <Icon className="h-5 w-5" />
                             </div>
                             <div className="text-center">
-                              <p className={`text-sm font-medium ${active ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground'}`}>
+                              <p
+                                className={`text-sm font-medium ${active ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground'}`}
+                              >
                                 {opt.label}
                               </p>
                               <p className="text-[11px] text-muted-foreground mt-0.5">

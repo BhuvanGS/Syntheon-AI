@@ -1,7 +1,7 @@
 // app/api/bot/create/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth, clerkClient } from '@clerk/nextjs/server';
 import crypto from 'crypto';
 
 import { createBot } from '@/lib/skribby';
@@ -21,20 +21,40 @@ async function getUserFromApiKey(apiKey: string) {
   return data?.user_id || null;
 }
 
+// 🔐 Resolve a user's primary org from Clerk (first membership)
+async function getUserPrimaryOrgId(userId: string): Promise<string | null> {
+  try {
+    const client = await clerkClient();
+    const memberships = await client.users.getOrganizationMembershipList({ userId });
+    const list = memberships.data ?? [];
+    if (list.length === 0) return null;
+    // Prefer admin membership, else first
+    const admin = list.find((m) => m.role === 'org:admin');
+    return (admin ?? list[0]).organization.id;
+  } catch (err) {
+    console.error('Failed to resolve user primary org:', err);
+    return null;
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const authHeader = req.headers.get('authorization');
 
     let userId: string | null = null;
+    let orgId: string | null = null;
 
     // 🔥 API key auth (extension)
     if (authHeader?.startsWith('Bearer syn_')) {
       const apiKey = authHeader.replace('Bearer ', '');
       userId = await getUserFromApiKey(apiKey);
+      // Extension has no org context — resolve user's primary org from Clerk
+      if (userId) {
+        orgId = await getUserPrimaryOrgId(userId);
+      }
     }
 
     // 🔥 Clerk auth (dashboard)
-    let orgId: string | null = null;
     if (!userId) {
       const session = await auth();
       userId = session.userId;

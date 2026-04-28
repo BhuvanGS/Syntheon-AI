@@ -136,6 +136,7 @@ export async function POST(req: NextRequest) {
     const ticketsWithUser = tickets.map((ticket: any) => ({
       ...ticket,
       user_id: meeting.user_id,
+      org_id: meeting.org_id ?? null,
       projectId: meeting.projectId ?? null,
       project_id: meeting.projectId ?? null,
     }));
