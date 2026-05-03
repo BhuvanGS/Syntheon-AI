@@ -12,7 +12,7 @@ export async function DELETE(
 
     const { id: ticketId, commentId } = await params;
     const ticket = await getTicketById(ticketId);
-    if (!ticket || ticket.user_id !== userId) {
+    if (!ticket) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
@@ -53,7 +53,7 @@ export async function PATCH(
 
     const { id: ticketId, commentId } = await params;
     const ticket = await getTicketById(ticketId);
-    if (!ticket || ticket.user_id !== userId) {
+    if (!ticket) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, type DragEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Paperclip, X, Upload, FileText, Image, File } from 'lucide-react';
 import { useToast } from '@/components/island-toast';
@@ -37,6 +37,8 @@ export function TicketAttachmentsPanel({ ticketId }: TicketAttachmentsPanelProps
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const dragCounterRef = useRef(0);
   const { showToast } = useToast();
 
   const fetchAttachments = useCallback(async () => {
@@ -56,21 +58,15 @@ export function TicketAttachmentsPanel({ ticketId }: TicketAttachmentsPanelProps
     fetchAttachments();
   }, [fetchAttachments]);
 
-  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validate file size (max 15MB)
+  async function uploadFile(file: File) {
     const maxSize = 15 * 1024 * 1024;
     if (file.size > maxSize) {
       showToast('File size exceeds 15MB limit', 'error');
-      e.target.value = '';
       return;
     }
 
     setUploading(true);
     try {
-      // Step 1: Get presigned URL for direct Supabase upload
       const presignedRes = await fetch('/api/upload/presigned', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -89,25 +85,18 @@ export function TicketAttachmentsPanel({ ticketId }: TicketAttachmentsPanelProps
 
       const { signedUrl, filePath } = await presignedRes.json();
 
-      // Step 2: Upload file directly to Supabase (bypasses Next.js body limit)
       const uploadRes = await fetch(signedUrl, {
         method: 'PUT',
         body: file,
-        headers: {
-          'Content-Type': file.type,
-        },
+        headers: { 'Content-Type': file.type },
       });
 
-      if (!uploadRes.ok) {
-        throw new Error('Failed to upload file to storage');
-      }
+      if (!uploadRes.ok) throw new Error('Failed to upload file to storage');
 
-      // Step 3: Get public URL
       const { data: urlData } = await fetch(
         `/api/upload/url?path=${encodeURIComponent(filePath)}`
       ).then((r) => r.json());
 
-      // Step 4: Create attachment record
       const attachmentRes = await fetch(`/api/tickets/${ticketId}/attachments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -128,9 +117,39 @@ export function TicketAttachmentsPanel({ ticketId }: TicketAttachmentsPanelProps
       showToast(err instanceof Error ? err.message : 'Failed to upload file', 'error');
     } finally {
       setUploading(false);
-      // Reset input
-      e.target.value = '';
     }
+  }
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    await uploadFile(file);
+  }
+
+  function handleDragEnter(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    dragCounterRef.current += 1;
+    setDragOver(true);
+  }
+
+  function handleDragOver(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+  }
+
+  function handleDragLeave(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    dragCounterRef.current -= 1;
+    if (dragCounterRef.current === 0) setDragOver(false);
+  }
+
+  async function handleDrop(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    dragCounterRef.current = 0;
+    setDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (!file || uploading) return;
+    await uploadFile(file);
   }
 
   async function handleDelete(attachmentId: string) {
@@ -167,7 +186,19 @@ export function TicketAttachmentsPanel({ ticketId }: TicketAttachmentsPanelProps
   }
 
   return (
-    <div className="space-y-4">
+    <div
+      className="relative flex flex-col min-h-[420px] space-y-4"
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {dragOver && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-primary bg-primary/10 backdrop-blur-sm pointer-events-none">
+          <Upload className="h-10 w-10 text-primary mb-3" />
+          <p className="text-sm font-semibold text-primary">Drop here to upload</p>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
           <Paperclip className="h-4 w-4" />
@@ -211,7 +242,7 @@ export function TicketAttachmentsPanel({ ticketId }: TicketAttachmentsPanelProps
         >
           <Paperclip className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
           <p className="text-sm text-muted-foreground">No attachments yet</p>
-          <p className="text-xs text-muted-foreground/60 mt-1">Click to upload files</p>
+          <p className="text-xs text-muted-foreground/60 mt-1">Click or drag & drop files here</p>
         </button>
       ) : (
         <div className="space-y-2">

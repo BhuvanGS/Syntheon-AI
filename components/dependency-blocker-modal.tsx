@@ -26,6 +26,7 @@ interface DependencyBlockerModalProps {
   message: string;
   blockers: Blocker[];
   isHardBlock: boolean;
+  onProceed?: () => void;
 }
 
 export function DependencyBlockerModal({
@@ -36,6 +37,7 @@ export function DependencyBlockerModal({
   message,
   blockers,
   isHardBlock,
+  onProceed,
 }: DependencyBlockerModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -84,7 +86,7 @@ export function DependencyBlockerModal({
           <Button variant="outline" onClick={onRevert} className="w-full sm:w-auto">
             Revert Changes
           </Button>
-          {blockers.length === 1 && (
+          {isHardBlock && blockers.length === 1 && (
             <Button
               onClick={() => onGoToTicket(blockers[0].depends_on)}
               className="w-full sm:w-auto"
@@ -92,9 +94,14 @@ export function DependencyBlockerModal({
               Go to Blocking Ticket
             </Button>
           )}
-          {blockers.length > 1 && (
+          {isHardBlock && blockers.length > 1 && (
             <Button onClick={onClose} className="w-full sm:w-auto">
               View All Blockers
+            </Button>
+          )}
+          {!isHardBlock && onProceed && (
+            <Button variant="destructive" onClick={onProceed} className="w-full sm:w-auto">
+              Proceed Anyway
             </Button>
           )}
         </DialogFooter>

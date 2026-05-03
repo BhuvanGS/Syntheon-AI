@@ -28,7 +28,7 @@ Testing phase 5 - Meetings
 
 
 Testing phase 6 - Tickets
-1. can create tickets but the creation popus status bar is white and not visible
+1. [FIXED] ticket creation dialog status/meeting selects were bg-white — replaced with bg-background so they are visible in dark mode
 2. can edit the tickets title, desc, status, assignee
 3. drag and drop is functioning in kanban
 4. Date picker is functioning
@@ -39,7 +39,7 @@ Testing phase 6 - Tickets
 Testing phase 7 - Dependencies
 1. can add Dependencies
 2. can remove Dependencies
-3. [OPEN] soft dependency bypass still uses window.confirm in tickets-board.tsx, ticket-detail.tsx, and projects-workspace.tsx — needs custom styled dialog
+3. [FIXED] soft dependency bypass replaced window.confirm/alert with DependencyBlockerModal — onProceed prop added, all 5 occurrences across tickets-board.tsx, ticket-detail.tsx, projects-workspace.tsx replaced
 4. Hard block is functioning (DependencyBlockerModal is custom styled)
 5. Dependencies graph is functioning 
 6. auto inference could not be tested , refer to phase 5 for issues
@@ -64,7 +64,7 @@ Testing phase 11 - Attachments
  no error for docx type 
  no error for txt type 
 
-additional notes :- [OPEN] needs a drag and drop feature for the attachments section
+additional notes :- [FIXED] drag and drop added to attachments panel — drop zone highlights on drag, works for both empty and populated states, shares same uploadFile logic as the button
 
 Testing phase 12 - integrations 
 1. Github connect and disconnect is working 

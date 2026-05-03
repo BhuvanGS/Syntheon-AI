@@ -135,7 +135,7 @@ export function ManualTicketDialog({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Design the billing settings panel"
-              className="bg-white"
+              className="bg-background"
               autoFocus
             />
           </div>
@@ -146,7 +146,7 @@ export function ManualTicketDialog({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Add enough context for the next person to execute without asking twice."
-              className="min-h-28 bg-white"
+              className="min-h-28 bg-background"
             />
           </div>
 
@@ -157,7 +157,7 @@ export function ManualTicketDialog({
                 <select
                   value={resolvedMeetingId}
                   onChange={(e) => setMeetingId(e.target.value)}
-                  className="h-10 w-full rounded-md border border-border bg-white px-3 text-sm text-foreground"
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground"
                   disabled={meetings.length === 0}
                 >
                   {meetings.length === 0 ? (
@@ -178,7 +178,7 @@ export function ManualTicketDialog({
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as typeof status)}
-                className="h-10 w-full rounded-md border border-border bg-white px-3 text-sm text-foreground"
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground"
               >
                 <option value="backlog">Backlog</option>
                 <option value="in_progress">In progress</option>

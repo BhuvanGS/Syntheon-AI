@@ -100,6 +100,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
     blockers: Array<{ id: string; depends_on: string; type: string; title?: string }>;
     isHardBlock: boolean;
     onRevert: () => void;
+    onProceed?: () => void;
   } | null>(null);
 
   useEffect(() => {
@@ -172,53 +173,78 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
         const data = await res.json().catch(() => ({}));
 
         if (res.status === 422 && data?.error === 'soft_blocked') {
-          const proceed = window.confirm(
-            `${data?.message || 'This move has unresolved soft dependencies.'}\n\nProceed anyway?`
-          );
-          if (proceed) {
-            res = await fetch(`/api/tickets/${ticketToEdit.id}`, {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                title: ticketEditForm.title.trim(),
-                description: ticketEditForm.description.trim(),
-                assignee: ticketEditForm.assignee?.displayName ?? null,
-                assigneeUserId: ticketEditForm.assignee?.userId ?? null,
-                status: ticketEditForm.status,
-                start_date: ticketEditForm.start_date || null,
-                due_date: ticketEditForm.due_date || null,
-                deadline_time: ticketEditForm.deadline_time || null,
-                bypassGate: true,
-              }),
-            });
-          }
+          const blockersWithTitles = (data?.blockers || []).map((b: any) => ({
+            ...b,
+            title: tickets.find((t) => t.id === b.depends_on)?.title,
+          }));
+          setBlockerModalData({
+            message: data?.message || 'This move has unresolved soft dependencies.',
+            blockers: blockersWithTitles,
+            isHardBlock: false,
+            onRevert: () => {
+              setBlockerModalOpen(false);
+              setTicketEditForm((prev) => ({ ...prev, status: ticketToEdit.status }));
+            },
+            onProceed: async () => {
+              setBlockerModalOpen(false);
+              const bypassRes = await fetch(`/api/tickets/${ticketToEdit.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  title: ticketEditForm.title.trim(),
+                  description: ticketEditForm.description.trim(),
+                  assignee: ticketEditForm.assignee?.displayName ?? null,
+                  assigneeUserId: ticketEditForm.assignee?.userId ?? null,
+                  status: ticketEditForm.status,
+                  start_date: ticketEditForm.start_date || null,
+                  due_date: ticketEditForm.due_date || null,
+                  deadline_time: ticketEditForm.deadline_time || null,
+                  bypassGate: true,
+                }),
+              });
+              if (bypassRes.ok) {
+                const updated = await bypassRes.json();
+                setTickets((prev) =>
+                  prev.map((t) => (t.id === ticketToEdit.id ? { ...t, ...updated } : t))
+                );
+                setTicketToEdit(null);
+              } else if (bypassRes.status === 422) {
+                const errData = await bypassRes.json().catch(() => ({}));
+                const bwt = (errData?.blockers || []).map((b: any) => ({
+                  ...b,
+                  title: tickets.find((t) => t.id === b.depends_on)?.title,
+                }));
+                setBlockerModalData({
+                  message: errData?.message || 'Blocked by unresolved hard dependencies.',
+                  blockers: bwt,
+                  isHardBlock: true,
+                  onRevert: () => {
+                    setBlockerModalOpen(false);
+                    setTicketEditForm((prev) => ({ ...prev, status: ticketToEdit.status }));
+                  },
+                });
+                setBlockerModalOpen(true);
+              }
+            },
+          });
+          setBlockerModalOpen(true);
+          return;
         }
 
         if (!res.ok) {
           const finalData = await res.json().catch(() => data || {});
-          if (
-            res.status === 422 &&
-            (finalData?.error === 'hard_blocked' || finalData?.error === 'soft_blocked')
-          ) {
-            const isHard = finalData?.error === 'hard_blocked';
-            // Enrich blocker data with ticket titles
+          if (res.status === 422 && finalData?.error === 'hard_blocked') {
             const blockersWithTitles = (finalData?.blockers || []).map((b: any) => ({
               ...b,
               title: tickets.find((t) => t.id === b.depends_on)?.title,
             }));
             setBlockerModalData({
-              message:
-                finalData?.message ||
-                `Blocked by unresolved ${isHard ? 'hard' : 'soft'} dependencies.`,
+              message: finalData?.message || 'Blocked by unresolved hard dependencies.',
               blockers: blockersWithTitles,
-              isHardBlock: isHard,
+              isHardBlock: true,
               onRevert: () => {
                 setBlockerModalOpen(false);
-                // Revert the status change in the form
-                setTicketEditForm((prev) => ({
-                  ...prev,
-                  status: ticketToEdit.status,
-                }));
+                setTicketEditForm((prev) => ({ ...prev, status: ticketToEdit.status }));
               },
             });
             setBlockerModalOpen(true);
@@ -334,22 +360,53 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
         const data = await res.json().catch(() => ({}));
 
         if (res.status === 422 && data?.error === 'soft_blocked') {
-          const proceed = window.confirm(
-            `${data?.message || 'This move has unresolved soft dependencies.'}\n\nProceed anyway?`
-          );
-          if (proceed) {
-            res = await fetch('/api/tickets', {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ changes, bypassGate: true }),
-            });
-          }
+          const blockersWithTitles = (data?.blockers || []).map((b: any) => ({
+            ...b,
+            title: tickets.find((t) => t.id === b.depends_on)?.title,
+          }));
+          setBlockerModalData({
+            message: data?.message || 'This move has unresolved soft dependencies.',
+            blockers: blockersWithTitles,
+            isHardBlock: false,
+            onRevert: () => {
+              setBlockerModalOpen(false);
+              fetchAll();
+            },
+            onProceed: async () => {
+              setBlockerModalOpen(false);
+              const bypassRes = await fetch('/api/tickets', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ changes, bypassGate: true }),
+              });
+              if (bypassRes.ok) {
+                fetchAll();
+              } else if (bypassRes.status === 422) {
+                const errData = await bypassRes.json().catch(() => ({}));
+                const bwt = (errData?.blockers || []).map((b: any) => ({
+                  ...b,
+                  title: tickets.find((t) => t.id === b.depends_on)?.title,
+                }));
+                setBlockerModalData({
+                  message: errData?.message || 'Blocked by unresolved hard dependencies.',
+                  blockers: bwt,
+                  isHardBlock: true,
+                  onRevert: () => {
+                    setBlockerModalOpen(false);
+                    fetchAll();
+                  },
+                });
+                setBlockerModalOpen(true);
+              }
+            },
+          });
+          setBlockerModalOpen(true);
+          return;
         }
 
         if (!res.ok) {
           const finalData = await res.json().catch(() => data || {});
           if (res.status === 422 && finalData?.error === 'hard_blocked') {
-            // Enrich blocker data with ticket titles
             const blockersWithTitles = (finalData?.blockers || []).map((b: any) => ({
               ...b,
               title: tickets.find((t) => t.id === b.depends_on)?.title,
@@ -360,14 +417,53 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
               isHardBlock: true,
               onRevert: () => {
                 setBlockerModalOpen(false);
-                // Reload to get original state
                 fetchAll();
               },
             });
             setBlockerModalOpen(true);
             return;
           } else if (res.status === 422 && finalData?.error === 'soft_blocked') {
-            window.alert(finalData?.message || 'Blocked by unresolved soft dependencies.');
+            const blockersWithTitles = (finalData?.blockers || []).map((b: any) => ({
+              ...b,
+              title: tickets.find((t) => t.id === b.depends_on)?.title,
+            }));
+            setBlockerModalData({
+              message: finalData?.message || 'Blocked by unresolved soft dependencies.',
+              blockers: blockersWithTitles,
+              isHardBlock: false,
+              onRevert: () => {
+                setBlockerModalOpen(false);
+                fetchAll();
+              },
+              onProceed: async () => {
+                setBlockerModalOpen(false);
+                const bypassRes = await fetch('/api/tickets', {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ changes, bypassGate: true }),
+                });
+                if (bypassRes.ok) {
+                  fetchAll();
+                } else if (bypassRes.status === 422) {
+                  const errData = await bypassRes.json().catch(() => ({}));
+                  const bwt = (errData?.blockers || []).map((b: any) => ({
+                    ...b,
+                    title: tickets.find((t) => t.id === b.depends_on)?.title,
+                  }));
+                  setBlockerModalData({
+                    message: errData?.message || 'Blocked by unresolved hard dependencies.',
+                    blockers: bwt,
+                    isHardBlock: true,
+                    onRevert: () => {
+                      setBlockerModalOpen(false);
+                      fetchAll();
+                    },
+                  });
+                  setBlockerModalOpen(true);
+                }
+              },
+            });
+            setBlockerModalOpen(true);
             return;
           }
           throw new Error(finalData?.error || 'Failed to save ticket changes');
@@ -1018,13 +1114,12 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
           isOpen={blockerModalOpen}
           onClose={() => setBlockerModalOpen(false)}
           onGoToTicket={(ticketId) => {
+            setBlockerModalOpen(false);
             const ticket = tickets.find((t) => t.id === ticketId);
-            if (ticket) {
-              setBlockerModalOpen(false);
-              openTicketEditor(ticket);
-            }
+            if (ticket) openTicketEditor(ticket);
           }}
           onRevert={blockerModalData.onRevert}
+          onProceed={blockerModalData.onProceed}
           message={blockerModalData.message}
           blockers={blockerModalData.blockers}
           isHardBlock={blockerModalData.isHardBlock}
