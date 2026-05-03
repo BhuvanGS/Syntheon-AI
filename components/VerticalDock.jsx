@@ -96,7 +96,7 @@ export default function VerticalDock({
   return (
     <div className="vdock-outer" style={{ width: panelWidth + 20 }}>
       <motion.div
-        onMouseMove={({ pageY }) => mouseY.set(pageY)}
+        onMouseMove={({ clientY }) => mouseY.set(clientY)}
         onMouseLeave={() => mouseY.set(Infinity)}
         className={`vdock-panel ${className}`}
         style={{ width: panelWidth }}

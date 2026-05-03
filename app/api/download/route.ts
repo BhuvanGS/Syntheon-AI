@@ -32,9 +32,14 @@ export async function GET(req: NextRequest) {
     }
 
     // Stream back with forced download header
+    // Sanitize filename: replace non-ASCII chars (e.g. U+202F narrow no-break space from macOS) with regular space
+    const safeFilename = filename
+      .replace(/[^\x00-\x7F]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
     const headers = new Headers();
     headers.set('Content-Type', data.type || 'application/octet-stream');
-    headers.set('Content-Disposition', `attachment; filename="${filename}"`);
+    headers.set('Content-Disposition', `attachment; filename="${safeFilename}"`);
     headers.set('Content-Length', String(data.size));
 
     return new NextResponse(data, { headers });

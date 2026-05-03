@@ -4,25 +4,12 @@ import { useState, useEffect, type ReactNode } from 'react';
 import Link from 'next/link';
 
 export default function LegalPage() {
-  const [dark, setDark] = useState(false);
   const [active, setActive] = useState('privacy');
 
   useEffect(() => {
-    const stored = localStorage.getItem('syntheon-theme');
-    if (stored === 'dark') {
-      setDark(true);
-      document.documentElement.classList.add('dark');
-    }
     const hash = window.location.hash.replace('#', '');
     if (hash) setActive(hash);
   }, []);
-
-  function toggleTheme() {
-    const next = !dark;
-    setDark(next);
-    document.documentElement.classList.toggle('dark', next);
-    localStorage.setItem('syntheon-theme', next ? 'dark' : 'light');
-  }
 
   const tabs = [
     { id: 'privacy', label: 'Privacy Policy' },
@@ -36,7 +23,7 @@ export default function LegalPage() {
       fontFamily: "'DM Serif Display', serif",
       fontSize: '2rem',
       fontWeight: '400' as const,
-      color: dark ? '#f5f5f5' : '#0a0a0a',
+      color: '#f5f5f5',
       marginBottom: '0.5rem',
       marginTop: '2.5rem',
     },
@@ -44,20 +31,20 @@ export default function LegalPage() {
       fontFamily: "'DM Serif Display', serif",
       fontSize: '1.4rem',
       fontWeight: '400' as const,
-      color: dark ? '#d4d4d4' : '#000000',
+      color: '#d4d4d4',
       marginBottom: '0.5rem',
       marginTop: '2rem',
     },
     p: {
       fontSize: '15px',
-      color: dark ? '#737373' : '#737373',
+      color: '#737373',
       fontWeight: '300' as const,
       lineHeight: '1.8',
       marginBottom: '1rem',
     },
     li: {
       fontSize: '14px',
-      color: dark ? '#737373' : '#737373',
+      color: '#737373',
       fontWeight: '300' as const,
       lineHeight: '1.8',
       marginBottom: '0.4rem',
@@ -66,7 +53,7 @@ export default function LegalPage() {
 
   const Privacy = () => (
     <div>
-      <p style={{ fontSize: '13px', color: dark ? '#525252' : '#a3a3a3', marginBottom: '2rem' }}>
+      <p style={{ fontSize: '13px', color: '#525252', marginBottom: '2rem' }}>
         Last updated: March 2026
       </p>
 
@@ -136,7 +123,7 @@ export default function LegalPage() {
 
   const Terms = () => (
     <div>
-      <p style={{ fontSize: '13px', color: dark ? '#525252' : '#a3a3a3', marginBottom: '2rem' }}>
+      <p style={{ fontSize: '13px', color: '#525252', marginBottom: '2rem' }}>
         Last updated: March 2026
       </p>
 
@@ -212,7 +199,7 @@ export default function LegalPage() {
 
   const DPA = () => (
     <div>
-      <p style={{ fontSize: '13px', color: dark ? '#525252' : '#a3a3a3', marginBottom: '2rem' }}>
+      <p style={{ fontSize: '13px', color: '#525252', marginBottom: '2rem' }}>
         Last updated: March 2026
       </p>
 
@@ -240,14 +227,14 @@ export default function LegalPage() {
       <div style={{ overflowX: 'auto', marginBottom: '1rem' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
           <thead>
-            <tr style={{ borderBottom: `1px solid ${dark ? '#1f1f1f' : '#e5e5e5'}` }}>
+            <tr style={{ borderBottom: '1px solid #1f1f1f' }}>
               {['Service', 'Location', 'Purpose'].map((h) => (
                 <th
                   key={h}
                   style={{
                     textAlign: 'left',
                     padding: '8px 12px',
-                    color: dark ? '#525252' : '#a3a3a3',
+                    color: '#525252',
                     fontWeight: '500',
                     fontSize: '12px',
                     letterSpacing: '0.06em',
@@ -267,18 +254,18 @@ export default function LegalPage() {
               ['Vercel', 'USA', 'Hosting'],
               ['Clerk', 'USA', 'Authentication'],
             ].map(([s, l, p], i) => (
-              <tr key={i} style={{ borderBottom: `1px solid ${dark ? '#1f1f1f' : '#fafafa'}` }}>
+              <tr key={i} style={{ borderBottom: '1px solid #1f1f1f' }}>
                 <td
                   style={{
                     padding: '8px 12px',
-                    color: dark ? '#d4d4d4' : '#000000',
+                    color: '#d4d4d4',
                     fontWeight: '500',
                   }}
                 >
                   {s}
                 </td>
-                <td style={{ padding: '8px 12px', color: dark ? '#737373' : '#737373' }}>{l}</td>
-                <td style={{ padding: '8px 12px', color: dark ? '#737373' : '#737373' }}>{p}</td>
+                <td style={{ padding: '8px 12px', color: '#737373' }}>{l}</td>
+                <td style={{ padding: '8px 12px', color: '#737373' }}>{p}</td>
               </tr>
             ))}
           </tbody>
@@ -318,7 +305,7 @@ export default function LegalPage() {
 
   const Refund = () => (
     <div>
-      <p style={{ fontSize: '13px', color: dark ? '#525252' : '#a3a3a3', marginBottom: '2rem' }}>
+      <p style={{ fontSize: '13px', color: '#525252', marginBottom: '2rem' }}>
         Last updated: March 2026
       </p>
 
@@ -382,10 +369,9 @@ export default function LegalPage() {
     <div
       style={{
         minHeight: '100vh',
-        background: dark ? '#000000' : '#ffffff',
-        color: dark ? '#fafafa' : '#0a0a0a',
+        background: '#000000',
+        color: '#fafafa',
         fontFamily: "'DM Sans', sans-serif",
-        transition: 'background 0.3s',
       }}
     >
       <nav
@@ -395,8 +381,8 @@ export default function LegalPage() {
           left: 0,
           right: 0,
           zIndex: 50,
-          borderBottom: `1px solid ${dark ? '#1f1f1f' : '#e5e5e5'}`,
-          background: dark ? 'rgba(0,0,0,0.95)' : 'rgba(255,255,255,0.95)',
+          borderBottom: '1px solid #1f1f1f',
+          background: 'rgba(0,0,0,0.95)',
           backdropFilter: 'blur(12px)',
           padding: '0 2rem',
           height: '60px',
@@ -418,7 +404,7 @@ export default function LegalPage() {
             style={{
               fontFamily: "'DM Serif Display', serif",
               fontSize: '18px',
-              color: dark ? '#d4d4d4' : '#000000',
+              color: '#d4d4d4',
             }}
           >
             Syntheon
@@ -429,26 +415,12 @@ export default function LegalPage() {
             href="/pricing"
             style={{
               fontSize: '14px',
-              color: dark ? '#a3a3a3' : '#525252',
+              color: '#a3a3a3',
               textDecoration: 'none',
             }}
           >
             Pricing
           </Link>
-          <button
-            onClick={toggleTheme}
-            style={{
-              background: 'none',
-              border: `1px solid ${dark ? '#000000' : '#d4d4d4'}`,
-              borderRadius: '20px',
-              padding: '4px 12px',
-              fontSize: '13px',
-              cursor: 'pointer',
-              color: dark ? '#a3a3a3' : '#525252',
-            }}
-          >
-            {dark ? '☀ Light' : '☽ Dark'}
-          </button>
           <Link
             href="/dashboard"
             style={{
@@ -484,7 +456,7 @@ export default function LegalPage() {
             style={{
               fontSize: '12px',
               fontWeight: '500',
-              color: dark ? '#525252' : '#a3a3a3',
+              color: '#525252',
               letterSpacing: '0.08em',
               textTransform: 'uppercase',
               marginBottom: '1rem',
@@ -503,13 +475,12 @@ export default function LegalPage() {
                 display: 'block',
                 width: '100%',
                 textAlign: 'left',
-                background: active === tab.id ? (dark ? '#1f1f1f' : '#f5f5f5') : 'none',
+                background: active === tab.id ? '#1f1f1f' : 'none',
                 border: 'none',
                 borderLeft: active === tab.id ? '3px solid #525252' : '3px solid transparent',
                 padding: '10px 16px',
                 fontSize: '14px',
-                color:
-                  active === tab.id ? (dark ? '#d4d4d4' : '#000000') : dark ? '#737373' : '#a3a3a3',
+                color: active === tab.id ? '#d4d4d4' : '#737373',
                 cursor: 'pointer',
                 fontWeight: active === tab.id ? '500' : '300',
                 borderRadius: '0 6px 6px 0',
@@ -525,8 +496,8 @@ export default function LegalPage() {
         {/* Content */}
         <div
           style={{
-            background: dark ? '#0a0a0a' : '#ffffff',
-            border: `1px solid ${dark ? '#1f1f1f' : '#e5e5e5'}`,
+            background: '#0a0a0a',
+            border: '1px solid #1f1f1f',
             borderRadius: '12px',
             padding: '2.5rem',
           }}
@@ -537,13 +508,13 @@ export default function LegalPage() {
 
       <footer
         style={{
-          borderTop: `1px solid ${dark ? '#1f1f1f' : '#e5e5e5'}`,
+          borderTop: '1px solid #1f1f1f',
           padding: '2rem',
           textAlign: 'center',
-          background: dark ? '#000000' : '#ffffff',
+          background: '#000000',
         }}
       >
-        <p style={{ fontSize: '12px', color: dark ? '#404040' : '#a3a3a3' }}>
+        <p style={{ fontSize: '12px', color: '#404040' }}>
           2026 Syntheon AI. Bengaluru, Karnataka, India. Governed by Indian law.
         </p>
       </footer>

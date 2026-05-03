@@ -1,26 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 export default function HowItWorksPage() {
-  const [dark, setDark] = useState(false);
-
-  useEffect(() => {
-    const stored = localStorage.getItem('syntheon-theme');
-    if (stored === 'dark') {
-      setDark(true);
-      document.documentElement.classList.add('dark');
-    }
-  }, []);
-
-  function toggleTheme() {
-    const next = !dark;
-    setDark(next);
-    document.documentElement.classList.toggle('dark', next);
-    localStorage.setItem('syntheon-theme', next ? 'dark' : 'light');
-  }
-
   const steps = [
     {
       number: '01',
@@ -94,10 +76,9 @@ export default function HowItWorksPage() {
     <div
       style={{
         minHeight: '100vh',
-        background: dark ? '#000000' : '#ffffff',
-        color: dark ? '#fafafa' : '#0a0a0a',
+        background: '#000000',
+        color: '#fafafa',
         fontFamily: "'DM Sans', sans-serif",
-        transition: 'background 0.3s',
       }}
     >
       <nav
@@ -107,8 +88,8 @@ export default function HowItWorksPage() {
           left: 0,
           right: 0,
           zIndex: 50,
-          borderBottom: `1px solid ${dark ? '#1f1f1f' : '#e5e5e5'}`,
-          background: dark ? 'rgba(0,0,0,0.95)' : 'rgba(255,255,255,0.95)',
+          borderBottom: '1px solid #1f1f1f',
+          background: 'rgba(0,0,0,0.95)',
           backdropFilter: 'blur(12px)',
           padding: '0 2rem',
           height: '60px',
@@ -130,7 +111,7 @@ export default function HowItWorksPage() {
             style={{
               fontFamily: "'DM Serif Display', serif",
               fontSize: '18px',
-              color: dark ? '#d4d4d4' : '#000000',
+              color: '#d4d4d4',
             }}
           >
             Syntheon
@@ -141,26 +122,12 @@ export default function HowItWorksPage() {
             href="/pricing"
             style={{
               fontSize: '14px',
-              color: dark ? '#a3a3a3' : '#525252',
+              color: '#a3a3a3',
               textDecoration: 'none',
             }}
           >
             Pricing
           </Link>
-          <button
-            onClick={toggleTheme}
-            style={{
-              background: 'none',
-              border: `1px solid ${dark ? '#000000' : '#d4d4d4'}`,
-              borderRadius: '20px',
-              padding: '4px 12px',
-              fontSize: '13px',
-              cursor: 'pointer',
-              color: dark ? '#a3a3a3' : '#525252',
-            }}
-          >
-            {dark ? '☀ Light' : '☽ Dark'}
-          </button>
           <Link
             href="/dashboard"
             style={{
@@ -185,7 +152,7 @@ export default function HowItWorksPage() {
             fontSize: 'clamp(2rem, 5vw, 3.5rem)',
             fontWeight: '400',
             marginBottom: '1rem',
-            color: dark ? '#f5f5f5' : '#0a0a0a',
+            color: '#f5f5f5',
           }}
         >
           How Syntheon works
@@ -193,7 +160,7 @@ export default function HowItWorksPage() {
         <p
           style={{
             fontSize: '1.1rem',
-            color: dark ? '#737373' : '#737373',
+            color: '#737373',
             fontWeight: '300',
             maxWidth: '500px',
             margin: '0 auto',
@@ -220,8 +187,8 @@ export default function HowItWorksPage() {
                   width: '52px',
                   height: '52px',
                   borderRadius: '50%',
-                  background: dark ? '#1f1f1f' : '#f5f5f5',
-                  border: `2px solid ${dark ? '#000000' : '#d4d4d4'}`,
+                  background: '#1f1f1f',
+                  border: '2px solid #333333',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -243,7 +210,7 @@ export default function HowItWorksPage() {
                   style={{
                     width: '2px',
                     height: '60px',
-                    background: dark ? '#1f1f1f' : '#e5e5e5',
+                    background: '#1f1f1f',
                     margin: '8px auto',
                   }}
                 />
@@ -256,7 +223,7 @@ export default function HowItWorksPage() {
                   fontSize: '1.5rem',
                   fontWeight: '400',
                   marginBottom: '0.75rem',
-                  color: dark ? '#f5f5f5' : '#0a0a0a',
+                  color: '#f5f5f5',
                 }}
               >
                 {step.title}
@@ -264,7 +231,7 @@ export default function HowItWorksPage() {
               <p
                 style={{
                   fontSize: '15px',
-                  color: dark ? '#737373' : '#737373',
+                  color: '#737373',
                   fontWeight: '300',
                   lineHeight: '1.7',
                   marginBottom: '1rem',
@@ -274,8 +241,8 @@ export default function HowItWorksPage() {
               </p>
               <div
                 style={{
-                  background: dark ? '#0a0a0a' : '#ffffff',
-                  border: `1px solid ${dark ? '#1f1f1f' : '#e5e5e5'}`,
+                  background: '#0a0a0a',
+                  border: '1px solid #1f1f1f',
                   borderRadius: '10px',
                   padding: '1.25rem',
                 }}
@@ -294,7 +261,7 @@ export default function HowItWorksPage() {
                     <span
                       style={{
                         fontSize: '13px',
-                        color: dark ? '#a3a3a3' : '#737373',
+                        color: '#a3a3a3',
                         fontWeight: '300',
                       }}
                     >
@@ -339,10 +306,10 @@ export default function HowItWorksPage() {
 
       <footer
         style={{
-          borderTop: `1px solid ${dark ? '#1f1f1f' : '#e5e5e5'}`,
+          borderTop: '1px solid #1f1f1f',
           padding: '2rem',
           textAlign: 'center',
-          background: dark ? '#000000' : '#ffffff',
+          background: '#000000',
         }}
       >
         <div
@@ -358,7 +325,7 @@ export default function HowItWorksPage() {
             href="/"
             style={{
               fontSize: '14px',
-              color: dark ? '#525252' : '#a3a3a3',
+              color: '#525252',
               textDecoration: 'none',
             }}
           >
@@ -368,7 +335,7 @@ export default function HowItWorksPage() {
             href="/pricing"
             style={{
               fontSize: '14px',
-              color: dark ? '#525252' : '#a3a3a3',
+              color: '#525252',
               textDecoration: 'none',
             }}
           >
@@ -378,16 +345,14 @@ export default function HowItWorksPage() {
             href="/legal"
             style={{
               fontSize: '14px',
-              color: dark ? '#525252' : '#a3a3a3',
+              color: '#525252',
               textDecoration: 'none',
             }}
           >
             Legal
           </Link>
         </div>
-        <p style={{ fontSize: '12px', color: dark ? '#404040' : '#a3a3a3' }}>
-          2026 Syntheon AI. Bengaluru, India.
-        </p>
+        <p style={{ fontSize: '12px', color: '#404040' }}>2026 Syntheon AI. Bengaluru, India.</p>
       </footer>
     </div>
   );

@@ -980,6 +980,17 @@ export async function deleteComment(id: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function updateComment(id: string, content: string): Promise<TicketComment> {
+  const { data, error } = await supabaseAdmin
+    .from('ticket_comments')
+    .update({ content, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as TicketComment;
+}
+
 // ─── Activities ────────────────────────────────────────────────────
 export interface TicketActivity {
   id: string;

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Send, X, User } from 'lucide-react';
+import { MessageSquare, Send, X, User, Pencil, Check } from 'lucide-react';
 import { useToast } from '@/components/island-toast';
 import { TipTapEditor } from '@/components/tiptap-editor';
 
@@ -39,6 +39,10 @@ export function TicketCommentsPanel({ ticketId, currentUserId }: TicketCommentsP
   const [newComment, setNewComment] = useState('');
   const [sending, setSending] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState('');
+  const [savingEditId, setSavingEditId] = useState<string | null>(null);
+  const [editorKey, setEditorKey] = useState(0);
   const { showToast } = useToast();
 
   const fetchComments = useCallback(async () => {
@@ -74,12 +78,36 @@ export function TicketCommentsPanel({ ticketId, currentUserId }: TicketCommentsP
       const comment = await res.json();
       setComments((prev) => [...prev, comment]);
       setNewComment('');
+      setEditorKey((k) => k + 1);
       showToast('Comment added', 'success');
     } catch (err) {
       console.error('Error adding comment:', err);
       showToast('Failed to add comment', 'error');
     } finally {
       setSending(false);
+    }
+  }
+
+  async function handleSaveEdit(commentId: string) {
+    if (!editContent.trim()) return;
+    setSavingEditId(commentId);
+    try {
+      const res = await fetch(`/api/tickets/${ticketId}/comments/${commentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: editContent.trim() }),
+      });
+      if (!res.ok) throw new Error('Failed to update comment');
+      const updated = await res.json();
+      setComments((prev) => prev.map((c) => (c.id === commentId ? updated : c)));
+      setEditingId(null);
+      setEditContent('');
+      showToast('Comment updated', 'success');
+    } catch (err) {
+      console.error('Error updating comment:', err);
+      showToast('Failed to update comment', 'error');
+    } finally {
+      setSavingEditId(null);
     }
   }
 
@@ -143,28 +171,82 @@ export function TicketCommentsPanel({ ticketId, currentUserId }: TicketCommentsP
                     <span className="text-xs text-muted-foreground/60">
                       {formatRelativeTime(comment.created_at)}
                     </span>
-                    {comment.user_id === currentUserId && (
+                    {comment.user_id === currentUserId && editingId !== comment.id && (
+                      <>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                          onClick={() => {
+                            setEditingId(comment.id);
+                            setEditContent(comment.content);
+                          }}
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                          onClick={() => handleDelete(comment.id)}
+                          disabled={deletingId === comment.id}
+                        >
+                          {deletingId === comment.id ? (
+                            <div className="animate-spin h-3 w-3 border-2 border-current border-t-transparent rounded-full" />
+                          ) : (
+                            <X className="h-3 w-3" />
+                          )}
+                        </Button>
+                      </>
+                    )}
+                    {editingId === comment.id && (
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                        onClick={() => handleDelete(comment.id)}
-                        disabled={deletingId === comment.id}
+                        className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                        onClick={() => {
+                          setEditingId(null);
+                          setEditContent('');
+                        }}
                       >
-                        {deletingId === comment.id ? (
-                          <div className="animate-spin h-3 w-3 border-2 border-current border-t-transparent rounded-full" />
-                        ) : (
-                          <X className="h-3 w-3" />
-                        )}
+                        <X className="h-3 w-3" />
                       </Button>
                     )}
                   </div>
                 </div>
-                <div
-                  className="text-sm text-foreground mt-1 prose prose-sm max-w-none [&_h1]:text-lg [&_h1]:font-bold [&_h2]:text-base [&_h2]:font-bold [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-2 [&_blockquote]:italic [&_code]:bg-muted [&_code]:px-1 [&_code]:rounded [&_a]:text-primary [&_a]:underline"
-                  dangerouslySetInnerHTML={{ __html: comment.content }}
-                />
+                {editingId === comment.id ? (
+                  <div className="mt-2 space-y-2">
+                    <TipTapEditor
+                      content={editContent}
+                      onChange={setEditContent}
+                      placeholder="Edit comment..."
+                      disabled={savingEditId === comment.id}
+                    />
+                    <div className="flex justify-end">
+                      <Button
+                        size="sm"
+                        className="rounded-full gap-2 h-7 text-xs"
+                        onClick={() => handleSaveEdit(comment.id)}
+                        disabled={!editContent.trim() || savingEditId === comment.id}
+                      >
+                        {savingEditId === comment.id ? (
+                          <div className="animate-spin h-3 w-3 border-2 border-current border-t-transparent rounded-full" />
+                        ) : (
+                          <Check className="h-3 w-3" />
+                        )}
+                        Save
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    className="text-sm text-foreground mt-1 prose prose-sm max-w-none [&_h1]:text-lg [&_h1]:font-bold [&_h2]:text-base [&_h2]:font-bold [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-2 [&_blockquote]:italic [&_code]:bg-muted [&_code]:px-1 [&_code]:rounded [&_a]:text-primary [&_a]:underline"
+                    dangerouslySetInnerHTML={{ __html: comment.content }}
+                  />
+                )}
               </div>
             </div>
           ))}
@@ -173,6 +255,7 @@ export function TicketCommentsPanel({ ticketId, currentUserId }: TicketCommentsP
 
       <div className="pt-2 border-t border-border space-y-2">
         <TipTapEditor
+          key={editorKey}
           content={newComment}
           onChange={setNewComment}
           placeholder="Add a comment..."

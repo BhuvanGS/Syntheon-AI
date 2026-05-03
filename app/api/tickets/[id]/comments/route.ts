@@ -52,12 +52,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       content: content.trim(),
     });
 
+    const plainContent = content
+      .trim()
+      .replace(/<[^>]*>/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
     // Log activity
     await createActivity({
       ticket_id: ticketId,
       user_id: userId,
       action_type: 'comment_added',
-      metadata: { content: content.trim() },
+      metadata: { content: plainContent },
     });
 
     // If this is a subticket, also log to parent
@@ -66,7 +72,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         ticket_id: ticket.parent_id,
         user_id: userId,
         action_type: 'comment_added',
-        metadata: { content: content.trim(), subtask_id: ticketId },
+        metadata: { content: plainContent, subtask_id: ticketId },
       });
     }
 

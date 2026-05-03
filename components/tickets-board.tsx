@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useUser } from '@clerk/nextjs';
+import { useUser, useOrganization } from '@clerk/nextjs';
 import { stripHtml } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -59,6 +59,7 @@ interface TicketsBoardProps {
 
 export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: TicketsBoardProps) {
   const { user } = useUser();
+  const { memberships } = useOrganization({ memberships: true });
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
   const [assigneeFilter, setAssigneeFilter] = useState<'all' | 'mine' | 'unassigned'>('all');
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -626,8 +627,16 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                 }
                 placeholder="Describe the ticket..."
                 disabled={Boolean(updatingTicketId)}
-                members={[]} // Global board doesn't have project-scoped members
-                tickets={[]} // Global board doesn't have project-scoped tickets
+                members={(memberships?.data ?? []).map((m) => ({
+                  userId: m.publicUserData?.userId ?? '',
+                  displayName:
+                    [m.publicUserData?.firstName, m.publicUserData?.lastName]
+                      .filter(Boolean)
+                      .join(' ') ||
+                    m.publicUserData?.identifier ||
+                    'Team member',
+                }))}
+                tickets={tickets.map((t) => ({ id: t.id, title: t.title, status: t.status }))}
               />
             </div>
 
