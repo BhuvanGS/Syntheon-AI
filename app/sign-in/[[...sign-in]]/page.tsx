@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useSignIn } from '@clerk/nextjs/legacy';
+import { useAuth } from '@clerk/nextjs';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, FormEvent, useEffect } from 'react';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
@@ -46,6 +47,7 @@ function GitHubIcon() {
 
 export default function SignInPage() {
   const { isLoaded, signIn, setActive } = useSignIn();
+  const { isSignedIn, isLoaded: authLoaded } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const clerkTicket = searchParams.get('__clerk_ticket');
@@ -60,32 +62,70 @@ export default function SignInPage() {
 
   // Handle organization invitation ticket
   useEffect(() => {
-    if (!isLoaded || !signIn || !clerkTicket || clerkStatus !== 'sign_in') return;
+    if (!clerkTicket || clerkStatus !== 'sign_in') return;
+    if (!authLoaded || !isLoaded) return;
+
     setAcceptingInvite(true);
+
+    // Already signed in — hand off to the dedicated accept-invite page
+    if (isSignedIn) {
+      router.replace(`/accept-invite?__clerk_ticket=${clerkTicket}&__clerk_status=${clerkStatus}`);
+      return;
+    }
+
+    // Signed out — create sign-in with ticket strategy
+    if (!signIn || !setActive) return;
     (async () => {
       try {
+        // Decode orgId from the JWT ticket payload ('oid' claim)
+        let orgId: string | undefined;
+        try {
+          const payload = clerkTicket.split('.')[1];
+          const decoded = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+          orgId = decoded.oid ?? undefined;
+        } catch {
+          /* ignore decode errors */
+        }
+
         const result = await signIn.create({ strategy: 'ticket', ticket: clerkTicket });
         if (result.status === 'complete') {
-          await setActive({ session: result.createdSessionId });
+          await setActive({ session: result.createdSessionId, organization: orgId });
           router.push('/dashboard');
         } else {
           setError('Could not accept invitation. Please try again.');
           setAcceptingInvite(false);
         }
       } catch (err: any) {
-        setError(err.errors?.[0]?.longMessage || 'Invitation accept failed');
+        const code = err?.errors?.[0]?.code ?? '';
+        if (code === 'strategy_for_user_invalid' || code === 'not_allowed_access') {
+          router.replace(`/sign-up?__clerk_ticket=${clerkTicket}&__clerk_status=sign_up`);
+          return;
+        }
+        if (code === 'identifier_already_signed_in') {
+          router.replace(
+            `/accept-invite?__clerk_ticket=${clerkTicket}&__clerk_status=${clerkStatus}`
+          );
+          return;
+        }
+        setError(
+          err.errors?.[0]?.longMessage ||
+            'Invitation accept failed. Please try signing in manually.'
+        );
         setAcceptingInvite(false);
       }
     })();
-  }, [isLoaded, clerkTicket, clerkStatus, signIn, setActive, router]);
+  }, [authLoaded, isLoaded, isSignedIn, clerkTicket, clerkStatus]);
 
   async function handleOAuth(strategy: 'oauth_google' | 'oauth_github') {
     if (!isLoaded || !signIn) return;
+    const redirectUrlComplete = clerkTicket
+      ? `/accept-invite?__clerk_ticket=${clerkTicket}&__clerk_status=${clerkStatus ?? 'sign_in'}`
+      : '/onboarding';
     try {
       await signIn.authenticateWithRedirect({
         strategy,
         redirectUrl: '/sso-callback',
-        redirectUrlComplete: '/onboarding',
+        redirectUrlComplete,
       });
     } catch (err: any) {
       setError(err.errors?.[0]?.longMessage || 'OAuth failed');

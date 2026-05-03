@@ -12,7 +12,14 @@ import { DynamicIslandSearch } from '@/components/dynamic-island-search';
 import { toast } from '@/hooks/use-toast';
 
 type ViewType = 'project' | 'ticket-detail';
-type ProjectTab = 'meetings' | 'tickets' | 'list' | 'kanban' | 'analytics' | 'dependencies';
+type ProjectTab =
+  | 'meetings'
+  | 'tickets'
+  | 'list'
+  | 'kanban'
+  | 'analytics'
+  | 'dependencies'
+  | 'members';
 
 interface Project {
   id: string;
@@ -55,6 +62,7 @@ const validProjectTabs: ProjectTab[] = [
   'kanban',
   'analytics',
   'dependencies',
+  'members',
 ];
 
 function ProjectContent() {

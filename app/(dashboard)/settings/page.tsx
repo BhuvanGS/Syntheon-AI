@@ -18,6 +18,9 @@ import {
   Sun,
   Moon,
   Monitor,
+  ShieldCheck,
+  UserMinus,
+  ChevronDown,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,10 +30,34 @@ import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { GitHubConnectButton } from '@/components/github-connect-button';
 import { ApiKeyManager } from '@/components/api-key-manager';
-import { LinearConnectButton } from '@/components/linear-connect-button';
 import { ProjectCreateDialog } from '@/components/project-create-dialog';
 import { DynamicIslandSearch } from '@/components/dynamic-island-search';
 import { useOrganization, useOrganizationList } from '@clerk/nextjs';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Mail } from 'lucide-react';
 
 const TABS = [
   { id: 'connections', label: 'Connections', icon: Link },
@@ -61,8 +88,6 @@ function SettingsContent() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [githubConnected, setGithubConnected] = useState(false);
   const [githubUser, setGithubUser] = useState<string | null>(null);
-  const [linearConnected, setLinearConnected] = useState(false);
-  const [linearTeam, setLinearTeam] = useState<string | null>(null);
   const [integrationStatusLoaded, setIntegrationStatusLoaded] = useState(false);
   const [isProjectCreateOpen, setIsProjectCreateOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -73,6 +98,14 @@ function SettingsContent() {
   const [savingOrgName, setSavingOrgName] = useState(false);
   const [switchingOrgId, setSwitchingOrgId] = useState<string | null>(null);
   const memberships = userMemberships.data ?? [];
+  const { memberships: orgMemberships } = useOrganization({
+    memberships: { infinite: true, pageSize: 50 },
+  });
+  const [memberToRemove, setMemberToRemove] = useState<{ id: string; name: string } | null>(null);
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
+  const [changingRoleId, setChangingRoleId] = useState<string | null>(null);
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [inviteToRevoke, setInviteToRevoke] = useState<{ id: string; email: string } | null>(null);
 
   useEffect(() => {
     setOrgName(organization?.name ?? '');
@@ -94,8 +127,6 @@ function SettingsContent() {
           const data = await statusRes.json();
           setGithubConnected(Boolean(data.githubConnected));
           setGithubUser(data.githubUser ?? null);
-          setLinearConnected(Boolean(data.linearConnected));
-          setLinearTeam(data.linearTeam ?? null);
         }
 
         if (projectsRes.ok) {
@@ -179,18 +210,7 @@ function SettingsContent() {
     const githubConnectedParam = searchParams.get('github_connected');
     const githubError = searchParams.get('github_error');
     const githubUserParam = searchParams.get('github_user');
-    const linearConnectedParam = searchParams.get('linear_connected');
-    const linearError = searchParams.get('linear_error');
-    const linearErrorDetail = searchParams.get('linear_error_detail');
-    const linearTeamParam = searchParams.get('linear_team');
-
-    if (
-      !integrationStatusLoaded &&
-      !githubConnectedParam &&
-      !githubError &&
-      !linearConnectedParam &&
-      !linearError
-    ) {
+    if (!integrationStatusLoaded && !githubConnectedParam && !githubError) {
       return;
     }
 
@@ -208,25 +228,6 @@ function SettingsContent() {
         variant: 'destructive',
       });
     }
-
-    if (linearConnectedParam === 'true') {
-      setLinearConnected(true);
-      setLinearTeam(linearTeamParam);
-      toast({
-        title: '✅ Linear Connected!',
-        description: linearTeamParam
-          ? `Connected to ${linearTeamParam}`
-          : 'Linear account linked successfully',
-      });
-    }
-
-    if (linearError) {
-      toast({
-        title: '❌ Linear Connection Failed',
-        description: linearErrorDetail || linearError,
-        variant: 'destructive',
-      });
-    }
   }, [searchParams, integrationStatusLoaded]);
 
   async function handleInvite(e: React.FormEvent) {
@@ -236,6 +237,7 @@ function SettingsContent() {
     try {
       await organization.inviteMember({ emailAddress: inviteEmail.trim(), role: 'org:member' });
       setInviteEmail('');
+      setInviteDialogOpen(false);
       await organization?.reload?.();
       toast({ title: 'Invite sent', description: `Invite sent to ${inviteEmail.trim()}` });
     } catch (err: any) {
@@ -249,11 +251,44 @@ function SettingsContent() {
     }
   }
 
-  async function handleRevokeInvite(invitationId: string) {
-    const inv = invitations?.data?.find((i) => i.id === invitationId);
+  async function handleRemoveMember(membershipId: string) {
+    const m = orgMemberships?.data?.find((x) => x.id === membershipId);
+    if (!m) return;
+    setRemovingMemberId(membershipId);
+    try {
+      await m.destroy();
+      await organization?.reload?.();
+      toast({ title: 'Member removed' });
+    } catch {
+      toast({ title: 'Failed to remove member', variant: 'destructive' });
+    } finally {
+      setRemovingMemberId(null);
+      setMemberToRemove(null);
+    }
+  }
+
+  async function handleChangeRole(membershipId: string, newRole: 'org:admin' | 'org:member') {
+    const m = orgMemberships?.data?.find((x) => x.id === membershipId);
+    if (!m) return;
+    setChangingRoleId(membershipId);
+    try {
+      await m.update({ role: newRole });
+      await organization?.reload?.();
+      toast({ title: 'Role updated' });
+    } catch {
+      toast({ title: 'Failed to update role', variant: 'destructive' });
+    } finally {
+      setChangingRoleId(null);
+    }
+  }
+
+  async function handleRevokeInvite() {
+    if (!inviteToRevoke) return;
+    const inv = invitations?.data?.find((i) => i.id === inviteToRevoke.id);
     if (!inv) return;
     try {
       await inv.revoke();
+      setInviteToRevoke(null);
       await organization?.reload?.();
       toast({ title: 'Invite revoked' });
     } catch {
@@ -275,25 +310,6 @@ function SettingsContent() {
       toast({
         title: 'Error',
         description: 'Failed to disconnect GitHub. Please try again.',
-        variant: 'destructive',
-      });
-    }
-  }
-
-  async function handleDisconnectLinear() {
-    try {
-      const res = await fetch('/api/integrations/linear/disconnect', { method: 'POST' });
-      if (!res.ok) throw new Error('Failed to disconnect');
-      setLinearConnected(false);
-      setLinearTeam(null);
-      toast({
-        title: 'Linear Disconnected',
-        description: 'Your Linear account has been unlinked.',
-      });
-    } catch {
-      toast({
-        title: 'Error',
-        description: 'Failed to disconnect Linear. Please try again.',
         variant: 'destructive',
       });
     }
@@ -429,57 +445,6 @@ function SettingsContent() {
                   </CardContent>
                 </Card>
 
-                {/* Linear */}
-                <Card className="border-border/60 shadow-none">
-                  <CardHeader className="pb-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center shrink-0 font-bold text-muted-foreground text-sm">
-                          L
-                        </div>
-                        <div>
-                          <CardTitle className="text-sm font-semibold">Linear</CardTitle>
-                          <CardDescription className="text-xs mt-0.5">
-                            Create and sync issue tickets from meeting transcripts
-                          </CardDescription>
-                        </div>
-                      </div>
-                      {linearConnected && (
-                        <Badge variant="default" className="text-[10px] gap-1">
-                          <CheckCircle2 className="h-3 w-3" /> Connected
-                        </Badge>
-                      )}
-                    </div>
-                  </CardHeader>
-                  <Separator />
-                  <CardContent className="pt-4">
-                    {linearConnected ? (
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-foreground">
-                            Linear account connected
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {linearTeam
-                              ? `Default team: ${linearTeam}`
-                              : 'Default team from your workspace'}
-                          </p>
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleDisconnectLinear}
-                          className="text-destructive hover:text-destructive gap-1.5"
-                        >
-                          <Link2Off className="h-3.5 w-3.5" /> Disconnect
-                        </Button>
-                      </div>
-                    ) : (
-                      <LinearConnectButton onSuccess={() => setLinearConnected(true)} />
-                    )}
-                  </CardContent>
-                </Card>
-
                 {/* API Key */}
                 <ApiKeyManager />
               </div>
@@ -596,7 +561,7 @@ function SettingsContent() {
                   </CardContent>
                 </Card>
 
-                {/* Team Invitations — admin only */}
+                {/* Members — admin only */}
                 {isAdmin && (
                   <Card className="border-border/60 shadow-none">
                     <CardHeader className="pb-4">
@@ -605,38 +570,140 @@ function SettingsContent() {
                           <Users className="h-5 w-5 text-primary" />
                         </div>
                         <div>
-                          <CardTitle className="text-sm font-semibold">Team Invitations</CardTitle>
+                          <CardTitle className="text-sm font-semibold">Members</CardTitle>
                           <CardDescription className="text-xs mt-0.5">
-                            Invite members to {organization?.name ?? 'your org'} via email
+                            Manage members of {organization?.name ?? 'your org'}
                           </CardDescription>
                         </div>
                       </div>
                     </CardHeader>
                     <Separator />
                     <CardContent className="pt-4 space-y-4">
-                      <form onSubmit={handleInvite} className="flex gap-2">
-                        <Input
-                          type="email"
-                          placeholder="colleague@company.com"
-                          value={inviteEmail}
-                          onChange={(e) => setInviteEmail(e.target.value)}
-                          disabled={inviting}
-                          className="flex-1"
-                        />
+                      {/* Invite banner */}
+                      <div className="flex items-center justify-between rounded-xl border border-dashed border-border/70 bg-muted/30 px-4 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                            <Mail className="h-4 w-4 text-primary" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-foreground">Invite your team</p>
+                            <p className="text-xs text-muted-foreground">
+                              Collaborators get access to all projects in{' '}
+                              {organization?.name ?? 'your org'}.
+                            </p>
+                          </div>
+                        </div>
                         <Button
-                          type="submit"
                           size="sm"
-                          disabled={inviting || !inviteEmail.trim()}
-                          className="shrink-0"
+                          onClick={() => setInviteDialogOpen(true)}
+                          className="gap-2 shrink-0 ml-4"
                         >
-                          {inviting ? (
-                            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            'Send invite'
-                          )}
+                          <Mail className="h-3.5 w-3.5" />
+                          Send Invite
                         </Button>
-                      </form>
+                      </div>
 
+                      {/* Current members */}
+                      {(orgMemberships?.data?.length ?? 0) > 0 && (
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground mb-2">
+                            Current members
+                          </p>
+                          <div className="space-y-2">
+                            {orgMemberships!.data!.map((m) => {
+                              const name =
+                                [m.publicUserData?.firstName, m.publicUserData?.lastName]
+                                  .filter(Boolean)
+                                  .join(' ') ||
+                                m.publicUserData?.identifier ||
+                                'Unknown';
+                              const isMe =
+                                m.publicUserData?.userId === membership?.publicUserData?.userId;
+                              const isOrgAdmin = m.role === 'org:admin';
+                              return (
+                                <div
+                                  key={m.id}
+                                  className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    {m.publicUserData?.imageUrl ? (
+                                      <img
+                                        src={m.publicUserData.imageUrl}
+                                        alt={name}
+                                        className="h-7 w-7 rounded-full object-cover"
+                                      />
+                                    ) : (
+                                      <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground">
+                                        {name[0]?.toUpperCase()}
+                                      </div>
+                                    )}
+                                    <div>
+                                      <p className="text-sm text-foreground">
+                                        {name}
+                                        {isMe && (
+                                          <span className="ml-1 text-[10px] text-muted-foreground">
+                                            (you)
+                                          </span>
+                                        )}
+                                      </p>
+                                      <p className="text-[11px] text-muted-foreground capitalize">
+                                        {isOrgAdmin ? 'Admin' : 'Member'}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  {!isMe && (
+                                    <div className="flex items-center gap-1">
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-7 gap-1 text-xs"
+                                            disabled={changingRoleId === m.id}
+                                          >
+                                            <ShieldCheck className="h-3 w-3" />
+                                            {changingRoleId === m.id
+                                              ? '...'
+                                              : isOrgAdmin
+                                                ? 'Admin'
+                                                : 'Member'}
+                                            <ChevronDown className="h-3 w-3" />
+                                          </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                          <DropdownMenuItem
+                                            onClick={() => handleChangeRole(m.id, 'org:admin')}
+                                            disabled={isOrgAdmin}
+                                          >
+                                            Make Admin
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem
+                                            onClick={() => handleChangeRole(m.id, 'org:member')}
+                                            disabled={!isOrgAdmin}
+                                          >
+                                            Make Member
+                                          </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                        disabled={removingMemberId === m.id}
+                                        onClick={() => setMemberToRemove({ id: m.id, name })}
+                                      >
+                                        <UserMinus className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Pending invitations */}
                       {(invitations?.data?.length ?? 0) > 0 && (
                         <div>
                           <p className="text-xs font-medium text-muted-foreground mb-2">
@@ -651,16 +718,18 @@ function SettingsContent() {
                                 <div>
                                   <p className="text-sm text-foreground">{inv.emailAddress}</p>
                                   <p className="text-[11px] text-muted-foreground">
-                                    Invited · expires {new Date(inv.createdAt).toLocaleDateString()}
+                                    Pending · invited {new Date(inv.createdAt).toLocaleDateString()}
                                   </p>
                                 </div>
                                 <Button
                                   variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                                  onClick={() => handleRevokeInvite(inv.id)}
+                                  size="sm"
+                                  className="h-7 text-xs text-muted-foreground hover:text-destructive"
+                                  onClick={() =>
+                                    setInviteToRevoke({ id: inv.id, email: inv.emailAddress })
+                                  }
                                 >
-                                  <Trash2 className="h-3.5 w-3.5" />
+                                  Revoke
                                 </Button>
                               </div>
                             ))}
@@ -670,6 +739,106 @@ function SettingsContent() {
                     </CardContent>
                   </Card>
                 )}
+
+                {/* Send invite dialog */}
+                <Dialog
+                  open={inviteDialogOpen}
+                  onOpenChange={(o) => {
+                    setInviteDialogOpen(o);
+                    if (!o) setInviteEmail('');
+                  }}
+                >
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Invite a member</DialogTitle>
+                      <DialogDescription>
+                        They'll receive an email invite to join{' '}
+                        {organization?.name ?? 'your organization'}.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleInvite}>
+                      <div className="py-2">
+                        <Input
+                          type="email"
+                          placeholder="colleague@company.com"
+                          value={inviteEmail}
+                          onChange={(e) => setInviteEmail(e.target.value)}
+                          disabled={inviting}
+                          autoFocus
+                        />
+                      </div>
+                      <DialogFooter className="mt-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setInviteDialogOpen(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button type="submit" disabled={inviting || !inviteEmail.trim()}>
+                          {inviting ? (
+                            <RefreshCw className="h-3.5 w-3.5 animate-spin mr-1" />
+                          ) : null}
+                          {inviting ? 'Sending...' : 'Send invite'}
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+
+                {/* Revoke invite confirmation dialog */}
+                <AlertDialog
+                  open={Boolean(inviteToRevoke)}
+                  onOpenChange={(o) => {
+                    if (!o) setInviteToRevoke(null);
+                  }}
+                >
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Revoke invite?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        The invite sent to{' '}
+                        <span className="font-medium text-foreground">{inviteToRevoke?.email}</span>{' '}
+                        will be cancelled and the link will no longer work.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        onClick={handleRevokeInvite}
+                      >
+                        Revoke
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+
+                {/* Remove member confirmation dialog */}
+                <AlertDialog
+                  open={Boolean(memberToRemove)}
+                  onOpenChange={(o) => {
+                    if (!o) setMemberToRemove(null);
+                  }}
+                >
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Remove {memberToRemove?.name}?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        They will lose access to this organization immediately.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        onClick={() => memberToRemove && handleRemoveMember(memberToRemove.id)}
+                      >
+                        Remove
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             )}
 

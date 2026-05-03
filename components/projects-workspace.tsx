@@ -71,9 +71,18 @@ import {
   ChevronRight,
   X,
   Loader2,
+  Users,
+  UserMinus,
 } from 'lucide-react';
 
-type ProjectTab = 'meetings' | 'tickets' | 'list' | 'kanban' | 'analytics' | 'dependencies';
+type ProjectTab =
+  | 'meetings'
+  | 'tickets'
+  | 'list'
+  | 'kanban'
+  | 'analytics'
+  | 'dependencies'
+  | 'members';
 
 interface Project {
   id: string;
@@ -154,8 +163,9 @@ export function ProjectsWorkspace({
   onDeleteProject,
   onRefresh,
 }: ProjectsWorkspaceProps) {
-  const { membership, memberships } = useOrganization({
+  const { membership, memberships, invitations } = useOrganization({
     memberships: { infinite: true, pageSize: 50 },
+    invitations: { infinite: true, pageSize: 50 },
   });
   const { user } = useUser();
   const isAdmin = membership?.role === 'org:admin';
@@ -163,6 +173,28 @@ export function ProjectsWorkspace({
     'all'
   );
   const [projectTab, setProjectTab] = useState<ProjectTab>('kanban');
+
+  interface ProjectMemberRow {
+    id: string;
+    project_id: string;
+    user_id: string;
+    role: 'admin' | 'member';
+  }
+  const [projectMembers, setProjectMembers] = useState<ProjectMemberRow[]>([]);
+  const [projectMembersLoading, setProjectMembersLoading] = useState(false);
+  const [addingMemberId, setAddingMemberId] = useState<string | null>(null);
+  const [removingProjectMemberId, setRemovingProjectMemberId] = useState<string | null>(null);
+
+  const fetchProjectMembers = useCallback(async (projectId: string) => {
+    setProjectMembersLoading(true);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/members`);
+      if (res.ok) setProjectMembers(await res.json());
+    } finally {
+      setProjectMembersLoading(false);
+    }
+  }, []);
+
   const [draggedTicketId, setDraggedTicketId] = useState<string | null>(null);
   const [draggedStageId, setDraggedStageId] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
@@ -873,6 +905,11 @@ export function ProjectsWorkspace({
   }, [selectedProjectId]);
 
   useEffect(() => {
+    if (selectedProjectId) fetchProjectMembers(selectedProjectId);
+    else setProjectMembers([]);
+  }, [selectedProjectId, fetchProjectMembers]);
+
+  useEffect(() => {
     if (!preferredTab) return;
     setProjectTab(preferredTab);
   }, [preferredTab]);
@@ -1000,6 +1037,7 @@ export function ProjectsWorkspace({
       adminOnly: true,
     },
     { id: 'dependencies', label: 'Dependencies', icon: <GitBranch className="h-4 w-4" /> },
+    { id: 'members', label: 'Members', icon: <Users className="h-4 w-4" />, adminOnly: true },
   ];
   const tabs = allTabs.filter((t) => !t.adminOnly || isAdmin);
 
@@ -1648,6 +1686,217 @@ export function ProjectsWorkspace({
                     </p>
                   </div>
                 </div>
+              </div>
+            );
+          })()}
+
+        {/* ── MEMBERS tab ── */}
+        {projectTab === 'members' &&
+          (() => {
+            const orgMemberList = memberships?.data ?? [];
+            const projectMemberUserIds = new Set(projectMembers.map((pm) => pm.user_id));
+            const notYetAdded = orgMemberList.filter(
+              (m) => !projectMemberUserIds.has(m.publicUserData?.userId ?? '')
+            );
+
+            async function handleAddMember(userId: string) {
+              if (!selectedProjectId) return;
+              setAddingMemberId(userId);
+              try {
+                await fetch(`/api/projects/${selectedProjectId}/members`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ userId, role: 'member' }),
+                });
+                await fetchProjectMembers(selectedProjectId);
+              } finally {
+                setAddingMemberId(null);
+              }
+            }
+
+            async function handleRemoveProjectMember(userId: string) {
+              if (!selectedProjectId) return;
+              setRemovingProjectMemberId(userId);
+              try {
+                await fetch(`/api/projects/${selectedProjectId}/members`, {
+                  method: 'DELETE',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ userId }),
+                });
+                await fetchProjectMembers(selectedProjectId);
+              } finally {
+                setRemovingProjectMemberId(null);
+              }
+            }
+
+            return (
+              <div className="space-y-4">
+                <h2 className="font-playfair text-2xl font-bold text-foreground">Members</h2>
+
+                {/* Current project members */}
+                <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+                  <p className="text-xs font-medium text-muted-foreground">Project members</p>
+                  {projectMembersLoading ? (
+                    <p className="text-sm text-muted-foreground">Loading...</p>
+                  ) : projectMembers.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No members added to this project yet.
+                    </p>
+                  ) : (
+                    projectMembers.map((pm) => {
+                      const orgM = orgMemberList.find(
+                        (m) => m.publicUserData?.userId === pm.user_id
+                      );
+                      const name = orgM
+                        ? [orgM.publicUserData?.firstName, orgM.publicUserData?.lastName]
+                            .filter(Boolean)
+                            .join(' ') ||
+                          orgM.publicUserData?.identifier ||
+                          'Unknown'
+                        : pm.user_id;
+                      const email = orgM?.publicUserData?.identifier ?? '';
+                      const imageUrl = orgM?.publicUserData?.imageUrl;
+                      return (
+                        <div
+                          key={pm.id}
+                          className="flex items-center justify-between rounded-xl border border-border/60 px-4 py-3 bg-background"
+                        >
+                          <div className="flex items-center gap-3">
+                            {imageUrl ? (
+                              <img
+                                src={imageUrl}
+                                alt={name}
+                                className="h-8 w-8 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground">
+                                {name[0]?.toUpperCase()}
+                              </div>
+                            )}
+                            <div>
+                              <p className="text-sm font-medium text-foreground">{name}</p>
+                              {email && (
+                                <p className="text-[11px] text-muted-foreground">{email}</p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${
+                                pm.role === 'admin'
+                                  ? 'bg-primary/10 text-primary'
+                                  : 'bg-muted text-muted-foreground'
+                              }`}
+                            >
+                              {pm.role === 'admin' ? 'Admin' : 'Member'}
+                            </span>
+                            {isAdmin && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                disabled={removingProjectMemberId === pm.user_id}
+                                onClick={() => handleRemoveProjectMember(pm.user_id)}
+                              >
+                                <UserMinus className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Add org members to project — admin only */}
+                {isAdmin && notYetAdded.length > 0 && (
+                  <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Add org members to this project
+                    </p>
+                    {notYetAdded.map((m) => {
+                      const name =
+                        [m.publicUserData?.firstName, m.publicUserData?.lastName]
+                          .filter(Boolean)
+                          .join(' ') ||
+                        m.publicUserData?.identifier ||
+                        'Unknown';
+                      const userId = m.publicUserData?.userId ?? '';
+                      return (
+                        <div
+                          key={m.id}
+                          className="flex items-center justify-between rounded-xl border border-border/60 px-4 py-3 bg-background"
+                        >
+                          <div className="flex items-center gap-3">
+                            {m.publicUserData?.imageUrl ? (
+                              <img
+                                src={m.publicUserData.imageUrl}
+                                alt={name}
+                                className="h-8 w-8 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground">
+                                {name[0]?.toUpperCase()}
+                              </div>
+                            )}
+                            <div>
+                              <p className="text-sm font-medium text-foreground">{name}</p>
+                              <p className="text-[11px] text-muted-foreground">
+                                {m.publicUserData?.identifier}
+                              </p>
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs gap-1"
+                            disabled={addingMemberId === userId}
+                            onClick={() => handleAddMember(userId)}
+                          >
+                            {addingMemberId === userId ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Plus className="h-3 w-3" />
+                            )}
+                            Add
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Pending org invitations */}
+                {isAdmin && (invitations?.data?.length ?? 0) > 0 && (
+                  <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Pending org invitations
+                    </p>
+                    {invitations!.data!.map((inv) => (
+                      <div
+                        key={inv.id}
+                        className="flex items-center justify-between rounded-xl border border-dashed border-border/60 px-4 py-3 bg-background"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-full bg-muted/60 border border-dashed border-border flex items-center justify-center">
+                            <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-foreground">
+                              {inv.emailAddress}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground">
+                              Invited {new Date(inv.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-[11px] px-2 py-0.5 rounded-full font-medium bg-yellow-500/10 text-yellow-600 dark:text-yellow-400">
+                          Pending
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })()}
