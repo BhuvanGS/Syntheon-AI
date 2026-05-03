@@ -14,10 +14,15 @@ import {
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId } = await auth();
+    const { userId, orgId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
+    const meeting = await getMeetingById(id);
+    if (!meeting || (orgId && meeting.org_id !== orgId)) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
     const tickets = await getTicketsByMeetingId(id, { originalOnly: true });
     return NextResponse.json(tickets);
   } catch (error) {
@@ -32,6 +37,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
+    const meetingCheck = await getMeetingById(id);
+    if (!meetingCheck || (orgId && meetingCheck.org_id !== orgId)) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
     const body = await req.json();
     const title = String(body?.title ?? '').trim();
     const description = String(body?.description ?? '').trim();
@@ -106,11 +116,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId } = await auth();
+    const { userId, orgId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
+    const meetingCheck = await getMeetingById(id);
+    if (!meetingCheck || (orgId && meetingCheck.org_id !== orgId)) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
     const { ticketId, status, assignee, assigneeUserId, dependencyTicketId } = await req.json();
+
+    const meetingTickets = await getTicketsByMeetingId(id);
+    if (!meetingTickets.find((t) => t.id === ticketId)) {
+      return NextResponse.json({ error: 'Ticket not in meeting' }, { status: 404 });
+    }
 
     if (status) {
       await updateTicketStatus(ticketId, status);

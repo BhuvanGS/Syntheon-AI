@@ -7,12 +7,12 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; attachmentId: string }> }
 ) {
   try {
-    const { userId } = await auth();
+    const { userId, orgId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id: ticketId, attachmentId } = await params;
     const ticket = await getTicketById(ticketId);
-    if (!ticket) {
+    if (!ticket || (orgId && ticket.org_id !== orgId)) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 

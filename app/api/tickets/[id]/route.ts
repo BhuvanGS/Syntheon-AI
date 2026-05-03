@@ -29,6 +29,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     // Fallback: ticket may have been created before org_id was set — look up directly
     if (!ticket) {
       ticket = (await getTicketById(id)) ?? undefined;
+      if (ticket && orgId && ticket.org_id !== orgId) ticket = undefined;
     }
 
     if (!ticket) {
@@ -210,6 +211,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     if (!ticket) {
       ticket = (await getTicketById(id)) ?? undefined;
+      if (ticket && ticket.org_id !== ctx.orgId) ticket = undefined;
     }
 
     if (!ticket) {

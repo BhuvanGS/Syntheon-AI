@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, currentUser } from '@clerk/nextjs/server';
+import { cookies } from 'next/headers';
 import { ensureUser } from '@/lib/ensureUser';
 import { getSettingsRedirectUrl } from '@/lib/oauth/redirect';
 import { saveGithubIntegration } from '@/lib/services/integrations';
@@ -21,6 +22,18 @@ export async function GET(req: NextRequest) {
     const code = searchParams.get('code');
     const error = searchParams.get('error');
     const errorDescription = searchParams.get('error_description');
+
+    // Validate OAuth state to prevent CSRF
+    const stateParam = searchParams.get('state');
+    const cookieStore = await cookies();
+    const storedState = cookieStore.get('oauth_state')?.value;
+    cookieStore.delete('oauth_state');
+
+    if (!stateParam || stateParam !== storedState) {
+      const redirectUrl = getSettingsRedirectUrl(req);
+      redirectUrl.searchParams.set('github_error', 'invalid_state');
+      return NextResponse.redirect(redirectUrl);
+    }
 
     if (error) {
       const redirectUrl = getSettingsRedirectUrl(req);

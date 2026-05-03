@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
+import { cookies } from 'next/headers';
+import { randomUUID } from 'crypto';
 import { buildOAuthAuthorizationUrl } from '@/lib/oauth/initiate';
 
 export async function POST() {
@@ -25,13 +27,24 @@ export async function POST() {
     }
     const redirectUri = `${baseUrl.replace(/\/$/, '')}/api/oauth/github/callback`;
 
+    // Generate random state to prevent CSRF on OAuth flow
+    const state = randomUUID();
+    const cookieStore = await cookies();
+    cookieStore.set('oauth_state', state, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 300, // 5 minutes
+      path: '/',
+    });
+
     const authorizationUrl = buildOAuthAuthorizationUrl({
       authorizeEndpoint: 'https://github.com/login/oauth/authorize',
       clientId,
       redirectUri,
       extraParams: {
         scope: 'repo',
-        state: 'temp',
+        state,
       },
     });
 

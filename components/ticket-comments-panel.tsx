@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import DOMPurify from 'dompurify';
 import { Button } from '@/components/ui/button';
 import { MessageSquare, Send, X, User, Pencil, Check } from 'lucide-react';
 import { useToast } from '@/components/island-toast';
@@ -244,7 +245,7 @@ export function TicketCommentsPanel({ ticketId, currentUserId }: TicketCommentsP
                 ) : (
                   <div
                     className="text-sm text-foreground mt-1 prose prose-sm max-w-none [&_h1]:text-lg [&_h1]:font-bold [&_h2]:text-base [&_h2]:font-bold [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-2 [&_blockquote]:italic [&_code]:bg-muted [&_code]:px-1 [&_code]:rounded [&_a]:text-primary [&_a]:underline"
-                    dangerouslySetInnerHTML={{ __html: comment.content }}
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(comment.content) }}
                   />
                 )}
               </div>

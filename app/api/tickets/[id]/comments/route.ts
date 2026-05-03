@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
+import DOMPurify from 'isomorphic-dompurify';
 import {
   getCommentsForTicket,
   createComment,
@@ -8,14 +9,34 @@ import {
   createActivity,
 } from '@/lib/db';
 
+const ALLOWED_TAGS = [
+  'p',
+  'strong',
+  'em',
+  'u',
+  's',
+  'a',
+  'ul',
+  'ol',
+  'li',
+  'h1',
+  'h2',
+  'h3',
+  'blockquote',
+  'code',
+  'pre',
+  'br',
+];
+const ALLOWED_ATTR = ['href', 'target', 'rel'];
+
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId } = await auth();
+    const { userId, orgId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
     const ticket = await getTicketById(id);
-    if (!ticket || ticket.user_id !== userId) {
+    if (!ticket || (orgId && ticket.org_id !== orgId)) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
@@ -29,12 +50,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId } = await auth();
+    const { userId, orgId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id: ticketId } = await params;
     const ticket = await getTicketById(ticketId);
-    if (!ticket || ticket.user_id !== userId) {
+    if (!ticket || (orgId && ticket.org_id !== orgId)) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
@@ -49,7 +70,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       ticket_id: ticketId,
       project_id: ticket.projectId ?? null,
       user_id: userId,
-      content: content.trim(),
+      content: DOMPurify.sanitize(content.trim(), { ALLOWED_TAGS, ALLOWED_ATTR }),
     });
 
     const plainContent = content

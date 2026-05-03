@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabase';
+import { decrypt } from '@/lib/crypto';
 
 export type IntegrationRow = Record<string, any> | null;
 
@@ -29,7 +30,14 @@ export function getLinearTeamId(integration: IntegrationRow): string | null {
 
 export function getGithubToken(integration: IntegrationRow): string | null {
   if (!integration) return null;
-  return integration.github_token || null;
+  const token = integration.github_token || null;
+  if (!token) return null;
+  try {
+    return decrypt(token);
+  } catch {
+    // Fallback for tokens stored before encryption was added
+    return token;
+  }
 }
 
 export function getGithubOwner(integration: IntegrationRow): string | null {

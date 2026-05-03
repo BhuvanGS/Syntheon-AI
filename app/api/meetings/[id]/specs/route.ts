@@ -6,14 +6,20 @@ import {
   updateTicketStatus,
   updateTicketAssignee,
   updateTicketDependency,
+  getMeetingById,
 } from '@/lib/db';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId } = await auth();
+    const { userId, orgId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
+    const meeting = await getMeetingById(id);
+    if (!meeting || (orgId && meeting.org_id !== orgId)) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
     const tickets = await getTicketsByMeetingId(id);
     return NextResponse.json(tickets);
   } catch (error) {
@@ -24,11 +30,21 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId } = await auth();
+    const { userId, orgId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
+    const meeting = await getMeetingById(id);
+    if (!meeting || (orgId && meeting.org_id !== orgId)) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
     const { ticketId, status, assignee, assigneeUserId, dependencyTicketId } = await req.json();
+
+    const meetingTickets = await getTicketsByMeetingId(id);
+    if (!meetingTickets.find((t) => t.id === ticketId)) {
+      return NextResponse.json({ error: 'Ticket not in meeting' }, { status: 404 });
+    }
 
     if (status) {
       await updateTicketStatus(ticketId, status);

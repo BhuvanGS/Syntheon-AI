@@ -155,9 +155,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error('Ship execute error:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to execute' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to execute plan' }, { status: 500 });
   }
 }

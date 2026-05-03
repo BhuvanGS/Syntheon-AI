@@ -1,8 +1,9 @@
 // app/api/transcribe/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { writeFile, mkdir } from 'fs/promises';
+import { writeFile, mkdir, unlink } from 'fs/promises';
 import path from 'path';
+import os from 'os';
 import { transcribeMeeting } from '@/lib/deepgram';
 import { extractTickets } from '@/lib/groq';
 import {
@@ -33,14 +34,13 @@ export async function POST(req: NextRequest) {
     }
 
     meetingId = `meet-${Date.now()}`;
-    const recordingsDir = path.resolve(process.cwd(), 'recordings');
-    await mkdir(recordingsDir, { recursive: true });
-
-    const filePath = path.join(recordingsDir, `${meetingId}.webm`);
+    // Write to temp directory instead of project root
+    const tmpDir = os.tmpdir();
+    const filePath = path.join(tmpDir, `${meetingId}.webm`);
     const buffer = Buffer.from(await audioFile.arrayBuffer());
     await writeFile(filePath, buffer);
 
-    console.log('Meeting recording saved:', filePath);
+    console.log('Meeting recording saved to temp:', filePath);
 
     // Save immediately as processing
     await saveMeeting({
@@ -73,6 +73,9 @@ export async function POST(req: NextRequest) {
     await updateMeetingSpecs(meetingId, transcript, insertedTickets.length);
     await updateMeetingName(meetingId, title);
 
+    // Clean up temp file
+    await unlink(filePath).catch(() => {});
+
     return NextResponse.json({
       success: true,
       meetingId,
@@ -82,9 +85,6 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('PIPELINE ERROR:', error);
     if (meetingId) await updateMeetingStatus(meetingId, 'failed').catch(() => {});
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Pipeline failed' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Pipeline failed' }, { status: 500 });
   }
 }

@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabase';
+import { encrypt } from '@/lib/crypto';
 
 export async function saveGithubIntegration(params: {
   userId: string;
@@ -8,7 +9,7 @@ export async function saveGithubIntegration(params: {
   const { error } = await supabaseAdmin.from('integrations').upsert(
     {
       user_id: params.userId,
-      github_token: params.githubToken,
+      github_token: encrypt(params.githubToken),
       github_owner: params.githubOwner,
       updated_at: new Date().toISOString(),
     },

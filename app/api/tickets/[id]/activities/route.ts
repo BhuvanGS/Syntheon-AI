@@ -5,14 +5,14 @@ import { getActivitiesForTicket, createActivity, getTicketById } from '@/lib/db'
 // GET /api/tickets/[id]/activities
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId } = await auth();
+    const { userId, orgId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id: ticketId } = await params;
 
     // Verify ticket exists and user has access
     const ticket = await getTicketById(ticketId);
-    if (!ticket) {
+    if (!ticket || (orgId && ticket.org_id !== orgId)) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
@@ -20,17 +20,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json(activities);
   } catch (err) {
     console.error('GET /activities error:', err);
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Failed to fetch activities' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to fetch activities' }, { status: 500 });
   }
 }
 
 // POST /api/tickets/[id]/activities
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId } = await auth();
+    const { userId, orgId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id: ticketId } = await params;
@@ -43,7 +40,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     // Verify ticket exists and user has access
     const ticket = await getTicketById(ticketId);
-    if (!ticket) {
+    if (!ticket || (orgId && ticket.org_id !== orgId)) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
@@ -57,9 +54,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json(activity, { status: 201 });
   } catch (err) {
     console.error('POST /activities error:', err);
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Failed to create activity' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to create activity' }, { status: 500 });
   }
 }

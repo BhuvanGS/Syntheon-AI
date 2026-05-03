@@ -107,9 +107,6 @@ Build the entire application implementing ALL of the above tickets in one cohesi
     });
   } catch (error) {
     console.error('Ship plan error:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to generate plan' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to generate plan' }, { status: 500 });
   }
 }

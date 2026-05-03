@@ -11,12 +11,12 @@ import { randomUUID } from 'crypto';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId } = await auth();
+    const { userId, orgId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
     const ticket = await getTicketById(id);
-    if (!ticket) {
+    if (!ticket || (orgId && ticket.org_id !== orgId)) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
@@ -30,12 +30,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId } = await auth();
+    const { userId, orgId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id: ticketId } = await params;
     const ticket = await getTicketById(ticketId);
-    if (!ticket) {
+    if (!ticket || (orgId && ticket.org_id !== orgId)) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
