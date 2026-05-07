@@ -9,7 +9,9 @@ import {
   type DependencyType,
   type DependencyStrength,
 } from '@/lib/db';
-import { supabaseAdmin } from '@/lib/supabase';
+import { db } from '@/db/index';
+import { ticketDependencies } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 
 const DEP_TYPES = new Set<DependencyType>(['data', 'structural', 'logical', 'resource']);
 const DEP_STRENGTHS = new Set<DependencyStrength>(['soft', 'hard']);
@@ -96,11 +98,12 @@ export async function PATCH(
       return NextResponse.json({ error: 'No valid updates provided' }, { status: 400 });
     }
 
-    const { error } = await supabaseAdmin
-      .from('ticket_dependencies')
-      .update(updates)
-      .eq('id', depId);
-    if (error) throw error;
+    // Map snake_case keys to Drizzle camelCase columns
+    const drizzleSet: Record<string, unknown> = { updatedAt: new Date() };
+    if (updates.dependency_type) drizzleSet.dependencyType = updates.dependency_type;
+    if (updates.strength) drizzleSet.strength = updates.strength;
+    if (typeof updates.note !== 'undefined') drizzleSet.note = updates.note;
+    await db.update(ticketDependencies).set(drizzleSet).where(eq(ticketDependencies.id, depId));
 
     // Log activity
     await createActivity({

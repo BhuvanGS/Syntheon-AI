@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { db } from '@/db/index';
+import { apiKeys } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 
 export async function GET() {
   try {
@@ -11,19 +13,13 @@ export async function GET() {
     }
 
     // Check if user has an existing API key
-    const { data, error } = await supabaseAdmin
-      .from('api_keys')
-      .select('user_id')
-      .eq('user_id', userId)
-      .single();
+    const [row] = await db
+      .select({ userId: apiKeys.userId })
+      .from(apiKeys)
+      .where(eq(apiKeys.userId, userId))
+      .limit(1);
 
-    if (error && error.code !== 'PGRST116') {
-      // PGRST116 is "not found" error
-      console.error('Failed to check API key:', error);
-      return NextResponse.json({ error: 'Failed to check key' }, { status: 500 });
-    }
-
-    return NextResponse.json({ hasKey: !!data });
+    return NextResponse.json({ hasKey: !!row });
   } catch (error) {
     console.error('Check key error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

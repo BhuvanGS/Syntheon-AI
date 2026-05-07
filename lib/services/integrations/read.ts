@@ -1,16 +1,28 @@
-import { supabaseAdmin } from '@/lib/supabase';
+import { db } from '@/db/index';
+import { integrations } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 import { decrypt } from '@/lib/crypto';
 
 export type IntegrationRow = Record<string, any> | null;
 
 export async function getIntegrationByUserId(userId: string): Promise<IntegrationRow> {
-  const { data } = await supabaseAdmin
-    .from('integrations')
-    .select('*')
-    .eq('user_id', userId)
-    .maybeSingle();
-
-  return data ?? null;
+  const [row] = await db
+    .select()
+    .from(integrations)
+    .where(eq(integrations.userId, userId))
+    .limit(1);
+  if (!row) return null;
+  // Map camelCase to snake_case for backward compat with existing consumers
+  return {
+    github_token: row.githubToken,
+    github_owner: row.githubOwner,
+    github_access_token: row.githubAccessToken,
+    linear_access_token: row.linearAccessToken,
+    linear_token: row.linearToken,
+    linear_api_key: row.linearApiKey,
+    linear_team_name: row.linearTeamName,
+    linear_team_id: row.linearTeamId,
+  };
 }
 
 export function getLinearAccessToken(integration: IntegrationRow): string | null {

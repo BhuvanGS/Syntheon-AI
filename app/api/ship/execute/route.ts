@@ -9,7 +9,9 @@ import {
   getRepoInfo,
 } from '@/lib/shipai/github';
 import { moveLinearTicketBundleToPrStage } from '@/lib/shipai/linear';
-import { supabaseAdmin } from '@/lib/supabase';
+import { db } from '@/db/index';
+import { meetings as meetingsTable } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 import {
   getIntegrationByUserId,
   getLinearAccessToken,
@@ -136,10 +138,10 @@ export async function POST(req: NextRequest) {
 
         // Link meeting to project
         if (meetingId) {
-          await supabaseAdmin
-            .from('meetings')
-            .update({ project_id: newProjectId })
-            .eq('id', meetingId);
+          await db
+            .update(meetingsTable)
+            .set({ projectId: newProjectId })
+            .where(eq(meetingsTable.id, meetingId));
         }
 
         console.log('New project created');

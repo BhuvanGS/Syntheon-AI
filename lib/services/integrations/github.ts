@@ -1,4 +1,6 @@
-import { supabaseAdmin } from '@/lib/supabase';
+import { db } from '@/db/index';
+import { integrations } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 import { encrypt } from '@/lib/crypto';
 
 export async function saveGithubIntegration(params: {
@@ -6,34 +8,31 @@ export async function saveGithubIntegration(params: {
   githubToken: string;
   githubOwner: string;
 }) {
-  const { error } = await supabaseAdmin.from('integrations').upsert(
-    {
-      user_id: params.userId,
-      github_token: encrypt(params.githubToken),
-      github_owner: params.githubOwner,
-      updated_at: new Date().toISOString(),
-    },
-    {
-      onConflict: 'user_id',
-    }
-  );
-
-  if (error) {
-    throw error;
-  }
+  await db
+    .insert(integrations)
+    .values({
+      userId: params.userId,
+      githubToken: encrypt(params.githubToken),
+      githubOwner: params.githubOwner,
+      updatedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: integrations.userId,
+      set: {
+        githubToken: encrypt(params.githubToken),
+        githubOwner: params.githubOwner,
+        updatedAt: new Date(),
+      },
+    });
 }
 
 export async function deleteGithubIntegration(userId: string) {
-  const { error } = await supabaseAdmin
-    .from('integrations')
-    .update({
-      github_token: null,
-      github_owner: null,
-      updated_at: new Date().toISOString(),
+  await db
+    .update(integrations)
+    .set({
+      githubToken: null,
+      githubOwner: null,
+      updatedAt: new Date(),
     })
-    .eq('user_id', userId);
-
-  if (error) {
-    throw error;
-  }
+    .where(eq(integrations.userId, userId));
 }

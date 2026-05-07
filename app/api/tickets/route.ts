@@ -9,7 +9,9 @@ import {
   incrementDependencyIgnoreCount,
   updateTicketStatus,
 } from '@/lib/db';
-import { supabaseAdmin } from '@/lib/supabase';
+import { db } from '@/db/index';
+import { tickets as ticketsTable } from '@/db/schema';
+import { inArray } from 'drizzle-orm';
 
 export async function GET(req: NextRequest) {
   try {
@@ -81,15 +83,13 @@ export async function PATCH(req: NextRequest) {
         const softParents = parents.filter((d) => d.strength === 'soft' && !d.escalated);
         if (softParents.length > 0) {
           const softParentIds = softParents.map((d) => d.depends_on_ticket_id);
-          const { data: softParentTickets } = await supabaseAdmin
-            .from('tickets')
-            .select('id, status')
-            .in('id', softParentIds);
+          const softParentTickets = await db
+            .select({ id: ticketsTable.id, status: ticketsTable.status })
+            .from(ticketsTable)
+            .where(inArray(ticketsTable.id, softParentIds));
 
           const unresolvedSoft = softParents.filter((dep) => {
-            const parent = (softParentTickets ?? []).find(
-              (t: { id: string; status: string }) => t.id === dep.depends_on_ticket_id
-            );
+            const parent = softParentTickets.find((t) => t.id === dep.depends_on_ticket_id);
             return parent?.status !== 'done';
           });
 

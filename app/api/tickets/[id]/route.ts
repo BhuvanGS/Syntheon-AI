@@ -13,7 +13,9 @@ import {
   getTicketById,
 } from '@/lib/db';
 import { requireAuth } from '@/lib/rbac';
-import { supabaseAdmin } from '@/lib/supabase';
+import { db } from '@/db/index';
+import { tickets as ticketsTable } from '@/db/schema';
+import { inArray } from 'drizzle-orm';
 
 const allowedStatuses = new Set(['backlog', 'in_progress', 'done', 'blocked']);
 
@@ -103,15 +105,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           .map((d) => d.depends_on_ticket_id);
 
         if (softParentIds.length > 0) {
-          const { data: softParentTickets } = await supabaseAdmin
-            .from('tickets')
-            .select('id, status')
-            .in('id', softParentIds);
+          const softParentTickets = await db
+            .select({ id: ticketsTable.id, status: ticketsTable.status })
+            .from(ticketsTable)
+            .where(inArray(ticketsTable.id, softParentIds));
           const unresolvedSoft = parents.filter((dep) => {
             if (dep.strength !== 'soft' || dep.escalated) return false;
-            const parent = (softParentTickets ?? []).find(
-              (t: any) => t.id === dep.depends_on_ticket_id
-            );
+            const parent = softParentTickets.find((t) => t.id === dep.depends_on_ticket_id);
             return parent?.status !== 'done';
           });
 
