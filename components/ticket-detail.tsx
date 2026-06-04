@@ -70,7 +70,6 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
   const [shipResult, setShipResult] = useState<{
     status: 'idle' | 'planning' | 'planned' | 'executing' | 'done' | 'error';
     plan?: any;
-    linearTicketBundle?: any;
     featureRequest?: string;
     issue?: any;
     pullRequest?: any;
@@ -382,7 +381,6 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
       setShipResult({
         status: 'planned',
         plan: planData.plan,
-        linearTicketBundle: planData.linearTicketBundle,
         featureRequest: planData.featureRequest,
       });
     } catch (error) {
@@ -404,7 +402,6 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
         body: JSON.stringify({
           featureRequest: shipResult.featureRequest,
           plan: shipResult.plan,
-          linearTicketBundle: shipResult.linearTicketBundle,
           meetingId,
           projectId: project?.id ?? meetingData?.projectId,
           tickets: readyTickets,
@@ -422,7 +419,6 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
         issue: execData.issue,
         pullRequest: execData.pullRequest,
         committedFiles: execData.committedFiles,
-        linearTicketBundle: execData.linearTicketBundle,
       }));
 
       fetchMeetingData();

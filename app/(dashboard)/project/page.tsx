@@ -20,7 +20,8 @@ type ProjectTab =
   | 'kanban'
   | 'analytics'
   | 'dependencies'
-  | 'members';
+  | 'members'
+  | 'build';
 
 interface Project {
   id: string;
@@ -64,6 +65,7 @@ const validProjectTabs: ProjectTab[] = [
   'analytics',
   'dependencies',
   'members',
+  'build',
 ];
 
 function ProjectContent() {

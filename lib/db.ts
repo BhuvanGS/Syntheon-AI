@@ -11,6 +11,9 @@ import {
   ticketActivities as activitiesTable,
   projectMembers as membersTable,
   notifications as notificationsTable,
+  swarmnetAgents as agentsTable,
+  swarmnetRuns as runsTable,
+  swarmnetArtifacts as artifactsTable,
 } from '@/db/schema';
 import { eq, and, desc, asc, inArray, isNull, gte, sql } from 'drizzle-orm';
 
@@ -1284,4 +1287,98 @@ export async function markAllNotificationsAsRead(userId: string, orgId: string):
         eq(notificationsTable.read, false)
       )
     );
+}
+
+// ─── SwarmNet Runs ─────────────────────────────────────────────
+
+export interface SwarmnetRun {
+  id: string;
+  org_id: string;
+  project_id?: string;
+  ticket_id: string;
+  agent_id: string;
+  status: string;
+  branch_name?: string;
+  pr_number?: number;
+  pr_url?: string;
+  error_message?: string;
+  steps?: any[];
+  files_created?: string[];
+  files_modified?: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export async function createSwarmnetRun(values: {
+  id: string;
+  orgId: string;
+  projectId?: string;
+  ticketId: string;
+  agentId: string;
+  status: string;
+  branchName?: string;
+}): Promise<void> {
+  await db.insert(runsTable).values({
+    id: values.id,
+    orgId: values.orgId,
+    projectId: values.projectId ?? null,
+    ticketId: values.ticketId,
+    agentId: values.agentId,
+    status: values.status,
+    branchName: values.branchName ?? null,
+  });
+}
+
+export async function getSwarmnetRun(id: string): Promise<SwarmnetRun | null> {
+  const [row] = await db.select().from(runsTable).where(eq(runsTable.id, id)).limit(1);
+  if (!row) return null;
+  return {
+    id: row.id,
+    org_id: row.orgId,
+    project_id: row.projectId ?? undefined,
+    ticket_id: row.ticketId,
+    agent_id: row.agentId,
+    status: row.status,
+    branch_name: row.branchName ?? undefined,
+    pr_number: row.prNumber ?? undefined,
+    pr_url: row.prUrl ?? undefined,
+    error_message: row.errorMessage ?? undefined,
+    steps: row.steps as any[] | undefined,
+    files_created: row.filesCreated ?? undefined,
+    files_modified: row.filesModified ?? undefined,
+    created_at: ts(row.createdAt),
+    updated_at: ts(row.updatedAt),
+  };
+}
+
+export async function updateSwarmnetRun(
+  id: string,
+  values: Partial<{
+    status: string;
+    branchName: string;
+    headCommitSha: string;
+    prNumber: number;
+    prUrl: string;
+    errorMessage: string;
+    steps: any[];
+    filesCreated: string[];
+    filesModified: string[];
+    completedAt: Date;
+  }>
+): Promise<void> {
+  await db.update(runsTable).set(values).where(eq(runsTable.id, id));
+}
+
+export async function createSwarmnetArtifact(values: {
+  runId: string;
+  filePath: string;
+  content: string;
+  isNew: boolean;
+}): Promise<void> {
+  await db.insert(artifactsTable).values({
+    runId: values.runId,
+    filePath: values.filePath,
+    content: values.content,
+    isNew: values.isNew,
+  });
 }

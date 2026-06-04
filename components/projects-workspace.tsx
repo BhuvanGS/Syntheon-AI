@@ -44,6 +44,7 @@ import { MentionEditor } from '@/components/mention-editor';
 import { useToast } from '@/components/island-toast';
 import { ProjectTicketImportDialog } from '@/components/project-ticket-import-dialog';
 import { ProjectMeetingDialog } from '@/components/project-meeting-dialog';
+import { SwarmNetBuildPanel } from '@/components/swarmnet-build-panel';
 import {
   FolderKanban,
   Plus,
@@ -73,6 +74,7 @@ import {
   Loader2,
   Users,
   UserMinus,
+  Rocket,
 } from 'lucide-react';
 
 type ProjectTab =
@@ -82,7 +84,8 @@ type ProjectTab =
   | 'kanban'
   | 'analytics'
   | 'dependencies'
-  | 'members';
+  | 'members'
+  | 'build';
 
 interface Project {
   id: string;
@@ -1161,6 +1164,7 @@ export function ProjectsWorkspace({
     },
     { id: 'dependencies', label: 'Dependencies', icon: <GitBranch className="h-4 w-4" /> },
     { id: 'members', label: 'Members', icon: <Users className="h-4 w-4" />, adminOnly: true },
+    { id: 'build', label: 'Build', icon: <Rocket className="h-4 w-4" /> },
   ];
   const tabs = allTabs.filter((t) => !t.adminOnly || isAdmin);
 
@@ -2044,6 +2048,14 @@ export function ProjectsWorkspace({
                 }}
               />
             </div>
+          </div>
+        )}
+
+        {/* ── BUILD tab ── */}
+        {projectTab === 'build' && (
+          <div className="space-y-4">
+            <h2 className="font-playfair text-2xl font-bold text-foreground">SwarmNet Build</h2>
+            <SwarmNetBuildPanel project={selectedProject} tickets={projectTickets} />
           </div>
         )}
       </div>

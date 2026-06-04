@@ -179,15 +179,6 @@ export const integrations = pgTable('integrations', {
   githubToken: text('github_token'),
   githubOwner: text('github_owner'),
   githubAccessToken: text('github_access_token'),
-  linearApiKey: text('linear_api_key'),
-  linearAccessToken: text('linear_access_token'),
-  linearToken: text('linear_token'),
-  linearTeamName: text('linear_team_name'),
-  linearTeamId: text('linear_team_id'),
-  linearUserId: text('linear_user_id'),
-  linearUserName: text('linear_user_name'),
-  linearInitialStateId: text('linear_initial_state_id'),
-  linearPrStateId: text('linear_pr_state_id'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });
 
@@ -275,3 +266,80 @@ export const ticketActivitiesRelations = relations(ticketActivities, ({ one }) =
 export const projectMembersRelations = relations(projectMembers, ({ one }) => ({
   project: one(projects, { fields: [projectMembers.projectId], references: [projects.id] }),
 }));
+
+// ─── SwarmNet Agents ───────────────────────────────────────────
+export const swarmnetAgents = pgTable(
+  'swarmnet_agents',
+  {
+    id: text('id').primaryKey(),
+    orgId: text('org_id').notNull(),
+    name: text('name').notNull(),
+    domain: text('domain').notNull(),
+    persona: text('persona').notNull(),
+    model: text('model').default('llama-3.3-70b-versatile').notNull(),
+    trustLevel: text('trust_level').default('medium').notNull(),
+    keywords: text('keywords').array().default([]).notNull(),
+    filePatterns: text('file_patterns').array().default([]).notNull(),
+    capabilities: text('capabilities').array().default([]).notNull(),
+    maxActiveTickets: integer('max_active_tickets').default(1).notNull(),
+    isCustom: boolean('is_custom').default(false).notNull(),
+    isActive: boolean('is_active').default(true).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+  },
+  (table) => [index('swarmnet_agents_org_domain_idx').on(table.orgId, table.domain)]
+);
+
+// ─── SwarmNet Runs ─────────────────────────────────────────────
+export const swarmnetRuns = pgTable(
+  'swarmnet_runs',
+  {
+    id: text('id').primaryKey(),
+    orgId: text('org_id').notNull(),
+    projectId: text('project_id'),
+    ticketId: text('ticket_id').notNull(),
+    agentId: text('agent_id').notNull(),
+    status: text('status').default('claimed').notNull(),
+    branchName: text('branch_name'),
+    baseCommitSha: text('base_commit_sha'),
+    headCommitSha: text('head_commit_sha'),
+    prNumber: integer('pr_number'),
+    prUrl: text('pr_url'),
+    modelUsed: text('model_used'),
+    promptTokens: integer('prompt_tokens').default(0),
+    completionTokens: integer('completion_tokens').default(0),
+    costUsd: real('cost_usd').default(0),
+    startedAt: timestamp('started_at', { withTimezone: true }).defaultNow(),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    durationSeconds: integer('duration_seconds'),
+    filesModified: text('files_modified').array().default([]),
+    filesCreated: text('files_created').array().default([]),
+    testResults: jsonb('test_results'),
+    securityScan: jsonb('security_scan'),
+    errorMessage: text('error_message'),
+    steps: jsonb('steps').default('[]'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index('swarmnet_runs_org_status_idx').on(table.orgId, table.status),
+    index('swarmnet_runs_ticket_idx').on(table.ticketId),
+    index('swarmnet_runs_agent_idx').on(table.agentId),
+  ]
+);
+
+// ─── SwarmNet Artifacts ────────────────────────────────────────
+export const swarmnetArtifacts = pgTable(
+  'swarmnet_artifacts',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    runId: text('run_id')
+      .notNull()
+      .references(() => swarmnetRuns.id, { onDelete: 'cascade' }),
+    filePath: text('file_path').notNull(),
+    content: text('content').notNull(),
+    isNew: boolean('is_new').default(false).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  },
+  (table) => [index('swarmnet_artifacts_run_idx').on(table.runId)]
+);
