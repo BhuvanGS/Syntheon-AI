@@ -10,6 +10,7 @@ import {
   saveTickets,
   getMeetingById,
   addTicketsToProject,
+  createNotification,
 } from '@/lib/db';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -105,6 +106,26 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     if (resolvedProjectId) {
       await addTicketsToProject(resolvedProjectId, [ticketId]);
+    }
+
+    // Notify assignee on creation (if any and not self)
+    if (assigneeUserId && assigneeUserId !== userId) {
+      await createNotification({
+        user_id: assigneeUserId,
+        org_id: orgId ?? '',
+        type: 'assigned',
+        title: 'New ticket assigned to you',
+        message: `"${title}" was assigned to you`,
+        ticket_id: ticketId,
+      });
+      await createNotification({
+        user_id: userId,
+        org_id: orgId ?? '',
+        type: 'assigned',
+        title: 'Ticket assignment updated',
+        message: `You assigned "${title}" to ${assignee}`,
+        ticket_id: ticketId,
+      });
     }
 
     return NextResponse.json({ success: true });

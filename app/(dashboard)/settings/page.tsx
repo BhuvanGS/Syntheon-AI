@@ -32,6 +32,7 @@ import { GitHubConnectButton } from '@/components/github-connect-button';
 import { ApiKeyManager } from '@/components/api-key-manager';
 import { ProjectCreateDialog } from '@/components/project-create-dialog';
 import { DynamicIslandSearch } from '@/components/dynamic-island-search';
+import { NotificationBell } from '@/components/notification-bell';
 import { useOrganization, useOrganizationList } from '@clerk/nextjs';
 import {
   DropdownMenu,
@@ -352,7 +353,10 @@ function SettingsContent() {
         {/* Header */}
         <header className="h-14 border-b border-border flex items-center justify-between px-6 shrink-0 bg-background">
           <h1 className="text-sm font-semibold text-foreground">Settings</h1>
-          <DynamicIslandSearch />
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <DynamicIslandSearch />
+          </div>
         </header>
 
         <main className="flex-1 overflow-auto animate-fade-in-up">

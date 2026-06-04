@@ -205,6 +205,27 @@ export const projectMembers = pgTable(
   (table) => [uniqueIndex('project_user_unique').on(table.projectId, table.userId)]
 );
 
+// ─── Notifications ─────────────────────────────────────────────
+export const notifications = pgTable(
+  'notifications',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: text('user_id').notNull(),
+    orgId: text('org_id').notNull(),
+    type: text('type').notNull(),
+    title: text('title').notNull(),
+    message: text('message'),
+    ticketId: text('ticket_id'),
+    read: boolean('read').default(false),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index('notifications_user_id_idx').on(table.userId),
+    index('notifications_org_id_idx').on(table.orgId),
+    index('notifications_read_idx').on(table.read),
+  ]
+);
+
 // ─── Relations ─────────────────────────────────────────────────
 export const meetingsRelations = relations(meetings, ({ many }) => ({
   tickets: many(tickets),

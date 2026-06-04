@@ -10,6 +10,7 @@ import {
   ticketComments as commentsTable,
   ticketActivities as activitiesTable,
   projectMembers as membersTable,
+  notifications as notificationsTable,
 } from '@/db/schema';
 import { eq, and, desc, asc, inArray, isNull, gte, sql } from 'drizzle-orm';
 
@@ -1187,4 +1188,100 @@ export async function isProjectMember(projectId: string, userId: string): Promis
     .where(and(eq(membersTable.projectId, projectId), eq(membersTable.userId, userId)))
     .limit(1);
   return !!row;
+}
+
+// ─── Notifications ──────────────────────────────────────────────
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  org_id: string;
+  type: 'assigned' | 'mentioned' | 'blocked' | 'due_soon';
+  title: string;
+  message?: string;
+  ticket_id?: string;
+  read: boolean;
+  created_at: string;
+}
+
+export async function createNotification(
+  values: Omit<Notification, 'id' | 'created_at' | 'read'>
+): Promise<Notification> {
+  const [row] = await db
+    .insert(notificationsTable)
+    .values({
+      userId: values.user_id,
+      orgId: values.org_id,
+      type: values.type,
+      title: values.title,
+      message: values.message ?? null,
+      ticketId: values.ticket_id ?? null,
+    })
+    .returning();
+  return {
+    id: row.id,
+    user_id: row.userId,
+    org_id: row.orgId,
+    type: row.type as Notification['type'],
+    title: row.title,
+    message: row.message ?? undefined,
+    ticket_id: row.ticketId ?? undefined,
+    read: row.read ?? false,
+    created_at: ts(row.createdAt),
+  };
+}
+
+export async function getNotificationsForUser(
+  userId: string,
+  orgId: string,
+  limit = 20
+): Promise<Notification[]> {
+  const rows = await db
+    .select()
+    .from(notificationsTable)
+    .where(and(eq(notificationsTable.userId, userId), eq(notificationsTable.orgId, orgId)))
+    .orderBy(desc(notificationsTable.createdAt))
+    .limit(limit);
+  return rows.map((row) => ({
+    id: row.id,
+    user_id: row.userId,
+    org_id: row.orgId,
+    type: row.type as Notification['type'],
+    title: row.title,
+    message: row.message ?? undefined,
+    ticket_id: row.ticketId ?? undefined,
+    read: row.read ?? false,
+    created_at: ts(row.createdAt),
+  }));
+}
+
+export async function getUnreadNotificationCount(userId: string, orgId: string): Promise<number> {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(notificationsTable)
+    .where(
+      and(
+        eq(notificationsTable.userId, userId),
+        eq(notificationsTable.orgId, orgId),
+        eq(notificationsTable.read, false)
+      )
+    );
+  return Number(row?.count ?? 0);
+}
+
+export async function markNotificationAsRead(id: string): Promise<void> {
+  await db.update(notificationsTable).set({ read: true }).where(eq(notificationsTable.id, id));
+}
+
+export async function markAllNotificationsAsRead(userId: string, orgId: string): Promise<void> {
+  await db
+    .update(notificationsTable)
+    .set({ read: true })
+    .where(
+      and(
+        eq(notificationsTable.userId, userId),
+        eq(notificationsTable.orgId, orgId),
+        eq(notificationsTable.read, false)
+      )
+    );
 }

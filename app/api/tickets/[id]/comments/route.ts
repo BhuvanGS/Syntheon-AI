@@ -7,6 +7,7 @@ import {
   deleteComment,
   getTicketById,
   createActivity,
+  createNotification,
 } from '@/lib/db';
 
 const ALLOWED_TAGS = [
@@ -94,6 +95,27 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         user_id: userId,
         action_type: 'comment_added',
         metadata: { content: plainContent, subtask_id: ticketId },
+      });
+    }
+
+    // Notify @mentioned users
+    const mentionRegex = /@\[(.+?)\]\((.+?)\)/g;
+    const mentions = new Set<string>();
+    let match;
+    while ((match = mentionRegex.exec(content)) !== null) {
+      const mentionedUserId = match[2];
+      if (mentionedUserId && mentionedUserId !== userId) {
+        mentions.add(mentionedUserId);
+      }
+    }
+    for (const mentionedUserId of mentions) {
+      await createNotification({
+        user_id: mentionedUserId,
+        org_id: orgId ?? '',
+        type: 'mentioned',
+        title: 'You were mentioned in a comment',
+        message: `On "${ticket.title}"`,
+        ticket_id: ticketId,
       });
     }
 
