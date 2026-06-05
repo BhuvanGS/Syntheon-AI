@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { runFrontendAgent } from '@/lib/swarmnet/agents/frontend';
-import { getTicketById, updateTicket, createSwarmnetRun, updateSwarmnetRun } from '@/lib/db';
+import {
+  getTicketById,
+  getProjectById,
+  updateTicket,
+  createSwarmnetRun,
+  updateSwarmnetRun,
+} from '@/lib/db';
 import {
   getIntegrationByUserId,
   getGithubToken,
@@ -30,6 +36,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (!ticket) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
+
+    // Fetch project for agent tier
+    const project = projectId ? await getProjectById(projectId) : null;
+    const agentTier = project?.agentTier || 'standard';
 
     // Check GitHub integration
     const integration = await getIntegrationByUserId(userId);
@@ -89,6 +99,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       githubToken,
       githubOwner,
       githubRepo,
+      agentTier,
     })
       .then(async (result) => {
         // Update run with final result

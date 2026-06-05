@@ -78,6 +78,7 @@ export interface Project {
   repo: string;
   deployUrl?: string;
   branchBase: string;
+  agentTier?: string;
   meetings: string[];
   ticketIds: string[];
   files: string[];
@@ -190,6 +191,7 @@ function rowToProject(row: typeof projectsTable.$inferSelect): Project {
     repo: row.repo,
     deployUrl: row.deployUrl ?? undefined,
     branchBase: row.branchBase ?? 'main',
+    agentTier: row.agentTier ?? undefined,
     meetings: parseJsonArray(row.meetingsArr),
     ticketIds: parseJsonArray(row.specIds),
     files: parseJsonArray(row.files),
@@ -378,6 +380,7 @@ export async function saveProject(project: Project): Promise<void> {
     repo: project.repo,
     deployUrl: project.deployUrl ?? null,
     branchBase: project.branchBase,
+    agentTier: project.agentTier ?? 'standard',
     meetingsArr: JSON.stringify(project.meetings),
     specIds: JSON.stringify(project.ticketIds),
     files: JSON.stringify(project.files),
@@ -413,6 +416,7 @@ export async function updateProject(id: string, updates: Partial<Project>): Prom
   const set: Record<string, unknown> = { updatedAt: new Date() };
   if (updates.name) set.name = updates.name;
   if (updates.deployUrl) set.deployUrl = updates.deployUrl;
+  if (updates.agentTier) set.agentTier = updates.agentTier;
   if (updates.context) set.context = updates.context;
   if (updates.files) set.files = JSON.stringify(updates.files);
   if (updates.ticketIds) set.specIds = JSON.stringify(updates.ticketIds);
@@ -1091,6 +1095,7 @@ export async function saveProjectForOrg(project: Project & { org_id: string }): 
     repo: project.repo ?? '',
     deployUrl: project.deployUrl ?? null,
     branchBase: project.branchBase ?? '',
+    agentTier: project.agentTier ?? 'standard',
     meetingsArr: JSON.stringify(project.meetings ?? []),
     specIds: JSON.stringify(project.ticketIds ?? []),
     files: JSON.stringify(project.files ?? []),

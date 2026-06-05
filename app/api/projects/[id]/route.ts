@@ -22,6 +22,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       context?: string;
       deployUrl?: string;
       branchBase?: string;
+      agentTier?: string;
     } = {};
 
     if (typeof body?.name === 'string') {
@@ -42,6 +43,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     if (typeof body?.branchBase === 'string') {
       updates.branchBase = body.branchBase.trim();
+    }
+
+    if (typeof body?.agentTier === 'string') {
+      const tier = body.agentTier.trim();
+      const validTiers = ['lite', 'fast', 'standard', 'elite'];
+      if (validTiers.includes(tier)) {
+        updates.agentTier = tier;
+      }
     }
 
     await updateProject(id, updates);

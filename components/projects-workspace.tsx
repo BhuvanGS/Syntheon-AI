@@ -97,6 +97,7 @@ interface Project {
   repo: string;
   deployUrl?: string | null;
   branchBase?: string | null;
+  agentTier?: string | null;
   meetings: string[];
   ticketIds: string[];
   files: string[];
@@ -213,6 +214,7 @@ export function ProjectsWorkspace({
   const [projectNameDraft, setProjectNameDraft] = useState('');
   const [projectDeployUrlDraft, setProjectDeployUrlDraft] = useState('');
   const [projectBranchBaseDraft, setProjectBranchBaseDraft] = useState('main');
+  const [projectAgentTierDraft, setProjectAgentTierDraft] = useState('standard');
   const [projectContextDraft, setProjectContextDraft] = useState('');
   const [savingProjectSettings, setSavingProjectSettings] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
@@ -1056,6 +1058,7 @@ export function ProjectsWorkspace({
           name: projectNameDraft.trim(),
           deployUrl: projectDeployUrlDraft.trim(),
           branchBase: projectBranchBaseDraft.trim() || 'main',
+          agentTier: projectAgentTierDraft,
           context: projectContextDraft.trim(),
         }),
       });
@@ -1077,6 +1080,15 @@ export function ProjectsWorkspace({
   useEffect(() => {
     setProjectTab('kanban');
   }, [selectedProjectId]);
+
+  useEffect(() => {
+    if (!selectedProject) return;
+    setProjectNameDraft(selectedProject.name);
+    setProjectDeployUrlDraft(selectedProject.deployUrl || '');
+    setProjectBranchBaseDraft(selectedProject.branchBase || 'main');
+    setProjectAgentTierDraft(selectedProject.agentTier || 'standard');
+    setProjectContextDraft(selectedProject.context || '');
+  }, [selectedProject?.id]);
 
   useEffect(() => {
     if (selectedProjectId) fetchProjectMembers(selectedProjectId);
@@ -2150,6 +2162,55 @@ export function ProjectsWorkspace({
                 />
                 <p className="text-xs text-muted-foreground">
                   The default branch that agent PRs target.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Agent Tier</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    {
+                      value: 'lite',
+                      label: 'Lite',
+                      desc: 'Fastest, cheapest',
+                      color: 'bg-blue-50 border-blue-200 text-blue-800',
+                    },
+                    {
+                      value: 'fast',
+                      label: 'Fast',
+                      desc: 'Speed optimized',
+                      color: 'bg-emerald-50 border-emerald-200 text-emerald-800',
+                    },
+                    {
+                      value: 'standard',
+                      label: 'Standard',
+                      desc: 'Balanced default',
+                      color: 'bg-amber-50 border-amber-200 text-amber-800',
+                    },
+                    {
+                      value: 'elite',
+                      label: 'Elite',
+                      desc: 'Maximum quality',
+                      color: 'bg-purple-50 border-purple-200 text-purple-800',
+                    },
+                  ].map((tier) => (
+                    <button
+                      key={tier.value}
+                      onClick={() => setProjectAgentTierDraft(tier.value)}
+                      className={`flex flex-col items-start gap-1 p-3 rounded-xl border-2 transition-all text-left ${
+                        projectAgentTierDraft === tier.value
+                          ? `${tier.color} border-current`
+                          : 'border-border bg-background hover:bg-muted/40'
+                      }`}
+                    >
+                      <span className="text-sm font-semibold">{tier.label}</span>
+                      <span className="text-xs opacity-80">{tier.desc}</span>
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Determines which AI models the SwarmNet agents use for planning, generation,
+                  validation, and fixes.
                 </p>
               </div>
 

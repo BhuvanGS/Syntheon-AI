@@ -110,6 +110,7 @@ export const projects = pgTable('projects', {
   repo: text('repo').notNull(),
   deployUrl: text('deploy_url'),
   branchBase: text('branch_base').default('main'),
+  agentTier: text('agent_tier').default('standard'),
   meetingsArr: text('meetings').notNull().default('[]'),
   specIds: text('spec_ids').notNull().default('[]'),
   files: text('files').notNull().default('[]'),

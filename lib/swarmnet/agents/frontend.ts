@@ -15,6 +15,8 @@ import {
   documentRunComplete,
   documentPhaseMilestone,
 } from './documenter';
+import { callModel, callModelText } from '@/lib/swarmnet/call-model';
+import type { ToolSchema } from '@/lib/swarmnet/call-model';
 
 interface AgentContext {
   runId: string;
@@ -28,6 +30,7 @@ interface AgentContext {
   githubToken: string;
   githubOwner: string;
   githubRepo: string;
+  agentTier: string;
 }
 
 interface AgentStep {
@@ -51,44 +54,74 @@ interface AgentRunResult {
 // ─── PHASE 1: PLAN ──────────────────────────────────────────────
 // Decide what to build and which files to touch
 
+const planSchema: ToolSchema = {
+  name: 'create_plan',
+  description: 'Generate an implementation plan for a frontend ticket',
+  parameters: {
+    type: 'object',
+    properties: {
+      plan: {
+        type: 'string',
+        description: 'Brief 1-sentence summary of what needs to be built',
+      },
+      newFiles: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Paths of new files to create',
+      },
+      modifyFiles: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Paths of existing files to modify',
+      },
+      componentsNeeded: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'UI components required',
+      },
+      apisNeeded: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'API endpoints needed',
+      },
+    },
+    required: ['plan', 'newFiles', 'modifyFiles', 'componentsNeeded', 'apisNeeded'],
+  },
+};
+
 async function planPhase(
   ctx: AgentContext,
   steps: AgentStep[]
 ): Promise<{ plan: string; targetFiles: string[] }> {
-  const planPrompt = `
-You are a senior frontend engineer planning implementation.
-
-TICKET: "${ctx.ticketTitle}"
+  const planPrompt = `TICKET: "${ctx.ticketTitle}"
 DESCRIPTION: ${ctx.ticketDescription || 'No description'}
 
-TASK: Analyze what needs to be built. Respond ONLY with JSON:
-{
-  "plan": "Brief 1-sentence plan",
-  "newFiles": ["path/to/new/file.tsx"],
-  "modifyFiles": ["path/to/existing/file.tsx"],
-  "componentsNeeded": ["Button", "Modal", etc],
-  "apisNeeded": ["GET /api/x", etc]
-}
-`;
+Analyze what needs to be built and return a structured plan.`;
 
-  const res = await callGroq(planPrompt, 'llama-3.3-70b-versatile'); // Cheap planning
+  const result = await callModel('plan', ctx.agentTier, planSchema, planPrompt, {
+    systemPrompt:
+      'You are a senior frontend engineer. Analyze tickets and plan what files to create or modify. Be precise and concise.',
+    fallbackToStandard: true,
+  });
 
-  let plan: any;
-  try {
-    plan = parseJsonResponse(res);
-  } catch (e: any) {
-    console.error(
-      `[FrontendAgent ${ctx.runId}] Plan parse failed. Raw response:`,
-      res.slice(0, 500)
-    );
-    throw new Error(`Plan phase failed: ${e.message}`);
+  if (!result.success || !result.data) {
+    const errMsg = result.error || 'Plan phase failed after all retries';
+    console.error(`[FrontendAgent ${ctx.runId}] Plan failed:`, errMsg);
+    throw new Error(`Plan phase failed: ${errMsg}`);
   }
+
+  const plan = result.data;
 
   steps.push({
     phase: 'plan',
     message: plan.plan,
     timestamp: new Date().toISOString(),
-    metadata: { newFiles: plan.newFiles, modifyFiles: plan.modifyFiles },
+    metadata: {
+      newFiles: plan.newFiles,
+      modifyFiles: plan.modifyFiles,
+      modelUsed: result.modelUsed,
+      attempts: result.attempts,
+    },
   });
 
   return {
@@ -159,14 +192,27 @@ async function generatePhase(
 ): Promise<Record<string, string>> {
   const codePrompt = buildCodePrompt(ctx, plan, existingCode);
 
-  const res = await callGroq(codePrompt, 'llama-3.3-70b-versatile'); // Heavy model for code
-  const generated = parseGeneratedFiles(res);
+  const result = await callModelText('generate', ctx.agentTier, codePrompt, {
+    systemPrompt:
+      'You are an expert frontend engineer. Generate clean, well-structured TypeScript/React code. Follow existing project conventions exactly.',
+  });
+
+  if (!result.success || !result.data) {
+    console.error(`[FrontendAgent ${ctx.runId}] Generate failed:`, result.error);
+    throw new Error(`Generate phase failed: ${result.error}`);
+  }
+
+  const generated = parseGeneratedFiles(result.data);
 
   steps.push({
     phase: 'generate',
     message: `Generated ${Object.keys(generated).length} files`,
     timestamp: new Date().toISOString(),
-    metadata: { filesGenerated: Object.keys(generated) },
+    metadata: {
+      filesGenerated: Object.keys(generated),
+      modelUsed: result.modelUsed,
+      tokensUsed: result.tokensUsed,
+    },
   });
 
   return generated;
@@ -219,33 +265,51 @@ async function validatePhase(
     .map(([path, content]) => `--- FILE: ${path} ---\n${content.slice(0, 2000)}\n--- END ---`)
     .join('\n\n');
 
-  const validatePrompt = `
-You are a TypeScript compiler. Review the following code for syntax errors only.
+  const validatePrompt = `Review the following code for syntax errors only.
 Check: missing imports, undefined variables, wrong types, syntax mistakes.
-Do NOT check logic or design. Return ONLY JSON:
-{ "passed": boolean, "errors": ["..."] }
+Do NOT check logic or design.
 
-${fileBlocks}
-`;
+${fileBlocks}`;
 
-  const res = await callGroq(validatePrompt, 'llama-3.3-70b-versatile');
+  const validateSchema: ToolSchema = {
+    name: 'validate_code',
+    description: 'TypeScript validation results',
+    parameters: {
+      type: 'object',
+      properties: {
+        passed: { type: 'boolean', description: 'Whether code passes validation' },
+        errors: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'List of syntax errors found',
+        },
+      },
+      required: ['passed', 'errors'],
+    },
+  };
+
+  const result = await callModel('validate', ctx.agentTier, validateSchema, validatePrompt, {
+    systemPrompt:
+      'You are a strict TypeScript compiler. Only report syntax errors, missing imports, undefined variables, and type mismatches. Do not comment on logic or design.',
+    fallbackToStandard: true,
+  });
 
   let validation: { passed: boolean; errors: string[] };
-  try {
-    validation = parseJsonResponse(res);
-  } catch (e: any) {
-    console.error(
-      `[FrontendAgent ${ctx.runId}] Validation parse failed. Raw response:`,
-      res.slice(0, 500)
-    );
-    validation = { passed: true, errors: [`Validation parse failed: ${e.message}`] };
+  if (!result.success || !result.data) {
+    console.error(`[FrontendAgent ${ctx.runId}] Validation failed after retries:`, result.error);
+    validation = { passed: true, errors: [`Validation call failed: ${result.error}`] };
+  } else {
+    validation = {
+      passed: Boolean(result.data.passed),
+      errors: Array.isArray(result.data.errors) ? result.data.errors : [],
+    };
   }
 
   steps.push({
     phase: 'validate',
     message: validation.passed ? 'Validation passed' : `Found ${validation.errors.length} errors`,
     timestamp: new Date().toISOString(),
-    metadata: validation,
+    metadata: { ...validation, modelUsed: result.modelUsed, attempts: result.attempts },
   });
 
   return validation;
@@ -260,23 +324,37 @@ async function fixPhase(
   files: Record<string, string>,
   errors: string[]
 ): Promise<Record<string, string>> {
-  const fixPrompt = `
-You are fixing TypeScript errors in generated code.
+  const fileBlocks = Object.entries(files)
+    .map(([path, content]) => `--- FILE: ${path} ---\n${content}\n--- END ---`)
+    .join('\n\n');
+
+  const fixPrompt = `Fix the following TypeScript errors in the code below.
 
 ERRORS:
 ${errors.map((e) => `- ${e}`).join('\n')}
 
-Fix these errors and return ONLY the corrected code in the same format.
-`;
+CODE:
+${fileBlocks}
 
-  const res = await callGroq(fixPrompt, 'llama-3.3-70b-versatile');
-  const fixed = parseGeneratedFiles(res);
+Return the corrected files in the same format.`;
+
+  const result = await callModelText('fix', ctx.agentTier, fixPrompt, {
+    systemPrompt:
+      'You are an expert frontend engineer fixing TypeScript errors. Return only the corrected code files. Maintain all existing functionality.',
+  });
+
+  if (!result.success || !result.data) {
+    console.error(`[FrontendAgent ${ctx.runId}] Fix failed:`, result.error);
+    throw new Error(`Fix phase failed: ${result.error}`);
+  }
+
+  const fixed = parseGeneratedFiles(result.data);
 
   steps.push({
     phase: 'fix',
     message: `Fixed ${errors.length} errors`,
     timestamp: new Date().toISOString(),
-    metadata: { errorsFixed: errors.length },
+    metadata: { errorsFixed: errors.length, modelUsed: result.modelUsed },
   });
 
   return fixed;
