@@ -55,6 +55,7 @@ interface Project {
   repo?: string | null;
   deployUrl?: string | null;
   context?: string;
+  agentTier?: string | null;
 }
 
 interface AgentStep {
@@ -154,6 +155,67 @@ function getPhaseStatus(
   }
   if (status === 'done') return 'done';
   return 'pending';
+}
+
+function AgentTierSelector({
+  projectId,
+  agentTier,
+}: {
+  projectId: string;
+  agentTier: string;
+}) {
+  const [tier, setTier] = useState(agentTier);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setTier(agentTier);
+  }, [agentTier]);
+
+  const tierOptions = [
+    { value: 'lite', label: 'Lite', color: 'bg-blue-50 border-blue-200 text-blue-700' },
+    { value: 'fast', label: 'Fast', color: 'bg-emerald-50 border-emerald-200 text-emerald-700' },
+    { value: 'standard', label: 'Standard', color: 'bg-amber-50 border-amber-200 text-amber-700' },
+    { value: 'elite', label: 'Elite', color: 'bg-purple-50 border-purple-200 text-purple-700' },
+  ];
+
+  const active = tierOptions.find((t) => t.value === tier) || tierOptions[2];
+
+  async function handleChange(value: string) {
+    if (value === tier) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/projects/${projectId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentTier: value }),
+      });
+      if (!res.ok) throw new Error('Failed to save tier');
+      setTier(value);
+    } catch (err) {
+      console.error('[AgentTierSelector] Save failed:', err);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="relative">
+      <select
+        value={tier}
+        onChange={(e) => handleChange(e.target.value)}
+        disabled={saving}
+        className={`appearance-none text-[11px] font-semibold px-3 py-1.5 pr-7 rounded-full border cursor-pointer transition-all disabled:opacity-50 ${active.color}`}
+        title="Agent model tier"
+      >
+        {tierOptions.map((t) => (
+          <option key={t.value} value={t.value}>
+            {t.label} tier
+          </option>
+        ))}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 opacity-60" />
+    </div>
+  );
 }
 
 export function SwarmNetBuildPanel({ project, tickets }: { project: Project; tickets: Ticket[] }) {
@@ -388,6 +450,7 @@ export function SwarmNetBuildPanel({ project, tickets }: { project: Project; tic
             View tickets
           </button>
           <div className="flex-1" />
+          <AgentTierSelector projectId={project.id} agentTier={project.agentTier || 'standard'} />
           <button
             onClick={runRealAgent}
             disabled={runningAgent || selectedTickets.length === 0 || !selectedRepo}
