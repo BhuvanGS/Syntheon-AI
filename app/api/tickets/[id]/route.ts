@@ -11,9 +11,12 @@ import {
   incrementDependencyIgnoreCount,
   createActivity,
   getTicketById,
+  createNotification,
 } from '@/lib/db';
 import { requireAuth } from '@/lib/rbac';
-import { supabaseAdmin } from '@/lib/supabase';
+import { db } from '@/db/index';
+import { tickets as ticketsTable } from '@/db/schema';
+import { inArray } from 'drizzle-orm';
 
 const allowedStatuses = new Set(['backlog', 'in_progress', 'done', 'blocked']);
 
@@ -29,6 +32,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     // Fallback: ticket may have been created before org_id was set — look up directly
     if (!ticket) {
       ticket = (await getTicketById(id)) ?? undefined;
+      if (ticket && orgId && ticket.org_id !== orgId) ticket = undefined;
     }
 
     if (!ticket) {
@@ -36,6 +40,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
 
     const body = await req.json();
+    console.log('[TICKET PATCH] body:', JSON.stringify(body));
     const updates: Record<string, unknown> = {};
 
     if (typeof body?.title !== 'undefined') updates.title = String(body.title).trim();
@@ -102,15 +107,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           .map((d) => d.depends_on_ticket_id);
 
         if (softParentIds.length > 0) {
-          const { data: softParentTickets } = await supabaseAdmin
-            .from('tickets')
-            .select('id, status')
-            .in('id', softParentIds);
+          const softParentTickets = await db
+            .select({ id: ticketsTable.id, status: ticketsTable.status })
+            .from(ticketsTable)
+            .where(inArray(ticketsTable.id, softParentIds));
           const unresolvedSoft = parents.filter((dep) => {
             if (dep.strength !== 'soft' || dep.escalated) return false;
-            const parent = (softParentTickets ?? []).find(
-              (t: any) => t.id === dep.depends_on_ticket_id
-            );
+            const parent = softParentTickets.find((t) => t.id === dep.depends_on_ticket_id);
             return parent?.status !== 'done';
           });
 
@@ -153,6 +156,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     // Log activity for assignee change
     const newAssignee = updates.assignee as string | null;
+    const newAssigneeUserId = updates.assignee_user_id as string | null;
+    console.log('[TICKET PATCH] assignee check:', {
+      newAssignee,
+      previousAssignee,
+      newAssigneeUserId,
+      userId,
+      hasAssigneeChange: newAssignee !== undefined && newAssignee !== previousAssignee,
+    });
     if (newAssignee !== undefined && newAssignee !== previousAssignee) {
       await createActivity({
         ticket_id: id,
@@ -160,6 +171,56 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         action_type: 'assigned',
         metadata: { to: newAssignee || 'Unassigned' },
       });
+      // Notify the new assignee
+      if (newAssigneeUserId && newAssigneeUserId !== userId) {
+        console.log('[NOTIFY] Assigning ticket to user:', newAssigneeUserId, 'org:', orgId);
+        try {
+          await createNotification({
+            user_id: newAssigneeUserId,
+            org_id: orgId ?? '',
+            type: 'assigned',
+            title: 'New ticket assigned to you',
+            message: `"${ticket.title}" was assigned to you`,
+            ticket_id: id,
+          });
+          console.log('[NOTIFY] Assignment notification created successfully');
+        } catch (err) {
+          console.error('[NOTIFY] Failed to create assignment notification:', err);
+        }
+        // Also notify the assigner
+        try {
+          await createNotification({
+            user_id: userId,
+            org_id: orgId ?? '',
+            type: 'assigned',
+            title: 'Ticket assignment updated',
+            message: `You assigned "${ticket.title}" to ${newAssignee}`,
+            ticket_id: id,
+          });
+        } catch (err) {
+          console.error('[NOTIFY] Failed to create assigner notification:', err);
+        }
+      }
+    }
+
+    // Notify when ticket is moved to blocked
+    if (newStatus === 'blocked' && previousStatus !== 'blocked') {
+      const targetUserId = (updates.assignee_user_id as string | null) ?? ticket.assignee_user_id;
+      if (targetUserId) {
+        console.log('[NOTIFY] Ticket blocked, notifying assignee:', targetUserId);
+        try {
+          await createNotification({
+            user_id: targetUserId,
+            org_id: orgId ?? '',
+            type: 'blocked',
+            title: 'Ticket moved to blocked',
+            message: `"${ticket.title}" is now blocked`,
+            ticket_id: id,
+          });
+        } catch (err) {
+          console.error('[NOTIFY] Failed to create blocked notification:', err);
+        }
+      }
     }
 
     // Log one activity per changed field with from/to values
@@ -210,6 +271,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     if (!ticket) {
       ticket = (await getTicketById(id)) ?? undefined;
+      if (ticket && ticket.org_id !== ctx.orgId) ticket = undefined;
     }
 
     if (!ticket) {

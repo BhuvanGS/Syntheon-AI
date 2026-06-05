@@ -8,6 +8,7 @@ import {
   getTicketsByProjectId,
   saveTickets,
   createActivity,
+  createNotification,
 } from '@/lib/db';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -112,6 +113,27 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         user_id: userId,
         action_type: 'subtask_created',
         metadata: { title, subtask_id: ticketId },
+      });
+    }
+
+    // Notify the assignee (if any and not self)
+    if (assigneeUserId && assigneeUserId !== userId) {
+      await createNotification({
+        user_id: assigneeUserId,
+        org_id: orgId ?? '',
+        type: 'assigned',
+        title: 'New ticket assigned to you',
+        message: `"${title}" was assigned to you`,
+        ticket_id: ticketId,
+      });
+      // Also notify creator
+      await createNotification({
+        user_id: userId,
+        org_id: orgId ?? '',
+        type: 'assigned',
+        title: 'Ticket assignment updated',
+        message: `You assigned "${title}" to ${assignee}`,
+        ticket_id: ticketId,
       });
     }
 

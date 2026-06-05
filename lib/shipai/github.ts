@@ -184,8 +184,11 @@ export async function getRepoFileTree(
     return tree.tree
       .filter((item: any) => item.type === 'blob' && !item.path.startsWith('.github'))
       .map((item: any) => item.path);
-  } catch (err) {
-    console.error('Failed to fetch file tree:', err);
+  } catch (err: any) {
+    console.error(
+      `[getRepoFileTree] FAILED for ${overrides.owner}/${overrides.repo}:`,
+      err.message || err
+    );
     return [];
   }
 }
@@ -214,6 +217,34 @@ export async function getFileContents(
   );
 
   return contents;
+}
+
+// ─── NEW: List user's accessible repos ──────────────────────────
+export async function listRepos(
+  token: string
+): Promise<{ full_name: string; name: string; owner: { login: string } }[]> {
+  const res = await fetch(`${BASE}/user/repos?per_page=100&sort=pushed`, {
+    headers: headers(token),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(`GitHub API error (${res.status}): ${err.message || res.statusText}`);
+  }
+  return res.json();
+}
+
+// ─── NEW: Validate repo access ─────────────────────────────────
+export async function validateRepoAccess(
+  owner: string,
+  repo: string,
+  token: string
+): Promise<boolean> {
+  try {
+    const res = await fetch(`${BASE}/repos/${owner}/${repo}`, { headers: headers(token) });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
 
 // ─── NEW: Get repo owner and name from env ─────────────────────

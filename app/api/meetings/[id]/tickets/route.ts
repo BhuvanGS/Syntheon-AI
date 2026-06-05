@@ -10,14 +10,20 @@ import {
   saveTickets,
   getMeetingById,
   addTicketsToProject,
+  createNotification,
 } from '@/lib/db';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId } = await auth();
+    const { userId, orgId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
+    const meeting = await getMeetingById(id);
+    if (!meeting || (orgId && meeting.org_id !== orgId)) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
     const tickets = await getTicketsByMeetingId(id, { originalOnly: true });
     return NextResponse.json(tickets);
   } catch (error) {
@@ -32,6 +38,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
+    const meetingCheck = await getMeetingById(id);
+    if (!meetingCheck || (orgId && meetingCheck.org_id !== orgId)) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
     const body = await req.json();
     const title = String(body?.title ?? '').trim();
     const description = String(body?.description ?? '').trim();
@@ -97,6 +108,26 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       await addTicketsToProject(resolvedProjectId, [ticketId]);
     }
 
+    // Notify assignee on creation (if any and not self)
+    if (assigneeUserId && assigneeUserId !== userId) {
+      await createNotification({
+        user_id: assigneeUserId,
+        org_id: orgId ?? '',
+        type: 'assigned',
+        title: 'New ticket assigned to you',
+        message: `"${title}" was assigned to you`,
+        ticket_id: ticketId,
+      });
+      await createNotification({
+        user_id: userId,
+        org_id: orgId ?? '',
+        type: 'assigned',
+        title: 'Ticket assignment updated',
+        message: `You assigned "${title}" to ${assignee}`,
+        ticket_id: ticketId,
+      });
+    }
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Failed to create ticket:', error);
@@ -106,11 +137,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId } = await auth();
+    const { userId, orgId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
+    const meetingCheck = await getMeetingById(id);
+    if (!meetingCheck || (orgId && meetingCheck.org_id !== orgId)) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
     const { ticketId, status, assignee, assigneeUserId, dependencyTicketId } = await req.json();
+
+    const meetingTickets = await getTicketsByMeetingId(id);
+    if (!meetingTickets.find((t) => t.id === ticketId)) {
+      return NextResponse.json({ error: 'Ticket not in meeting' }, { status: 404 });
+    }
 
     if (status) {
       await updateTicketStatus(ticketId, status);

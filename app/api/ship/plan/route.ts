@@ -2,17 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { generatePlan, planFollowUpChanges, generateFollowUpPlan } from '@/lib/shipai/ai';
-import {
-  createLinearTicketBundle,
-  createLinearTicketBundleWithAccessToken,
-} from '@/lib/shipai/linear';
 import { getProjectById, getTicketsByProjectId } from '@/lib/db';
 import { getRepoFileTree, getFileContents, getRepoInfo } from '@/lib/shipai/github';
-import {
-  getIntegrationByUserId,
-  getLinearAccessToken,
-  getLinearTeamId,
-} from '@/lib/services/integrations';
 
 export const maxDuration = 60;
 
@@ -87,29 +78,14 @@ Build the entire application implementing ALL of the above tickets in one cohesi
       console.log('Plan generated:', plan.branch_name);
     }
 
-    const integration = await getIntegrationByUserId(userId);
-    const linearAccessToken = getLinearAccessToken(integration);
-    const linearTeamId = getLinearTeamId(integration) || process.env.LINEAR_TEAM_ID;
-
-    const linearTicketBundle =
-      linearAccessToken && linearTeamId
-        ? await createLinearTicketBundleWithAccessToken(plan, linearAccessToken, linearTeamId)
-        : await createLinearTicketBundle(plan);
-
-    console.log('Linear tickets created:', linearTicketBundle.parentIssue.identifier);
-
     return NextResponse.json({
       success: true,
       featureRequest: newTicketList.join('\n'),
       plan,
-      linearTicketBundle,
       isFollowUp: !!projectId,
     });
   } catch (error) {
     console.error('Ship plan error:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to generate plan' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to generate plan' }, { status: 500 });
   }
 }

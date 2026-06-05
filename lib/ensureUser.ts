@@ -1,31 +1,24 @@
-import { supabaseAdmin } from '@/lib/supabase';
+import { db } from '@/db/index';
+import { users } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 
 export async function ensureUser(userId: string, email: string) {
-  const { data: existingUsers, error } = await supabaseAdmin
-    .from('users')
-    .select('*')
-    .eq('id', userId);
+  const existing = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
 
-  if (error) {
-    console.error('ensureUser fetch failed:', error);
-    throw error;
-  }
-
-  if (existingUsers && existingUsers.length > 0) {
+  if (existing.length > 0) {
     console.log('User exists (by ID)');
     return;
   }
 
-  // 🔥 ONLY insert if ID doesn't exist
-  const { error: insertError } = await supabaseAdmin.from('users').insert({
-    id: userId,
-    email: email,
-  });
-
-  if (insertError) {
-    console.error('ensureUser insert failed:', insertError);
-    throw insertError;
+  try {
+    await db.insert(users).values({ id: userId, email });
+    console.log('User created');
+  } catch (err) {
+    console.error('ensureUser insert failed:', err);
+    throw err;
   }
-
-  console.log('User created');
 }

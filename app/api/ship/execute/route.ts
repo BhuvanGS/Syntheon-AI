@@ -8,11 +8,11 @@ import {
   createPullRequest,
   getRepoInfo,
 } from '@/lib/shipai/github';
-import { moveLinearTicketBundleToPrStage } from '@/lib/shipai/linear';
-import { supabaseAdmin } from '@/lib/supabase';
+import { db } from '@/db/index';
+import { meetings as meetingsTable } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 import {
   getIntegrationByUserId,
-  getLinearAccessToken,
   getGithubToken,
   getGithubOwner,
 } from '@/lib/services/integrations';
@@ -34,8 +34,7 @@ export async function POST(req: NextRequest) {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { plan, linearTicketBundle, meetingId, projectId, tickets, meetingTitle, isFollowUp } =
-      await req.json();
+    const { plan, meetingId, projectId, tickets, meetingTitle, isFollowUp } = await req.json();
 
     if (!plan) return NextResponse.json({ error: 'plan is required' }, { status: 400 });
 
@@ -70,20 +69,7 @@ export async function POST(req: NextRequest) {
     const pullRequest = await createPullRequest(plan.pr_title, plan.branch_name, githubToken);
     console.log('PR opened:', pullRequest.number);
 
-    // Step 5: Move Linear tickets to PR stage
-    let updatedBundle = linearTicketBundle;
-    if (linearTicketBundle) {
-      const linearAccessToken = getLinearAccessToken(integration);
-
-      updatedBundle = await moveLinearTicketBundleToPrStage(
-        linearTicketBundle,
-        linearAccessToken ? { accessToken: linearAccessToken } : {}
-      );
-
-      console.log('Linear tickets moved to PR stage');
-    }
-
-    // Step 6: Save branch name to meeting
+    // Step 5: Save branch name to meeting
     if (meetingId) {
       await updateMeetingBranch(meetingId, plan.branch_name);
       console.log('Branch saved to meeting:', meetingId);
@@ -136,10 +122,10 @@ export async function POST(req: NextRequest) {
 
         // Link meeting to project
         if (meetingId) {
-          await supabaseAdmin
-            .from('meetings')
-            .update({ project_id: newProjectId })
-            .eq('id', meetingId);
+          await db
+            .update(meetingsTable)
+            .set({ projectId: newProjectId })
+            .where(eq(meetingsTable.id, meetingId));
         }
 
         console.log('New project created');
@@ -151,13 +137,9 @@ export async function POST(req: NextRequest) {
       issue,
       pullRequest,
       committedFiles,
-      linearTicketBundle: updatedBundle,
     });
   } catch (error) {
     console.error('Ship execute error:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to execute' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to execute plan' }, { status: 500 });
   }
 }

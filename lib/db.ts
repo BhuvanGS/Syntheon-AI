@@ -1,5 +1,21 @@
-// lib/db.ts
-import { supabaseAdmin } from './supabase';
+// lib/db.ts — Drizzle ORM data-access layer
+import { db } from '@/db/index';
+import {
+  meetings as meetingsTable,
+  specs as specsTable,
+  tickets as ticketsTable,
+  projects as projectsTable,
+  ticketDependencies as depsTable,
+  ticketAttachments as attachmentsTable,
+  ticketComments as commentsTable,
+  ticketActivities as activitiesTable,
+  projectMembers as membersTable,
+  notifications as notificationsTable,
+  swarmnetAgents as agentsTable,
+  swarmnetRuns as runsTable,
+  swarmnetArtifacts as artifactsTable,
+} from '@/db/schema';
+import { eq, and, desc, asc, inArray, isNull, gte, sql } from 'drizzle-orm';
 
 // ─── Types ─────────────────────────────────────────────────────
 export interface Meeting {
@@ -93,132 +109,143 @@ export interface TicketComment {
   updated_at: string;
 }
 
-// ─── Helper — map Supabase row to Meeting ──────────────────────
-function rowToMeeting(row: any): Meeting {
+// ─── Helpers — map Drizzle rows to app types ───────────────────
+function ts(d: Date | null | undefined): string {
+  return d?.toISOString() ?? new Date().toISOString();
+}
+
+function rowToMeeting(row: typeof meetingsTable.$inferSelect): Meeting {
   return {
     id: row.id,
-    user_id: row.user_id,
-    org_id: row.org_id,
-    projectName: row.project_name,
-    meetingId: row.meeting_id,
+    user_id: row.userId ?? undefined,
+    org_id: row.orgId ?? undefined,
+    projectName: row.projectName,
+    meetingId: row.meetingId,
     platform: row.platform,
     transcript: row.transcript ?? '',
-    specsDetected: row.specs_detected,
-    status: row.status,
+    specsDetected: row.specsDetected ?? 0,
+    status: row.status as Meeting['status'],
     date: row.date,
-    filePath: row.file_path ?? '',
-    botId: row.bot_id,
-    branchName: row.branch_name,
-    deployUrl: row.deploy_url,
-    projectId: row.project_id,
+    filePath: row.filePath ?? '',
+    botId: row.botId ?? undefined,
+    branchName: row.branchName ?? undefined,
+    deployUrl: row.deployUrl ?? undefined,
+    projectId: row.projectId ?? undefined,
+    meeting_url: row.meetingUrl ?? undefined,
   };
 }
 
-function rowToTicket(row: any): Ticket {
+function rowToTicket(row: typeof ticketsTable.$inferSelect): Ticket {
   return {
     id: row.id,
-    user_id: row.user_id,
-    org_id: row.org_id,
-    meeting_id: row.meeting_id ?? null,
-    projectId: row.project_id,
+    user_id: row.userId ?? undefined,
+    org_id: row.orgId ?? undefined,
+    meeting_id: row.meetingId ?? null,
+    projectId: row.projectId ?? undefined,
+    parent_id: row.parentId ?? null,
     title: row.title,
     description: row.description ?? '',
-    status: row.status,
+    status: row.status as Ticket['status'],
     assignee: row.assignee ?? null,
-    assignee_user_id: row.assignee_user_id ?? null,
-    dependency_ticket_id: row.dependency_ticket_id ?? null,
-    start_date: row.start_date ?? null,
-    due_date: row.due_date ?? null,
-    deadline_time: row.deadline_time ?? null,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
+    assignee_user_id: row.assigneeUserId ?? null,
+    dependency_ticket_id: row.dependencyTicketId ?? null,
+    start_date: row.startDate ?? null,
+    due_date: row.dueDate ?? null,
+    deadline_time: row.deadlineTime ?? null,
+    createdAt: ts(row.createdAt),
+    updatedAt: ts(row.updatedAt),
   };
 }
 
-function rowToSpec(row: any): SpecBlock {
+function rowToSpec(row: typeof specsTable.$inferSelect): SpecBlock {
   return {
     id: row.id,
-    user_id: row.user_id,
+    user_id: row.userId ?? undefined,
     title: row.title,
-    type: row.type,
+    type: row.type as SpecBlock['type'],
     confidence: row.confidence,
-    meeting_id: row.meeting_id,
+    meeting_id: row.meetingId,
     timestamp: row.timestamp,
-    note: row.note,
-    projectId: row.project_id,
+    note: row.note ?? undefined,
+    projectId: row.projectId ?? undefined,
   };
 }
 
-function rowToProject(row: any): Project {
+function parseJsonArray(val: string | null): string[] {
+  if (!val || val === '[]') return [];
+  try {
+    const parsed = JSON.parse(val);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function rowToProject(row: typeof projectsTable.$inferSelect): Project {
   return {
     id: row.id,
-    user_id: row.user_id,
-    org_id: row.org_id,
+    user_id: row.userId ?? undefined,
+    org_id: row.orgId ?? undefined,
     name: row.name,
     repo: row.repo,
-    deployUrl: row.deploy_url,
-    branchBase: row.branch_base,
-    meetings: row.meetings ?? [],
-    ticketIds: row.spec_ids ?? [],
-    files: row.files ?? [],
+    deployUrl: row.deployUrl ?? undefined,
+    branchBase: row.branchBase ?? 'main',
+    meetings: parseJsonArray(row.meetingsArr),
+    ticketIds: parseJsonArray(row.specIds),
+    files: parseJsonArray(row.files),
     context: row.context ?? '',
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
+    createdAt: ts(row.createdAt),
+    updatedAt: ts(row.updatedAt),
   };
 }
 
 // ─── Meetings ───────────────────────────────────────────────────
 export async function saveMeeting(meeting: Meeting): Promise<void> {
-  const { error } = await supabaseAdmin.from('meetings').insert({
+  await db.insert(meetingsTable).values({
     id: meeting.id,
-    user_id: meeting.user_id,
-    org_id: meeting.org_id ?? null,
-    project_id: meeting.projectId ?? null,
-    project_name: meeting.projectName,
-    meeting_id: meeting.meetingId,
-    meeting_url: meeting.meeting_url ?? null,
+    userId: meeting.user_id,
+    orgId: meeting.org_id ?? null,
+    projectId: meeting.projectId ?? null,
+    projectName: meeting.projectName,
+    meetingId: meeting.meetingId,
+    meetingUrl: meeting.meeting_url ?? null,
     platform: meeting.platform,
     transcript: meeting.transcript ?? '',
-    specs_detected: meeting.specsDetected,
+    specsDetected: meeting.specsDetected,
     status: meeting.status,
-    bot_id: meeting.botId ?? null,
-    branch_name: meeting.branchName ?? null,
-    deploy_url: meeting.deployUrl ?? null,
-    file_path: meeting.filePath ?? '',
+    botId: meeting.botId ?? null,
+    branchName: meeting.branchName ?? null,
+    deployUrl: meeting.deployUrl ?? null,
+    filePath: meeting.filePath ?? '',
     date: meeting.date,
   });
-  if (error) throw error;
 }
 
 export async function getMeetings(userId: string): Promise<Meeting[]> {
-  const { data, error } = await supabaseAdmin
-    .from('meetings')
-    .select('*')
-    .eq('user_id', userId)
-    .order('date', { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map(rowToMeeting);
+  const rows = await db
+    .select()
+    .from(meetingsTable)
+    .where(eq(meetingsTable.userId, userId))
+    .orderBy(desc(meetingsTable.date));
+  return rows.map(rowToMeeting);
 }
 
 export async function getMeetingById(id: string): Promise<Meeting | undefined> {
-  const { data, error } = await supabaseAdmin.from('meetings').select('*').eq('id', id).single();
-  if (error) return undefined;
-  return rowToMeeting(data);
+  const [row] = await db.select().from(meetingsTable).where(eq(meetingsTable.id, id)).limit(1);
+  return row ? rowToMeeting(row) : undefined;
 }
 
 export async function getMeetingByBotId(botId: string): Promise<Meeting | undefined> {
-  const { data, error } = await supabaseAdmin
-    .from('meetings')
-    .select('*')
-    .eq('bot_id', botId)
-    .single();
-  if (error) return undefined;
-  return rowToMeeting(data);
+  const [row] = await db
+    .select()
+    .from(meetingsTable)
+    .where(eq(meetingsTable.botId, botId))
+    .limit(1);
+  return row ? rowToMeeting(row) : undefined;
 }
 
 export async function updateMeetingStatus(id: string, status: Meeting['status']): Promise<void> {
-  const { error } = await supabaseAdmin.from('meetings').update({ status }).eq('id', id);
-  if (error) throw error;
+  await db.update(meetingsTable).set({ status }).where(eq(meetingsTable.id, id));
 }
 
 export async function updateMeetingSpecs(
@@ -226,89 +253,78 @@ export async function updateMeetingSpecs(
   transcript: string,
   specsDetected: number
 ): Promise<void> {
-  const { error } = await supabaseAdmin
-    .from('meetings')
-    .update({ transcript, specs_detected: specsDetected, status: 'completed' })
-    .eq('id', id);
-  if (error) throw error;
+  await db
+    .update(meetingsTable)
+    .set({ transcript, specsDetected, status: 'completed' })
+    .where(eq(meetingsTable.id, id));
 }
 
 export async function updateMeetingBranch(id: string, branchName: string): Promise<void> {
-  const { error } = await supabaseAdmin
-    .from('meetings')
-    .update({ branch_name: branchName })
-    .eq('id', id);
-  if (error) throw error;
+  await db.update(meetingsTable).set({ branchName }).where(eq(meetingsTable.id, id));
 }
 
 export async function updateMeetingDeployUrl(id: string, deployUrl: string): Promise<void> {
-  const { error } = await supabaseAdmin
-    .from('meetings')
-    .update({ deploy_url: deployUrl })
-    .eq('id', id);
-  if (error) throw error;
+  await db.update(meetingsTable).set({ deployUrl }).where(eq(meetingsTable.id, id));
 }
 
 export async function updateMeetingName(id: string, projectName: string): Promise<void> {
-  const { error } = await supabaseAdmin
-    .from('meetings')
-    .update({ project_name: projectName })
-    .eq('id', id);
-  if (error) throw error;
+  await db.update(meetingsTable).set({ projectName }).where(eq(meetingsTable.id, id));
 }
 
 export async function deleteMeeting(id: string): Promise<void> {
-  const { error } = await supabaseAdmin.from('meetings').delete().eq('id', id);
-  if (error) throw error;
+  await db.delete(meetingsTable).where(eq(meetingsTable.id, id));
 }
 
 export async function getActiveMeetingByUrl(meetingUrl: string, userId: string) {
-  const { data, error } = await supabaseAdmin
-    .from('meetings')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('meeting_url', meetingUrl)
-    .eq('status', 'processing')
-    .limit(1)
-    .maybeSingle();
-
-  if (error) {
+  try {
+    const [row] = await db
+      .select()
+      .from(meetingsTable)
+      .where(
+        and(
+          eq(meetingsTable.userId, userId),
+          eq(meetingsTable.meetingUrl, meetingUrl),
+          eq(meetingsTable.status, 'processing')
+        )
+      )
+      .limit(1);
+    return row ?? null;
+  } catch (error) {
     console.error('Error fetching active meeting:', error);
     return null;
   }
-
-  return data;
 }
 
 export async function getRecentMeetingByUrl(meetingUrl: string, userId: string) {
   const fiveSecondsAgo = new Date(Date.now() - 5000).toISOString();
-
-  const { data, error } = await supabaseAdmin
-    .from('meetings')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('meeting_url', meetingUrl)
-    .gte('date', fiveSecondsAgo)
-    .limit(1)
-    .maybeSingle();
-
-  if (error) {
+  try {
+    const [row] = await db
+      .select()
+      .from(meetingsTable)
+      .where(
+        and(
+          eq(meetingsTable.userId, userId),
+          eq(meetingsTable.meetingUrl, meetingUrl),
+          gte(meetingsTable.date, fiveSecondsAgo)
+        )
+      )
+      .limit(1);
+    return row ?? null;
+  } catch (error) {
     console.error('Error checking recent meeting:', error);
     return null;
   }
-
-  return data;
 }
 
 // ─── Specs ──────────────────────────────────────────────────────
-export async function saveSpecs(specs: SpecBlock[]): Promise<void> {
-  if (specs.length === 0) return;
-  const { error } = await supabaseAdmin.from('specs').insert(
-    specs.map((s) => ({
+export async function saveSpecs(specsList: SpecBlock[]): Promise<void> {
+  if (specsList.length === 0) return;
+  await db.insert(specsTable).values(
+    specsList.map((s) => ({
       id: s.id,
-      user_id: s.user_id,
-      meeting_id: s.meeting_id,
-      project_id: s.projectId ?? null,
+      userId: s.user_id,
+      meetingId: s.meeting_id,
+      projectId: s.projectId ?? null,
       title: s.title,
       type: s.type,
       confidence: s.confidence,
@@ -316,154 +332,133 @@ export async function saveSpecs(specs: SpecBlock[]): Promise<void> {
       timestamp: s.timestamp,
     }))
   );
-  if (error) throw error;
 }
 
 export async function getSpecsByMeetingId(meetingId: string): Promise<SpecBlock[]> {
-  const { data, error } = await supabaseAdmin
-    .from('specs')
-    .select('*')
-    .eq('meeting_id', meetingId)
-    .order('timestamp', { ascending: true });
-  if (error) throw error;
-  return (data ?? []).map(rowToSpec);
+  const rows = await db
+    .select()
+    .from(specsTable)
+    .where(eq(specsTable.meetingId, meetingId))
+    .orderBy(asc(specsTable.timestamp));
+  return rows.map(rowToSpec);
 }
 
 export async function getSpecsByProjectId(projectId: string): Promise<SpecBlock[]> {
-  const { data, error } = await supabaseAdmin
-    .from('specs')
-    .select('*')
-    .eq('project_id', projectId)
-    .order('timestamp', { ascending: true });
-  if (error) throw error;
-  return (data ?? []).map(rowToSpec);
+  const rows = await db
+    .select()
+    .from(specsTable)
+    .where(eq(specsTable.projectId, projectId))
+    .orderBy(asc(specsTable.timestamp));
+  return rows.map(rowToSpec);
 }
 
 export async function getAllSpecs(userId: string): Promise<SpecBlock[]> {
-  const { data, error } = await supabaseAdmin
-    .from('specs')
-    .select('*')
-    .eq('user_id', userId)
-    .order('timestamp', { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map(rowToSpec);
+  const rows = await db
+    .select()
+    .from(specsTable)
+    .where(eq(specsTable.userId, userId))
+    .orderBy(desc(specsTable.timestamp));
+  return rows.map(rowToSpec);
 }
 
 export async function updateSpecNote(specId: string, note: string): Promise<void> {
-  const { error } = await supabaseAdmin.from('specs').update({ note }).eq('id', specId);
-  if (error) throw error;
+  await db.update(specsTable).set({ note }).where(eq(specsTable.id, specId));
 }
 
 export async function deleteSpecsByMeetingId(meetingId: string): Promise<void> {
-  const { error } = await supabaseAdmin.from('specs').delete().eq('meeting_id', meetingId);
-  if (error) throw error;
+  await db.delete(specsTable).where(eq(specsTable.meetingId, meetingId));
 }
 
 // ─── Projects ───────────────────────────────────────────────────
 export async function saveProject(project: Project): Promise<void> {
-  const { error } = await supabaseAdmin.from('projects').insert({
+  await db.insert(projectsTable).values({
     id: project.id,
-    user_id: project.user_id,
+    userId: project.user_id,
     name: project.name,
     repo: project.repo,
-    deploy_url: project.deployUrl ?? null,
-    branch_base: project.branchBase,
-    meetings: project.meetings,
-    spec_ids: project.ticketIds,
-    files: project.files,
+    deployUrl: project.deployUrl ?? null,
+    branchBase: project.branchBase,
+    meetingsArr: JSON.stringify(project.meetings),
+    specIds: JSON.stringify(project.ticketIds),
+    files: JSON.stringify(project.files),
     context: project.context,
   });
-  if (error) throw error;
 }
 
 export async function getProjects(userId: string): Promise<Project[]> {
-  const { data, error } = await supabaseAdmin
-    .from('projects')
-    .select('*')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map(rowToProject);
+  const rows = await db
+    .select()
+    .from(projectsTable)
+    .where(eq(projectsTable.userId, userId))
+    .orderBy(desc(projectsTable.createdAt));
+  return rows.map(rowToProject);
 }
 
 export async function getProjectById(id: string): Promise<Project | undefined> {
-  const { data, error } = await supabaseAdmin.from('projects').select('*').eq('id', id).single();
-  if (error) return undefined;
-  return rowToProject(data);
+  const [row] = await db.select().from(projectsTable).where(eq(projectsTable.id, id)).limit(1);
+  return row ? rowToProject(row) : undefined;
 }
 
 export async function getProjectByMeetingId(meetingId: string): Promise<Project | undefined> {
-  const { data, error } = await supabaseAdmin
-    .from('meetings')
-    .select('project_id')
-    .eq('id', meetingId)
-    .single();
-  if (error || !data?.project_id) return undefined;
-  return getProjectById(data.project_id);
+  const [row] = await db
+    .select({ projectId: meetingsTable.projectId })
+    .from(meetingsTable)
+    .where(eq(meetingsTable.id, meetingId))
+    .limit(1);
+  if (!row?.projectId) return undefined;
+  return getProjectById(row.projectId);
 }
 
 export async function updateProject(id: string, updates: Partial<Project>): Promise<void> {
-  const row: any = { updated_at: new Date().toISOString() };
-  if (updates.name) row.name = updates.name;
-  if (updates.deployUrl) row.deploy_url = updates.deployUrl;
-  if (updates.context) row.context = updates.context;
-  if (updates.files) row.files = updates.files;
-  if (updates.ticketIds) row.spec_ids = updates.ticketIds;
-  if (updates.meetings) row.meetings = updates.meetings;
+  const set: Record<string, unknown> = { updatedAt: new Date() };
+  if (updates.name) set.name = updates.name;
+  if (updates.deployUrl) set.deployUrl = updates.deployUrl;
+  if (updates.context) set.context = updates.context;
+  if (updates.files) set.files = JSON.stringify(updates.files);
+  if (updates.ticketIds) set.specIds = JSON.stringify(updates.ticketIds);
+  if (updates.meetings) set.meetingsArr = JSON.stringify(updates.meetings);
 
-  const { error } = await supabaseAdmin.from('projects').update(row).eq('id', id);
-  if (error) throw error;
+  await db.update(projectsTable).set(set).where(eq(projectsTable.id, id));
 }
 
 export async function addMeetingToProject(projectId: string, meetingId: string): Promise<void> {
   const project = await getProjectById(projectId);
   if (!project) return;
-  const meetings = [...new Set([...project.meetings, meetingId])];
-  await updateProject(projectId, { meetings });
+  const meetingsList = [...new Set([...project.meetings, meetingId])];
+  await updateProject(projectId, { meetings: meetingsList });
 }
 
 export async function deleteProject(id: string): Promise<void> {
-  const { error: meetingsError } = await supabaseAdmin
-    .from('meetings')
-    .update({ project_id: null })
-    .eq('project_id', id);
-  if (meetingsError) throw meetingsError;
+  // Delete ticket dependencies for this project
+  await db.delete(depsTable).where(eq(depsTable.projectId, id));
 
-  const { error: orphanTicketsDeleteError } = await supabaseAdmin
-    .from('tickets')
-    .delete()
-    .eq('project_id', id)
-    .is('meeting_id', null);
-  if (orphanTicketsDeleteError) throw orphanTicketsDeleteError;
+  // Delete all tickets in this project (both with and without meetingId)
+  await db.delete(ticketsTable).where(eq(ticketsTable.projectId, id));
 
-  const { error: ticketsError } = await supabaseAdmin
-    .from('tickets')
-    .update({ project_id: null })
-    .eq('project_id', id);
-  if (ticketsError) throw ticketsError;
+  // Unlink meetings
+  await db.update(meetingsTable).set({ projectId: null }).where(eq(meetingsTable.projectId, id));
 
-  const { error } = await supabaseAdmin.from('projects').delete().eq('id', id);
-  if (error) throw error;
+  // Delete project
+  await db.delete(projectsTable).where(eq(projectsTable.id, id));
 }
 
-export async function saveTickets(tickets: Ticket[]): Promise<void> {
-  if (tickets.length === 0) return;
-  const { error } = await supabaseAdmin.from('tickets').insert(
-    tickets.map((ticket) => ({
+export async function saveTickets(ticketsList: Ticket[]): Promise<void> {
+  if (ticketsList.length === 0) return;
+  await db.insert(ticketsTable).values(
+    ticketsList.map((ticket) => ({
       id: ticket.id,
-      user_id: ticket.user_id,
-      org_id: ticket.org_id ?? null,
-      meeting_id: ticket.meeting_id ?? null,
-      project_id: ticket.projectId ?? null,
+      userId: ticket.user_id,
+      orgId: ticket.org_id ?? null,
+      meetingId: ticket.meeting_id ?? null,
+      projectId: ticket.projectId ?? null,
       title: ticket.title,
       description: ticket.description,
       status: ticket.status,
       assignee: ticket.assignee ?? null,
-      assignee_user_id: ticket.assignee_user_id ?? null,
-      dependency_ticket_id: ticket.dependency_ticket_id ?? null,
+      assigneeUserId: ticket.assignee_user_id ?? null,
+      dependencyTicketId: ticket.dependency_ticket_id ?? null,
     }))
   );
-  if (error) throw error;
 }
 
 function ticketFingerprint(
@@ -478,17 +473,17 @@ function ticketFingerprint(
   ].join('::');
 }
 
-export async function saveExtractedTickets(tickets: Ticket[]): Promise<Ticket[]> {
-  if (tickets.length === 0) return [];
+export async function saveExtractedTickets(ticketsList: Ticket[]): Promise<Ticket[]> {
+  if (ticketsList.length === 0) return [];
 
-  const meetingId = tickets[0]?.meeting_id;
+  const meetingId = ticketsList[0]?.meeting_id;
   if (!meetingId) return [];
 
   const existingTickets = await getTicketsByMeetingId(meetingId);
   const existingFingerprints = new Set(existingTickets.map(ticketFingerprint));
   const seenFingerprints = new Set<string>();
 
-  const uniqueTickets = tickets.filter((ticket) => {
+  const uniqueTickets = ticketsList.filter((ticket) => {
     const fingerprint = ticketFingerprint(ticket);
     if (existingFingerprints.has(fingerprint) || seenFingerprints.has(fingerprint)) {
       return false;
@@ -507,51 +502,58 @@ export async function getTicketsByMeetingId(
   meetingId: string,
   options?: { originalOnly?: boolean }
 ): Promise<Ticket[]> {
-  let query = supabaseAdmin.from('tickets').select('*').eq('meeting_id', meetingId);
+  const conditions = [eq(ticketsTable.meetingId, meetingId)];
   if (options?.originalOnly) {
-    query = query.is('project_id', null);
+    conditions.push(isNull(ticketsTable.projectId));
   }
-  const { data, error } = await query.order('created_at', { ascending: true });
-  if (error) throw error;
-  return (data ?? []).map(rowToTicket);
+  const rows = await db
+    .select()
+    .from(ticketsTable)
+    .where(and(...conditions))
+    .orderBy(asc(ticketsTable.createdAt));
+  return rows.map(rowToTicket);
 }
 
 export async function getTicketsByProjectId(projectId: string): Promise<Ticket[]> {
-  const { data, error } = await supabaseAdmin
-    .from('tickets')
-    .select('*')
-    .eq('project_id', projectId)
-    .order('created_at', { ascending: true });
-  if (error) throw error;
-  return (data ?? []).map(rowToTicket);
+  const rows = await db
+    .select()
+    .from(ticketsTable)
+    .where(eq(ticketsTable.projectId, projectId))
+    .orderBy(asc(ticketsTable.createdAt));
+  return rows.map(rowToTicket);
 }
 
 export async function getAllTickets(userId: string): Promise<Ticket[]> {
-  const { data, error } = await supabaseAdmin
-    .from('tickets')
-    .select('*')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map(rowToTicket);
+  const rows = await db
+    .select()
+    .from(ticketsTable)
+    .where(eq(ticketsTable.userId, userId))
+    .orderBy(desc(ticketsTable.createdAt));
+  const tickets = rows.map(rowToTicket);
+
+  // Deduplicate by (meeting_id + title + description) to avoid showing same ticket multiple times
+  const seen = new Set<string>();
+  const deduplicated: Ticket[] = [];
+  for (const ticket of tickets) {
+    const key = `${ticket.meeting_id || 'null'}::${ticket.title.trim().toLowerCase()}::${(ticket.description || '').trim().toLowerCase()}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      deduplicated.push(ticket);
+    }
+  }
+  return deduplicated;
 }
 
 export async function getTicketById(id: string): Promise<Ticket | null> {
-  const { data, error } = await supabaseAdmin
-    .from('tickets')
-    .select('*')
-    .eq('id', id)
-    .maybeSingle();
-  if (error) throw error;
-  return data ? rowToTicket(data) : null;
+  const [row] = await db.select().from(ticketsTable).where(eq(ticketsTable.id, id)).limit(1);
+  return row ? rowToTicket(row) : null;
 }
 
 export async function updateTicketStatus(id: string, status: Ticket['status']): Promise<void> {
-  const { error } = await supabaseAdmin
-    .from('tickets')
-    .update({ status, updated_at: new Date().toISOString() })
-    .eq('id', id);
-  if (error) throw error;
+  await db
+    .update(ticketsTable)
+    .set({ status, updatedAt: new Date() })
+    .where(eq(ticketsTable.id, id));
 }
 
 export async function updateTicketAssignee(
@@ -559,26 +561,20 @@ export async function updateTicketAssignee(
   assignee: string | null,
   assigneeUserId: string | null = null
 ): Promise<void> {
-  const { error } = await supabaseAdmin
-    .from('tickets')
-    .update({
-      assignee,
-      assignee_user_id: assigneeUserId,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', id);
-  if (error) throw error;
+  await db
+    .update(ticketsTable)
+    .set({ assignee, assigneeUserId, updatedAt: new Date() })
+    .where(eq(ticketsTable.id, id));
 }
 
 export async function updateTicketDependency(
   id: string,
   dependencyTicketId: string | null
 ): Promise<void> {
-  const { error } = await supabaseAdmin
-    .from('tickets')
-    .update({ dependency_ticket_id: dependencyTicketId, updated_at: new Date().toISOString() })
-    .eq('id', id);
-  if (error) throw error;
+  await db
+    .update(ticketsTable)
+    .set({ dependencyTicketId, updatedAt: new Date() })
+    .where(eq(ticketsTable.id, id));
 }
 
 export async function updateTicket(
@@ -598,34 +594,31 @@ export async function updateTicket(
     >
   >
 ): Promise<void> {
-  const row: any = { updated_at: new Date().toISOString() };
+  const set: Record<string, unknown> = { updatedAt: new Date() };
 
-  if (typeof updates.title !== 'undefined') row.title = updates.title;
-  if (typeof updates.description !== 'undefined') row.description = updates.description;
-  if (typeof updates.status !== 'undefined') row.status = updates.status;
-  if (typeof updates.assignee !== 'undefined') row.assignee = updates.assignee;
+  if (typeof updates.title !== 'undefined') set.title = updates.title;
+  if (typeof updates.description !== 'undefined') set.description = updates.description;
+  if (typeof updates.status !== 'undefined') set.status = updates.status;
+  if (typeof updates.assignee !== 'undefined') set.assignee = updates.assignee;
   if (typeof updates.assignee_user_id !== 'undefined') {
-    row.assignee_user_id = updates.assignee_user_id;
+    set.assigneeUserId = updates.assignee_user_id;
   }
   if (typeof updates.dependency_ticket_id !== 'undefined') {
-    row.dependency_ticket_id = updates.dependency_ticket_id;
+    set.dependencyTicketId = updates.dependency_ticket_id;
   }
-  if (typeof updates.start_date !== 'undefined') row.start_date = updates.start_date;
-  if (typeof updates.due_date !== 'undefined') row.due_date = updates.due_date;
-  if (typeof updates.deadline_time !== 'undefined') row.deadline_time = updates.deadline_time;
+  if (typeof updates.start_date !== 'undefined') set.startDate = updates.start_date;
+  if (typeof updates.due_date !== 'undefined') set.dueDate = updates.due_date;
+  if (typeof updates.deadline_time !== 'undefined') set.deadlineTime = updates.deadline_time;
 
-  const { error } = await supabaseAdmin.from('tickets').update(row).eq('id', id);
-  if (error) throw error;
+  await db.update(ticketsTable).set(set).where(eq(ticketsTable.id, id));
 }
 
 export async function deleteTicketById(id: string): Promise<void> {
-  const { error } = await supabaseAdmin.from('tickets').delete().eq('id', id);
-  if (error) throw error;
+  await db.delete(ticketsTable).where(eq(ticketsTable.id, id));
 }
 
 export async function deleteTicketsByMeetingId(meetingId: string): Promise<void> {
-  const { error } = await supabaseAdmin.from('tickets').delete().eq('meeting_id', meetingId);
-  if (error) throw error;
+  await db.delete(ticketsTable).where(eq(ticketsTable.meetingId, meetingId));
 }
 
 export async function addTicketsToProject(projectId: string, ticketIds: string[]): Promise<void> {
@@ -634,7 +627,7 @@ export async function addTicketsToProject(projectId: string, ticketIds: string[]
   const merged = [...new Set([...project.ticketIds, ...ticketIds])];
   await updateProject(projectId, { ticketIds: merged });
 
-  await supabaseAdmin.from('tickets').update({ project_id: projectId }).in('id', ticketIds);
+  await db.update(ticketsTable).set({ projectId }).where(inArray(ticketsTable.id, ticketIds));
 }
 
 export async function addFilesToProject(projectId: string, files: string[]): Promise<void> {
@@ -671,19 +664,19 @@ export interface TicketDependency {
   updated_at: string;
 }
 
-function rowToTicketDependency(row: any): TicketDependency {
+function rowToTicketDependency(row: typeof depsTable.$inferSelect): TicketDependency {
   return {
     id: row.id,
-    project_id: row.project_id,
-    ticket_id: row.ticket_id,
-    depends_on_ticket_id: row.depends_on_ticket_id,
-    dependency_type: row.dependency_type,
-    strength: row.strength,
+    project_id: row.projectId,
+    ticket_id: row.ticketId,
+    depends_on_ticket_id: row.dependsOnTicketId,
+    dependency_type: row.dependencyType as DependencyType,
+    strength: row.strength as DependencyStrength,
     note: row.note ?? null,
-    ignore_count: row.ignore_count ?? 0,
+    ignore_count: row.ignoreCount ?? 0,
     escalated: row.escalated ?? false,
-    created_at: row.created_at,
-    updated_at: row.updated_at,
+    created_at: ts(row.createdAt),
+    updated_at: ts(row.updatedAt),
   };
 }
 
@@ -691,34 +684,31 @@ export async function getDependenciesForTicket(ticketId: string): Promise<{
   parents: TicketDependency[];
   children: TicketDependency[];
 }> {
-  const [parentsRes, childrenRes] = await Promise.all([
-    supabaseAdmin
-      .from('ticket_dependencies')
-      .select('*')
-      .eq('ticket_id', ticketId)
-      .order('created_at', { ascending: true }),
-    supabaseAdmin
-      .from('ticket_dependencies')
-      .select('*')
-      .eq('depends_on_ticket_id', ticketId)
-      .order('created_at', { ascending: true }),
+  const [parents, children] = await Promise.all([
+    db
+      .select()
+      .from(depsTable)
+      .where(eq(depsTable.ticketId, ticketId))
+      .orderBy(asc(depsTable.createdAt)),
+    db
+      .select()
+      .from(depsTable)
+      .where(eq(depsTable.dependsOnTicketId, ticketId))
+      .orderBy(asc(depsTable.createdAt)),
   ]);
-  if (parentsRes.error) throw parentsRes.error;
-  if (childrenRes.error) throw childrenRes.error;
   return {
-    parents: (parentsRes.data ?? []).map(rowToTicketDependency),
-    children: (childrenRes.data ?? []).map(rowToTicketDependency),
+    parents: parents.map(rowToTicketDependency),
+    children: children.map(rowToTicketDependency),
   };
 }
 
 export async function getDependenciesForProject(projectId: string): Promise<TicketDependency[]> {
-  const { data, error } = await supabaseAdmin
-    .from('ticket_dependencies')
-    .select('*')
-    .eq('project_id', projectId)
-    .order('created_at', { ascending: true });
-  if (error) throw error;
-  return (data ?? []).map(rowToTicketDependency);
+  const rows = await db
+    .select()
+    .from(depsTable)
+    .where(eq(depsTable.projectId, projectId))
+    .orderBy(asc(depsTable.createdAt));
+  return rows.map(rowToTicketDependency);
 }
 
 async function _hasPath(fromId: string, toId: string): Promise<boolean> {
@@ -729,13 +719,13 @@ async function _hasPath(fromId: string, toId: string): Promise<boolean> {
     if (current === toId) return true;
     if (visited.has(current)) continue;
     visited.add(current);
-    const { data } = await supabaseAdmin
-      .from('ticket_dependencies')
-      .select('depends_on_ticket_id')
-      .eq('ticket_id', current);
-    for (const row of data ?? []) {
-      if (!visited.has(row.depends_on_ticket_id)) {
-        queue.push(row.depends_on_ticket_id);
+    const rows = await db
+      .select({ dependsOnTicketId: depsTable.dependsOnTicketId })
+      .from(depsTable)
+      .where(eq(depsTable.ticketId, current));
+    for (const row of rows) {
+      if (!visited.has(row.dependsOnTicketId)) {
+        queue.push(row.dependsOnTicketId);
       }
     }
   }
@@ -755,15 +745,15 @@ export async function createDependency(dep: {
     return { error: 'A ticket cannot depend on itself.' };
   }
 
-  const parentTicket = await supabaseAdmin
-    .from('tickets')
-    .select('project_id')
-    .eq('id', dep.depends_on_ticket_id)
-    .single();
-  if (parentTicket.error || !parentTicket.data) {
+  const [parentTicket] = await db
+    .select({ projectId: ticketsTable.projectId })
+    .from(ticketsTable)
+    .where(eq(ticketsTable.id, dep.depends_on_ticket_id))
+    .limit(1);
+  if (!parentTicket) {
     return { error: 'Parent ticket not found.' };
   }
-  if (parentTicket.data.project_id !== dep.project_id) {
+  if (parentTicket.projectId !== dep.project_id) {
     return { error: 'Cross-project dependencies are not allowed.' };
   }
 
@@ -775,55 +765,61 @@ export async function createDependency(dep: {
     };
   }
 
-  const { data: existing } = await supabaseAdmin
-    .from('ticket_dependencies')
-    .select('id')
-    .eq('ticket_id', dep.ticket_id)
-    .eq('depends_on_ticket_id', dep.depends_on_ticket_id)
-    .maybeSingle();
+  const [existing] = await db
+    .select({ id: depsTable.id })
+    .from(depsTable)
+    .where(
+      and(
+        eq(depsTable.ticketId, dep.ticket_id),
+        eq(depsTable.dependsOnTicketId, dep.depends_on_ticket_id)
+      )
+    )
+    .limit(1);
   if (existing) {
     return { error: 'This dependency already exists.' };
   }
 
-  const { error } = await supabaseAdmin.from('ticket_dependencies').insert({
-    id: dep.id,
-    project_id: dep.project_id,
-    ticket_id: dep.ticket_id,
-    depends_on_ticket_id: dep.depends_on_ticket_id,
-    dependency_type: dep.dependency_type,
-    strength: dep.strength,
-    note: dep.note ?? null,
-    ignore_count: 0,
-    escalated: false,
-  });
-  if (error) return { error: error.message };
-  return {};
+  try {
+    await db.insert(depsTable).values({
+      id: dep.id,
+      projectId: dep.project_id,
+      ticketId: dep.ticket_id,
+      dependsOnTicketId: dep.depends_on_ticket_id,
+      dependencyType: dep.dependency_type,
+      strength: dep.strength,
+      note: dep.note ?? null,
+      ignoreCount: 0,
+      escalated: false,
+    });
+    return {};
+  } catch (err: any) {
+    return { error: err.message };
+  }
 }
 
 export async function deleteDependency(id: string): Promise<void> {
-  const { error } = await supabaseAdmin.from('ticket_dependencies').delete().eq('id', id);
-  if (error) throw error;
+  await db.delete(depsTable).where(eq(depsTable.id, id));
 }
 
 export async function incrementDependencyIgnoreCount(id: string): Promise<void> {
-  const { data: row } = await supabaseAdmin
-    .from('ticket_dependencies')
-    .select('ignore_count, strength')
-    .eq('id', id)
-    .single();
+  const [row] = await db
+    .select({ ignoreCount: depsTable.ignoreCount, strength: depsTable.strength })
+    .from(depsTable)
+    .where(eq(depsTable.id, id))
+    .limit(1);
   if (!row) return;
 
-  const newCount = (row.ignore_count ?? 0) + 1;
+  const newCount = (row.ignoreCount ?? 0) + 1;
   const shouldEscalate = row.strength === 'soft' && newCount >= 3;
-  await supabaseAdmin
-    .from('ticket_dependencies')
-    .update({
-      ignore_count: newCount,
+  await db
+    .update(depsTable)
+    .set({
+      ignoreCount: newCount,
       escalated: shouldEscalate || undefined,
       strength: shouldEscalate ? 'hard' : row.strength,
-      updated_at: new Date().toISOString(),
+      updatedAt: new Date(),
     })
-    .eq('id', id);
+    .where(eq(depsTable.id, id));
 }
 
 export async function checkHardBlockers(ticketId: string): Promise<{
@@ -835,13 +831,13 @@ export async function checkHardBlockers(ticketId: string): Promise<{
   if (hardParents.length === 0) return { blocked: false, blockers: [] };
 
   const parentIds = hardParents.map((d) => d.depends_on_ticket_id);
-  const { data: parentTickets } = await supabaseAdmin
-    .from('tickets')
-    .select('id, status')
-    .in('id', parentIds);
+  const parentTickets = await db
+    .select({ id: ticketsTable.id, status: ticketsTable.status })
+    .from(ticketsTable)
+    .where(inArray(ticketsTable.id, parentIds));
 
   const unresolved = hardParents.filter((dep) => {
-    const parent = (parentTickets ?? []).find((t: any) => t.id === dep.depends_on_ticket_id);
+    const parent = parentTickets.find((t) => t.id === dep.depends_on_ticket_id);
     return parent?.status !== 'done';
   });
 
@@ -853,148 +849,143 @@ export async function cascadeDepRegressionForParent(parentId: string): Promise<v
   if (children.length === 0) return;
 
   const childIds = children.map((d) => d.ticket_id);
-  const { data: childTickets } = await supabaseAdmin
-    .from('tickets')
-    .select('id, status')
-    .in('id', childIds);
+  const childTickets = await db
+    .select({ id: ticketsTable.id, status: ticketsTable.status })
+    .from(ticketsTable)
+    .where(inArray(ticketsTable.id, childIds));
 
-  const toBlock = (childTickets ?? [])
-    .filter((t: any) => t.status === 'done' || t.status === 'in_progress')
-    .map((t: any) => t.id);
+  const toBlock = childTickets
+    .filter((t) => t.status === 'done' || t.status === 'in_progress')
+    .map((t) => t.id);
 
   if (toBlock.length === 0) return;
 
-  await supabaseAdmin
-    .from('tickets')
-    .update({
-      status: 'blocked',
-      updated_at: new Date().toISOString(),
-    })
-    .in('id', toBlock);
+  await db
+    .update(ticketsTable)
+    .set({ status: 'blocked', updatedAt: new Date() })
+    .where(inArray(ticketsTable.id, toBlock));
 }
 
 // ─── Attachments ───────────────────────────────────────────────
 export async function getAttachmentsForTicket(ticketId: string): Promise<TicketAttachment[]> {
-  const { data, error } = await supabaseAdmin
-    .from('ticket_attachments')
-    .select('*')
-    .eq('ticket_id', ticketId)
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map((row: any) => ({
+  const rows = await db
+    .select()
+    .from(attachmentsTable)
+    .where(eq(attachmentsTable.ticketId, ticketId))
+    .orderBy(desc(attachmentsTable.createdAt));
+  return rows.map((row) => ({
     id: row.id,
-    ticket_id: row.ticket_id,
-    project_id: row.project_id,
-    user_id: row.user_id,
+    ticket_id: row.ticketId,
+    project_id: row.projectId,
+    user_id: row.userId,
     filename: row.filename,
-    file_url: row.file_url,
-    file_size: row.file_size,
-    file_type: row.file_type,
-    created_at: row.created_at,
-    updated_at: row.updated_at,
+    file_url: row.fileUrl,
+    file_size: row.fileSize,
+    file_type: row.fileType,
+    created_at: ts(row.createdAt),
+    updated_at: ts(row.updatedAt),
   }));
 }
 
 export async function createAttachment(
   attachment: Omit<TicketAttachment, 'id' | 'created_at' | 'updated_at'>
 ): Promise<TicketAttachment> {
-  const { data, error } = await supabaseAdmin
-    .from('ticket_attachments')
-    .insert({
-      ticket_id: attachment.ticket_id,
-      project_id: attachment.project_id,
-      user_id: attachment.user_id,
+  const [data] = await db
+    .insert(attachmentsTable)
+    .values({
+      ticketId: attachment.ticket_id,
+      projectId: attachment.project_id,
+      userId: attachment.user_id,
       filename: attachment.filename,
-      file_url: attachment.file_url,
-      file_size: attachment.file_size,
-      file_type: attachment.file_type,
+      fileUrl: attachment.file_url,
+      fileSize: attachment.file_size,
+      fileType: attachment.file_type,
     })
-    .select()
-    .single();
-  if (error) throw error;
+    .returning();
   return {
     id: data.id,
-    ticket_id: data.ticket_id,
-    project_id: data.project_id,
-    user_id: data.user_id,
+    ticket_id: data.ticketId,
+    project_id: data.projectId,
+    user_id: data.userId,
     filename: data.filename,
-    file_url: data.file_url,
-    file_size: data.file_size,
-    file_type: data.file_type,
-    created_at: data.created_at,
-    updated_at: data.updated_at,
+    file_url: data.fileUrl,
+    file_size: data.fileSize,
+    file_type: data.fileType,
+    created_at: ts(data.createdAt),
+    updated_at: ts(data.updatedAt),
   };
 }
 
 export async function deleteAttachment(id: string): Promise<void> {
-  const { error } = await supabaseAdmin.from('ticket_attachments').delete().eq('id', id);
-  if (error) throw error;
+  await db.delete(attachmentsTable).where(eq(attachmentsTable.id, id));
 }
 
 // ─── Comments ────────────────────────────────────────────────────
 export async function getCommentsForTicket(ticketId: string): Promise<TicketComment[]> {
-  const { data, error } = await supabaseAdmin
-    .from('ticket_comments')
-    .select('*')
-    .eq('ticket_id', ticketId)
-    .order('created_at', { ascending: true });
-  if (error) throw error;
-  return (data ?? []).map((row: any) => ({
+  const rows = await db
+    .select()
+    .from(commentsTable)
+    .where(eq(commentsTable.ticketId, ticketId))
+    .orderBy(asc(commentsTable.createdAt));
+  return rows.map((row) => ({
     id: row.id,
-    ticket_id: row.ticket_id,
-    project_id: row.project_id,
-    user_id: row.user_id,
+    ticket_id: row.ticketId,
+    project_id: row.projectId,
+    user_id: row.userId,
     content: row.content,
-    created_at: row.created_at,
-    updated_at: row.updated_at,
+    created_at: ts(row.createdAt),
+    updated_at: ts(row.updatedAt),
   }));
 }
 
 export async function createComment(
   comment: Omit<TicketComment, 'id' | 'created_at' | 'updated_at'>
 ): Promise<TicketComment> {
-  const { data, error } = await supabaseAdmin
-    .from('ticket_comments')
-    .insert({
-      ticket_id: comment.ticket_id,
-      project_id: comment.project_id,
-      user_id: comment.user_id,
+  const [data] = await db
+    .insert(commentsTable)
+    .values({
+      ticketId: comment.ticket_id,
+      projectId: comment.project_id,
+      userId: comment.user_id,
       content: comment.content,
     })
-    .select()
-    .single();
-  if (error) throw error;
+    .returning();
   return {
     id: data.id,
-    ticket_id: data.ticket_id,
-    project_id: data.project_id,
-    user_id: data.user_id,
+    ticket_id: data.ticketId,
+    project_id: data.projectId,
+    user_id: data.userId,
     content: data.content,
-    created_at: data.created_at,
-    updated_at: data.updated_at,
+    created_at: ts(data.createdAt),
+    updated_at: ts(data.updatedAt),
   };
 }
 
 export async function deleteComment(id: string): Promise<void> {
-  const { error } = await supabaseAdmin.from('ticket_comments').delete().eq('id', id);
-  if (error) throw error;
+  await db.delete(commentsTable).where(eq(commentsTable.id, id));
 }
 
 export async function updateComment(id: string, content: string): Promise<TicketComment> {
-  const { data, error } = await supabaseAdmin
-    .from('ticket_comments')
-    .update({ content, updated_at: new Date().toISOString() })
-    .eq('id', id)
-    .select()
-    .single();
-  if (error) throw error;
-  return data as TicketComment;
+  const [data] = await db
+    .update(commentsTable)
+    .set({ content, updatedAt: new Date() })
+    .where(eq(commentsTable.id, id))
+    .returning();
+  return {
+    id: data.id,
+    ticket_id: data.ticketId,
+    project_id: data.projectId,
+    user_id: data.userId,
+    content: data.content,
+    created_at: ts(data.createdAt),
+    updated_at: ts(data.updatedAt),
+  };
 }
 
 // ─── Activities ────────────────────────────────────────────────────
 export interface TicketActivity {
   id: string;
-  ticket_id: string; // UUID in database, string in JS
+  ticket_id: string;
   user_id: string;
   action_type: string;
   metadata: Record<string, unknown>;
@@ -1002,114 +993,130 @@ export interface TicketActivity {
 }
 
 export async function getActivitiesForTicket(ticketId: string): Promise<TicketActivity[]> {
-  const { data, error } = await supabaseAdmin
-    .from('ticket_activities')
-    .select('*')
-    .eq('ticket_id', ticketId)
-    .order('created_at', { ascending: false });
-
-  if (error) throw error;
-  return data || [];
+  const rows = await db
+    .select()
+    .from(activitiesTable)
+    .where(eq(activitiesTable.ticketId, ticketId))
+    .orderBy(desc(activitiesTable.createdAt));
+  return rows.map((row) => ({
+    id: row.id,
+    ticket_id: row.ticketId,
+    user_id: row.userId,
+    action_type: row.actionType,
+    metadata: (row.metadata as Record<string, unknown>) ?? {},
+    created_at: ts(row.createdAt),
+  }));
 }
 
 export async function createActivity(
   activity: Omit<TicketActivity, 'id' | 'created_at'>
 ): Promise<TicketActivity> {
-  const { data, error } = await supabaseAdmin
-    .from('ticket_activities')
-    .insert({
-      ticket_id: activity.ticket_id,
-      user_id: activity.user_id,
-      action_type: activity.action_type,
+  const [data] = await db
+    .insert(activitiesTable)
+    .values({
+      ticketId: activity.ticket_id,
+      userId: activity.user_id,
+      actionType: activity.action_type,
       metadata: activity.metadata || {},
     })
-    .select()
-    .single();
-
-  if (error) throw error;
+    .returning();
   if (!data) throw new Error('Failed to create activity');
-  return data;
+  return {
+    id: data.id,
+    ticket_id: data.ticketId,
+    user_id: data.userId,
+    action_type: data.actionType,
+    metadata: (data.metadata as Record<string, unknown>) ?? {},
+    created_at: ts(data.createdAt),
+  };
 }
 
 // ─── Legacy compatibility (db.json style) ──────────────────────
 // These are kept so old code doesn't break during migration
 export function loadDB() {
-  throw new Error('loadDB is deprecated — use Supabase async functions');
+  throw new Error('loadDB is deprecated — use Drizzle async functions');
 }
 
 export function saveDB() {
-  throw new Error('saveDB is deprecated — use Supabase async functions');
+  throw new Error('saveDB is deprecated — use Drizzle async functions');
 }
 
 // ─── Org-scoped functions ───────────────────────────────────────
 
 export async function getProjectsByOrg(orgId: string): Promise<Project[]> {
-  const { data, error } = await supabaseAdmin
-    .from('projects')
-    .select('*')
-    .eq('org_id', orgId)
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map(rowToProject);
+  const rows = await db
+    .select()
+    .from(projectsTable)
+    .where(eq(projectsTable.orgId, orgId))
+    .orderBy(desc(projectsTable.createdAt));
+  return rows.map(rowToProject);
 }
 
 export async function getMeetingsByOrg(orgId: string): Promise<Meeting[]> {
-  const { data, error } = await supabaseAdmin
-    .from('meetings')
-    .select('*')
-    .eq('org_id', orgId)
-    .order('date', { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map(rowToMeeting);
+  const rows = await db
+    .select()
+    .from(meetingsTable)
+    .where(eq(meetingsTable.orgId, orgId))
+    .orderBy(desc(meetingsTable.date));
+  return rows.map(rowToMeeting);
 }
 
 export async function getAllTicketsByOrg(orgId: string): Promise<Ticket[]> {
-  const { data, error } = await supabaseAdmin
-    .from('tickets')
-    .select('*')
-    .eq('org_id', orgId)
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map(rowToTicket);
+  const rows = await db
+    .select()
+    .from(ticketsTable)
+    .where(eq(ticketsTable.orgId, orgId))
+    .orderBy(desc(ticketsTable.createdAt));
+  const tickets = rows.map(rowToTicket);
+
+  // Deduplicate by (meeting_id + title + description) to avoid showing same ticket multiple times
+  const seen = new Set<string>();
+  const deduplicated: Ticket[] = [];
+  for (const ticket of tickets) {
+    const key = `${ticket.meeting_id || 'null'}::${ticket.title.trim().toLowerCase()}::${(ticket.description || '').trim().toLowerCase()}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      deduplicated.push(ticket);
+    }
+  }
+  return deduplicated;
 }
 
 export async function saveProjectForOrg(project: Project & { org_id: string }): Promise<void> {
-  const { error } = await supabaseAdmin.from('projects').insert({
+  await db.insert(projectsTable).values({
     id: project.id,
-    user_id: project.user_id,
-    org_id: project.org_id,
+    userId: project.user_id,
+    orgId: project.org_id,
     name: project.name,
     repo: project.repo ?? '',
-    deploy_url: project.deployUrl ?? null,
-    branch_base: project.branchBase ?? '',
-    meetings: project.meetings ?? [],
-    spec_ids: project.ticketIds ?? [],
-    files: project.files ?? [],
+    deployUrl: project.deployUrl ?? null,
+    branchBase: project.branchBase ?? '',
+    meetingsArr: JSON.stringify(project.meetings ?? []),
+    specIds: JSON.stringify(project.ticketIds ?? []),
+    files: JSON.stringify(project.files ?? []),
     context: project.context ?? '',
   });
-  if (error) throw error;
 }
 
 export async function saveMeetingForOrg(meeting: Meeting & { org_id: string }): Promise<void> {
-  const { error } = await supabaseAdmin.from('meetings').insert({
+  await db.insert(meetingsTable).values({
     id: meeting.id,
-    user_id: meeting.user_id,
-    org_id: meeting.org_id,
-    project_id: meeting.projectId ?? null,
-    project_name: meeting.projectName,
-    meeting_id: meeting.meetingId,
-    meeting_url: meeting.meeting_url ?? null,
+    userId: meeting.user_id,
+    orgId: meeting.org_id,
+    projectId: meeting.projectId ?? null,
+    projectName: meeting.projectName,
+    meetingId: meeting.meetingId,
+    meetingUrl: meeting.meeting_url ?? null,
     platform: meeting.platform,
     transcript: meeting.transcript ?? '',
-    specs_detected: meeting.specsDetected,
+    specsDetected: meeting.specsDetected,
     status: meeting.status,
-    bot_id: meeting.botId ?? null,
-    branch_name: meeting.branchName ?? null,
-    deploy_url: meeting.deployUrl ?? null,
-    file_path: meeting.filePath ?? '',
+    botId: meeting.botId ?? null,
+    branchName: meeting.branchName ?? null,
+    deployUrl: meeting.deployUrl ?? null,
+    filePath: meeting.filePath ?? '',
     date: meeting.date,
   });
-  if (error) throw error;
 }
 
 // ─── Project Members ────────────────────────────────────────────
@@ -1129,60 +1136,252 @@ export async function addProjectMember(
   userId: string,
   role: 'admin' | 'member' = 'member'
 ): Promise<void> {
-  const { error } = await supabaseAdmin
-    .from('project_members')
-    .upsert(
-      { project_id: projectId, org_id: orgId, user_id: userId, role },
-      { onConflict: 'project_id,user_id' }
-    );
-  if (error) throw error;
+  await db
+    .insert(membersTable)
+    .values({ projectId, orgId, userId, role })
+    .onConflictDoUpdate({
+      target: [membersTable.projectId, membersTable.userId],
+      set: { role },
+    });
 }
 
 export async function removeProjectMember(projectId: string, userId: string): Promise<void> {
-  const { error } = await supabaseAdmin
-    .from('project_members')
-    .delete()
-    .eq('project_id', projectId)
-    .eq('user_id', userId);
-  if (error) throw error;
+  await db
+    .delete(membersTable)
+    .where(and(eq(membersTable.projectId, projectId), eq(membersTable.userId, userId)));
 }
 
 export async function getProjectMembers(projectId: string): Promise<ProjectMember[]> {
-  const { data, error } = await supabaseAdmin
-    .from('project_members')
-    .select('*')
-    .eq('project_id', projectId)
-    .order('created_at', { ascending: true });
-  if (error) throw error;
-  return data ?? [];
+  const rows = await db
+    .select()
+    .from(membersTable)
+    .where(eq(membersTable.projectId, projectId))
+    .orderBy(asc(membersTable.createdAt));
+  return rows.map((row) => ({
+    id: row.id,
+    project_id: row.projectId,
+    org_id: row.orgId,
+    user_id: row.userId,
+    role: row.role as 'admin' | 'member',
+    created_at: ts(row.createdAt),
+  }));
 }
 
 export async function getProjectsForMember(orgId: string, userId: string): Promise<Project[]> {
-  const { data: memberRows, error: memberError } = await supabaseAdmin
-    .from('project_members')
-    .select('project_id')
-    .eq('org_id', orgId)
-    .eq('user_id', userId);
-  if (memberError) throw memberError;
+  const memberRows = await db
+    .select({ projectId: membersTable.projectId })
+    .from(membersTable)
+    .where(and(eq(membersTable.orgId, orgId), eq(membersTable.userId, userId)));
 
-  const projectIds = (memberRows ?? []).map((r) => r.project_id);
+  const projectIds = memberRows.map((r) => r.projectId);
   if (projectIds.length === 0) return [];
 
-  const { data, error } = await supabaseAdmin
-    .from('projects')
-    .select('*')
-    .in('id', projectIds)
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map(rowToProject);
+  const rows = await db
+    .select()
+    .from(projectsTable)
+    .where(inArray(projectsTable.id, projectIds))
+    .orderBy(desc(projectsTable.createdAt));
+  return rows.map(rowToProject);
 }
 
 export async function isProjectMember(projectId: string, userId: string): Promise<boolean> {
-  const { data } = await supabaseAdmin
-    .from('project_members')
-    .select('id')
-    .eq('project_id', projectId)
-    .eq('user_id', userId)
-    .maybeSingle();
-  return !!data;
+  const [row] = await db
+    .select({ id: membersTable.id })
+    .from(membersTable)
+    .where(and(eq(membersTable.projectId, projectId), eq(membersTable.userId, userId)))
+    .limit(1);
+  return !!row;
+}
+
+// ─── Notifications ──────────────────────────────────────────────
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  org_id: string;
+  type: 'assigned' | 'mentioned' | 'blocked' | 'due_soon';
+  title: string;
+  message?: string;
+  ticket_id?: string;
+  read: boolean;
+  created_at: string;
+}
+
+export async function createNotification(
+  values: Omit<Notification, 'id' | 'created_at' | 'read'>
+): Promise<Notification> {
+  const [row] = await db
+    .insert(notificationsTable)
+    .values({
+      userId: values.user_id,
+      orgId: values.org_id,
+      type: values.type,
+      title: values.title,
+      message: values.message ?? null,
+      ticketId: values.ticket_id ?? null,
+    })
+    .returning();
+  return {
+    id: row.id,
+    user_id: row.userId,
+    org_id: row.orgId,
+    type: row.type as Notification['type'],
+    title: row.title,
+    message: row.message ?? undefined,
+    ticket_id: row.ticketId ?? undefined,
+    read: row.read ?? false,
+    created_at: ts(row.createdAt),
+  };
+}
+
+export async function getNotificationsForUser(
+  userId: string,
+  orgId: string,
+  limit = 20
+): Promise<Notification[]> {
+  const rows = await db
+    .select()
+    .from(notificationsTable)
+    .where(and(eq(notificationsTable.userId, userId), eq(notificationsTable.orgId, orgId)))
+    .orderBy(desc(notificationsTable.createdAt))
+    .limit(limit);
+  return rows.map((row) => ({
+    id: row.id,
+    user_id: row.userId,
+    org_id: row.orgId,
+    type: row.type as Notification['type'],
+    title: row.title,
+    message: row.message ?? undefined,
+    ticket_id: row.ticketId ?? undefined,
+    read: row.read ?? false,
+    created_at: ts(row.createdAt),
+  }));
+}
+
+export async function getUnreadNotificationCount(userId: string, orgId: string): Promise<number> {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(notificationsTable)
+    .where(
+      and(
+        eq(notificationsTable.userId, userId),
+        eq(notificationsTable.orgId, orgId),
+        eq(notificationsTable.read, false)
+      )
+    );
+  return Number(row?.count ?? 0);
+}
+
+export async function markNotificationAsRead(id: string): Promise<void> {
+  await db.update(notificationsTable).set({ read: true }).where(eq(notificationsTable.id, id));
+}
+
+export async function markAllNotificationsAsRead(userId: string, orgId: string): Promise<void> {
+  await db
+    .update(notificationsTable)
+    .set({ read: true })
+    .where(
+      and(
+        eq(notificationsTable.userId, userId),
+        eq(notificationsTable.orgId, orgId),
+        eq(notificationsTable.read, false)
+      )
+    );
+}
+
+// ─── SwarmNet Runs ─────────────────────────────────────────────
+
+export interface SwarmnetRun {
+  id: string;
+  org_id: string;
+  project_id?: string;
+  ticket_id: string;
+  agent_id: string;
+  status: string;
+  branch_name?: string;
+  pr_number?: number;
+  pr_url?: string;
+  error_message?: string;
+  current_task?: string;
+  steps?: any[];
+  files_created?: string[];
+  files_modified?: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export async function createSwarmnetRun(values: {
+  id: string;
+  orgId: string;
+  projectId?: string;
+  ticketId: string;
+  agentId: string;
+  status: string;
+  branchName?: string;
+}): Promise<void> {
+  await db.insert(runsTable).values({
+    id: values.id,
+    orgId: values.orgId,
+    projectId: values.projectId ?? null,
+    ticketId: values.ticketId,
+    agentId: values.agentId,
+    status: values.status,
+    branchName: values.branchName ?? null,
+  });
+}
+
+export async function getSwarmnetRun(id: string): Promise<SwarmnetRun | null> {
+  const [row] = await db.select().from(runsTable).where(eq(runsTable.id, id)).limit(1);
+  if (!row) return null;
+  return {
+    id: row.id,
+    org_id: row.orgId,
+    project_id: row.projectId ?? undefined,
+    ticket_id: row.ticketId,
+    agent_id: row.agentId,
+    status: row.status,
+    branch_name: row.branchName ?? undefined,
+    pr_number: row.prNumber ?? undefined,
+    pr_url: row.prUrl ?? undefined,
+    error_message: row.errorMessage ?? undefined,
+    current_task: row.currentTask ?? undefined,
+    steps: row.steps as any[] | undefined,
+    files_created: row.filesCreated ?? undefined,
+    files_modified: row.filesModified ?? undefined,
+    created_at: ts(row.createdAt),
+    updated_at: ts(row.updatedAt),
+  };
+}
+
+export async function updateSwarmnetRun(
+  id: string,
+  values: Partial<{
+    status: string;
+    branchName: string;
+    headCommitSha: string;
+    prNumber: number;
+    prUrl: string;
+    errorMessage: string;
+    currentTask: string;
+    steps: any[];
+    filesCreated: string[];
+    filesModified: string[];
+    completedAt: Date;
+  }>
+): Promise<void> {
+  await db.update(runsTable).set(values).where(eq(runsTable.id, id));
+}
+
+export async function createSwarmnetArtifact(values: {
+  runId: string;
+  filePath: string;
+  content: string;
+  isNew: boolean;
+}): Promise<void> {
+  await db.insert(artifactsTable).values({
+    runId: values.runId,
+    filePath: values.filePath,
+    content: values.content,
+    isNew: values.isNew,
+  });
 }

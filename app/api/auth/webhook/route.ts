@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { db } from '@/db/index';
+import { users } from '@/db/schema';
 import { Webhook } from 'svix';
 
 export async function POST(req: NextRequest) {
@@ -17,14 +18,14 @@ export async function POST(req: NextRequest) {
   if (event.type === 'user.created') {
     const { id, email_addresses, first_name, last_name } = event.data;
 
-    await supabaseAdmin.from('users').insert({
+    await db.insert(users).values({
       id,
       email: email_addresses[0].email_address,
       name: `${first_name ?? ''} ${last_name ?? ''}`.trim() || 'User',
       plan: 'starter',
     });
 
-    console.log('User created in Supabase:', id);
+    console.log('User created in DB:', id);
   }
 
   return NextResponse.json({ ok: true });

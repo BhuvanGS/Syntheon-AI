@@ -7,11 +7,10 @@ export default function HowItWorksPage() {
     {
       number: '01',
       title: 'Install the Chrome extension',
-      desc: 'Download the Syntheon extension from the Chrome Web Store. Connect your GitHub and Linear accounts in the settings. Takes less than 2 minutes.',
+      desc: 'Download the Syntheon extension from the Chrome Web Store. Connect your GitHub account in the settings. Takes less than 2 minutes.',
       detail: [
         'Available for Chrome and Chromium browsers',
         'Connect GitHub via OAuth — no PATs stored',
-        'Connect Linear via OAuth',
         'Choose your target repository',
       ],
     },
@@ -40,10 +39,10 @@ export default function HowItWorksPage() {
     {
       number: '04',
       title: 'Approve and ship',
-      desc: 'Select the specs you want implemented. Click "Approve and Ship". Review the AI-generated plan, then execute it. A GitHub PR and Linear tickets are created automatically.',
+      desc: 'Select the specs you want implemented. Click "Approve and Ship". Review the AI-generated plan, then execute it. A GitHub PR is created automatically.',
       detail: [
         'AI generates a full development plan',
-        'Linear parent ticket and subtasks created',
+        'Tickets created in your project board',
         'GitHub branch and pull request opened',
         'Code committed — ready for your review',
       ],

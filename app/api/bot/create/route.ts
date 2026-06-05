@@ -6,19 +6,21 @@ import crypto from 'crypto';
 
 import { createBot } from '@/lib/skribby';
 import { saveMeeting, getActiveMeetingByUrl } from '@/lib/db';
-import { supabaseAdmin } from '@/lib/supabase';
+import { db } from '@/db/index';
+import { apiKeys, meetings as meetingsTable } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 
 // 🔐 API key → user resolver
 async function getUserFromApiKey(apiKey: string) {
   const hash = crypto.createHash('sha256').update(apiKey).digest('hex');
 
-  const { data } = await supabaseAdmin
-    .from('api_keys')
-    .select('user_id')
-    .eq('key_hash', hash)
-    .single();
+  const [row] = await db
+    .select({ userId: apiKeys.userId })
+    .from(apiKeys)
+    .where(eq(apiKeys.keyHash, hash))
+    .limit(1);
 
-  return data?.user_id || null;
+  return row?.userId || null;
 }
 
 // 🔐 Resolve a user's primary org from Clerk (first membership)
@@ -115,7 +117,7 @@ export async function POST(req: NextRequest) {
     console.log('Bot created:', bot.id, 'status:', bot.status);
 
     // 🔥 STEP 3: UPDATE BOT ID
-    await supabaseAdmin.from('meetings').update({ bot_id: bot.id }).eq('id', meetingId);
+    await db.update(meetingsTable).set({ botId: bot.id }).where(eq(meetingsTable.id, meetingId));
 
     return NextResponse.json({
       success: true,

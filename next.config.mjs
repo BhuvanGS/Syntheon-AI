@@ -1,12 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: process.env.NODE_ENV === 'development',
   },
   images: {
     unoptimized: true,
   },
-  allowedDevOrigins: ['uncapacious-lauraceous-verna.ngrok-free.dev'],
+  allowedDevOrigins:
+    process.env.NODE_ENV === 'development' ? [process.env.NGROK_URL].filter(Boolean) : [],
 };
 
 export default nextConfig;

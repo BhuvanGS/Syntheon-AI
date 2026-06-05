@@ -29,12 +29,13 @@ export async function canManageProject(ctx: AuthContext, projectId: string): Pro
 
 export async function canAdminProject(ctx: AuthContext, projectId: string): Promise<boolean> {
   if (isOrgAdmin(ctx)) return true;
-  const { supabaseAdmin } = await import('@/lib/supabase');
-  const { data } = await supabaseAdmin
-    .from('project_members')
-    .select('role')
-    .eq('project_id', projectId)
-    .eq('user_id', ctx.userId)
-    .single();
-  return data?.role === 'admin';
+  const { db } = await import('@/db/index');
+  const { projectMembers } = await import('@/db/schema');
+  const { eq, and } = await import('drizzle-orm');
+  const [row] = await db
+    .select({ role: projectMembers.role })
+    .from(projectMembers)
+    .where(and(eq(projectMembers.projectId, projectId), eq(projectMembers.userId, ctx.userId)))
+    .limit(1);
+  return row?.role === 'admin';
 }

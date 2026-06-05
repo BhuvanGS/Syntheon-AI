@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { getTicketById } from '@/lib/db';
 
 export const runtime = 'nodejs';
 
 // Generate a presigned URL for direct Supabase upload
 export async function POST(req: NextRequest) {
   try {
-    const { userId } = await auth();
+    const { userId, orgId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
@@ -15,6 +16,12 @@ export async function POST(req: NextRequest) {
 
     if (!filename || !ticketId) {
       return NextResponse.json({ error: 'filename and ticketId required' }, { status: 400 });
+    }
+
+    // Verify ticket ownership
+    const ticket = await getTicketById(ticketId);
+    if (!ticket || (orgId && ticket.org_id !== orgId)) {
+      return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
     // Validate file size (max 15MB)

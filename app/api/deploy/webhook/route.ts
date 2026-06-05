@@ -1,7 +1,9 @@
 // app/api/deploy/webhook/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { getMeetingByBotId, updateMeetingDeployUrl, getMeetingById } from '@/lib/db';
-import { supabaseAdmin } from '@/lib/supabase';
+import { db } from '@/db/index';
+import { meetings as meetingsTable } from '@/db/schema';
+import { isNull, isNotNull, desc, and } from 'drizzle-orm';
 
 async function getGithubPagesUrl(owner: string, repo: string): Promise<string | null> {
   try {
@@ -43,15 +45,12 @@ export async function POST(req: NextRequest) {
     console.log('Deploy URL fetched:', deployUrl);
 
     // Find most recent meeting with branchName but no deployUrl
-    const { data: meetings } = await supabaseAdmin
-      .from('meetings')
-      .select('*')
-      .not('branch_name', 'is', null)
-      .is('deploy_url', null)
-      .order('date', { ascending: false })
+    const [meeting] = await db
+      .select()
+      .from(meetingsTable)
+      .where(and(isNotNull(meetingsTable.branchName), isNull(meetingsTable.deployUrl)))
+      .orderBy(desc(meetingsTable.date))
       .limit(1);
-
-    const meeting = meetings?.[0];
 
     if (!meeting) {
       console.log('No meeting found needing deploy URL');

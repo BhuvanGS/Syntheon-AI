@@ -116,7 +116,7 @@ export function ProjectTicketImportDialog({
         </DialogHeader>
 
         {meetings.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-white p-8 text-center">
+          <div className="rounded-2xl border border-dashed border-neutral-700 bg-neutral-900 p-8 text-center">
             <p className="font-medium text-foreground mb-2">No meetings available</p>
             <p className="text-sm text-muted-foreground">
               Record or sync a meeting first, then import its tickets.
@@ -132,7 +132,7 @@ export function ProjectTicketImportDialog({
               return (
                 <div
                   key={meeting.id}
-                  className="rounded-2xl border border-border bg-white p-4 flex items-center justify-between gap-4"
+                  className="rounded-2xl border border-neutral-700 bg-neutral-900 p-4 flex items-center justify-between gap-4"
                 >
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -158,8 +158,7 @@ export function ProjectTicketImportDialog({
                     type="button"
                     onClick={() => handleImport(meeting.id)}
                     disabled={isImporting || count === 0 || isAlreadyImported}
-                    className="rounded-full gap-2 shrink-0"
-                    variant="outline"
+                    className="rounded-full gap-2 shrink-0 bg-black text-white hover:bg-gray-900"
                   >
                     {isImporting ? (
                       <Loader2 className="h-4 w-4 animate-spin" />

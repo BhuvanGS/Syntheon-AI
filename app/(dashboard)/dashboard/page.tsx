@@ -22,6 +22,7 @@ import { ProjectsWorkspace } from '@/components/projects-workspace';
 import { ProjectCreateDialog } from '@/components/project-create-dialog';
 import { ManualTicketDialog } from '@/components/manual-ticket-dialog';
 import { DynamicIslandSearch } from '@/components/dynamic-island-search';
+import { NotificationBell } from '@/components/notification-bell';
 import { GanttCalendar } from '@/components/gantt-calendar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -283,14 +284,17 @@ function DashboardContent() {
             {currentView === 'calendar' && 'Calendar'}
             {currentView === 'ticket-detail' && 'Meeting Tickets'}
           </h1>
-          <DynamicIslandSearch
-            onSelectTicket={(id) => handleViewChange('tickets')}
-            onSelectMeeting={(id) => {
-              setSelectedMeeting(id);
-              handleViewChange('ticket-detail');
-            }}
-            onSelectProject={(id) => handleProjectSelect(id)}
-          />
+          <div className="flex items-center gap-2">
+            <NotificationBell onNavigateToTicket={() => handleViewChange('tickets')} />
+            <DynamicIslandSearch
+              onSelectTicket={(id) => handleViewChange('tickets')}
+              onSelectMeeting={(id) => {
+                setSelectedMeeting(id);
+                handleViewChange('ticket-detail');
+              }}
+              onSelectProject={(id) => handleProjectSelect(id)}
+            />
+          </div>
         </header>
 
         <main className="flex-1 overflow-auto animate-fade-in-up">

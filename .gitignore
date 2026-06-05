@@ -7,8 +7,10 @@ __v0_jsx-dev-runtime.ts
 node_modules/
 .next/
 .env*.local
-.DS_Storerecordings/*.webm
+.DS_Store
+recordings/*.webm
 db.json
 .env.local  
 ideas.txt
+sql/
 

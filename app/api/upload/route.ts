@@ -35,6 +35,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'File size exceeds 15MB limit' }, { status: 400 });
     }
 
+    // Validate file type against allowlist
+    const ALLOWED_TYPE_PREFIXES = ['image/', 'application/pdf', 'text/', 'video/', 'audio/'];
+    if (!ALLOWED_TYPE_PREFIXES.some((t) => file.type.startsWith(t))) {
+      return NextResponse.json({ error: 'File type not allowed' }, { status: 400 });
+    }
+
     // Generate unique file path
     const timestamp = Date.now();
     const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');

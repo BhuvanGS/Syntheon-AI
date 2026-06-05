@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, currentUser } from '@clerk/nextjs/server';
 import crypto from 'crypto';
-import { supabaseAdmin } from '@/lib/supabase';
+import { db } from '@/db/index';
+import { apiKeys } from '@/db/schema';
 import { ensureUser } from '@/lib/ensureUser';
 
 export async function POST(req: NextRequest) {
@@ -13,35 +14,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 🔥 Ensure user exists in Supabase before saving API key
+    // Ensure user exists in DB before saving API key
     const email = user.emailAddresses[0]?.emailAddress;
     if (email) {
       await ensureUser(userId, email);
     }
 
-    // 🔥 Generate raw API key (shown only once)
+    // Generate raw API key (shown only once)
     const rawKey = `syn_${crypto.randomBytes(32).toString('hex')}`;
 
-    // 🔐 Hash before storing
+    // Hash before storing
     const keyHash = crypto.createHash('sha256').update(rawKey).digest('hex');
 
-    // 💾 Upsert → ensures ONE key per user (no duplicates)
-    const { error } = await supabaseAdmin.from('api_keys').upsert(
-      {
-        user_id: userId,
-        key_hash: keyHash,
-      },
-      {
-        onConflict: 'user_id',
-      }
-    );
+    // Upsert → ensures ONE key per user (no duplicates)
+    await db.insert(apiKeys).values({ userId, keyHash }).onConflictDoUpdate({
+      target: apiKeys.userId,
+      set: { keyHash },
+    });
 
-    if (error) {
-      console.error('API key save failed:', error);
-      return NextResponse.json({ error: 'Failed to save key' }, { status: 500 });
-    }
-
-    // ⚠️ Return raw key ONLY ONCE
+    // Return raw key ONLY ONCE
     return NextResponse.json({ apiKey: rawKey });
   } catch (err) {
     console.error('Generate key error:', err);

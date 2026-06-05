@@ -9,6 +9,7 @@ import { ManualTicketDialog } from '@/components/manual-ticket-dialog';
 import { TicketDetail } from '@/components/ticket-detail';
 import { Button } from '@/components/ui/button';
 import { DynamicIslandSearch } from '@/components/dynamic-island-search';
+import { NotificationBell } from '@/components/notification-bell';
 import { toast } from '@/hooks/use-toast';
 
 type ViewType = 'project' | 'ticket-detail';
@@ -19,7 +20,9 @@ type ProjectTab =
   | 'kanban'
   | 'analytics'
   | 'dependencies'
-  | 'members';
+  | 'members'
+  | 'build'
+  | 'settings';
 
 interface Project {
   id: string;
@@ -63,6 +66,7 @@ const validProjectTabs: ProjectTab[] = [
   'analytics',
   'dependencies',
   'members',
+  'build',
 ];
 
 function ProjectContent() {
@@ -223,12 +227,15 @@ function ProjectContent() {
           <h1 className="text-sm font-semibold text-foreground">
             {currentView === 'project' ? 'Project Workspace' : 'Meeting Tickets'}
           </h1>
-          <DynamicIslandSearch
-            onSelectMeeting={(id) => {
-              setSelectedMeeting(id);
-              setCurrentView('ticket-detail');
-            }}
-          />
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <DynamicIslandSearch
+              onSelectMeeting={(id) => {
+                setSelectedMeeting(id);
+                setCurrentView('ticket-detail');
+              }}
+            />
+          </div>
         </header>
 
         <main className="flex-1 overflow-auto animate-fade-in-up">

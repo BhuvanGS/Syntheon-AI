@@ -7,6 +7,8 @@ import { AssigneePicker, type AssigneeValue } from '@/components/assignee-picker
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
@@ -44,6 +46,7 @@ import { MentionEditor } from '@/components/mention-editor';
 import { useToast } from '@/components/island-toast';
 import { ProjectTicketImportDialog } from '@/components/project-ticket-import-dialog';
 import { ProjectMeetingDialog } from '@/components/project-meeting-dialog';
+import { SwarmNetBuildPanel } from '@/components/swarmnet-build-panel';
 import {
   FolderKanban,
   Plus,
@@ -73,6 +76,8 @@ import {
   Loader2,
   Users,
   UserMinus,
+  Rocket,
+  Settings,
 } from 'lucide-react';
 
 type ProjectTab =
@@ -82,13 +87,16 @@ type ProjectTab =
   | 'kanban'
   | 'analytics'
   | 'dependencies'
-  | 'members';
+  | 'members'
+  | 'build'
+  | 'settings';
 
 interface Project {
   id: string;
   name: string;
   repo: string;
   deployUrl?: string | null;
+  branchBase?: string | null;
   meetings: string[];
   ticketIds: string[];
   files: string[];
@@ -203,6 +211,10 @@ export function ProjectsWorkspace({
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isRenameProjectOpen, setIsRenameProjectOpen] = useState(false);
   const [projectNameDraft, setProjectNameDraft] = useState('');
+  const [projectDeployUrlDraft, setProjectDeployUrlDraft] = useState('');
+  const [projectBranchBaseDraft, setProjectBranchBaseDraft] = useState('main');
+  const [projectContextDraft, setProjectContextDraft] = useState('');
+  const [savingProjectSettings, setSavingProjectSettings] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [ticketToDelete, setTicketToDelete] = useState<Ticket | null>(null);
   const [deleteMode, setDeleteMode] = useState<'confirm' | 'reassign' | null>(null);
@@ -269,6 +281,15 @@ export function ProjectsWorkspace({
     () => projects.find((project) => project.id === selectedProjectId) ?? null,
     [projects, selectedProjectId]
   );
+
+  useEffect(() => {
+    if (selectedProject) {
+      setProjectNameDraft(selectedProject.name);
+      setProjectDeployUrlDraft(selectedProject.deployUrl || '');
+      setProjectBranchBaseDraft(selectedProject.branchBase || 'main');
+      setProjectContextDraft(selectedProject.context || '');
+    }
+  }, [selectedProject?.id]);
 
   const projectMeetings = useMemo(
     () => meetings.filter((meeting) => meeting.projectId === selectedProject?.id),
@@ -1023,6 +1044,36 @@ export function ProjectsWorkspace({
     }
   }
 
+  async function handleSaveProjectSettings() {
+    if (!selectedProject) return;
+
+    setSavingProjectSettings(true);
+    try {
+      const res = await fetch(`/api/projects/${selectedProject.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: projectNameDraft.trim(),
+          deployUrl: projectDeployUrlDraft.trim(),
+          branchBase: projectBranchBaseDraft.trim() || 'main',
+          context: projectContextDraft.trim(),
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || 'Failed to update project');
+      }
+
+      await onRefresh();
+      showToast('Project settings saved', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to save settings', 'error');
+    } finally {
+      setSavingProjectSettings(false);
+    }
+  }
+
   useEffect(() => {
     setProjectTab('kanban');
   }, [selectedProjectId]);
@@ -1161,6 +1212,7 @@ export function ProjectsWorkspace({
     },
     { id: 'dependencies', label: 'Dependencies', icon: <GitBranch className="h-4 w-4" /> },
     { id: 'members', label: 'Members', icon: <Users className="h-4 w-4" />, adminOnly: true },
+    { id: 'build', label: 'Build', icon: <Rocket className="h-4 w-4" /> },
   ];
   const tabs = allTabs.filter((t) => !t.adminOnly || isAdmin);
 
@@ -1325,6 +1377,13 @@ export function ProjectsWorkspace({
                 >
                   <Pencil className="h-4 w-4 text-primary" />
                   Change name
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setProjectTab('settings')}
+                  className="gap-2 cursor-pointer"
+                >
+                  <Settings className="h-4 w-4 text-primary" />
+                  Project settings
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setIsImportDialogOpen(true)}
@@ -2043,6 +2102,81 @@ export function ProjectsWorkspace({
                   }
                 }}
               />
+            </div>
+          </div>
+        )}
+
+        {/* ── BUILD tab ── */}
+        {projectTab === 'build' && (
+          <div className="space-y-4">
+            <h2 className="font-playfair text-2xl font-bold text-foreground">SwarmNet Build</h2>
+            <SwarmNetBuildPanel project={selectedProject} tickets={projectTickets} />
+          </div>
+        )}
+
+        {/* ── SETTINGS tab ── */}
+        {projectTab === 'settings' && (
+          <div className="space-y-6 max-w-2xl">
+            <h2 className="font-playfair text-2xl font-bold text-foreground">Project Settings</h2>
+
+            <div className="rounded-2xl border border-border bg-card p-6 space-y-5">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Project name</label>
+                <Input
+                  value={projectNameDraft}
+                  onChange={(e) => setProjectNameDraft(e.target.value)}
+                  placeholder="Project name"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Deployment URL</label>
+                <Input
+                  value={projectDeployUrlDraft}
+                  onChange={(e) => setProjectDeployUrlDraft(e.target.value)}
+                  placeholder="https://app.example.com"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Where your app is deployed. Used for preview links and webhook checks.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Base branch</label>
+                <Input
+                  value={projectBranchBaseDraft}
+                  onChange={(e) => setProjectBranchBaseDraft(e.target.value)}
+                  placeholder="main"
+                />
+                <p className="text-xs text-muted-foreground">
+                  The default branch that agent PRs target.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Context</label>
+                <Textarea
+                  value={projectContextDraft}
+                  onChange={(e) => setProjectContextDraft(e.target.value)}
+                  placeholder="Project goals, tech stack, constraints..."
+                  className="min-h-24"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <Button
+                  onClick={handleSaveProjectSettings}
+                  disabled={savingProjectSettings}
+                  className="rounded-full gap-2"
+                >
+                  {savingProjectSettings ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="h-4 w-4" />
+                  )}
+                  Save settings
+                </Button>
+              </div>
             </div>
           </div>
         )}
