@@ -21,7 +21,8 @@ type ProjectTab =
   | 'analytics'
   | 'dependencies'
   | 'members'
-  | 'build';
+  | 'build'
+  | 'settings';
 
 interface Project {
   id: string;

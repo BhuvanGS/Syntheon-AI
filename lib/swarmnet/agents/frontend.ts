@@ -9,6 +9,12 @@ import {
   getFileContents,
 } from '@/lib/shipai/github';
 import { updateSwarmnetRun, createSwarmnetArtifact } from '@/lib/db';
+import {
+  postTicketComment,
+  logTicketActivity,
+  documentRunComplete,
+  documentPhaseMilestone,
+} from './documenter';
 
 interface AgentContext {
   runId: string;
@@ -66,7 +72,17 @@ TASK: Analyze what needs to be built. Respond ONLY with JSON:
 `;
 
   const res = await callGroq(planPrompt, 'llama-3.3-70b-versatile'); // Cheap planning
-  const plan = parseJsonResponse(res);
+
+  let plan: any;
+  try {
+    plan = parseJsonResponse(res);
+  } catch (e: any) {
+    console.error(
+      `[FrontendAgent ${ctx.runId}] Plan parse failed. Raw response:`,
+      res.slice(0, 500)
+    );
+    throw new Error(`Plan phase failed: ${e.message}`);
+  }
 
   steps.push({
     phase: 'plan',
@@ -77,7 +93,7 @@ TASK: Analyze what needs to be built. Respond ONLY with JSON:
 
   return {
     plan: plan.plan,
-    targetFiles: [...plan.newFiles, ...plan.modifyFiles],
+    targetFiles: [...(plan.newFiles || []), ...(plan.modifyFiles || [])],
   };
 }
 
@@ -192,22 +208,38 @@ async function executePhase(
 
 async function validatePhase(
   ctx: AgentContext,
-  steps: AgentStep[]
+  steps: AgentStep[],
+  files: Record<string, string>
 ): Promise<{ passed: boolean; errors: string[] }> {
   // We can't directly run terminal on the user's machine, but we can:
   // 1. GitHub Actions runs checks on the PR
   // 2. For now, we do a basic syntax validation via Groq
 
+  const fileBlocks = Object.entries(files)
+    .map(([path, content]) => `--- FILE: ${path} ---\n${content.slice(0, 2000)}\n--- END ---`)
+    .join('\n\n');
+
   const validatePrompt = `
-You are a TypeScript compiler. Review this code for syntax errors only.
+You are a TypeScript compiler. Review the following code for syntax errors only.
 Check: missing imports, undefined variables, wrong types, syntax mistakes.
-Do NOT check logic or design. Return JSON: { "passed": boolean, "errors": ["..."] }
+Do NOT check logic or design. Return ONLY JSON:
+{ "passed": boolean, "errors": ["..."] }
+
+${fileBlocks}
 `;
 
-  // For v1, we'll trigger GitHub Actions and poll
-  // But let's do a quick self-check with a cheaper model
   const res = await callGroq(validatePrompt, 'llama-3.3-70b-versatile');
-  const validation = parseJsonResponse(res);
+
+  let validation: { passed: boolean; errors: string[] };
+  try {
+    validation = parseJsonResponse(res);
+  } catch (e: any) {
+    console.error(
+      `[FrontendAgent ${ctx.runId}] Validation parse failed. Raw response:`,
+      res.slice(0, 500)
+    );
+    validation = { passed: true, errors: [`Validation parse failed: ${e.message}`] };
+  }
 
   steps.push({
     phase: 'validate',
@@ -252,16 +284,28 @@ Fix these errors and return ONLY the corrected code in the same format.
 
 // ─── MAIN AGENT RUNNER ──────────────────────────────────────────
 
+function makeDocCtx(ctx: AgentContext) {
+  return {
+    ticketId: ctx.ticketId,
+    projectId: ctx.projectId,
+    runId: ctx.runId,
+    agentId: 'agent:frontend',
+    orgId: ctx.orgId,
+  };
+}
+
 async function saveProgress(
   runId: string,
   status: string,
   steps: AgentStep[],
+  currentTask: string,
   extra?: Partial<any>
 ) {
   try {
     await updateSwarmnetRun(runId, {
       status,
       steps,
+      currentTask,
       ...extra,
     });
   } catch (e) {
@@ -273,22 +317,54 @@ export async function runFrontendAgent(ctx: AgentContext): Promise<AgentRunResul
   const steps: AgentStep[] = [];
   let attempt = 0;
   const maxAttempts = 3;
+  const docCtx = makeDocCtx(ctx);
 
   try {
-    // PHASE 1: Plan
-    await saveProgress(ctx.runId, 'planning', steps);
+    // ── PHASE 1: Plan ──
+    await saveProgress(
+      ctx.runId,
+      'planning',
+      steps,
+      'Analyzing ticket and planning implementation...'
+    );
+    await documentPhaseMilestone(docCtx, 'plan', 'Starting plan phase');
     const { plan, targetFiles } = await planPhase(ctx, steps);
-    await saveProgress(ctx.runId, 'planning', steps);
+    await saveProgress(ctx.runId, 'planning', steps, `Plan ready: ${plan}`);
+    await documentPhaseMilestone(docCtx, 'plan', `Planned: ${plan}`, {
+      targetFiles,
+    });
 
-    // PHASE 2: Gather
-    await saveProgress(ctx.runId, 'gathering', steps);
+    // ── PHASE 2: Gather ──
+    await saveProgress(ctx.runId, 'gathering', steps, 'Reading existing repo files for context...');
+    await documentPhaseMilestone(docCtx, 'gather', 'Gathering code context');
     const existingCode = await gatherPhase(ctx, steps, targetFiles);
-    await saveProgress(ctx.runId, 'gathering', steps);
+    await saveProgress(
+      ctx.runId,
+      'gathering',
+      steps,
+      `Read ${Object.keys(existingCode).length} files`
+    );
+    await documentPhaseMilestone(
+      docCtx,
+      'gather',
+      `Read ${Object.keys(existingCode).length} files for context`
+    );
 
-    // PHASE 3: Generate
-    await saveProgress(ctx.runId, 'coding', steps);
+    // ── PHASE 3: Generate ──
+    await saveProgress(ctx.runId, 'coding', steps, 'Generating code with Groq...');
+    await documentPhaseMilestone(docCtx, 'generate', 'Generating code');
     let files = await generatePhase(ctx, steps, plan, existingCode);
-    await saveProgress(ctx.runId, 'coding', steps, { filesCreated: Object.keys(files) });
+    await saveProgress(ctx.runId, 'coding', steps, `Generated ${Object.keys(files).length} files`, {
+      filesCreated: Object.keys(files),
+    });
+    await documentPhaseMilestone(
+      docCtx,
+      'generate',
+      `Generated ${Object.keys(files).length} files`,
+      {
+        files: Object.keys(files),
+      }
+    );
 
     // Save artifacts to DB
     for (const [path, content] of Object.entries(files)) {
@@ -300,19 +376,49 @@ export async function runFrontendAgent(ctx: AgentContext): Promise<AgentRunResul
       });
     }
 
-    // PHASE 4-6: Execute → Validate → Fix (loop)
+    // ── PHASE 4-6: Execute → Validate → Fix (loop) ──
     while (attempt < maxAttempts) {
       attempt++;
 
       // Execute
-      await saveProgress(ctx.runId, 'committing', steps);
+      await saveProgress(
+        ctx.runId,
+        'committing',
+        steps,
+        `Committing ${Object.keys(files).length} files to branch ${ctx.branchName}...`
+      );
       await executePhase(ctx, steps, files);
-      await saveProgress(ctx.runId, 'committing', steps);
+      await saveProgress(
+        ctx.runId,
+        'committing',
+        steps,
+        `Committed ${Object.keys(files).length} files`
+      );
+      await documentPhaseMilestone(
+        docCtx,
+        'execute',
+        `Committed ${Object.keys(files).length} files to ${ctx.branchName}`
+      );
 
       // Validate
-      await saveProgress(ctx.runId, 'testing', steps);
-      const validation = await validatePhase(ctx, steps);
-      await saveProgress(ctx.runId, 'testing', steps);
+      await saveProgress(
+        ctx.runId,
+        'testing',
+        steps,
+        'Running validation checks on generated code...'
+      );
+      const validation = await validatePhase(ctx, steps, files);
+      await saveProgress(
+        ctx.runId,
+        'testing',
+        steps,
+        validation.passed ? 'Validation passed' : `Found ${validation.errors.length} errors`
+      );
+      await documentPhaseMilestone(
+        docCtx,
+        'validate',
+        validation.passed ? 'Validation passed' : `Found ${validation.errors.length} errors`
+      );
 
       if (validation.passed) {
         break; // Done!
@@ -325,13 +431,28 @@ export async function runFrontendAgent(ctx: AgentContext): Promise<AgentRunResul
       }
 
       // Fix
-      await saveProgress(ctx.runId, 'fixing', steps);
+      await saveProgress(
+        ctx.runId,
+        'fixing',
+        steps,
+        `Fixing ${validation.errors.length} validation errors...`
+      );
       files = await fixPhase(ctx, steps, files, validation.errors);
-      await saveProgress(ctx.runId, 'fixing', steps);
+      await saveProgress(
+        ctx.runId,
+        'fixing',
+        steps,
+        `Fixed ${validation.errors.length} errors (attempt ${attempt})`
+      );
+      await documentPhaseMilestone(
+        docCtx,
+        'fix',
+        `Fixed ${validation.errors.length} errors (attempt ${attempt})`
+      );
     }
 
-    // PHASE 7: Open PR
-    await saveProgress(ctx.runId, 'reviewing', steps);
+    // ── PHASE 7: Open PR ──
+    await saveProgress(ctx.runId, 'reviewing', steps, 'Opening pull request on GitHub...');
     const pr = await createPullRequest(
       `feat: ${ctx.ticketTitle}`,
       ctx.branchName,
@@ -346,9 +467,20 @@ export async function runFrontendAgent(ctx: AgentContext): Promise<AgentRunResul
       metadata: { prNumber: pr.number, prUrl: pr.html_url },
     });
 
-    await saveProgress(ctx.runId, 'done', steps, {
+    await saveProgress(ctx.runId, 'done', steps, `PR #${pr.number} opened successfully`, {
       prNumber: pr.number,
       prUrl: pr.html_url,
+    });
+
+    // ── DocumenterBot wrap-up ──
+    await documentRunComplete(docCtx, {
+      success: true,
+      prNumber: pr.number,
+      prUrl: pr.html_url,
+      branchName: ctx.branchName,
+      filesCreated: Object.keys(files),
+      filesModified: [],
+      steps: steps.map((s) => ({ phase: s.phase, message: s.message })),
     });
 
     return {
@@ -369,7 +501,16 @@ export async function runFrontendAgent(ctx: AgentContext): Promise<AgentRunResul
       timestamp: new Date().toISOString(),
     });
 
-    await saveProgress(ctx.runId, 'error', steps, { errorMessage: errMsg });
+    await saveProgress(ctx.runId, 'error', steps, `Error: ${errMsg}`, { errorMessage: errMsg });
+
+    await documentRunComplete(docCtx, {
+      success: false,
+      branchName: ctx.branchName,
+      filesCreated: [],
+      filesModified: [],
+      steps: steps.map((s) => ({ phase: s.phase, message: s.message })),
+      error: errMsg,
+    });
 
     return {
       success: false,

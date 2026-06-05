@@ -12,4 +12,5 @@ recordings/*.webm
 db.json
 .env.local  
 ideas.txt
+sql/
 

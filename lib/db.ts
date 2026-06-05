@@ -1302,6 +1302,7 @@ export interface SwarmnetRun {
   pr_number?: number;
   pr_url?: string;
   error_message?: string;
+  current_task?: string;
   steps?: any[];
   files_created?: string[];
   files_modified?: string[];
@@ -1343,6 +1344,7 @@ export async function getSwarmnetRun(id: string): Promise<SwarmnetRun | null> {
     pr_number: row.prNumber ?? undefined,
     pr_url: row.prUrl ?? undefined,
     error_message: row.errorMessage ?? undefined,
+    current_task: row.currentTask ?? undefined,
     steps: row.steps as any[] | undefined,
     files_created: row.filesCreated ?? undefined,
     files_modified: row.filesModified ?? undefined,
@@ -1360,6 +1362,7 @@ export async function updateSwarmnetRun(
     prNumber: number;
     prUrl: string;
     errorMessage: string;
+    currentTask: string;
     steps: any[];
     filesCreated: string[];
     filesModified: string[];

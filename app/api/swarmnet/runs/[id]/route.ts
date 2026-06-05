@@ -14,9 +14,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json({ status: 'unknown', runId: id });
     }
 
+    // Derive currentTask from explicit field or last step
+    const lastStep = run.steps?.length ? run.steps[run.steps.length - 1] : null;
+    const currentTask =
+      run.current_task || (lastStep ? `${lastStep.phase}: ${lastStep.message}` : 'Initializing...');
+
     return NextResponse.json({
       runId: id,
       status: run.status,
+      currentTask,
       prNumber: run.pr_number,
       prUrl: run.pr_url,
       error: run.error_message,

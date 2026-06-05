@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS swarmnet_runs (
   test_results jsonb,
   security_scan jsonb,
   error_message text,
+  current_task text,
   steps jsonb DEFAULT '[]',
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
@@ -53,6 +54,9 @@ CREATE TABLE IF NOT EXISTS swarmnet_runs (
 CREATE INDEX IF NOT EXISTS swarmnet_runs_org_status ON swarmnet_runs(org_id, status);
 CREATE INDEX IF NOT EXISTS swarmnet_runs_ticket ON swarmnet_runs(ticket_id);
 CREATE INDEX IF NOT EXISTS swarmnet_runs_agent ON swarmnet_runs(agent_id);
+
+-- Add current_task column for existing deployments (safe, no-op if already exists)
+ALTER TABLE swarmnet_runs ADD COLUMN IF NOT EXISTS current_task text;
 
 CREATE TABLE IF NOT EXISTS swarmnet_artifacts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

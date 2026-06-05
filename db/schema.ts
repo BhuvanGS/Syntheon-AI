@@ -317,6 +317,7 @@ export const swarmnetRuns = pgTable(
     testResults: jsonb('test_results'),
     securityScan: jsonb('security_scan'),
     errorMessage: text('error_message'),
+    currentTask: text('current_task'),
     steps: jsonb('steps').default('[]'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
