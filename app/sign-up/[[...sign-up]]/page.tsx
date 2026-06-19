@@ -62,6 +62,14 @@ export default function SignUpPage() {
   const [code, setCode] = useState('');
   const [acceptingInvite, setAcceptingInvite] = useState(false);
 
+  // Redirect already-signed-in users away from the sign-up page
+  useEffect(() => {
+    if (!authLoaded) return;
+    if (isSignedIn && !clerkTicket) {
+      router.replace('/onboarding');
+    }
+  }, [authLoaded, isSignedIn, clerkTicket]);
+
   // Handle organization invitation ticket (sign-up flow)
   useEffect(() => {
     if (!clerkTicket) return;

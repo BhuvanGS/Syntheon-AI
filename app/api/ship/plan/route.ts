@@ -40,7 +40,14 @@ export async function POST(req: NextRequest) {
       const previousTickets = (await getTicketsByProjectId(projectId)).map((t) => t.title);
       console.log('Previous tickets:', previousTickets.length);
 
-      const repoInfo = getRepoInfo();
+      // Parse owner/repo from project.repo (format: "owner/repo-name")
+      const repoParts = project.repo?.split('/') ?? [];
+      const repoOwner = repoParts[0];
+      const repoName = repoParts[1];
+      if (!repoOwner || !repoName) {
+        throw new Error(`Project ${projectId} has no valid repo configured`);
+      }
+      const repoInfo = getRepoInfo(repoOwner, repoName);
       const fileTree = await getRepoFileTree(repoInfo);
       console.log('File tree:', fileTree.length, 'files');
 

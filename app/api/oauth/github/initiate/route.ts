@@ -30,13 +30,16 @@ export async function POST() {
     // Generate random state to prevent CSRF on OAuth flow
     const state = randomUUID();
     const cookieStore = await cookies();
-    cookieStore.set('oauth_state', state, {
+    const cookieOpts = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'lax' as const,
       maxAge: 300, // 5 minutes
       path: '/',
-    });
+    };
+    cookieStore.set('oauth_state', state, cookieOpts);
+    cookieStore.set('oauth_user_id', session.userId, cookieOpts);
+    cookieStore.set('oauth_org_id', session.orgId || '', cookieOpts);
 
     const authorizationUrl = buildOAuthAuthorizationUrl({
       authorizeEndpoint: 'https://github.com/login/oauth/authorize',

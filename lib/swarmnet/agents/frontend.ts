@@ -655,12 +655,36 @@ Generate all needed files.
 }
 
 function parseGeneratedFiles(raw: string): Record<string, string> {
+  // Iterative parser — avoids ReDoS-vulnerable regex on long LLM output
+  const MAX_FILE_BYTES = 512_000; // 512 KB per file safety cap
   const files: Record<string, string> = {};
-  const regex = /---FILE:\s*(.+?)---\n([\s\S]*?)---ENDFILE---/g;
-  let match;
-  while ((match = regex.exec(raw)) !== null) {
-    files[match[1].trim()] = match[2].trim();
+  const lines = raw.split('\n');
+  let currentPath: string | null = null;
+  const chunks: string[] = [];
+
+  for (const line of lines) {
+    const fileStart = line.match(/^---FILE:\s*(.+?)---\s*$/);
+    if (fileStart) {
+      if (currentPath !== null) {
+        files[currentPath] = chunks.join('\n').trim().slice(0, MAX_FILE_BYTES);
+      }
+      currentPath = fileStart[1].trim();
+      chunks.length = 0;
+      continue;
+    }
+    if (line.trim() === '---ENDFILE---') {
+      if (currentPath !== null) {
+        files[currentPath] = chunks.join('\n').trim().slice(0, MAX_FILE_BYTES);
+      }
+      currentPath = null;
+      chunks.length = 0;
+      continue;
+    }
+    if (currentPath !== null) {
+      chunks.push(line);
+    }
   }
+
   return files;
 }
 
@@ -714,8 +738,8 @@ async function callGroq(prompt: string, model: string, maxTokens = 4000): Promis
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(`Groq API error: ${res.status} — ${JSON.stringify(err)}`);
+    console.error(`[callGroq] API error ${res.status} for model ${model}`);
+    throw new Error(`Groq API error (status ${res.status})`);
   }
 
   const data = await res.json();

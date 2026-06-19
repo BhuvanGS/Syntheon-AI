@@ -1,4 +1,8 @@
 import type { Config } from 'drizzle-kit';
+import { config } from 'dotenv';
+
+// Load .env.local so DATABASE_URL is available for drizzle-kit CLI commands
+config({ path: '.env.local' });
 
 export default {
   schema: './db/schema.ts',

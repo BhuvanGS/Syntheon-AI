@@ -115,8 +115,8 @@ export async function generatePlan(featureRequest: string): Promise<DevPlan> {
   });
 
   if (!res.ok) {
-    const err = await res.json();
-    throw new Error(`Groq API error: ${res.status} — ${JSON.stringify(err)}`);
+    console.error(`[Groq] generatePlan failed with status ${res.status}`);
+    throw new Error(`Groq API error (status ${res.status})`);
   }
 
   const data = await res.json();
@@ -208,8 +208,8 @@ Respond ONLY with valid JSON in this format:
   });
 
   if (!res.ok) {
-    const err = await res.json();
-    throw new Error(`Groq planner error: ${res.status} — ${JSON.stringify(err)}`);
+    console.error(`[Groq] planFollowUpChanges failed with status ${res.status}`);
+    throw new Error(`Groq API error (status ${res.status})`);
   }
 
   const data = await res.json();
@@ -281,8 +281,8 @@ ${systemPrompt}`;
   });
 
   if (!res.ok) {
-    const err = await res.json();
-    throw new Error(`Groq coder error: ${res.status} — ${JSON.stringify(err)}`);
+    console.error(`[Groq] generateFollowUpPlan failed with status ${res.status}`);
+    throw new Error(`Groq API error (status ${res.status})`);
   }
 
   const data = await res.json();

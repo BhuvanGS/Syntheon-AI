@@ -177,9 +177,12 @@ export const ticketActivities = pgTable('ticket_activities', {
 export const integrations = pgTable('integrations', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: text('user_id').unique().notNull(),
+  orgId: text('org_id'),
   githubToken: text('github_token'),
   githubOwner: text('github_owner'),
+  githubRepo: text('github_repo'),
   githubAccessToken: text('github_access_token'),
+  webhookSecret: text('webhook_secret'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });
 

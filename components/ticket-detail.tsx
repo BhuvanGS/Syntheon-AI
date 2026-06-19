@@ -50,6 +50,7 @@ interface Meeting {
 interface Project {
   id: string;
   name: string;
+  repo?: string | null;
   meetings: string[];
   files: string[];
   context: string;
@@ -76,6 +77,12 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
     committedFiles?: string[];
     error?: string;
   }>({ status: 'idle' });
+
+  // Repo picker state
+  const [repos, setRepos] = useState<{ fullName: string; name: string; owner: string }[]>([]);
+  const [selectedRepo, setSelectedRepo] = useState<string>('');
+  const [loadingRepos, setLoadingRepos] = useState(false);
+  const [repoError, setRepoError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(Date.now());
   const [savingTicketId, setSavingTicketId] = useState<string | null>(null);
   const [blockerModalOpen, setBlockerModalOpen] = useState(false);
@@ -117,6 +124,30 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
   useEffect(() => {
     if (meetingData?.projectId) fetchProject(meetingData.projectId);
   }, [meetingData?.projectId]);
+
+  // Fetch user's GitHub repos on mount
+  useEffect(() => {
+    async function fetchRepos() {
+      setLoadingRepos(true);
+      setRepoError(null);
+      try {
+        const res = await fetch('/api/swarmnet/repos');
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Failed to load repos');
+        setRepos(data.repos || []);
+        // Auto-select project.repo if it exists
+        if (project?.repo) {
+          const match = data.repos.find((r: any) => r.fullName === project.repo);
+          if (match) setSelectedRepo(match.fullName);
+        }
+      } catch (err) {
+        setRepoError(err instanceof Error ? err.message : 'Failed to load repos');
+      } finally {
+        setLoadingRepos(false);
+      }
+    }
+    fetchRepos();
+  }, [project?.repo]);
 
   async function fetchTickets() {
     try {
@@ -395,6 +426,8 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
     if (!shipResult.plan) return;
     setShipResult((prev) => ({ ...prev, status: 'executing' }));
 
+    const [owner, repo] = selectedRepo.includes('/') ? selectedRepo.split('/') : ['', ''];
+
     try {
       const execRes = await fetch('/api/ship/execute', {
         method: 'POST',
@@ -407,6 +440,8 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
           tickets: readyTickets,
           meetingTitle,
           isFollowUp: !!(project?.id ?? meetingData?.projectId),
+          githubOwner: owner,
+          githubRepo: repo,
         }),
       });
 
@@ -660,6 +695,39 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
           </div>
         )}
 
+        {/* ── Repo Picker ── */}
+        {!isFollowUp && shipResult.status !== 'done' && (
+          <div className="mb-4">
+            <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
+              Target Repository
+            </label>
+            {repoError && <p className="text-xs text-destructive mb-1">{repoError}</p>}
+            {loadingRepos ? (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Loading repositories...
+              </div>
+            ) : repos.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                No repositories found. Connect GitHub in Settings.
+              </p>
+            ) : (
+              <select
+                value={selectedRepo}
+                onChange={(e) => setSelectedRepo(e.target.value)}
+                className="w-full text-sm px-3 py-2 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="">Select a repository...</option>
+                {repos.map((r) => (
+                  <option key={r.fullName} value={r.fullName}>
+                    {r.fullName}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        )}
+
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <p className="text-sm text-muted-foreground">
             {readyTickets.length > 0
@@ -692,7 +760,9 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
             {shipResult.status === 'planned' && (
               <button
                 onClick={handleExecute}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium bg-primary text-primary-foreground hover:opacity-90 transition-all"
+                disabled={!isFollowUp && !selectedRepo}
+                title={!isFollowUp && !selectedRepo ? 'Select a repository first' : ''}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium bg-primary text-primary-foreground hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Rocket className="w-4 h-4" />
                 Execute Plan

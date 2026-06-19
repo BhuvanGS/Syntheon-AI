@@ -2,10 +2,11 @@
 
 const BASE = 'https://api.github.com';
 
-function headers(token?: string) {
-  const authToken = token || process.env.GITHUB_TOKEN;
+function headers(token: string) {
+  if (!token)
+    throw new Error('GitHub token is required — connect GitHub in Settings → Integrations');
   return {
-    Authorization: `Bearer ${authToken}`,
+    Authorization: `Bearer ${token}`,
     Accept: 'application/vnd.github+json',
     'X-GitHub-Api-Version': '2022-11-28',
     'Content-Type': 'application/json',
@@ -13,20 +14,24 @@ function headers(token?: string) {
 }
 
 function repoPath(overrides: { owner?: string; repo?: string; token?: string } = {}) {
-  const owner = overrides.owner || process.env.GITHUB_OWNER;
-  const repo = overrides.repo || process.env.GITHUB_REPO;
+  const owner = overrides.owner;
+  const repo = overrides.repo;
+  if (!owner || !repo) throw new Error('GitHub owner and repo are required');
   return `${BASE}/repos/${owner}/${repo}`;
 }
 
 async function githubFetch(url: string, options: RequestInit & { token?: string } = {}) {
   const { token, ...fetchOptions } = options;
+  if (!token) throw new Error('GitHub token is required');
   const res = await fetch(url, {
     ...fetchOptions,
     headers: { ...headers(token), ...(fetchOptions.headers as any) },
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    console.error('GitHub API error details:', JSON.stringify(err, null, 2));
+    console.error(
+      `[GitHub] API error ${res.status} on ${url.replace(/https:\/\/api\.github\.com/, '')}`
+    );
     throw new Error(`GitHub API error (${res.status}): ${err.message || res.statusText}`);
   }
   return res.json();
@@ -83,7 +88,7 @@ export async function createBranch(
 async function getFileSha(
   filePath: string,
   branch: string,
-  token?: string,
+  token: string,
   overrides: { owner?: string; repo?: string } = {}
 ): Promise<string | null> {
   try {
@@ -105,7 +110,7 @@ export async function commitFile(
   filePath: string,
   content: string,
   branch: string,
-  token?: string,
+  token: string,
   overrides: { owner?: string; repo?: string; commitMessage?: string } = {}
 ) {
   const encodedContent = Buffer.from(content, 'utf-8').toString('base64');
@@ -125,11 +130,12 @@ export async function commitFile(
 export async function createPullRequest(
   title: string,
   branch: string,
-  token?: string,
+  token: string,
   overrides: { owner?: string; repo?: string } = {}
 ) {
-  const owner = overrides.owner || process.env.GITHUB_OWNER;
-  const repo = overrides.repo || process.env.GITHUB_REPO;
+  const owner = overrides.owner;
+  const repo = overrides.repo;
+  if (!owner || !repo) throw new Error('GitHub owner and repo are required to create a PR');
 
   // Get repo info to find default branch
   const repoInfo = await githubFetch(`${BASE}/repos/${owner}/${repo}`, { token });
@@ -142,11 +148,10 @@ export async function createPullRequest(
     );
 
     if (existingPrs && existingPrs.length > 0) {
-      console.log(`PR already exists for branch ${branch}: #${existingPrs[0].number}`);
       return existingPrs[0];
     }
-  } catch (error) {
-    console.log('Could not check for existing PRs, continuing with creation');
+  } catch {
+    // Continue with PR creation if check fails
   }
 
   // Create new PR
@@ -200,18 +205,21 @@ export async function getFileContents(
 ): Promise<Record<string, string>> {
   const contents: Record<string, string> = {};
 
+  const token = overrides.token;
+  if (!token) throw new Error('GitHub token is required to fetch file contents');
+
   await Promise.all(
     filePaths.map(async (filePath) => {
       try {
         const res = await fetch(`${repoPath(overrides)}/contents/${filePath}`, {
-          headers: headers(overrides.token),
+          headers: headers(token),
         });
         if (!res.ok) return;
         const data = await res.json();
         const decoded = Buffer.from(data.content, 'base64').toString('utf-8');
         contents[filePath] = decoded;
       } catch {
-        console.error(`Failed to fetch file: ${filePath}`);
+        // Silently skip unreadable files
       }
     })
   );
@@ -247,10 +255,8 @@ export async function validateRepoAccess(
   }
 }
 
-// ─── NEW: Get repo owner and name from env ─────────────────────
-export function getRepoInfo(overrideOwner?: string | null) {
-  return {
-    owner: overrideOwner || process.env.GITHUB_OWNER!,
-    repo: process.env.GITHUB_REPO!,
-  };
+// ─── NEW: Get repo owner and name ─────────────────────────────
+export function getRepoInfo(owner?: string | null, repo?: string | null) {
+  if (!owner || !repo) throw new Error('GitHub owner and repo are required');
+  return { owner, repo };
 }

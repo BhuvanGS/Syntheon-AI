@@ -137,7 +137,7 @@ Return ONLY the JSON object, nothing else.`,
       })) as TicketBlock[],
     };
   } catch (err) {
-    console.error('Failed to parse Groq response:', raw);
+    console.error('[Groq] Failed to parse response, first 100 chars:', raw?.slice(0, 100));
     throw new Error('Groq returned invalid JSON');
   }
 }
@@ -226,7 +226,10 @@ Output format:
 
     return normalized;
   } catch {
-    console.error('Failed to parse Groq dependency response:', raw);
+    console.error(
+      '[Groq] Failed to parse dependency response, first 100 chars:',
+      raw?.slice(0, 100)
+    );
     throw new Error('Groq returned invalid dependency JSON');
   }
 }

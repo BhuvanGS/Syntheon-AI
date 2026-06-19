@@ -15,6 +15,7 @@ import {
   getIntegrationByUserId,
   getGithubToken,
   getGithubOwner,
+  getGithubRepo,
 } from '@/lib/services/integrations';
 import {
   updateMeetingBranch,
@@ -31,42 +32,88 @@ export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId } = await auth();
+    const { userId, orgId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { plan, meetingId, projectId, tickets, meetingTitle, isFollowUp } = await req.json();
+    const {
+      plan,
+      meetingId,
+      projectId,
+      tickets,
+      meetingTitle,
+      isFollowUp,
+      githubOwner,
+      githubRepo,
+    } = await req.json();
 
     if (!plan) return NextResponse.json({ error: 'plan is required' }, { status: 400 });
 
     // Get user's GitHub integration
-    const integration = await getIntegrationByUserId(userId);
+    const integration = await getIntegrationByUserId(userId, orgId);
     const githubToken = getGithubToken(integration);
-    const githubOwner = getGithubOwner(integration);
 
     if (!githubToken) {
       return NextResponse.json({ error: 'GitHub not connected' }, { status: 400 });
     }
 
-    console.log('Executing plan:', plan.branch_name);
+    // Resolve owner/repo — follow-ups use project's repo, first ships use user's selection
+    let owner: string | null = null;
+    let repo: string | null = null;
+
+    if (isFollowUp && projectId) {
+      const project = await getProjectById(projectId);
+      if (project?.repo) {
+        const parts = project.repo.split('/');
+        if (parts[0] && parts[1]) {
+          owner = parts[0];
+          repo = parts[1];
+        }
+      }
+    } else {
+      // First ship — use user's selected repo from the UI
+      owner = githubOwner || getGithubOwner(integration);
+      repo = githubRepo || getGithubRepo(integration);
+    }
+
+    if (!owner || !repo) {
+      return NextResponse.json(
+        { error: 'GitHub repository not configured. Select a repo in the Ship panel.' },
+        { status: 400 }
+      );
+    }
+
+    console.log('Executing plan on', `${owner}/${repo}`, 'branch:', plan.branch_name);
+
+    const repoOverrides = { owner, repo };
 
     // Step 1: Create GitHub issue
-    const issue = await createGithubIssue(plan.issue_title, plan.issue_body, githubToken);
+    const issue = await createGithubIssue(
+      plan.issue_title,
+      plan.issue_body,
+      githubToken,
+      repoOverrides
+    );
     console.log('Issue created:', issue.number);
 
     // Step 2: Create branch
-    await createBranch(plan.branch_name, githubToken);
+    await createBranch(plan.branch_name, githubToken, repoOverrides);
     console.log('Branch created:', plan.branch_name);
 
     // Step 3: Commit all files
     const committedFiles = [];
     for (const file of plan.files) {
-      await commitFile(file.path, file.content, plan.branch_name, githubToken);
+      await commitFile(file.path, file.content, plan.branch_name, githubToken, repoOverrides);
       committedFiles.push(file.path);
       console.log('Committed:', file.path);
     }
 
     // Step 4: Open PR
-    const pullRequest = await createPullRequest(plan.pr_title, plan.branch_name, githubToken);
+    const pullRequest = await createPullRequest(
+      plan.pr_title,
+      plan.branch_name,
+      githubToken,
+      repoOverrides
+    );
     console.log('PR opened:', pullRequest.number);
 
     // Step 5: Save branch name to meeting
@@ -76,12 +123,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Step 7: Create or update project
-    const repoInfo = getRepoInfo(githubOwner);
     const ticketItems = tickets ?? [];
     const ticketTitles = ticketItems?.map((t: any) => t.title) ?? [];
     const ticketIds = ticketItems?.map((t: any) => t.id) ?? [];
     const nonWorkflowFiles = committedFiles.filter((f) => !f.includes('.github'));
-    const baseUrl = `https://${repoInfo.owner}.github.io/${repoInfo.repo}/`;
+    const baseUrl = `https://${owner}.github.io/${repo}/`;
+    const fullRepo = `${owner}/${repo}`;
 
     if (isFollowUp && projectId) {
       // Update existing project
@@ -102,14 +149,13 @@ export async function POST(req: NextRequest) {
 
       if (!existingProject) {
         const newProjectId = `project-${Date.now()}`;
-        const repo = `${repoInfo.owner}/${repoInfo.repo}`;
         const projectDeployUrl = baseUrl;
 
         await saveProject({
           id: newProjectId,
           user_id: userId,
           name: meetingTitle || plan.issue_title,
-          repo,
+          repo: fullRepo,
           deployUrl: projectDeployUrl,
           branchBase: 'main',
           meetings: meetingId ? [meetingId] : [],

@@ -1,34 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth, currentUser } from '@clerk/nextjs/server';
 import { cookies } from 'next/headers';
-import { ensureUser } from '@/lib/ensureUser';
 import { getSettingsRedirectUrl } from '@/lib/oauth/redirect';
 import { saveGithubIntegration } from '@/lib/services/integrations';
 
 export async function GET(req: NextRequest) {
+  const cookieStore = await cookies();
+  const userId = cookieStore.get('oauth_user_id')?.value;
+  const orgId = cookieStore.get('oauth_org_id')?.value || null;
+  const storedState = cookieStore.get('oauth_state')?.value;
+
+  // Scrub OAuth cookies immediately (one-time use)
+  cookieStore.delete('oauth_state');
+  cookieStore.delete('oauth_user_id');
+  cookieStore.delete('oauth_org_id');
+
   try {
-    const session = await auth();
-    const user = await currentUser();
-
-    if (!session.userId || !user) {
-      return NextResponse.redirect(new URL('/sign-in', req.url));
+    if (!userId) {
+      const redirectUrl = getSettingsRedirectUrl(req);
+      redirectUrl.searchParams.set('github_error', 'session_lost');
+      redirectUrl.searchParams.set(
+        'github_error_detail',
+        'OAuth session expired. Please try connecting again.'
+      );
+      return NextResponse.redirect(redirectUrl);
     }
-
-    const userId = session.userId;
-    const email = user.emailAddresses[0].emailAddress;
-    await ensureUser(userId, email);
 
     const { searchParams } = new URL(req.url);
     const code = searchParams.get('code');
     const error = searchParams.get('error');
     const errorDescription = searchParams.get('error_description');
+    const stateParam = searchParams.get('state');
 
     // Validate OAuth state to prevent CSRF
-    const stateParam = searchParams.get('state');
-    const cookieStore = await cookies();
-    const storedState = cookieStore.get('oauth_state')?.value;
-    cookieStore.delete('oauth_state');
-
     if (!stateParam || stateParam !== storedState) {
       const redirectUrl = getSettingsRedirectUrl(req);
       redirectUrl.searchParams.set('github_error', 'invalid_state');
@@ -100,6 +103,7 @@ export async function GET(req: NextRequest) {
 
     await saveGithubIntegration({
       userId,
+      orgId,
       githubToken: accessToken,
       githubOwner: githubUser.login,
     });

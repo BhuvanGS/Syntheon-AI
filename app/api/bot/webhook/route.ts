@@ -12,109 +12,117 @@ import {
   updateProject,
 } from '@/lib/db';
 import { verifyWebhookSignature } from '@/lib/webhook';
+import crypto from 'crypto';
+
+// Strict alphanumeric+hyphen/underscore only — prevents SSRF and command injection via bot_id
+const BOT_ID_REGEX = /^[a-zA-Z0-9_-]{1,128}$/;
+
+function isValidBotId(id: unknown): id is string {
+  return typeof id === 'string' && BOT_ID_REGEX.test(id);
+}
 
 export async function POST(req: NextRequest) {
+  const webhookSigningSecret = process.env.SKRIBBY_WEBHOOK_SECRET;
+  const webhookAccessToken = process.env.WEBHOOK_ACCESS_TOKEN;
+
+  // ── Require at least one auth mechanism configured ───────────────
+  if (!webhookAccessToken && !webhookSigningSecret) {
+    console.error('[bot/webhook] No authentication secrets configured');
+    return NextResponse.json({ error: 'Webhook not configured' }, { status: 503 });
+  }
+
+  // ── Read raw body for HMAC (must read before any parsing) ────────
+  let rawPayload: string;
   try {
-    const token = req.nextUrl.searchParams.get('token');
-    const webhookSigningSecret = process.env.SKRIBBY_WEBHOOK_SECRET;
-    const webhookAccessToken =
-      process.env.WEBHOOK_ACCESS_TOKEN ?? process.env.SKRIBBY_WEBHOOK_SECRET;
-    const rawPayload = await req.text();
-    const signature =
-      req.headers.get('x-webhook-signature') ??
-      req.headers.get('x-skribby-signature') ??
-      req.headers.get('webhook-signature') ??
-      req.headers.get('x-signature');
+    rawPayload = await req.text();
+  } catch {
+    return NextResponse.json({ error: 'Failed to read body' }, { status: 400 });
+  }
 
-    console.log('📋 Raw Payload:', rawPayload);
-    console.log('🔑 Signature Header:', signature);
-    console.log('🪪 Token present:', Boolean(token));
+  const token = req.nextUrl.searchParams.get('token');
+  const signature =
+    req.headers.get('x-webhook-signature') ??
+    req.headers.get('x-skribby-signature') ??
+    req.headers.get('webhook-signature') ??
+    req.headers.get('x-signature');
 
-    if (!webhookAccessToken && !webhookSigningSecret) {
-      console.error('WEBHOOK_ACCESS_TOKEN and SKRIBBY_WEBHOOK_SECRET not configured');
-      return NextResponse.json({ error: 'Webhook not configured' }, { status: 500 });
-    }
+  let authenticated = false;
 
-    if (token && webhookAccessToken && token === webhookAccessToken) {
-      console.log('✅ Webhook token accepted');
-    } else if (token) {
-      console.warn('❌ Invalid webhook token');
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    } else if (!signature) {
-      const allowUnsignedWebhooks =
-        process.env.NODE_ENV !== 'production' &&
-        process.env.SKRIBBY_ALLOW_UNSIGNED_WEBHOOKS === 'true';
-
-      if (!allowUnsignedWebhooks) {
-        console.warn('❌ Missing webhook signature header');
-        return NextResponse.json({ error: 'Missing signature' }, { status: 401 });
-      }
-
-      console.warn(
-        '⚠️ No webhook signature header, allowing unsigned webhook only in local development'
-      );
+  // Token-based auth path (used when Skribby embeds token in the URL)
+  if (token && webhookAccessToken) {
+    const tokenBuf = Buffer.from(token);
+    const expectedBuf = Buffer.from(webhookAccessToken);
+    if (tokenBuf.length === expectedBuf.length && crypto.timingSafeEqual(tokenBuf, expectedBuf)) {
+      authenticated = true;
     } else {
-      if (!webhookSigningSecret) {
-        console.error('SKRIBBY_WEBHOOK_SECRET not configured for signature verification');
-        return NextResponse.json({ error: 'Webhook not configured' }, { status: 500 });
-      }
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+  }
 
-      const isValid = verifyWebhookSignature({
-        secret: webhookSigningSecret,
-        payload: rawPayload,
-        signature: signature,
-      });
+  // HMAC signature path (preferred — no secret in URL)
+  if (!authenticated && signature) {
+    if (!webhookSigningSecret) {
+      return NextResponse.json({ error: 'Webhook not configured' }, { status: 503 });
+    }
+    const isValid = verifyWebhookSignature({
+      secret: webhookSigningSecret,
+      payload: rawPayload,
+      signature,
+    });
+    if (!isValid) {
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+    }
+    authenticated = true;
+  }
 
-      if (!isValid) {
-        console.warn('❌ Webhook signature verification failed');
-        return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
-      }
+  // Neither token nor signature present — always reject (dev bypass removed)
+  if (!authenticated) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
-      console.log('✅ Webhook signature verified');
+  // ── Parse JSON body ──────────────────────────────────────────────
+  let payload: any;
+  try {
+    payload = JSON.parse(rawPayload);
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
+
+  // ── Process event ────────────────────────────────────────────────
+  try {
+    if (payload.type !== 'status_update') {
+      return NextResponse.json({ ok: true });
     }
 
-    // Parse JSON after verification
-    const payload = JSON.parse(rawPayload);
-
-    // Rest of your existing code stays the same...
-    if (payload.type !== 'status_update') return NextResponse.json({ ok: true });
+    // Handle not_admitted status
     if (payload.data?.new_status === 'not_admitted') {
       const botId = payload.bot_id;
-
-      if (!botId) {
-        console.error('No botId in payload:', JSON.stringify(payload));
+      if (!isValidBotId(botId)) {
         return NextResponse.json({ ok: true });
       }
-
       const meeting = await getMeetingByBotId(botId);
-      if (!meeting) {
-        console.error('No meeting found for botId:', botId);
-        return NextResponse.json({ ok: true });
+      if (meeting) {
+        await updateMeetingStatus(meeting.id, 'not_admitted');
       }
-
-      await updateMeetingStatus(meeting.id, 'not_admitted');
       return NextResponse.json({ ok: true });
     }
-    if (payload.data?.new_status !== 'finished') return NextResponse.json({ ok: true });
 
-    const botId = payload.bot_id;
-    console.log('Meeting finished, botId:', botId);
-
-    if (!botId) {
-      console.error('No botId in payload:', JSON.stringify(payload));
+    if (payload.data?.new_status !== 'finished') {
       return NextResponse.json({ ok: true });
+    }
+
+    // Validate bot_id strictly — prevent SSRF/command injection
+    const botId = payload.bot_id;
+    if (!isValidBotId(botId)) {
+      return NextResponse.json({ error: 'Invalid bot_id format' }, { status: 400 });
     }
 
     const meeting = await getMeetingByBotId(botId);
-
     if (!meeting) {
-      console.error('No meeting found for botId:', botId);
       return NextResponse.json({ ok: true });
     }
 
-    console.log('Fetching transcript for bot:', botId);
     const botData = await getBotTranscript(botId);
-
     const rawTranscript = botData.transcript;
     const transcript = Array.isArray(rawTranscript)
       ? rawTranscript.map((t: any) => t.transcript).join(' ')
@@ -122,16 +130,12 @@ export async function POST(req: NextRequest) {
         ? rawTranscript
         : '';
 
-    console.log('Transcript length:', transcript.length);
-
     if (!transcript.trim()) {
-      console.error('Empty transcript');
       await updateMeetingStatus(meeting.id, 'failed');
       return NextResponse.json({ ok: true });
     }
 
     const { tickets, title } = await extractTickets(transcript, meeting.id);
-    console.log(`Extracted ${tickets.length} tickets`);
 
     const ticketsWithUser = tickets.map((ticket: any) => ({
       ...ticket,
@@ -142,7 +146,6 @@ export async function POST(req: NextRequest) {
     }));
 
     const insertedTickets = await saveExtractedTickets(ticketsWithUser);
-
     await updateMeetingSpecs(meeting.id, transcript, insertedTickets.length);
     await updateMeetingName(meeting.id, title);
 
@@ -151,8 +154,6 @@ export async function POST(req: NextRequest) {
         meeting.projectId,
         insertedTickets.map((ticket: any) => ticket.id)
       );
-      console.log('Tickets linked to project:', meeting.projectId);
-
       const project = await getProjectById(meeting.projectId);
       if (project && project.meetings[0] === meeting.id) {
         await updateProject(meeting.projectId, { name: title });
@@ -160,8 +161,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ ok: true });
-  } catch (error) {
-    console.error('Webhook error:', error);
+  } catch {
     return NextResponse.json({ error: 'Webhook failed' }, { status: 500 });
   }
 }

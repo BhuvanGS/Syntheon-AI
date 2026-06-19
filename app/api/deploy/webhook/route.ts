@@ -1,48 +1,63 @@
 // app/api/deploy/webhook/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { getMeetingByBotId, updateMeetingDeployUrl, getMeetingById } from '@/lib/db';
+import { updateMeetingDeployUrl } from '@/lib/db';
 import { db } from '@/db/index';
 import { meetings as meetingsTable } from '@/db/schema';
 import { isNull, isNotNull, desc, and } from 'drizzle-orm';
+import { verifyWebhookSignature } from '@/lib/webhook';
 
-async function getGithubPagesUrl(owner: string, repo: string): Promise<string | null> {
-  try {
-    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/pages`, {
-      headers: {
-        Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
-        Accept: 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-      },
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.html_url ?? null;
-  } catch {
-    return null;
-  }
+const GITHUB_WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET;
+
+function getGithubPagesUrl(owner: string, repo: string): string {
+  // GitHub Pages URL is deterministic — no API call needed
+  return `https://${owner}.github.io/${repo}/`;
 }
 
 export async function POST(req: NextRequest) {
-  try {
-    const payload = await req.json();
-    console.log('GitHub webhook ref:', payload.ref);
+  // ── HMAC Signature Verification ─────────────────────────────────
+  if (!GITHUB_WEBHOOK_SECRET) {
+    console.error('[deploy/webhook] GITHUB_WEBHOOK_SECRET not configured');
+    return NextResponse.json({ error: 'Webhook not configured' }, { status: 503 });
+  }
 
+  const rawBody = await req.text();
+  const signature = req.headers.get('x-hub-signature-256') ?? '';
+
+  if (!signature) {
+    return NextResponse.json({ error: 'Missing signature' }, { status: 401 });
+  }
+
+  const isValid = verifyWebhookSignature({
+    secret: GITHUB_WEBHOOK_SECRET,
+    payload: rawBody,
+    signature,
+  });
+
+  if (!isValid) {
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+  }
+
+  // ── Process payload ──────────────────────────────────────────────
+  let payload: any;
+  try {
+    payload = JSON.parse(rawBody);
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
+
+  try {
     if (payload.ref !== 'refs/heads/main' || !payload.repository) {
       return NextResponse.json({ ok: true });
     }
 
-    const owner = payload.repository.owner.login;
-    const repo = payload.repository.name;
+    const owner = payload.repository?.owner?.login;
+    const repo = payload.repository?.name;
 
-    console.log('Push to main detected for:', owner, repo);
-
-    const deployUrl = await getGithubPagesUrl(owner, repo);
-    if (!deployUrl) {
-      console.error('Could not fetch GitHub Pages URL');
-      return NextResponse.json({ ok: true });
+    if (!owner || !repo || typeof owner !== 'string' || typeof repo !== 'string') {
+      return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
     }
 
-    console.log('Deploy URL fetched:', deployUrl);
+    const deployUrl = getGithubPagesUrl(owner, repo);
 
     // Find most recent meeting with branchName but no deployUrl
     const [meeting] = await db
@@ -53,16 +68,12 @@ export async function POST(req: NextRequest) {
       .limit(1);
 
     if (!meeting) {
-      console.log('No meeting found needing deploy URL');
       return NextResponse.json({ ok: true });
     }
 
     await updateMeetingDeployUrl(meeting.id, deployUrl);
-    console.log('Deploy URL saved for meeting:', meeting.id, deployUrl);
-
     return NextResponse.json({ ok: true });
-  } catch (error) {
-    console.error('Deploy webhook error:', error);
+  } catch {
     return NextResponse.json({ error: 'Webhook failed' }, { status: 500 });
   }
 }

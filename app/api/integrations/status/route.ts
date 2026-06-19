@@ -4,12 +4,12 @@ import { getIntegrationStatus } from '@/lib/services/integrations';
 
 export async function GET() {
   try {
-    const { userId } = await auth();
+    const { userId, orgId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const status = await getIntegrationStatus(userId);
+    const status = await getIntegrationStatus(userId, orgId);
     return NextResponse.json(status);
   } catch (error) {
     console.error('Integrations status error:', error);

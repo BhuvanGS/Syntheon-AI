@@ -156,10 +156,10 @@ async function attemptCall(
     });
 
     if (!res.ok) {
-      const errBody = await res.json().catch(() => ({}));
+      console.error(`[callModel] Groq API error ${res.status} for model ${modelMeta.id}`);
       return {
         success: false,
-        error: `Groq API error ${res.status}: ${JSON.stringify(errBody).slice(0, 200)}`,
+        error: `Groq API error (status ${res.status})`,
       };
     }
 

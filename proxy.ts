@@ -1,6 +1,7 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 
+// Public routes — no auth required
 const isPublicRoute = createRouteMatcher([
   '/',
   '/pricing',
@@ -14,24 +15,33 @@ const isPublicRoute = createRouteMatcher([
   '/api/bot/webhook(.*)',
   '/api/deploy/webhook(.*)',
   '/api/auth/webhook(.*)',
-  '/api/bot/create',
+  '/api/oauth/github/callback',
   '/api/webhooks(.*)',
 ]);
+
+// API routes — return 401 JSON instead of 307 redirect to prevent endpoint enumeration
+const isApiRoute = createRouteMatcher(['/api/(.*)']);
 
 const isDashboardRoute = createRouteMatcher(['/dashboard(.*)', '/project(.*)', '/settings(.*)']);
 
 export default clerkMiddleware(async (auth, request) => {
+  // Always let public routes through
   if (isPublicRoute(request)) return NextResponse.next();
 
-  const { userId, orgId } = await auth();
+  const session = await auth();
 
-  // Not signed in → protect (Clerk handles redirect to sign-in)
-  if (!isPublicRoute(request)) {
+  // Not authenticated
+  if (!session.userId) {
+    // API routes → return 401 JSON (no redirect that would leak route existence)
+    if (isApiRoute(request)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    // Browser routes → redirect to sign-in
     await auth.protect();
   }
 
-  // Signed in but no org → redirect to onboarding
-  if (userId && !orgId && isDashboardRoute(request)) {
+  // Authenticated but no org → redirect to onboarding for dashboard routes
+  if (session.userId && !session.orgId && isDashboardRoute(request)) {
     const onboardingUrl = new URL('/onboarding', request.url);
     return NextResponse.redirect(onboardingUrl);
   }

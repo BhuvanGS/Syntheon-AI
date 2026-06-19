@@ -60,6 +60,14 @@ export default function SignInPage() {
   const [loading, setLoading] = useState(false);
   const [acceptingInvite, setAcceptingInvite] = useState(false);
 
+  // Redirect already-signed-in users away from the login page
+  useEffect(() => {
+    if (!authLoaded) return;
+    if (isSignedIn && !clerkTicket) {
+      router.replace('/onboarding');
+    }
+  }, [authLoaded, isSignedIn, clerkTicket]);
+
   // Handle organization invitation ticket
   useEffect(() => {
     if (!clerkTicket || clerkStatus !== 'sign_in') return;

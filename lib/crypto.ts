@@ -24,8 +24,10 @@ export function encrypt(text: string): string {
 
 export function decrypt(ciphertext: string): string {
   const parts = ciphertext.split(':');
-  // If the ciphertext doesn't look encrypted (no colons), return as-is for backward compat
-  if (parts.length !== 3) return ciphertext;
+  // Reject anything not in the expected iv:authTag:ciphertext format
+  if (parts.length !== 3) {
+    throw new Error('Invalid ciphertext format — value is not properly encrypted');
+  }
 
   const [ivHex, authTagHex, encrypted] = parts;
   const iv = Buffer.from(ivHex, 'hex');

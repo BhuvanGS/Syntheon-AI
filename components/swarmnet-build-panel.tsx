@@ -157,13 +157,7 @@ function getPhaseStatus(
   return 'pending';
 }
 
-function AgentTierSelector({
-  projectId,
-  agentTier,
-}: {
-  projectId: string;
-  agentTier: string;
-}) {
+function AgentTierSelector({ projectId, agentTier }: { projectId: string; agentTier: string }) {
   const [tier, setTier] = useState(agentTier);
   const [saving, setSaving] = useState(false);
 

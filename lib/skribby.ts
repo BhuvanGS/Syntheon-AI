@@ -35,8 +35,8 @@ export async function createBot(meetingUrl: string, webhookUrl: string) {
   });
 
   if (!res.ok) {
-    const err = await res.json();
-    throw new Error(`Skribby error: ${JSON.stringify(err)}`);
+    console.error(`[Skribby] createBot failed with status ${res.status}`);
+    throw new Error(`Failed to create Skribby bot (status ${res.status})`);
   }
 
   return res.json(); // returns { id, status, ... }

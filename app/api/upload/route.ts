@@ -35,9 +35,70 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'File size exceeds 15MB limit' }, { status: 400 });
     }
 
-    // Validate file type against allowlist
-    const ALLOWED_TYPE_PREFIXES = ['image/', 'application/pdf', 'text/', 'video/', 'audio/'];
-    if (!ALLOWED_TYPE_PREFIXES.some((t) => file.type.startsWith(t))) {
+    // Read first 8 bytes for magic-byte validation (cannot trust client MIME type)
+    const headerBytes = new Uint8Array(await file.slice(0, 8).arrayBuffer());
+    const hex = Array.from(headerBytes)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+
+    // Blocked types regardless of claimed MIME: HTML, JS, SVG-with-script, PHP, shell
+    const BLOCKED_MAGIC: Record<string, string> = {
+      '3c21444f4354': 'html', // <!DOCT
+      '3c68746d6c': 'html', // <html
+      '3c736372697': 'script', // <scrip
+      '23212f62696e': 'shell', // #!/bin
+      '3c3f706870': 'php', // <?php
+    };
+    for (const [magic, label] of Object.entries(BLOCKED_MAGIC)) {
+      if (hex.startsWith(magic)) {
+        return NextResponse.json({ error: `${label} files are not allowed` }, { status: 400 });
+      }
+    }
+
+    // Known safe magic bytes — at least one must match
+    const ALLOWED_MAGIC_PREFIXES = [
+      'ffd8ff', // JPEG
+      '89504e47', // PNG
+      '47494638', // GIF
+      '52494646', // WEBP (RIFF)
+      '25504446', // PDF
+      '494433', // MP3
+      '1a45dfa3', // WebM/MKV
+      '000000', // MP4/MOV (ftyp box)
+      '66747970', // MP4 (ftyp)
+      'fffb', // MP3 no ID3
+      '4f676753', // OGG
+    ];
+
+    // Text/image types without a distinctive header — allow by safe MIME only
+    const ALLOWED_TEXT_TYPES = ['text/plain', 'text/csv', 'text/markdown'];
+    const ALLOWED_IMAGE_TYPES = [
+      'image/jpeg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+      'image/avif',
+    ];
+    const ALLOWED_BINARY_TYPES = [
+      'application/pdf',
+      'video/mp4',
+      'video/webm',
+      'audio/mpeg',
+      'audio/ogg',
+      'audio/wav',
+    ];
+
+    const claimedType = file.type.toLowerCase();
+    const isMagicSafe = ALLOWED_MAGIC_PREFIXES.some((m) => hex.startsWith(m));
+    const isMimeSafe =
+      ALLOWED_TEXT_TYPES.includes(claimedType) ||
+      ALLOWED_IMAGE_TYPES.includes(claimedType) ||
+      ALLOWED_BINARY_TYPES.some((t) => claimedType === t);
+
+    if (!isMagicSafe && !ALLOWED_TEXT_TYPES.includes(claimedType)) {
+      return NextResponse.json({ error: 'File type not allowed' }, { status: 400 });
+    }
+    if (!isMimeSafe) {
       return NextResponse.json({ error: 'File type not allowed' }, { status: 400 });
     }
 
@@ -55,7 +116,7 @@ export async function POST(req: NextRequest) {
       });
 
     if (uploadError) {
-      console.error('Storage upload error:', uploadError);
+      console.error('[upload] Storage upload error:', uploadError.message);
       return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 });
     }
 
