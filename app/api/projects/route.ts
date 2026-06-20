@@ -1,30 +1,42 @@
 // app/api/projects/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { randomUUID } from 'crypto';
 import {
   getProjectsByOrg,
+  getProjectsForMember,
   getProjectByMeetingId,
   saveProjectForOrg,
   addProjectMember,
 } from '@/lib/db';
 import { requireAuth, isOrgAdmin } from '@/lib/rbac';
+import { ensureUser } from '@/lib/ensureUser';
+import { currentUser } from '@clerk/nextjs/server';
 
 export async function GET(req: NextRequest) {
   try {
-    const { userId, orgId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    if (!orgId) return NextResponse.json({ error: 'No organization' }, { status: 403 });
+    const ctx = await requireAuth();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { userId, orgId } = ctx;
 
     const { searchParams } = new URL(req.url);
     const meetingId = searchParams.get('meetingId');
 
     if (meetingId) {
       const project = await getProjectByMeetingId(meetingId);
+      if (!project || project.org_id !== orgId) {
+        return NextResponse.json(null);
+      }
+      if (!isOrgAdmin(ctx)) {
+        const memberProjects = await getProjectsForMember(orgId, userId);
+        const hasAccess = memberProjects.some((entry) => entry.id === project.id);
+        return NextResponse.json(hasAccess ? project : null);
+      }
       return NextResponse.json(project ?? null);
     }
 
-    const projects = await getProjectsByOrg(orgId);
+    const projects = isOrgAdmin(ctx)
+      ? await getProjectsByOrg(orgId)
+      : await getProjectsForMember(orgId, userId);
     return NextResponse.json(projects);
   } catch (error) {
     console.error('Failed to fetch projects:', error);
@@ -38,6 +50,13 @@ export async function POST(req: NextRequest) {
     if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     if (!isOrgAdmin(ctx)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     const { userId, orgId } = ctx;
+
+    // Ensure user exists in local DB before FK-referenced inserts
+    const clerkUser = await currentUser();
+    if (clerkUser) {
+      const email = clerkUser.emailAddresses?.[0]?.emailAddress ?? '';
+      await ensureUser(userId, email);
+    }
 
     const body = await req.json();
     const name = String(body?.name ?? '').trim();

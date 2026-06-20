@@ -1,6 +1,6 @@
 import { db } from '@/db/index';
 import { integrations } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 import { decrypt } from '@/lib/crypto';
 
 export type IntegrationRow = Record<string, any> | null;
@@ -9,22 +9,23 @@ export async function getIntegrationByUserId(
   userId: string,
   orgId?: string | null
 ): Promise<IntegrationRow> {
-  // If orgId provided, prefer org-scoped integration
+  // If orgId is provided, treat the integration as org-shared so all members
+  // in the active organization see the same connection state.
   if (orgId) {
     const [orgScoped] = await db
       .select()
       .from(integrations)
-      .where(and(eq(integrations.userId, userId), eq(integrations.orgId, orgId)))
+      .where(eq(integrations.orgId, orgId))
+      .orderBy(desc(integrations.updatedAt))
       .limit(1);
-    if (orgScoped) {
-      return {
-        github_token: orgScoped.githubToken,
-        github_owner: orgScoped.githubOwner,
-        github_repo: orgScoped.githubRepo,
-        github_access_token: orgScoped.githubAccessToken,
-        webhook_secret: orgScoped.webhookSecret,
-      };
-    }
+    if (!orgScoped) return null;
+    return {
+      github_token: orgScoped.githubToken,
+      github_owner: orgScoped.githubOwner,
+      github_repo: orgScoped.githubRepo,
+      github_access_token: orgScoped.githubAccessToken,
+      webhook_secret: orgScoped.webhookSecret,
+    };
   }
 
   // Fall back to user-scoped (legacy or no org)

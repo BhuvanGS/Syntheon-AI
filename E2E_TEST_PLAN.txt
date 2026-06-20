@@ -1,0 +1,736 @@
+================================================================================
+  SYNTHEON AI — END-TO-END TEST PLAN
+  Generated: Jun 20, 2026
+  Coverage: All pages, API routes, components, extension, auth flows
+================================================================================
+
+INSTRUCTIONS
+------------
+Test each item below in order. Mark PASS, FAIL, or SKIP with a brief note.
+Format:
+  [  ] Test - (type)
+       Components: ...
+       Feedback: ...
+
+================================================================================
+SECTION 1: AUTHENTICATION & ONBOARDING
+================================================================================
+
+[  ] Test - E2E (Fresh Account Google OAuth)
+     Components: sign-in page, /sso-callback, onboarding page, ClerkProvider
+     Steps: Incognito window → / → "Sign In" → "Continue with Google" → complete Google auth
+     Expected: Lands on /onboarding (NOT /sign-in loop). No "already signed in" error.
+     Feedback: Google sign in works one way meaning if the user is already signed in with google and tries to sign in again, it will redirect to the login page and tell user already signed in 
+     there is also an error where if the user is already signed in with google and tries to sign in again, it will redirect to the login page and tell user already signed in and it works only once 
+     meaning if the user tries to sign in again, it will not work and show error "already signed in" instead make it in a way where if the user somehow ends up in the login page while already signed in, it should redirect to the dashboard or onboarding page
+
+[  ] Test - E2E (Fresh Account GitHub OAuth)
+     Components: sign-up page, /sso-callback
+     Steps: Incognito → /sign-up → "Continue with GitHub" → complete GitHub auth
+     Expected: Lands on /onboarding
+     Feedback: same issue as Google OAuth
+
+[  ] Test - E2E (Email/Password Sign Up)
+     Components: sign-up page, Clerk
+     Steps: /sign-up → fill email + password → verify email if required
+     Expected: Account created, redirected to /onboarding
+     Feedback: same issue as Google OAuth
+
+[  ] Test - E2E (Email/Password Sign In)
+     Components: sign-in page
+     Steps: /sign-in → fill credentials → submit
+     Expected: Redirected to /dashboard (or /onboarding if no org)
+     Feedback: same issue as Google OAuth
+
+[  ] Test - Unit (Already Signed-In Guard)
+     Components: sign-in page, sign-up page, useAuth hook
+     Steps: Sign in → manually visit /sign-in and /sign-up
+     Expected: Immediately redirected away (to /onboarding or /dashboard)
+     Feedback: it redirects to the dashboard and onboarding page respectively
+
+[  ] Test - E2E (Onboarding — Create Organization)
+     Components: onboarding/page.tsx, Clerk createOrganization
+     Steps: Fresh account → /onboarding → "Create new organization" → name + slug
+     Expected: Org created, redirect to /dashboard
+     Feedback: created an organization and it redirects me to dashboard works as intended
+
+[  ] Test - E2E (Onboarding — Join Existing Org)
+     Components: onboarding/page.tsx, Clerk organizationList
+     Steps: Fresh account with invite → /onboarding → select org from list
+     Expected: Org switched, redirect to /dashboard
+     Feedback: joined an existing organization and it redirects me to dashboard works as intended
+
+[  ] Test - E2E (Organization Invitation)
+     Components: accept-invite/page.tsx, Clerk ticket strategy
+     Steps: Admin generates invite link → new user clicks link → accepts
+     Expected: User joins org, lands on /dashboard
+     Feedback: no invitation link found but email sent and the user can join successfully partially works as intented
+
+[  ] Test - E2E (Middleware Auth Protection)
+     Components: proxy.ts (middleware)
+     Steps: Sign out → try to visit /dashboard, /settings, /project
+     Expected: Redirected to /sign-in. API calls return 401 JSON.
+     Feedback: redirects the user to the login page if externals links are hit without signing in works as intended
+
+================================================================================
+SECTION 2: LANDING / MARKETING PAGE
+================================================================================
+
+[  ] Test - Visual (Landing Page Renders)
+     Components: app/page.tsx, Orb, MagicRings, Antigravity, LogoLoop, GlassIcons, VerticalDock, DecryptedText
+     Steps: Visit / while signed out
+     Expected: All animations load, no console errors, responsive on mobile
+     Feedback: all animations load, no console errors, responsive on mobile works as intended
+
+[  ] Test - E2E (Landing → Sign In Navigation)
+     Components: Landing CTA buttons, Link components
+     Steps: Click "Get Started" / "Sign In" on landing
+     Expected: Routes to /sign-in or /sign-up correctly
+     Feedback: routes to /sign-in or /sign-up correctly works as intended
+
+[  ] Test - Visual (/how-it-works, /pricing, /legal)
+     Components: app/how-it-works/page.tsx, app/pricing/page.tsx, app/legal/page.tsx
+     Steps: Visit each page
+     Expected: Content renders, no 404s, links work
+     Feedback: content renders, no 404s, links work works as intended
+
+================================================================================
+SECTION 3: DASHBOARD (app/(dashboard)/dashboard/page.tsx)
+================================================================================
+
+[  ] Test - E2E (Admin Dashboard View)
+     Components: dashboard/page.tsx, Sidebar, NotificationBell, DynamicIslandSearch
+     Steps: Sign in as admin → /dashboard
+     Expected: Stats cards, member workload, projects list, recent meetings all load
+     Feedback: all components load correctly works as intended
+
+[  ] Test - E2E (Member Dashboard View)
+     Components: dashboard/page.tsx (non-admin branch)
+     Steps: Sign in as member (non-admin)
+     Expected: Shows "My Tickets", "My Projects", personal stats only
+     Feedback: shows "My Tickets", "My Projects", personal stats only works as intended
+
+[  ] Test - E2E (Sidebar Navigation)
+     Components: Sidebar, router
+     Steps: Click Dashboard, Meetings, Projects, Tickets, Members, Calendar
+     Expected: URL updates (?view=...), correct section renders
+     Feedback: URL updates (?view=...), correct section renders works as intended
+
+[  ] Test - E2E (Dynamic Island Search)
+     Components: DynamicIslandSearch
+     Steps: Type in search bar → select ticket/meeting/project
+     Expected: Navigates to correct detail view
+     Feedback: navigates to correct detail view works as intended
+
+[  ] Test - E2E (Notification Bell)
+     Components: NotificationBell
+     Steps: Click bell icon, mark all as read
+     Expected: Notifications list opens, read-all API called, badge clears
+     Feedback: works as intended
+
+[  ] Test - E2E (Project Create from Dashboard)
+     Components: ProjectCreateDialog, dashboard/page.tsx
+     Steps: Dashboard empty state → "Create project" → fill form → submit
+     Expected: Project created, redirected to project page
+     Feedback: project created and works as intended 
+
+[  ] Test - E2E (Delete Meeting from Dashboard)
+     Components: dashboard/page.tsx, MeetingCards
+     Steps: Dashboard → Meetings view → delete a meeting
+     Expected: Meeting removed, toast shown, list refreshes
+     Feedback: works as intented
+
+================================================================================
+SECTION 4: MEETINGS
+================================================================================
+
+[  ] Test - E2E (Meeting Cards List)
+     Components: MeetingCards, dashboard view=meetings
+     Steps: View meetings list
+     Expected: Cards show platform, status, date, specs count. Status badges correct.
+     Feedback: works as intended
+
+[  ] Test - E2E (Meeting Detail — Specs & Tickets)
+     Components: TicketDetail, dashboard view=ticket-detail
+     Steps: Click a meeting card
+     Expected: Specs list, extracted tickets, transcript renders
+     Feedback: works as intended
+
+[  ] Test - E2E (Create Bot from Extension / Dashboard)
+     Components: MeetingCards "New Meeting" flow, /api/bot/create
+     Steps: Start a Google Meet / Zoom → send bot via extension or dashboard
+     Expected: Bot joins meeting, status updates to "processing", then "completed"
+     Feedback: works as intented   
+
+
+[  ] Test - E2E (Bot Continue / Webhook)
+     Components: /api/bot/continue, /api/bot/webhook
+     Steps: Bot webhook fires with transcript data
+     Expected: Meeting status updated, specs extracted, tickets created
+     Feedback: works as intended
+
+[  ] Test - E2E (Transcription API)
+     Components: /api/transcribe/route.ts
+     Steps: Upload or provide audio file
+     Expected: Returns transcript text
+     Feedback: works as intended
+
+================================================================================
+SECTION 5: PROJECTS
+================================================================================
+
+[  ] Test - E2E (Project Workspace — Kanban)
+     Components: project/page.tsx, ProjectsWorkspace, TicketsBoard
+     Steps: /project?projectId=...&tab=kanban
+     Expected: Kanban board renders with backlog/in_progress/done/blocked columns
+     Feedback: works as intended but while deleteting a stage without tickets it shows the popup wheather to delete the stage with tickets or keep tickets and delete stage make it like delete the stage directly without any popup if there are no tickets found
+     
+[  ] Test - E2E (Project Workspace — List View)
+     Components: project/page.tsx, ProjectsWorkspace
+     Steps: Switch to "list" tab
+     Expected: Tickets shown as list, sortable/filterable
+     Feedback: works as intended
+
+[  ] Test - E2E (Project Workspace — Meetings Tab)
+     Components: project/page.tsx
+     Steps: Switch to "meetings" tab
+     Expected: Meetings linked to project shown
+     Feedback: partially works as it does not show the meetings which are imported to the project
+
+[  ] Test - E2E (Project Workspace — Dependencies Tab)
+     Components: project/page.tsx, ticket-dependency-graph.tsx
+     Steps: Switch to "dependencies" tab
+     Expected: Dependency graph renders showing ticket relationships
+     Feedback: works as intented
+
+[  ] Test - E2E (Project Workspace — Members Tab)
+     Components: project/page.tsx
+     Steps: Switch to "members" tab
+     Expected: Project members listed
+     Feedback: projects members are listed but heres the major problem. people who are in the organization BUT not added to the any projects still shows add member to project BUT when i go to the user panel the user has the project already there without the admin adding him to the project 
+
+[  ] Test - E2E (Project Workspace — Analytics Tab)
+     Components: project/page.tsx
+     Steps: Switch to "analytics" tab
+     Expected: Charts/statistics render
+     Feedback: works as intended
+
+[  ] Test - E2E (Project Create Dialog)
+     Components: ProjectCreateDialog
+     Steps: Click "New Project" → fill name, context, deployUrl, branchBase → submit
+     Expected: POST /api/projects succeeds, redirect to new project
+     Feedback: works as intended
+
+[  ] Test - E2E (Import Meeting Tickets to Project)
+     Components: project-ticket-import-dialog.tsx, /api/projects/[id]/import-tickets
+     Steps: Open project → import tickets from meeting
+     Expected: Tickets added to project, dependency inference runs
+     Feedback: works as intended
+
+[  ] Test - E2E (Project Meeting Dialog)
+     Components: project-meeting-dialog.tsx
+     Steps: Start meeting under a project
+     Expected: Meeting created with projectId linked
+     Feedback: works as intended
+
+[  ] Test - E2E (Delete Project)
+     Components: dashboard/page.tsx (project delete)
+     Steps: Delete a project
+     Expected: Project removed, associated data handled, toast shown
+     Feedback: works as intended
+
+[  ] Test - API (/api/projects CRUD)
+     Components: /api/projects/route.ts, /api/projects/[id]/route.ts
+     Steps: GET, POST, PATCH, DELETE via curl or UI
+     Expected: All operations work, auth enforced, org-scoped
+     Feedback: works as intended but please refer to the projects once 
+
+================================================================================
+SECTION 6: TICKETS
+================================================================================
+
+[  ] Test - E2E (All Tickets Board)
+     Components: TicketsBoard, dashboard view=tickets
+     Steps: /dashboard?view=tickets
+     Expected: All org tickets shown, draggable between columns
+     Feedback: works as intended and only tickets can be dragged b/w columns
+
+[  ] Test - E2E (Ticket Detail View)
+     Components: TicketDetail, dashboard view=ticket-detail
+     Steps: Click a ticket
+     Expected: Full ticket view with title, description, status, assignee, due date
+     Feedback: works as intended
+
+[  ] Test - E2E (Create Manual Ticket)
+     Components: ManualTicketDialog
+     Steps: Click "New Ticket" → fill title, description → submit
+     Expected: Ticket created, appears in board
+     Feedback: works as intended
+
+[  ] Test - E2E (Ticket Status Change)
+     Components: TicketsBoard, TicketDetail
+     Steps: Drag ticket to "in_progress" or click status dropdown
+     Expected: Status updates, persisted to DB
+     Feedback: works as intended
+
+[  ] Test - E2E (Assignee Picker)
+     Components: AssigneePicker, TicketDetail
+     Steps: Open ticket → change assignee
+     Expected: Assignee updates, notification may fire
+     Feedback:  works as intended
+
+[  ] Test - E2E (Ticket Comments)
+     Components: TicketCommentsPanel, /api/tickets/[id]/comments
+     Steps: Open ticket → add comment → submit
+     Expected: Comment appears, persisted, mention editor works
+     Feedback: works as intended
+
+[  ] Test - E2E (Ticket Attachments)
+     Components: TicketAttachmentsPanel, /api/tickets/[id]/attachments, /api/upload
+     Steps: Open ticket → upload file → view/download
+     Expected: File uploads, appears in list, download works
+     Feedback: works as intended
+
+[  ] Test - E2E (Ticket Activity Log)
+     Components: TicketActivityPanel, /api/tickets/[id]/activities
+     Steps: Make changes to ticket → view activity panel
+     Expected: Activities recorded (status change, assignee change, etc.)
+     Feedback: works as intended
+
+[  ] Test - E2E (Ticket Timeline)
+     Components: TicketTimelinePanel
+     Steps: View ticket with history
+     Expected: Timeline renders with dates and events
+     Feedback: works as intended
+
+[  ] Test - E2E (Ticket Dependencies — Add)
+     Components: TicketDependencyPanel, /api/tickets/[id]/dependencies
+     Steps: Open ticket → add dependency on another ticket
+     Expected: Dependency created, blocker modal shows if unresolved
+     Feedback: works as intended
+
+[  ] Test - E2E (Ticket Dependencies — Blocker Modal)
+     Components: DependencyBlockerModal
+     Steps: Try to move ticket with unresolved hard dependency to "in_progress"
+     Expected: Blocker modal appears, prevents move until resolved
+     Feedback: works as intended
+
+[  ] Test - E2E (Ticket Dependencies — Graph)
+     Components: TicketDependencyGraph
+     Steps: View project dependencies tab
+     Expected: Visual graph of ticket dependencies renders
+     Feedback: works as intended
+
+[  ] Test - E2E (Delete Ticket)
+     Components: TicketDetail, /api/tickets/[id]/route.ts
+     Steps: Open ticket → delete
+     Expected: Ticket removed, board refreshes
+     Feedback: works as intended
+
+[  ] Test - API (/api/tickets full CRUD + comments + attachments + dependencies + activities)
+     Components: All /api/tickets/* routes
+     Steps: Test each endpoint with valid/invalid data
+     Expected: Proper CRUD, auth enforcement, validation
+     Feedback: works as intended
+
+================================================================================
+SECTION 7: SHIP / EXECUTE FLOW
+================================================================================
+
+[  ] Test - E2E (Ship Plan Generation)
+     Components: TicketDetail Ship tab, /api/ship/plan
+     Steps: Open ticket detail → "Ship" → generate plan from tickets
+     Expected: Plan generated with feature request, steps, code changes
+     Feedback:
+
+[  ] Test - E2E (Ship Execute — First Ship with Repo Picker)
+     Components: TicketDetail, repo picker dropdown, /api/ship/execute
+     Steps: Generate plan → select repo from dropdown → "Execute Plan"
+     Expected: GitHub issues created, branch created, PR opened in SELECTED repo
+     Feedback:
+
+[  ] Test - E2E (Ship Execute — Follow-up Ship)
+     Components: TicketDetail, /api/ship/execute
+     Steps: Project already has repo configured → generate plan → execute
+     Expected: Uses project's existing repo, creates follow-up PR
+     Feedback:
+
+[  ] Test - E2E (Ship Execute — No Repo Selected Error)
+     Components: TicketDetail repo picker
+     Steps: First ship → don't select repo → click Execute
+     Expected: Button disabled or clear error: "GitHub repository not configured"
+     Feedback:
+
+[  ] Test - E2E (GitHub Repo Picker Population)
+     Components: TicketDetail, /api/swarmnet/repos
+     Steps: Open Ship tab on a first-time project
+     Expected: Dropdown loads user's GitHub repos. Loading state → populated list.
+     Feedback:
+
+================================================================================
+SECTION 8: INTEGRATIONS (GitHub)
+================================================================================
+
+[  ] Test - E2E (GitHub OAuth Connect)
+     Components: GitHubConnectButton, /api/oauth/github/initiate, /api/oauth/github/callback
+     Steps: Settings → Connections → "Connect GitHub" → authorize on GitHub
+     Expected: Returns to settings, shows "Connected", token stored in integrations table
+     Feedback: there is an issue where the connections shows to the user who is using it meaning USER A linked to GITHUB A in a fresh organization like you know if you have already linked your github in a admin account and you come as a memeber to a different organization then it shows that you have already linked your github in that organization.
+
+[  ] Test - E2E (GitHub OAuth for New Org)
+     Components: GitHub OAuth flow with orgId cookie
+     Steps: Fresh org → connect GitHub
+     Expected: Integration saved with correct org_id
+     Feedback: refer to the first issue in integrations 
+
+[  ] Test - E2E (GitHub Disconnect)
+     Components: /api/integrations/github/disconnect
+     Steps: Settings → Connections → "Disconnect GitHub"
+     Expected: Integration removed, UI shows "Connect" button again
+     Feedback: works as intended
+
+[  ] Test - E2E (Integration Status Check)
+     Components: /api/integrations/status
+     Steps: Visit /settings
+     Expected: Correctly shows connected/disconnected state
+     Feedback: works as intended
+
+[  ] Test - API (/api/integrations/*)
+     Components: /api/integrations/status, /api/integrations/github/disconnect
+     Steps: Test with valid/invalid auth, missing org
+     Expected: Proper JSON responses, 401 for unauthenticated
+     Feedback: works as intended
+
+================================================================================
+SECTION 9: SETTINGS (app/(dashboard)/settings/page.tsx)
+================================================================================
+
+[  ] Test - E2E (Settings Tabs Navigation)
+     Components: settings/page.tsx
+     Steps: Visit /settings → click Connections, Organization, Appearance
+     Expected: Correct tab content renders, URL may update
+     Feedback: works as intended
+
+[  ] Test - E2E (Connections Tab — GitHub)
+     Components: GitHubConnectButton
+     Steps: Settings → Connections
+     Expected: GitHub connect/disconnect UI works
+     Feedback: make it so that if the admin sets the org github it reflects to all members as well
+
+[  ] Test - E2E (Organization Tab — Invite Link)
+     Components: settings/page.tsx, Clerk organization
+     Steps: Settings → Organization → generate/copy invite link
+     Expected: Link generated, copy-to-clipboard works
+     Feedback: Ui is messed up just add three icons instead of the full link got it
+
+[  ] Test - E2E (Organization Tab — Switch Org)
+     Components: settings/page.tsx, Clerk org switcher
+     Steps: Settings → Organization → switch active org
+     Expected: Org changes, dashboard data refreshes for new org
+     Feedback: works as intended
+
+[  ] Test - E2E (Appearance Tab — Theme Toggle)
+     Components: settings/page.tsx, next-themes
+     Steps: Settings → Appearance → Light / Dark / System
+     Expected: Theme changes immediately, persisted
+     Feedback: works as intended
+
+[  ] Test - E2E (API Key Manager)
+     Components: ApiKeyManager, /api/generate-key, /api/check-key
+     Steps: Settings → generate API key → copy → revoke
+     Expected: Key created, works for API auth, revocation invalidates it
+     Feedback: works as intended
+
+================================================================================
+SECTION 10: SWARMNET / AI AGENTS
+================================================================================
+
+[  ] Test - E2E (SwarmNet Build Panel)
+     Components: swarmnet-build-panel.tsx, /api/swarmnet/agents/[id]/run
+     Steps: Project → Build tab → run agent
+     Expected: Agent executes, output shown, repo picker works
+     Feedback: 
+
+[  ] Test - E2E (SwarmNet Repos API)
+     Components: /api/swarmnet/repos
+     Steps: Call endpoint or use in UI
+     Expected: Returns user's GitHub repos list
+     Feedback:
+
+[  ] Test - E2E (SwarmNet Simulate)
+     Components: /api/swarmnet/simulate
+     Steps: Trigger simulation
+     Expected: Returns simulation results
+     Feedback:
+
+[  ] Test - E2E (SwarmNet Run Status)
+     Components: /api/swarmnet/runs/[id]
+     Steps: Start a run → poll for status
+     Expected: Status updates correctly (queued → running → complete/failed)
+     Feedback:
+
+================================================================================
+SECTION 11: UPLOAD / DOWNLOAD / STORAGE
+================================================================================
+
+[  ] Test - E2E (File Upload)
+     Components: /api/upload/route.ts, /api/upload/presigned, /api/upload/url
+     Steps: Upload file via ticket attachment or direct API
+     Expected: File stored in Supabase storage, URL returned
+     Feedback:
+
+[  ] Test - E2E (File Download)
+     Components: /api/download/route.ts
+     Steps: Click download on attachment
+     Expected: File downloads correctly
+     Feedback:
+
+[  ] Test - E2E (Presigned URL)
+     Components: /api/upload/presigned
+     Steps: Request presigned URL → upload directly to storage
+     Expected: URL generated, direct upload succeeds
+     Feedback:
+
+================================================================================
+SECTION 12: NOTIFICATIONS
+================================================================================
+
+[  ] Test - E2E (Notification List)
+     Components: NotificationBell, /api/notifications
+     Steps: Click bell when notifications exist
+     Expected: List of notifications renders
+     Feedback:
+
+[  ] Test - E2E (Mark All Read)
+     Components: /api/notifications/read-all
+     Steps: Click "Mark all as read"
+     Expected: All notifications marked read, badge disappears
+     Feedback:
+
+================================================================================
+SECTION 13: API KEYS & AUTH
+================================================================================
+
+[  ] Test - API (/api/check-key)
+     Components: /api/check-key/route.ts
+     Steps: Call with valid key, invalid key, missing key
+     Expected: 200 for valid, 401/403 for invalid/missing
+     Feedback:
+
+[  ] Test - API (/api/generate-key)
+     Components: /api/generate-key/route.ts
+     Steps: POST with auth
+     Expected: New key generated, stored in DB
+     Feedback:
+
+================================================================================
+SECTION 14: DEPLOYMENT WEBHOOKS
+================================================================================
+
+[  ] Test - API (/api/deploy/webhook)
+     Components: /api/deploy/webhook/route.ts
+     Steps: Send deploy webhook with valid/invalid token/signature
+     Expected: Valid → processed. Invalid → rejected.
+     Feedback:
+
+================================================================================
+SECTION 15: SYNTHEON BROWSER EXTENSION
+================================================================================
+
+[  ] Test - E2E (Extension Popup UI)
+     Components: popup/popup.html, popup/popup.css, popup/popup.js
+     Steps: Load extension in Chrome/Edge → click icon
+     Expected: Popup renders, status dot shows, platform detected or "—"
+     Feedback:
+
+[  ] Test - E2E (Extension — Meeting Detection)
+     Components: content.js, background.js
+     Steps: Open Google Meet / Zoom / Teams tab
+     Expected: Content script detects meeting, popup shows platform name
+     Feedback:
+
+[  ] Test - E2E (Extension — Send Bot Button)
+     Components: popup.js, content.js, /api/bot/create
+     Steps: In a meeting tab → click "Send Bot to Meeting"
+     Expected: API key validated, bot creation request sent, status updates
+     Feedback:
+
+[  ] Test - E2E (Extension — API Key Settings)
+     Components: popup.js (settings panel)
+     Steps: Click "Settings" in popup → paste API key → Save
+     Expected: Key saved to chrome.storage, toast shows "Saved"
+     Feedback:
+
+[  ] Test - E2E (Extension — View Dashboard Button)
+     Components: popup.js
+     Steps: Click "View Dashboard"
+     Expected: Opens syntheon app URL in new tab
+     Feedback:
+
+[  ] Test - E2E (Extension — Invalid API Key)
+     Components: popup.js
+     Steps: Enter invalid key → try to send bot
+     Expected: Error shown, bot not sent
+     Feedback:
+
+[  ] Test - Visual (Extension Icons)
+     Components: icons/icon16.png, icon32.png, icon48.png, icon128.png
+     Steps: Check extension icon in toolbar, Chrome extensions page
+     Expected: Icons render at all sizes, not blank/broken
+     Feedback:
+
+================================================================================
+SECTION 16: RBAC & PERMISSIONS
+================================================================================
+
+[  ] Test - E2E (Admin vs Member Views)
+     Components: dashboard/page.tsx, settings/page.tsx, canAdminProject
+     Steps: Compare admin and member UI
+     Expected: Admin sees all tabs, member workload, invite controls. Member sees limited view.
+     Feedback:
+
+[  ] Test - E2E (Project Member Access)
+     Components: /api/projects/[id]/members, project_members table
+     Steps: Non-member tries to access project
+     Expected: 403 or redirect
+     Feedback:
+
+================================================================================
+SECTION 17: CALENDAR / GANTT
+================================================================================
+
+[  ] Test - E2E (Gantt Calendar View)
+     Components: GanttCalendar, dashboard view=calendar
+     Steps: /dashboard?view=calendar
+     Expected: Timeline renders with tickets, dates, statuses
+     Feedback:
+
+[  ] Test - E2E (Date Range Picker)
+     Components: DateRangePicker
+     Steps: Use date picker in calendar or filters
+     Expected: Date range applied, data filters correctly
+     Feedback:
+
+================================================================================
+SECTION 18: MISC COMPONENTS
+================================================================================
+
+[  ] Test - Visual (Theme Provider)
+     Components: ThemeProvider, next-themes
+     Steps: Toggle light/dark mode
+     Expected: All components re-theme correctly, no flash
+     Feedback:
+
+[  ] Test - Visual (Toast / Sonner)
+     Components: Sonner, use-toast hook
+     Steps: Trigger actions that show toasts (create, delete, update)
+     Expected: Toasts appear, auto-dismiss, stack correctly
+     Feedback:
+
+[  ] Test - Visual (Dialog System)
+     Components: Dialog, AlertDialog (shadcn)
+     Steps: Open various dialogs (create project, delete confirm, manual ticket)
+     Expected: Overlay, focus trap, ESC close, scroll lock work
+     Feedback:
+
+[  ] Test - Visual (TipTap Editor)
+     Components: TiptapEditor, mention-editor.tsx
+     Steps: Create ticket with rich text, mention a user
+     Expected: Formatting renders, mentions highlighted, submit works
+     Feedback:
+
+[  ] Test - Visual (UI Component Library)
+     Components: All components/ui/*
+     Steps: Spot-check buttons, inputs, selects, tables, cards
+     Expected: Consistent styling, no broken states
+     Feedback:
+
+================================================================================
+SECTION 19: PERFORMANCE & EDGE CASES
+================================================================================
+
+[  ] Test - Perf (Large Ticket Board)
+     Components: TicketsBoard
+     Steps: Load project with 100+ tickets
+     Expected: Board renders without crashing, drag is smooth
+     Feedback:
+
+[  ] Test - Perf (Dashboard Load)
+     Components: dashboard/page.tsx
+     Steps: Hard refresh /dashboard
+     Expected: Loads under 2s, no waterfall of serial requests
+     Feedback:
+
+[  ] Test - Edge (Empty States)
+     Components: All list views
+     Steps: Visit pages with zero data (new org)
+     Expected: Friendly empty states, CTA buttons present
+     Feedback:
+
+[  ] Test - Edge (Network Failure)
+     Components: All fetch calls
+     Steps: Block network → perform actions
+     Expected: Graceful error states, retry options where applicable
+     Feedback:
+
+[  ] Test - Edge (Rapid Org Switch)
+     Components: Clerk org switcher
+     Steps: Rapidly switch between multiple orgs
+     Expected: No stale data from previous org, no race conditions
+     Feedback:
+
+================================================================================
+SECTION 20: SECURITY
+================================================================================
+
+[  ] Test - Security (API Route Auth)
+     Components: All /api/* routes
+     Steps: Call every API route without auth header/cookie
+     Expected: All return 401 (or 403 for authenticated but unauthorized)
+     Feedback:
+
+[  ] Test - Security (Webhook Token Validation)
+     Components: /api/deploy/webhook, /api/bot/webhook
+     Steps: Send webhooks with wrong/missing tokens
+     Expected: Rejected, not processed
+     Feedback:
+
+[  ] Test - Security (GitHub Token Encryption)
+     Components: lib/crypto.ts, integrations table
+     Steps: Inspect DB for GitHub tokens
+     Expected: Tokens are encrypted, not plaintext
+     Feedback:
+
+[  ] Test - Security (CORS / Allowed Origins)
+     Components: next.config.mjs
+     Steps: Request from unauthorized origin
+     Expected: Blocked or 403
+     Feedback:
+
+================================================================================
+COMPLETION CHECKLIST
+================================================================================
+[  ] All Section 1 tests passed (Auth)
+[  ] All Section 2 tests passed (Landing)
+[  ] All Section 3 tests passed (Dashboard)
+[  ] All Section 4 tests passed (Meetings)
+[  ] All Section 5 tests passed (Projects)
+[  ] All Section 6 tests passed (Tickets)
+[  ] All Section 7 tests passed (Ship)
+[  ] All Section 8 tests passed (Integrations)
+[  ] All Section 9 tests passed (Settings)
+[  ] All Section 10 tests passed (SwarmNet)
+[  ] All Section 11 tests passed (Upload/Download)
+[  ] All Section 12 tests passed (Notifications)
+[  ] All Section 13 tests passed (API Keys)
+[  ] All Section 14 tests passed (Webhooks)
+[  ] All Section 15 tests passed (Extension)
+[  ] All Section 16 tests passed (RBAC)
+[  ] All Section 17 tests passed (Calendar)
+[  ] All Section 18 tests passed (Misc UI)
+[  ] All Section 19 tests passed (Perf/Edge)
+[  ] All Section 20 tests passed (Security)
+
+================================================================================
+END OF TEST PLAN
+================================================================================

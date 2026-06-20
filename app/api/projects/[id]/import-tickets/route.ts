@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { randomUUID } from 'crypto';
 import {
+  addMeetingToProject,
   addTicketsToProject,
   createDependency,
   getMeetingById,
@@ -90,6 +91,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       project.id,
       importedTickets.map((ticket) => ticket.id)
     );
+    await addMeetingToProject(project.id, sourceMeetingId);
 
     let dependenciesMapped = 0;
     let dependencyInferenceWarning: string | null = null;

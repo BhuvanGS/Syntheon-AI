@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState, Suspense } from 'react';
+import { useCallback, useEffect, useMemo, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   FolderKanban,
@@ -94,9 +94,11 @@ function DashboardContent() {
   const { membership, organization } = useOrganization();
   const isAdmin = membership?.role === 'org:admin';
   // Admin-only: load memberships lazily
-  const { memberships } = useOrganization(
-    isAdmin ? { memberships: { infinite: true, pageSize: 50 } } : {}
+  const orgQueryConfig = useMemo(
+    () => (isAdmin ? { memberships: { infinite: true, pageSize: 50 } } : {}),
+    [isAdmin]
   );
+  const { memberships } = useOrganization(orgQueryConfig);
 
   // Drive view from URL — no state needed, avoids sync delay
   const currentView: ViewType = (searchParams.get('view') as ViewType) || 'dashboard';
@@ -108,6 +110,8 @@ function DashboardContent() {
   const [isProjectCreateOpen, setIsProjectCreateOpen] = useState(false);
   const [isMeetingTicketOpen, setIsMeetingTicketOpen] = useState(false);
   const [meetingTicketMeetingId, setMeetingTicketMeetingId] = useState<string | null>(null);
+
+  const orgId = organization?.id;
 
   useEffect(() => {
     // Wait until Clerk has resolved membership (undefined = still loading)
@@ -149,7 +153,7 @@ function DashboardContent() {
     return () => {
       isMounted = false;
     };
-  }, [membership]);
+  }, [membership === undefined, orgId]);
 
   function handleViewChange(view: ViewType) {
     if (view === 'dashboard') {

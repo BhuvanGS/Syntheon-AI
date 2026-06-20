@@ -21,6 +21,8 @@ import {
   ShieldCheck,
   UserMinus,
   ChevronDown,
+  ExternalLink,
+  X,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -93,6 +95,7 @@ function SettingsContent() {
   const [isProjectCreateOpen, setIsProjectCreateOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviting, setInviting] = useState(false);
+  const [generatedInviteLink, setGeneratedInviteLink] = useState('');
   const [newOrgName, setNewOrgName] = useState('');
   const [creatingOrg, setCreatingOrg] = useState(false);
   const [orgName, setOrgName] = useState('');
@@ -236,11 +239,32 @@ function SettingsContent() {
     if (!inviteEmail.trim() || !organization) return;
     setInviting(true);
     try {
-      await organization.inviteMember({ emailAddress: inviteEmail.trim(), role: 'org:member' });
-      setInviteEmail('');
-      setInviteDialogOpen(false);
+      const res = await fetch('/api/organization/invite-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emailAddress: inviteEmail.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || 'Failed to create invite');
+      }
+
+      const inviteUrl = String(data?.invitation?.url ?? '').trim();
+      if (!inviteUrl) {
+        throw new Error('Invite created, but no invite URL was returned.');
+      }
+
+      setGeneratedInviteLink(inviteUrl);
+
+      try {
+        await navigator.clipboard.writeText(inviteUrl);
+        toast({ title: 'Invite sent', description: 'Invitation link copied to clipboard.' });
+      } catch {
+        toast({ title: 'Invite sent', description: 'Copy the invitation link below.' });
+      }
+
       await organization?.reload?.();
-      toast({ title: 'Invite sent', description: `Invite sent to ${inviteEmail.trim()}` });
+      setInviteEmail('');
     } catch (err: any) {
       toast({
         title: 'Failed to send invite',
@@ -434,17 +458,23 @@ function SettingsContent() {
                             GitHub account is linked to Syntheon
                           </p>
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleDisconnectGithub}
-                          className="text-destructive hover:text-destructive gap-1.5"
-                        >
-                          <Link2Off className="h-3.5 w-3.5" /> Disconnect
-                        </Button>
+                        {isAdmin && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleDisconnectGithub}
+                            className="text-destructive hover:text-destructive gap-1.5"
+                          >
+                            <Link2Off className="h-3.5 w-3.5" /> Disconnect
+                          </Button>
+                        )}
                       </div>
-                    ) : (
+                    ) : isAdmin ? (
                       <GitHubConnectButton onSuccess={() => setGithubConnected(true)} />
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        GitHub repository not connected
+                      </p>
                     )}
                   </CardContent>
                 </Card>
@@ -749,7 +779,10 @@ function SettingsContent() {
                   open={inviteDialogOpen}
                   onOpenChange={(o) => {
                     setInviteDialogOpen(o);
-                    if (!o) setInviteEmail('');
+                    if (!o) {
+                      setInviteEmail('');
+                      setGeneratedInviteLink('');
+                    }
                   }}
                 >
                   <DialogContent className="sm:max-w-md">
@@ -771,6 +804,58 @@ function SettingsContent() {
                           autoFocus
                         />
                       </div>
+                      {generatedInviteLink && (
+                        <div className="mb-2 rounded-lg border border-border/60 bg-muted/30 p-3">
+                          <p className="text-[11px] text-muted-foreground mb-2">
+                            Invitation link ready
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 w-7 p-0"
+                              onClick={async () => {
+                                try {
+                                  await navigator.clipboard.writeText(generatedInviteLink);
+                                  toast({
+                                    title: 'Copied',
+                                    description: 'Invitation link copied.',
+                                  });
+                                } catch {
+                                  toast({
+                                    title: 'Copy failed',
+                                    description: 'Please copy the link manually.',
+                                    variant: 'destructive',
+                                  });
+                                }
+                              }}
+                            >
+                              <Copy className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 w-7 p-0"
+                              onClick={() => {
+                                window.open(generatedInviteLink, '_blank', 'noopener,noreferrer');
+                              }}
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 w-7 p-0"
+                              onClick={() => setGeneratedInviteLink('')}
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                       <DialogFooter className="mt-2">
                         <Button
                           type="button"
@@ -783,7 +868,7 @@ function SettingsContent() {
                           {inviting ? (
                             <RefreshCw className="h-3.5 w-3.5 animate-spin mr-1" />
                           ) : null}
-                          {inviting ? 'Sending...' : 'Send invite'}
+                          {inviting ? 'Sending...' : 'Send invite & get link'}
                         </Button>
                       </DialogFooter>
                     </form>

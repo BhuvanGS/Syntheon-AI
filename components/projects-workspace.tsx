@@ -2,6 +2,11 @@
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useOrganization, useUser } from '@clerk/nextjs';
+
+const ORG_QUERY_CONFIG = {
+  memberships: { infinite: true, pageSize: 50 },
+  invitations: { infinite: true, pageSize: 50 },
+};
 import { stripHtml } from '@/lib/utils';
 import { AssigneePicker, type AssigneeValue } from '@/components/assignee-picker';
 import { Badge } from '@/components/ui/badge';
@@ -172,10 +177,7 @@ export function ProjectsWorkspace({
   onDeleteProject,
   onRefresh,
 }: ProjectsWorkspaceProps) {
-  const { membership, memberships, invitations } = useOrganization({
-    memberships: { infinite: true, pageSize: 50 },
-    invitations: { infinite: true, pageSize: 50 },
-  });
+  const { membership, memberships, invitations } = useOrganization(ORG_QUERY_CONFIG);
   const { user } = useUser();
   const isAdmin = membership?.role === 'org:admin';
   const [kanbanAssigneeFilter, setKanbanAssigneeFilter] = useState<'all' | 'unassigned' | 'mine'>(
@@ -292,10 +294,13 @@ export function ProjectsWorkspace({
     }
   }, [selectedProject?.id]);
 
-  const projectMeetings = useMemo(
-    () => meetings.filter((meeting) => meeting.projectId === selectedProject?.id),
-    [meetings, selectedProject?.id]
-  );
+  const projectMeetings = useMemo(() => {
+    if (!selectedProject?.id) return [];
+    const linkedMeetingIds = new Set(selectedProject.meetings ?? []);
+    return meetings.filter(
+      (meeting) => meeting.projectId === selectedProject.id || linkedMeetingIds.has(meeting.id)
+    );
+  }, [meetings, selectedProject?.id, selectedProject?.meetings]);
 
   const projectTickets = useMemo(
     () => tickets.filter((ticket) => ticket.projectId === selectedProject?.id),
@@ -402,6 +407,14 @@ export function ProjectsWorkspace({
         if (!validTicketIds.has(ticketId)) continue;
         if (!validStageIds.has(stageId)) continue;
         next[ticketId] = stageId;
+      }
+
+      for (const ticket of projectTickets) {
+        if (next[ticket.id]) continue;
+        const fallbackStage = stages.find((stage) => stage.status === ticket.status) ?? stages[0];
+        if (fallbackStage) {
+          next[ticket.id] = fallbackStage.id;
+        }
       }
 
       const changed =
@@ -616,7 +629,35 @@ export function ProjectsWorkspace({
     setIsStageDialogOpen(false);
   }
 
-  function promptDeleteStage(stage: StageConfig) {
+  async function promptDeleteStage(stage: StageConfig) {
+    const ticketsInStage = projectTickets.filter(
+      (ticket) => resolveTicketStage(ticket).id === stage.id
+    );
+    if (ticketsInStage.length === 0) {
+      setSavingTicketId(stage.id);
+      try {
+        await removeStageWithTickets(stage.id);
+        showToast('Stage deleted', 'success');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to delete stage';
+        setBlockerModalData({
+          message,
+          blockers: [],
+          isHardBlock: false,
+          onRevert: () => {
+            setBlockerModalOpen(false);
+          },
+          onProceed: () => {
+            setBlockerModalOpen(false);
+          },
+        });
+        setBlockerModalOpen(true);
+      } finally {
+        setSavingTicketId(null);
+      }
+      return;
+    }
+
     const fallback = stages.find((entry) => entry.id !== stage.id);
     setRelocateStageId(fallback?.id ?? '');
     setIsRelocateStageDialogOpen(false);
@@ -1644,13 +1685,24 @@ export function ProjectsWorkspace({
                 return (
                   <div
                     key={stage.id}
+                    draggable
+                    onDragStart={() => {
+                      setDraggedStageId(stage.id);
+                      setDraggedTicketId(null);
+                    }}
+                    onDragEnd={() => setDraggedStageId(null)}
                     onDragOver={(e) => {
                       e.preventDefault();
+                      e.stopPropagation();
                       setDragOverColumn(stage.id);
                     }}
-                    onDragLeave={() => setDragOverColumn(null)}
+                    onDragLeave={(e) => {
+                      e.stopPropagation();
+                      setDragOverColumn(null);
+                    }}
                     onDrop={async (e) => {
                       e.preventDefault();
+                      e.stopPropagation();
                       setDragOverColumn(null);
                       if (draggedStageId && draggedStageId !== stage.id) {
                         moveStageByDrop(draggedStageId, stage.id);
@@ -1664,19 +1716,13 @@ export function ProjectsWorkspace({
                     }}
                     className={`min-w-[280px] w-[280px] rounded-2xl border-2 transition-colors h-fit flex flex-col ${
                       isOver ? 'border-primary/50 bg-primary/5' : 'border-border bg-muted/40'
-                    }`}
+                    } ${draggedStageId === stage.id ? 'opacity-40' : ''}`}
                   >
                     <div className="flex items-start justify-between px-4 pt-4 pb-2 gap-2">
                       <div className="space-y-1">
                         <div className="flex items-center gap-1.5">
                           <button
                             type="button"
-                            draggable
-                            onDragStart={() => {
-                              setDraggedStageId(stage.id);
-                              setDraggedTicketId(null);
-                            }}
-                            onDragEnd={() => setDraggedStageId(null)}
                             className="cursor-grab active:cursor-grabbing text-muted-foreground/70 hover:text-foreground"
                             aria-label={`Reorder ${stage.label} stage`}
                           >
@@ -1728,11 +1774,15 @@ export function ProjectsWorkspace({
                               openTicketEditor(ticket);
                             }
                           }}
-                          onDragStart={() => {
+                          onDragStart={(e) => {
+                            e.stopPropagation();
                             setDraggedTicketId(ticket.id);
                             setDraggedStageId(null);
                           }}
-                          onDragEnd={() => setDraggedTicketId(null)}
+                          onDragEnd={(e) => {
+                            e.stopPropagation();
+                            setDraggedTicketId(null);
+                          }}
                           className={`rounded-xl border border-border bg-card p-3 cursor-grab active:cursor-grabbing shadow-sm hover:shadow-md transition-shadow text-left ${
                             draggedTicketId === ticket.id ? 'opacity-50' : ''
                           }`}

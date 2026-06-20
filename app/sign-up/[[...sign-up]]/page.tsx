@@ -126,6 +126,10 @@ export default function SignUpPage() {
 
   async function handleOAuth(strategy: 'oauth_google' | 'oauth_github') {
     if (!isLoaded || !signUp) return;
+    if (authLoaded && isSignedIn && !clerkTicket) {
+      router.replace('/onboarding');
+      return;
+    }
     const redirectUrlComplete = clerkTicket
       ? `/accept-invite?__clerk_ticket=${clerkTicket}&__clerk_status=${clerkStatus ?? 'sign_in'}`
       : '/onboarding';
@@ -136,6 +140,11 @@ export default function SignUpPage() {
         redirectUrlComplete,
       });
     } catch (err: any) {
+      const code = err?.errors?.[0]?.code ?? '';
+      if (code === 'identifier_already_signed_in') {
+        router.replace('/onboarding');
+        return;
+      }
       setError(err.errors?.[0]?.longMessage || 'OAuth failed');
     }
   }
@@ -151,6 +160,11 @@ export default function SignUpPage() {
       await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
       setPendingVerification(true);
     } catch (err: any) {
+      const code = err?.errors?.[0]?.code ?? '';
+      if (code === 'identifier_already_signed_in') {
+        router.replace('/onboarding');
+        return;
+      }
       setError(err.errors?.[0]?.longMessage || 'Sign up failed');
     } finally {
       setLoading(false);

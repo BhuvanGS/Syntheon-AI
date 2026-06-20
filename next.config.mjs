@@ -6,6 +6,11 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  logging: {
+    fetches: {
+      fullUrl: false,
+    },
+  },
   allowedDevOrigins:
     process.env.NODE_ENV === 'development' ? [process.env.NGROK_URL].filter(Boolean) : [],
 };
