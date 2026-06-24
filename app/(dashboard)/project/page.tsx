@@ -21,7 +21,6 @@ type ProjectTab =
   | 'analytics'
   | 'dependencies'
   | 'members'
-  | 'build'
   | 'settings';
 
 interface Project {
@@ -66,7 +65,6 @@ const validProjectTabs: ProjectTab[] = [
   'analytics',
   'dependencies',
   'members',
-  'build',
 ];
 
 function ProjectContent() {

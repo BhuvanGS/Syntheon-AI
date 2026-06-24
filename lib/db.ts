@@ -461,12 +461,13 @@ export async function saveTickets(ticketsList: Ticket[]): Promise<void> {
       assignee: ticket.assignee ?? null,
       assigneeUserId: ticket.assignee_user_id ?? null,
       dependencyTicketId: ticket.dependency_ticket_id ?? null,
+      dueDate: ticket.due_date ?? null,
     }))
   );
 }
 
 function ticketFingerprint(
-  ticket: Pick<Ticket, 'meeting_id' | 'title' | 'description' | 'status' | 'assignee'>
+  ticket: Pick<Ticket, 'meeting_id' | 'title' | 'description' | 'status' | 'assignee' | 'due_date'>
 ) {
   return [
     ticket.meeting_id ?? '',
@@ -474,6 +475,7 @@ function ticketFingerprint(
     ticket.description.trim().toLowerCase(),
     ticket.status,
     ticket.assignee?.trim().toLowerCase() ?? '',
+    ticket.due_date ?? '',
   ].join('::');
 }
 
@@ -1204,7 +1206,7 @@ export interface Notification {
   id: string;
   user_id: string;
   org_id: string;
-  type: 'assigned' | 'mentioned' | 'blocked' | 'due_soon';
+  type: 'assigned' | 'mentioned' | 'blocked' | 'due_soon' | 'meeting_ready' | 'meeting_failed';
   title: string;
   message?: string;
   ticket_id?: string;

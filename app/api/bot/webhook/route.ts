@@ -10,6 +10,7 @@ import {
   addTicketsToProject,
   getProjectById,
   updateProject,
+  createNotification,
 } from '@/lib/db';
 import { verifyWebhookSignature } from '@/lib/webhook';
 import crypto from 'crypto';
@@ -89,6 +90,7 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Process event ────────────────────────────────────────────────
+  let meeting: any = null;
   try {
     if (payload.type !== 'status_update') {
       return NextResponse.json({ ok: true });
@@ -100,9 +102,9 @@ export async function POST(req: NextRequest) {
       if (!isValidBotId(botId)) {
         return NextResponse.json({ ok: true });
       }
-      const meeting = await getMeetingByBotId(botId);
-      if (meeting) {
-        await updateMeetingStatus(meeting.id, 'not_admitted');
+      const notAdmittedMeeting = await getMeetingByBotId(botId);
+      if (notAdmittedMeeting) {
+        await updateMeetingStatus(notAdmittedMeeting.id, 'not_admitted');
       }
       return NextResponse.json({ ok: true });
     }
@@ -117,7 +119,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid bot_id format' }, { status: 400 });
     }
 
-    const meeting = await getMeetingByBotId(botId);
+    meeting = await getMeetingByBotId(botId);
     if (!meeting) {
       return NextResponse.json({ ok: true });
     }
@@ -132,6 +134,13 @@ export async function POST(req: NextRequest) {
 
     if (!transcript.trim()) {
       await updateMeetingStatus(meeting.id, 'failed');
+      await createNotification({
+        user_id: meeting.user_id,
+        org_id: meeting.org_id ?? '',
+        type: 'meeting_failed',
+        title: 'Meeting recording failed',
+        message: `No transcript was captured for "${meeting.projectName}".`,
+      });
       return NextResponse.json({ ok: true });
     }
 
@@ -160,8 +169,27 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    await createNotification({
+      user_id: meeting.user_id,
+      org_id: meeting.org_id ?? '',
+      type: 'meeting_ready',
+      title: 'Meeting tickets ready',
+      message: `Extracted ${insertedTickets.length} ticket${insertedTickets.length === 1 ? '' : 's'} from "${title || meeting.projectName}".`,
+    });
+
     return NextResponse.json({ ok: true });
-  } catch {
+  } catch (err: any) {
+    console.error('[bot/webhook] Failed to process meeting:', err?.message || err);
+    if (meeting) {
+      await updateMeetingStatus(meeting.id, 'failed');
+      await createNotification({
+        user_id: meeting.user_id,
+        org_id: meeting.org_id ?? '',
+        type: 'meeting_failed',
+        title: 'Meeting extraction failed',
+        message: `Could not process tickets from "${meeting.projectName}".`,
+      });
+    }
     return NextResponse.json({ error: 'Webhook failed' }, { status: 500 });
   }
 }

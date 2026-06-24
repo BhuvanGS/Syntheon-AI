@@ -2,6 +2,51 @@
 import { randomUUID } from 'crypto';
 import Groq from 'groq-sdk';
 
+/**
+ * Extract the first JSON object from a string, even if it's wrapped
+ * in markdown fences or surrounded by explanatory text.
+ * Uses brace counting to find balanced {} blocks — regex can't do this.
+ */
+function extractJson(text: string): string {
+  // 1. Strip common markdown code fences
+  let cleaned = text
+    .replace(/^\s*```(?:json)?\s*/i, '')
+    .replace(/\s*```\s*$/i, '')
+    .trim();
+
+  // 2. If the whole thing is valid JSON, return it
+  try {
+    JSON.parse(cleaned);
+    return cleaned;
+  } catch {
+    // may have text before/after the JSON block
+  }
+
+  // 3. Find the first balanced { ... } block that parses as JSON
+  for (let i = 0; i < cleaned.length; i++) {
+    if (cleaned[i] !== '{') continue;
+    let depth = 1;
+    let j = i + 1;
+    while (j < cleaned.length && depth > 0) {
+      if (cleaned[j] === '{') depth++;
+      if (cleaned[j] === '}') depth--;
+      j++;
+    }
+    if (depth === 0) {
+      const candidate = cleaned.slice(i, j);
+      try {
+        JSON.parse(candidate);
+        return candidate;
+      } catch {
+        // not valid JSON, keep searching
+      }
+    }
+  }
+
+  // 4. Nothing worked — return cleaned text for logging
+  return cleaned;
+}
+
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY! });
 
 export interface SpecBlock {
@@ -23,6 +68,7 @@ export interface TicketBlock {
   project_id: string | null;
   meeting_id: string;
   dependency_ticket_id: string | null;
+  due_date?: string | null;
 }
 
 export type DependencyType = 'data' | 'structural' | 'logical' | 'resource';
@@ -77,68 +123,166 @@ export async function extractTickets(
     messages: [
       {
         role: 'system',
-        content: `You are an AI that extracts structured Jira-like tickets from meeting transcripts.
-Extract every actionable item discussed and return tickets with a clear title, a concise description, a status, and optional assignee info.
-Use the following statuses only: backlog, in_progress, done, blocked.
-If status is not obvious, use backlog.
-Assignee should be null unless the transcript clearly names a person.
+        content: `You are a senior engineering PM who extracts implementation-ready Jira tickets from meeting transcripts. Your tickets are so precise that an engineer can start coding without asking a single clarifying question.
+
+RULES FOR TITLES:
+- Must start with a verb: "Implement", "Fix", "Add", "Update", "Refactor", "Remove", "Configure"
+- Must include the specific system/component affected
+- Must be under 80 characters
+- BAD: "Auth stuff" → GOOD: "Implement OAuth2 Google login with JWT session"
+- BAD: "API changes" → GOOD: "Add POST /v1/invoices endpoint with validation"
+
+RULES FOR DESCRIPTIONS (minimum 3 sentences, no maximum):
+- Paragraph 1: WHAT — the exact change needed. Include specific file names, routes, components, or DB tables mentioned.
+- Paragraph 2: WHY — the business or technical reason this matters.
+- Paragraph 3: ACCEPTANCE CRITERIA — bullet points an engineer can check off. Be specific about expected behavior, error states, edge cases.
+- If technical details were mentioned (API endpoints, DB schemas, file paths, libraries), include them VERBATIM.
+- If deadlines, priorities, or blockers were mentioned, include them.
+- ASSIGNEE IS ALWAYS null — the transcript does not reliably identify speakers, so never guess assignees.
+
+RULES FOR DUE_DATE:
+- If someone mentions a deadline (e.g., "by Friday", "before end of July", "needs to ship by Aug 15"), infer the exact date and output it as "YYYY-MM-DD".
+- Use the meeting date or context to resolve relative dates (e.g., if meeting is June 24 and someone says "by Friday", output "2026-06-27").
+- If no deadline is mentioned for a ticket, output "due_date": null.
+- NEVER output relative strings like "Friday" or "next week" — always convert to an absolute ISO date.
+
+RULES FOR STATUS:
+- "done" = someone explicitly said they completed it, merged it, or deployed it
+- "in_progress" = someone is actively working on it, has a branch, or mentioned "I'm on it"
+- "blocked" = someone mentioned they can't proceed, are waiting, or a dependency is missing
+- "backlog" = everything else, including "we should", "let's think about", "maybe later"
+
+RULES FOR GRANULARITY:
+- If a discussion contains multiple distinct tasks, create SEPARATE tickets for each
+- "Build the dashboard" is one task → break into: "Implement dashboard layout", "Connect dashboard to analytics API", "Add dashboard real-time refresh"
+- If someone mentions a feature AND a bug in the same breath → two tickets
+
+STRICTLY FORBIDDEN IN DESCRIPTIONS:
+- "Discuss..." (tickets are for doing, not discussing)
+- "Consider..." (vague, unactionable)
+- "Look into..." (no measurable outcome)
+- Summaries of the meeting conversation
+- Generic phrases like "improve performance" without specific metrics or methods
+
 Also generate a short human-readable title for this meeting (max 5 words).
+
 Respond ONLY with valid JSON. No markdown, no explanation, no code fences.`,
       },
       {
         role: 'user',
-        content: `Extract tickets and generate a title from this transcript:
+        content: `Extract implementation-ready tickets and generate a meeting title from this transcript:
 
 ${transcript}
 
-Return JSON in this exact format:
+Return JSON with this exact structure. Every ticket MUST include ALL fields shown, including due_date (use an ISO date string "YYYY-MM-DD" when a deadline is mentioned, otherwise null):
 {
-  "title": "Calculator App Discussion",
+  "title": "OAuth Sprint Planning",
   "tickets": [
     {
       "id": "${meetingId}-ticket-1",
-      "title": "short clear title",
-      "description": "concise description of the task",
+      "title": "Implement Google OAuth2 login with JWT session cookies",
+      "description": "Add Google OAuth2 authentication to the login page at /auth/login. Use the passport-google-oauth20 strategy and store refresh tokens in the users table (column: google_refresh_token). On successful auth, issue a JWT access token (15min expiry) and HTTP-only refresh cookie (7 days).\\n\\nThe product team needs this for the public beta launch next week. Without it, external users cannot access the platform.\\n\\nAcceptance criteria:\\n- User can click 'Sign in with Google' on /auth/login\\n- On success, user is redirected to /dashboard with valid JWT\\n- On failure, user sees specific error: 'Google auth failed: [reason]'\\n- Refresh token is stored encrypted in DB\\n- JWT expiry is exactly 15 minutes, refresh cookie is 7 days\\n- Unauthorized requests to /api/* return 401 with www-authenticate header",
       "status": "backlog",
       "assignee": null,
       "assignee_user_id": null,
       "project_id": null,
       "meeting_id": "${meetingId}",
-      "dependency_ticket_id": null
+      "dependency_ticket_id": null,
+      "due_date": "2026-06-30"
+    },
+    {
+      "id": "${meetingId}-ticket-2",
+      "title": "Refactor database connection pool",
+      "description": "Increase the PostgreSQL connection pool size from 20 to 50 and add connection retry logic with exponential backoff.\n\nCurrent pool size is causing request queuing during peak hours.\n\nAcceptance criteria:\n- Pool size is 50\n- Retry logic handles 3 attempts with 100ms, 500ms, 1s delays\n- Failed connections log detailed error messages",
+      "status": "backlog",
+      "assignee": null,
+      "assignee_user_id": null,
+      "project_id": null,
+      "meeting_id": "${meetingId}",
+      "dependency_ticket_id": null,
+      "due_date": null
     }
   ]
 }
 
+REMINDER: Every ticket MUST include "due_date" — either an ISO date "YYYY-MM-DD" or null. Never omit the field.
 Return ONLY the JSON object, nothing else.`,
       },
     ],
-    temperature: 0.3,
-    max_tokens: 2000,
+    temperature: 0.2,
+    max_tokens: 4000,
+    response_format: { type: 'json_object' },
   });
 
-  const raw = response.choices[0].message.content?.trim() ?? '';
-  const clean = raw.replace(/```json|```/g, '').trim();
+  const raw = response.choices[0].message.content ?? '';
+  const clean = extractJson(raw);
 
   try {
     const parsed = JSON.parse(clean);
     if (!Array.isArray(parsed.tickets)) throw new Error('tickets must be an array');
+    const rawTickets = parsed.tickets.map((ticket: any) => ({
+      id: randomUUID(),
+      title: ticket.title,
+      description: ticket.description ?? '',
+      status: normalizeTicketStatus(ticket.status),
+      assignee: ticket.assignee ?? null,
+      assignee_user_id: ticket.assignee_user_id ?? null,
+      project_id: ticket.project_id ?? null,
+      meeting_id: ticket.meeting_id ?? meetingId,
+      dependency_ticket_id: ticket.dependency_ticket_id ?? null,
+    })) as TicketBlock[];
+
+    const ticketsWithDueDates = await mergeDueDates(transcript, rawTickets);
+
     return {
       title: parsed.title || 'Untitled Meeting',
-      tickets: parsed.tickets.map((ticket: any) => ({
-        id: randomUUID(),
-        title: ticket.title,
-        description: ticket.description ?? '',
-        status: normalizeTicketStatus(ticket.status),
-        assignee: ticket.assignee ?? null,
-        assignee_user_id: ticket.assignee_user_id ?? null,
-        project_id: ticket.project_id ?? null,
-        meeting_id: ticket.meeting_id ?? meetingId,
-        dependency_ticket_id: ticket.dependency_ticket_id ?? null,
-      })) as TicketBlock[],
+      tickets: ticketsWithDueDates,
     };
   } catch (err) {
-    console.error('[Groq] Failed to parse response, first 100 chars:', raw?.slice(0, 100));
+    console.error('[Groq] Failed to parse response. Raw (first 800 chars):', raw?.slice(0, 800));
+    console.error('[Groq] Extracted JSON (first 800 chars):', clean?.slice(0, 800));
     throw new Error('Groq returned invalid JSON');
+  }
+}
+
+async function mergeDueDates(transcript: string, tickets: TicketBlock[]): Promise<TicketBlock[]> {
+  if (tickets.length === 0) return tickets;
+
+  try {
+    const response = await groq.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      messages: [
+        {
+          role: 'system',
+          content: `You extract deadlines from meeting transcripts. Return ONLY valid JSON.
+Given a transcript and a list of task titles, identify which tasks have explicit deadlines and output them as ISO dates (YYYY-MM-DD).
+If a deadline is relative (e.g., "by Friday", "next week"), infer the actual calendar date from context in the transcript.
+Use null when no deadline is mentioned for a task.`,
+        },
+        {
+          role: 'user',
+          content: `Transcript:\n${transcript}\n\nTask titles:\n${tickets.map((t, i) => `${i + 1}. ${t.title}`).join('\n')}\n\nReturn JSON: { "deadlines": [{"index": 1, "due_date": "2026-06-27"}, ...] }`,
+        },
+      ],
+      temperature: 0.2,
+      max_tokens: 1000,
+      response_format: { type: 'json_object' },
+    });
+
+    const raw = response.choices[0].message.content?.trim() ?? '';
+    const parsed = JSON.parse(raw);
+    const deadlines = Array.isArray(parsed?.deadlines) ? parsed.deadlines : [];
+
+    return tickets.map((ticket, idx) => {
+      const match = deadlines.find((d: any) => d.index === idx + 1);
+      if (match?.due_date && /^\d{4}-\d{2}-\d{2}$/.test(match.due_date)) {
+        return { ...ticket, due_date: match.due_date };
+      }
+      return ticket;
+    });
+  } catch (err) {
+    console.error('[Groq] Due-date merge failed, skipping:', err);
+    return tickets;
   }
 }
 

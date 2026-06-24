@@ -8,6 +8,7 @@ const ORG_QUERY_CONFIG = {
   invitations: { infinite: true, pageSize: 50 },
 };
 import { stripHtml } from '@/lib/utils';
+import { parseISO, isPast, isToday, isTomorrow, format } from 'date-fns';
 import { AssigneePicker, type AssigneeValue } from '@/components/assignee-picker';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -51,7 +52,6 @@ import { MentionEditor } from '@/components/mention-editor';
 import { useToast } from '@/components/island-toast';
 import { ProjectTicketImportDialog } from '@/components/project-ticket-import-dialog';
 import { ProjectMeetingDialog } from '@/components/project-meeting-dialog';
-import { SwarmNetBuildPanel } from '@/components/swarmnet-build-panel';
 import {
   FolderKanban,
   Plus,
@@ -81,7 +81,6 @@ import {
   Loader2,
   Users,
   UserMinus,
-  Rocket,
   Settings,
 } from 'lucide-react';
 
@@ -93,7 +92,6 @@ type ProjectTab =
   | 'analytics'
   | 'dependencies'
   | 'members'
-  | 'build'
   | 'settings';
 
 interface Project {
@@ -1262,7 +1260,6 @@ export function ProjectsWorkspace({
     },
     { id: 'dependencies', label: 'Dependencies', icon: <GitBranch className="h-4 w-4" /> },
     { id: 'members', label: 'Members', icon: <Users className="h-4 w-4" />, adminOnly: true },
-    { id: 'build', label: 'Build', icon: <Rocket className="h-4 w-4" /> },
   ];
   const tabs = allTabs.filter((t) => !t.adminOnly || isAdmin);
 
@@ -1794,11 +1791,26 @@ export function ProjectsWorkspace({
                             {ticket.description ? stripHtml(ticket.description) : 'No description'}
                           </p>
                           <div className="mt-2 flex items-center justify-between">
-                            {ticket.assignee && (
-                              <p className="text-[11px] text-muted-foreground">
-                                @{ticket.assignee}
-                              </p>
-                            )}
+                            <div className="flex items-center gap-2">
+                              {ticket.assignee && (
+                                <p className="text-[11px] text-muted-foreground">
+                                  @{ticket.assignee}
+                                </p>
+                              )}
+                              {ticket.due_date && (
+                                <span
+                                  className={`text-[11px] flex items-center gap-1 ${(() => {
+                                    const d = parseISO(ticket.due_date);
+                                    if (isPast(d) && !isToday(d)) return 'text-red-500';
+                                    if (isToday(d) || isTomorrow(d)) return 'text-amber-500';
+                                    return 'text-muted-foreground';
+                                  })()}`}
+                                >
+                                  <Calendar className="h-3 w-3" />
+                                  {format(parseISO(ticket.due_date), 'MMM d')}
+                                </span>
+                              )}
+                            </div>
                             {(childrenByParentId[ticket.id] ?? []).length > 0 && (
                               <span className="text-[11px] text-muted-foreground flex items-center gap-1">
                                 <CheckCircle2 className="h-3 w-3" />
@@ -2162,14 +2174,6 @@ export function ProjectsWorkspace({
                 }}
               />
             </div>
-          </div>
-        )}
-
-        {/* ── BUILD tab ── */}
-        {projectTab === 'build' && (
-          <div className="space-y-4">
-            <h2 className="font-playfair text-2xl font-bold text-foreground">SwarmNet Build</h2>
-            <SwarmNetBuildPanel project={selectedProject} tickets={projectTickets} />
           </div>
         )}
 

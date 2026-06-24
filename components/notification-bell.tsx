@@ -1,7 +1,16 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Bell, Check, Ticket, MessageSquare, AlertTriangle, Clock, X } from 'lucide-react';
+import {
+  Bell,
+  Check,
+  Ticket,
+  MessageSquare,
+  AlertTriangle,
+  Clock,
+  Video,
+  XCircle,
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/lib/utils';
 
@@ -9,7 +18,7 @@ interface NotificationItem {
   id: string;
   user_id: string;
   org_id: string;
-  type: 'assigned' | 'mentioned' | 'blocked' | 'due_soon';
+  type: 'assigned' | 'mentioned' | 'blocked' | 'due_soon' | 'meeting_ready' | 'meeting_failed';
   title: string;
   message?: string;
   ticket_id?: string;
@@ -41,6 +50,16 @@ const typeConfig: Record<string, { icon: React.ReactNode; color: string; bg: str
     icon: <Clock className="h-3.5 w-3.5" />,
     color: 'text-orange-500',
     bg: 'bg-orange-500/10',
+  },
+  meeting_ready: {
+    icon: <Video className="h-3.5 w-3.5" />,
+    color: 'text-emerald-500',
+    bg: 'bg-emerald-500/10',
+  },
+  meeting_failed: {
+    icon: <XCircle className="h-3.5 w-3.5" />,
+    color: 'text-red-500',
+    bg: 'bg-red-500/10',
   },
 };
 
