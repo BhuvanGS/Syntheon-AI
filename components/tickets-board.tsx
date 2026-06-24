@@ -103,24 +103,47 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
     onProceed?: () => void;
   } | null>(null);
 
+  const PAGE_SIZE = 40;
+  const [ticketPage, setTicketPage] = useState(1);
+  const [ticketsTotal, setTicketsTotal] = useState(0);
+  const [ticketsHasMore, setTicketsHasMore] = useState(false);
+
   useEffect(() => {
-    fetchAll();
-  }, []);
+    setLoading(true);
+    void fetchAll();
+  }, [ticketPage]);
 
   async function fetchAll() {
     try {
+      const offset = (ticketPage - 1) * PAGE_SIZE;
       const [ticketsRes, meetingsRes] = await Promise.all([
-        fetch('/api/tickets'),
-        fetch('/api/meetings'),
+        fetch(`/api/tickets?limit=${PAGE_SIZE}&offset=${offset}`),
+        fetch('/api/meetings?limit=50'),
       ]);
       const [ticketsData, meetingsData] = await Promise.all([
         ticketsRes.json(),
         meetingsRes.json(),
       ]);
-      setTickets(ticketsData);
-      setMeetings(meetingsData);
+      const ticketsArr: Ticket[] = Array.isArray(ticketsData)
+        ? ticketsData
+        : (ticketsData.tickets ?? []);
+      const meetingsArr: Meeting[] = Array.isArray(meetingsData)
+        ? meetingsData
+        : (meetingsData.meetings ?? []);
+      setTicketsTotal(
+        Array.isArray(ticketsData) ? ticketsArr.length : (ticketsData.total ?? ticketsArr.length)
+      );
+      setTicketsHasMore(Array.isArray(ticketsData) ? false : Boolean(ticketsData.hasMore));
+
+      if (ticketsArr.length === 0 && offset > 0) {
+        setTicketPage((p) => Math.max(1, p - 1));
+        return;
+      }
+
+      setTickets(ticketsArr);
+      setMeetings(meetingsArr);
       setOriginalStatusById(
-        (ticketsData as Ticket[]).reduce<Record<string, TicketStatus>>((acc, ticket) => {
+        ticketsArr.reduce<Record<string, TicketStatus>>((acc, ticket) => {
           acc[ticket.id] = ticket.status;
           return acc;
         }, {})
@@ -873,6 +896,36 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <div className="flex items-center justify-between rounded-xl border border-border/60 bg-card px-3 py-2">
+        <span className="text-xs text-muted-foreground">
+          Showing {(ticketPage - 1) * PAGE_SIZE + 1}-
+          {Math.min(ticketPage * PAGE_SIZE, ticketsTotal || 0)} of {ticketsTotal}
+        </span>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 px-3"
+            onClick={() => setTicketPage((p) => Math.max(1, p - 1))}
+            disabled={ticketPage <= 1 || loading}
+          >
+            Previous
+          </Button>
+          <span className="text-xs text-muted-foreground">Page {ticketPage}</span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 px-3"
+            onClick={() => setTicketPage((p) => p + 1)}
+            disabled={!ticketsHasMore || loading}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
 
       {viewMode === 'kanban' && (
         <div className="flex gap-4 overflow-x-auto pb-4 items-start">

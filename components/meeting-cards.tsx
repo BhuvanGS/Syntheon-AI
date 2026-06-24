@@ -22,13 +22,18 @@ interface MeetingCardsProps {
 }
 
 export function MeetingCards({ onSelectMeeting, onCreateTicket }: MeetingCardsProps) {
+  const PAGE_SIZE = 12;
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
 
   const { on, off } = useSse();
 
   useEffect(() => {
+    setLoading(true);
     void fetchMeetings();
 
     const handleUpdate = () => {
@@ -44,14 +49,28 @@ export function MeetingCards({ onSelectMeeting, onCreateTicket }: MeetingCardsPr
       off('meeting_ready', handleUpdate);
       off('meeting_failed', handleUpdate);
     };
-  }, [on, off]);
+  }, [on, off, page]);
 
   async function fetchMeetings() {
     try {
-      const res = await fetch('/api/meetings');
+      const offset = (page - 1) * PAGE_SIZE;
+      const res = await fetch(`/api/meetings?limit=${PAGE_SIZE}&offset=${offset}`);
       if (!res.ok) throw new Error('Failed to fetch meetings');
       const data = await res.json();
-      setMeetings(data);
+      const meetingsArr = Array.isArray(data) ? data : (data.meetings ?? []);
+      const totalCount = Array.isArray(data)
+        ? meetingsArr.length
+        : (data.total ?? meetingsArr.length);
+      const more = Array.isArray(data) ? false : Boolean(data.hasMore);
+
+      if (meetingsArr.length === 0 && offset > 0) {
+        setPage((p) => Math.max(1, p - 1));
+        return;
+      }
+
+      setMeetings(meetingsArr);
+      setTotal(totalCount);
+      setHasMore(more);
       setError(null);
     } catch (err) {
       setError('Could not load meetings');
@@ -89,101 +108,132 @@ export function MeetingCards({ onSelectMeeting, onCreateTicket }: MeetingCardsPr
     );
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 stagger-children">
-      {meetings.map((meeting) => (
-        <div
-          key={meeting.id}
-          className="bg-card rounded-2xl p-6 border border-border hover:border-primary/30 hover-lift cursor-pointer group press-down"
-          onClick={() => onSelectMeeting(meeting.id)}
-        >
-          <div className="flex justify-between items-start mb-4">
-            <div className="flex-1">
-              <h3 className="text-lg font-playfair font-bold text-foreground group-hover:text-primary transition-colors mb-1">
-                {meeting.projectName}
-              </h3>
-              <p className="text-xs text-muted-foreground font-mono">{meeting.meetingId}</p>
-              {meeting.platform !== 'unknown' && (
-                <p className="text-xs text-muted-foreground mt-1 capitalize">
-                  {meeting.platform.replace('-', ' ')}
-                </p>
-              )}
-            </div>
-            <Badge
-              className={`ml-2 ${
-                meeting.status === 'completed'
-                  ? 'bg-primary/20 text-primary'
+    <div className="space-y-4">
+      <div className="flex items-center justify-between rounded-xl border border-border/60 bg-card px-3 py-2">
+        <span className="text-xs text-muted-foreground">
+          Showing {(page - 1) * PAGE_SIZE + 1}-{Math.min(page * PAGE_SIZE, total || 0)} of {total}
+        </span>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 px-3"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page <= 1 || loading}
+          >
+            Previous
+          </Button>
+          <span className="text-xs text-muted-foreground">Page {page}</span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 px-3"
+            onClick={() => setPage((p) => p + 1)}
+            disabled={!hasMore || loading}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 stagger-children">
+        {meetings.map((meeting) => (
+          <div
+            key={meeting.id}
+            className="bg-card rounded-2xl p-6 border border-border hover:border-primary/30 hover-lift cursor-pointer group press-down"
+            onClick={() => onSelectMeeting(meeting.id)}
+          >
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex-1">
+                <h3 className="text-lg font-playfair font-bold text-foreground group-hover:text-primary transition-colors mb-1">
+                  {meeting.projectName}
+                </h3>
+                <p className="text-xs text-muted-foreground font-mono">{meeting.meetingId}</p>
+                {meeting.platform !== 'unknown' && (
+                  <p className="text-xs text-muted-foreground mt-1 capitalize">
+                    {meeting.platform.replace('-', ' ')}
+                  </p>
+                )}
+              </div>
+              <Badge
+                className={`ml-2 ${
+                  meeting.status === 'completed'
+                    ? 'bg-primary/20 text-primary'
+                    : meeting.status === 'failed'
+                      ? 'bg-destructive/20 text-destructive'
+                      : meeting.status === 'not_admitted'
+                        ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                        : 'bg-secondary text-secondary-foreground'
+                }`}
+                title={
+                  meeting.status === 'not_admitted'
+                    ? 'Syntheon AI not admitted to meeting'
+                    : undefined
+                }
+              >
+                {meeting.status === 'completed' ? (
+                  <CheckCircle className="w-3 h-3 mr-1" />
+                ) : meeting.status === 'not_admitted' ? (
+                  <AlertTriangle className="w-3 h-3 mr-1" />
+                ) : (
+                  <Clock className="w-3 h-3 mr-1" />
+                )}
+                {meeting.status === 'completed'
+                  ? 'Done'
                   : meeting.status === 'failed'
-                    ? 'bg-destructive/20 text-destructive'
+                    ? 'Failed'
                     : meeting.status === 'not_admitted'
-                      ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                      : 'bg-secondary text-secondary-foreground'
-              }`}
-              title={
-                meeting.status === 'not_admitted'
-                  ? 'Syntheon AI not admitted to meeting'
-                  : undefined
-              }
-            >
-              {meeting.status === 'completed' ? (
-                <CheckCircle className="w-3 h-3 mr-1" />
-              ) : meeting.status === 'not_admitted' ? (
-                <AlertTriangle className="w-3 h-3 mr-1" />
-              ) : (
-                <Clock className="w-3 h-3 mr-1" />
-              )}
-              {meeting.status === 'completed'
-                ? 'Done'
-                : meeting.status === 'failed'
-                  ? 'Failed'
-                  : meeting.status === 'not_admitted'
-                    ? '!'
-                    : 'Processing'}
-            </Badge>
-          </div>
-
-          <div className="bg-background rounded-lg p-4 mb-4">
-            <div className="text-center">
-              <p className="text-3xl font-bold text-primary">{meeting.specsDetected}</p>
-              <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">
-                Tickets Detected
-              </p>
+                      ? '!'
+                      : 'Processing'}
+              </Badge>
             </div>
-          </div>
 
-          <div className="flex justify-between items-center pt-4 border-t border-border">
-            <p className="text-xs text-muted-foreground">
-              {new Date(meeting.date).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-              })}
-            </p>
-            <div className="flex gap-2">
-              {onCreateTicket && (
+            <div className="bg-background rounded-lg p-4 mb-4">
+              <div className="text-center">
+                <p className="text-3xl font-bold text-primary">{meeting.specsDetected}</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">
+                  Tickets Detected
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center pt-4 border-t border-border">
+              <p className="text-xs text-muted-foreground">
+                {new Date(meeting.date).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                })}
+              </p>
+              <div className="flex gap-2">
+                {onCreateTicket && (
+                  <Button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCreateTicket(meeting.id);
+                    }}
+                    variant="outline"
+                    className="border-primary/20 text-primary hover:bg-primary/10 font-medium rounded-lg px-4 py-1.5 text-sm"
+                  >
+                    New Ticket
+                  </Button>
+                )}
                 <Button
                   onClick={(e) => {
                     e.stopPropagation();
-                    onCreateTicket(meeting.id);
+                    onSelectMeeting(meeting.id);
                   }}
-                  variant="outline"
-                  className="border-primary/20 text-primary hover:bg-primary/10 font-medium rounded-lg px-4 py-1.5 text-sm"
+                  className="bg-primary hover:bg-primary text-primary-foreground font-medium rounded-lg px-4 py-1.5 text-sm"
                 >
-                  New Ticket
+                  View Tickets
                 </Button>
-              )}
-              <Button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelectMeeting(meeting.id);
-                }}
-                className="bg-primary hover:bg-primary text-primary-foreground font-medium rounded-lg px-4 py-1.5 text-sm"
-              >
-                View Tickets
-              </Button>
+              </div>
             </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }

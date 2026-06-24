@@ -186,10 +186,11 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
 
   async function fetchMeetingData() {
     try {
-      const res = await fetch('/api/meetings');
+      const res = await fetch('/api/meetings?limit=50');
       if (!res.ok) return;
       const data = await res.json();
-      const meeting = data.find((m: any) => m.id === meetingId);
+      const meetingsArr = Array.isArray(data) ? data : (data.meetings ?? []);
+      const meeting = meetingsArr.find((m: any) => m.id === meetingId);
       if (meeting) {
         setMeetingTitle(meeting.projectName);
         setMeetingData(meeting);

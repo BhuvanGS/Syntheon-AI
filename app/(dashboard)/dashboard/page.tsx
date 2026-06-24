@@ -113,7 +113,44 @@ function DashboardContent() {
 
   const orgId = organization?.id;
 
+  const loadProjects = useCallback(async () => {
+    try {
+      const res = await fetch('/api/projects');
+      if (!res.ok) return;
+      const projectsData = await res.json();
+      setProjects(Array.isArray(projectsData) ? projectsData : []);
+    } catch (error) {
+      console.error('Failed to load projects:', error);
+    }
+  }, []);
+
+  const loadWorkspaceData = useCallback(async () => {
+    try {
+      const [meetingsRes, ticketsRes] = await Promise.all([
+        fetch('/api/meetings?limit=50'),
+        fetch('/api/tickets?limit=50'),
+      ]);
+
+      if (meetingsRes.ok) {
+        const meetingsData = await meetingsRes.json();
+        setMeetings(Array.isArray(meetingsData) ? meetingsData : (meetingsData.meetings ?? []));
+      }
+
+      if (ticketsRes.ok) {
+        const ticketsData = await ticketsRes.json();
+        setTickets(Array.isArray(ticketsData) ? ticketsData : (ticketsData.tickets ?? []));
+      }
+    } catch (error) {
+      console.error('Failed to load workspace data:', error);
+    }
+  }, []);
+
   const lastFetchRef = useRef(0);
+
+  useEffect(() => {
+    if (membership === undefined) return;
+    void loadProjects();
+  }, [membership, orgId, loadProjects]);
 
   useEffect(() => {
     // Wait until Clerk has resolved membership (undefined = still loading)
@@ -121,44 +158,13 @@ function DashboardContent() {
     // Skip re-fetch on tab resume (fetched within last 5s)
     if (Date.now() - lastFetchRef.current < 5000) return;
 
-    let isMounted = true;
-
     async function loadWorkspace() {
       lastFetchRef.current = Date.now();
-      try {
-        const [projectsRes, meetingsRes, ticketsRes] = await Promise.all([
-          fetch('/api/projects'),
-          fetch('/api/meetings'),
-          fetch('/api/tickets'),
-        ]);
-
-        if (!isMounted) return;
-
-        if (projectsRes.ok) {
-          const projectsData = await projectsRes.json();
-          setProjects(projectsData);
-        }
-
-        if (meetingsRes.ok) {
-          const meetingsData = await meetingsRes.json();
-          setMeetings(meetingsData);
-        }
-
-        if (ticketsRes.ok) {
-          const ticketsData = await ticketsRes.json();
-          setTickets(ticketsData);
-        }
-      } catch (error) {
-        console.error('Failed to load workspace data:', error);
-      }
+      await loadWorkspaceData();
     }
 
     void loadWorkspace();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [membership === undefined, orgId]);
+  }, [membership === undefined, orgId, loadWorkspaceData]);
 
   function handleViewChange(view: ViewType) {
     if (view === 'dashboard') {
@@ -214,25 +220,13 @@ function DashboardContent() {
       throw new Error(data?.error || 'Failed to delete project');
     }
 
-    await refreshWorkspace();
+    await Promise.all([loadProjects(), refreshWorkspace()]);
     toast({ title: 'Project deleted', description: 'The project was removed from Supabase.' });
   }
 
   const refreshWorkspace = useCallback(async () => {
-    try {
-      const [projectsRes, meetingsRes, ticketsRes] = await Promise.all([
-        fetch('/api/projects'),
-        fetch('/api/meetings'),
-        fetch('/api/tickets'),
-      ]);
-
-      if (projectsRes.ok) setProjects(await projectsRes.json());
-      if (meetingsRes.ok) setMeetings(await meetingsRes.json());
-      if (ticketsRes.ok) setTickets(await ticketsRes.json());
-    } catch (error) {
-      console.error('Failed to refresh workspace data:', error);
-    }
-  }, []);
+    await loadWorkspaceData();
+  }, [loadWorkspaceData]);
 
   async function handleCreateProject(payload: {
     name: string;
@@ -252,7 +246,7 @@ function DashboardContent() {
     }
 
     const data = await res.json();
-    await refreshWorkspace();
+    await Promise.all([loadProjects(), refreshWorkspace()]);
     router.push(`/project?projectId=${data.project.id}&tab=kanban`);
     toast({ title: 'Project created', description: `${data.project.name} is ready.` });
   }

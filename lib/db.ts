@@ -15,7 +15,7 @@ import {
   swarmnetRuns as runsTable,
   swarmnetArtifacts as artifactsTable,
 } from '@/db/schema';
-import { eq, and, desc, asc, inArray, isNull, gte, sql, count } from 'drizzle-orm';
+import { eq, and, or, desc, asc, inArray, isNull, gte, sql, count } from 'drizzle-orm';
 import { broadcast } from '@/lib/event-bus';
 
 // ─── Types ─────────────────────────────────────────────────────
@@ -1092,7 +1092,12 @@ export async function getAllTicketsByOrg(orgId: string): Promise<Ticket[]> {
 
 export async function getTicketsPaginated(
   orgId: string,
-  options: { projectId?: string | null; meetingId?: string | null; limit?: number; offset?: number } = {}
+  options: {
+    projectId?: string | null;
+    meetingId?: string | null;
+    limit?: number;
+    offset?: number;
+  } = {}
 ): Promise<{ tickets: Ticket[]; total: number }> {
   const { projectId, meetingId, limit = 50, offset = 0 } = options;
   const conditions = [eq(ticketsTable.orgId, orgId)];
@@ -1107,7 +1112,10 @@ export async function getTicketsPaginated(
       .orderBy(desc(ticketsTable.createdAt))
       .limit(limit)
       .offset(offset),
-    db.select({ value: count() }).from(ticketsTable).where(and(...conditions)),
+    db
+      .select({ value: count() })
+      .from(ticketsTable)
+      .where(and(...conditions)),
   ]);
 
   return { tickets: rows.map(rowToTicket), total: totalResult[0]?.value ?? 0 };
@@ -1120,9 +1128,7 @@ export async function getMeetingsPaginated(
   const { projectId, limit = 50, offset = 0 } = options;
   const conditions = [eq(meetingsTable.orgId, orgId)];
   if (projectId) {
-    conditions.push(
-      sql`${meetingsTable.projectId} = ${projectId} OR ${meetingsTable.projectId} IS NULL`
-    );
+    conditions.push(eq(meetingsTable.projectId, projectId));
   }
 
   const [rows, totalResult] = await Promise.all([
@@ -1133,7 +1139,10 @@ export async function getMeetingsPaginated(
       .orderBy(desc(meetingsTable.date))
       .limit(limit)
       .offset(offset),
-    db.select({ value: count() }).from(meetingsTable).where(and(...conditions)),
+    db
+      .select({ value: count() })
+      .from(meetingsTable)
+      .where(and(...conditions)),
   ]);
 
   return { meetings: rows.map(rowToMeeting), total: totalResult[0]?.value ?? 0 };
@@ -1232,12 +1241,18 @@ export async function getProjectsForMember(orgId: string, userId: string): Promi
     .where(and(eq(membersTable.orgId, orgId), eq(membersTable.userId, userId)));
 
   const projectIds = memberRows.map((r) => r.projectId);
-  if (projectIds.length === 0) return [];
 
   const rows = await db
     .select()
     .from(projectsTable)
-    .where(inArray(projectsTable.id, projectIds))
+    .where(
+      and(
+        eq(projectsTable.orgId, orgId),
+        projectIds.length > 0
+          ? or(eq(projectsTable.userId, userId), inArray(projectsTable.id, projectIds))
+          : eq(projectsTable.userId, userId)
+      )
+    )
     .orderBy(desc(projectsTable.createdAt));
   return rows.map(rowToProject);
 }

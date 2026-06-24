@@ -146,7 +146,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     await updateTicket(id, updates);
     broadcast({
       type: 'ticket_updated',
-      payload: { ticketId: id, projectId: ticket.projectId, meetingId: ticket.meeting_id, changes: updates },
+      payload: {
+        ticketId: id,
+        projectId: ticket.projectId,
+        meetingId: ticket.meeting_id,
+        changes: updates,
+      },
     });
 
     // Log activity for status change

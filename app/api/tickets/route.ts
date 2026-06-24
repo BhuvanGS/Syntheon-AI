@@ -14,6 +14,11 @@ import { db } from '@/db/index';
 import { tickets as ticketsTable } from '@/db/schema';
 import { inArray } from 'drizzle-orm';
 
+function parsePositiveInt(value: string | null, fallback: number): number {
+  const parsed = Number.parseInt(value ?? '', 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { userId, orgId } = await auth();
@@ -22,16 +27,27 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const projectId = searchParams.get('projectId');
     const meetingId = searchParams.get('meetingId');
-    const limit = Math.min(parseInt(searchParams.get('limit') ?? '50', 10), 100);
-    const offset = Math.max(parseInt(searchParams.get('offset') ?? '0', 10), 0);
+    const limit = Math.min(parsePositiveInt(searchParams.get('limit'), 50), 100);
+    const offset = parsePositiveInt(searchParams.get('offset'), 0);
 
     if (orgId) {
       const result = await getTicketsPaginated(orgId, { projectId, meetingId, limit, offset });
-      return NextResponse.json(result);
+      return NextResponse.json({
+        ...result,
+        limit,
+        offset,
+        hasMore: offset + result.tickets.length < result.total,
+      });
     }
 
     const tickets = await getAllTickets(userId);
-    return NextResponse.json({ tickets, total: tickets.length });
+    return NextResponse.json({
+      tickets,
+      total: tickets.length,
+      limit: tickets.length,
+      offset: 0,
+      hasMore: false,
+    });
   } catch (error) {
     console.error('Failed to fetch tickets:', error);
     return NextResponse.json({ error: 'Failed to fetch tickets' }, { status: 500 });

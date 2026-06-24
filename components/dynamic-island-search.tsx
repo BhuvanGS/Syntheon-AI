@@ -75,8 +75,8 @@ export function DynamicIslandSearch({
       setLoading(true);
       try {
         const [ticketsRes, meetingsRes, projectsRes] = await Promise.all([
-          fetch('/api/tickets'),
-          fetch('/api/meetings'),
+          fetch('/api/tickets?limit=100'),
+          fetch('/api/meetings?limit=100'),
           fetch('/api/projects'),
         ]);
         const [ticketsData, meetingsData, projectsData] = await Promise.all([

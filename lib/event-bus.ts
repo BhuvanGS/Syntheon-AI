@@ -2,11 +2,34 @@
 // In production, swap this for Redis Pub/Sub or similar.
 
 export type SseEvent =
-  | { type: 'meeting_ready'; payload: { meetingId: string; projectId?: string | null; title: string; ticketCount: number } }
-  | { type: 'meeting_failed'; payload: { meetingId: string; projectId?: string | null; title: string } }
+  | {
+      type: 'meeting_ready';
+      payload: { meetingId: string; projectId?: string | null; title: string; ticketCount: number };
+    }
+  | {
+      type: 'meeting_failed';
+      payload: { meetingId: string; projectId?: string | null; title: string };
+    }
   | { type: 'meeting_status_changed'; payload: { meetingId: string; status: string } }
-  | { type: 'ticket_updated'; payload: { ticketId: string; projectId?: string | null; meetingId?: string | null; changes: Record<string, unknown> } }
-  | { type: 'notification_new'; payload: { userId: string; type: string; title: string; message?: string; ticketId?: string | null } }
+  | {
+      type: 'ticket_updated';
+      payload: {
+        ticketId: string;
+        projectId?: string | null;
+        meetingId?: string | null;
+        changes: Record<string, unknown>;
+      };
+    }
+  | {
+      type: 'notification_new';
+      payload: {
+        userId: string;
+        type: string;
+        title: string;
+        message?: string;
+        ticketId?: string | null;
+      };
+    }
   | { type: 'ping' };
 
 interface Client {

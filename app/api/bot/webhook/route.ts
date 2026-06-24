@@ -144,7 +144,11 @@ export async function POST(req: NextRequest) {
       });
       broadcast({
         type: 'meeting_failed',
-        payload: { meetingId: meeting.id, projectId: meeting.projectId, title: meeting.projectName },
+        payload: {
+          meetingId: meeting.id,
+          projectId: meeting.projectId,
+          title: meeting.projectName,
+        },
       });
       return NextResponse.json({ ok: true });
     }
@@ -183,7 +187,12 @@ export async function POST(req: NextRequest) {
     });
     broadcast({
       type: 'meeting_ready',
-      payload: { meetingId: meeting.id, projectId: meeting.projectId, title: title || meeting.projectName, ticketCount: insertedTickets.length },
+      payload: {
+        meetingId: meeting.id,
+        projectId: meeting.projectId,
+        title: title || meeting.projectName,
+        ticketCount: insertedTickets.length,
+      },
     });
 
     return NextResponse.json({ ok: true });
@@ -200,7 +209,11 @@ export async function POST(req: NextRequest) {
       });
       broadcast({
         type: 'meeting_failed',
-        payload: { meetingId: meeting.id, projectId: meeting.projectId, title: meeting.projectName },
+        payload: {
+          meetingId: meeting.id,
+          projectId: meeting.projectId,
+          title: meeting.projectName,
+        },
       });
     }
     return NextResponse.json({ error: 'Webhook failed' }, { status: 500 });
