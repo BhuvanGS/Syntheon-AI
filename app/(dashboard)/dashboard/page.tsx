@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, Suspense } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   FolderKanban,
@@ -113,13 +113,18 @@ function DashboardContent() {
 
   const orgId = organization?.id;
 
+  const lastFetchRef = useRef(0);
+
   useEffect(() => {
     // Wait until Clerk has resolved membership (undefined = still loading)
     if (membership === undefined) return;
+    // Skip re-fetch on tab resume (fetched within last 5s)
+    if (Date.now() - lastFetchRef.current < 5000) return;
 
     let isMounted = true;
 
     async function loadWorkspace() {
+      lastFetchRef.current = Date.now();
       try {
         const [projectsRes, meetingsRes, ticketsRes] = await Promise.all([
           fetch('/api/projects'),
@@ -291,7 +296,15 @@ function DashboardContent() {
           <div className="flex items-center gap-2">
             <NotificationBell onNavigateToTicket={() => handleViewChange('tickets')} />
             <DynamicIslandSearch
-              onSelectTicket={(id) => handleViewChange('tickets')}
+              onSelectTicket={(id) => {
+                const t = tickets.find((x) => x.id === id);
+                if (t?.meeting_id) {
+                  setSelectedMeeting(t.meeting_id);
+                  handleViewChange('ticket-detail');
+                } else {
+                  handleViewChange('tickets');
+                }
+              }}
               onSelectMeeting={(id) => {
                 setSelectedMeeting(id);
                 handleViewChange('ticket-detail');

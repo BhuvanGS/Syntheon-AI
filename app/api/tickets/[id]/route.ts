@@ -13,6 +13,7 @@ import {
   getTicketById,
   createNotification,
 } from '@/lib/db';
+import { broadcast } from '@/lib/event-bus';
 import { requireAuth } from '@/lib/rbac';
 import { db } from '@/db/index';
 import { tickets as ticketsTable } from '@/db/schema';
@@ -143,6 +144,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const previousStatus = ticket.status;
     const previousAssignee = ticket.assignee;
     await updateTicket(id, updates);
+    broadcast({
+      type: 'ticket_updated',
+      payload: { ticketId: id, projectId: ticket.projectId, meetingId: ticket.meeting_id, changes: updates },
+    });
 
     // Log activity for status change
     if (newStatus && newStatus !== previousStatus) {

@@ -13,6 +13,7 @@ import {
   createNotification,
 } from '@/lib/db';
 import { verifyWebhookSignature } from '@/lib/webhook';
+import { broadcast } from '@/lib/event-bus';
 import crypto from 'crypto';
 
 // Strict alphanumeric+hyphen/underscore only — prevents SSRF and command injection via bot_id
@@ -141,6 +142,10 @@ export async function POST(req: NextRequest) {
         title: 'Meeting recording failed',
         message: `No transcript was captured for "${meeting.projectName}".`,
       });
+      broadcast({
+        type: 'meeting_failed',
+        payload: { meetingId: meeting.id, projectId: meeting.projectId, title: meeting.projectName },
+      });
       return NextResponse.json({ ok: true });
     }
 
@@ -176,6 +181,10 @@ export async function POST(req: NextRequest) {
       title: 'Meeting tickets ready',
       message: `Extracted ${insertedTickets.length} ticket${insertedTickets.length === 1 ? '' : 's'} from "${title || meeting.projectName}".`,
     });
+    broadcast({
+      type: 'meeting_ready',
+      payload: { meetingId: meeting.id, projectId: meeting.projectId, title: title || meeting.projectName, ticketCount: insertedTickets.length },
+    });
 
     return NextResponse.json({ ok: true });
   } catch (err: any) {
@@ -188,6 +197,10 @@ export async function POST(req: NextRequest) {
         type: 'meeting_failed',
         title: 'Meeting extraction failed',
         message: `Could not process tickets from "${meeting.projectName}".`,
+      });
+      broadcast({
+        type: 'meeting_failed',
+        payload: { meetingId: meeting.id, projectId: meeting.projectId, title: meeting.projectName },
       });
     }
     return NextResponse.json({ error: 'Webhook failed' }, { status: 500 });

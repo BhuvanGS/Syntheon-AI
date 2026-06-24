@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSse } from '@/components/sse-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, CheckCircle, Clock, Loader2 } from 'lucide-react';
@@ -25,28 +26,25 @@ export function MeetingCards({ onSelectMeeting, onCreateTicket }: MeetingCardsPr
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const { on, off } = useSse();
+
   useEffect(() => {
-    let interval: ReturnType<typeof setInterval> | null = null;
+    void fetchMeetings();
 
-    async function fetchAndSchedule() {
-      await fetchMeetings();
-      setMeetings((current) => {
-        const hasProcessing = current.some((m) => m.status === 'processing');
-        if (hasProcessing && !interval) {
-          interval = setInterval(fetchAndSchedule, 10000);
-        } else if (!hasProcessing && interval) {
-          clearInterval(interval);
-          interval = null;
-        }
-        return current;
-      });
-    }
-
-    void fetchAndSchedule();
-    return () => {
-      if (interval) clearInterval(interval);
+    const handleUpdate = () => {
+      void fetchMeetings();
     };
-  }, []);
+
+    on('meeting_status_changed', handleUpdate);
+    on('meeting_ready', handleUpdate);
+    on('meeting_failed', handleUpdate);
+
+    return () => {
+      off('meeting_status_changed', handleUpdate);
+      off('meeting_ready', handleUpdate);
+      off('meeting_failed', handleUpdate);
+    };
+  }, [on, off]);
 
   async function fetchMeetings() {
     try {

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useOrganization, useUser } from '@clerk/nextjs';
+import { useSse } from '@/components/sse-provider';
 
 const ORG_QUERY_CONFIG = {
   memberships: { infinite: true, pageSize: 50 },
@@ -1114,9 +1115,7 @@ export function ProjectsWorkspace({
     }
   }
 
-  useEffect(() => {
-    setProjectTab('kanban');
-  }, [selectedProjectId]);
+  const { on, off } = useSse();
 
   useEffect(() => {
     if (!selectedProject) return;
@@ -1136,23 +1135,26 @@ export function ProjectsWorkspace({
     setProjectTab(preferredTab);
   }, [preferredTab]);
 
+  // Real-time refresh via SSE instead of 5s polling
   useEffect(() => {
     if (!selectedProject) return;
 
-    let active = true;
-    const refresh = async () => {
-      if (!active) return;
-      await onRefresh();
+    const handleRefresh = () => {
+      void onRefresh();
     };
 
-    const interval = setInterval(refresh, 5000);
-    refresh();
+    on('ticket_updated', handleRefresh);
+    on('meeting_status_changed', handleRefresh);
+    on('meeting_ready', handleRefresh);
+    on('meeting_failed', handleRefresh);
 
     return () => {
-      active = false;
-      clearInterval(interval);
+      off('ticket_updated', handleRefresh);
+      off('meeting_status_changed', handleRefresh);
+      off('meeting_ready', handleRefresh);
+      off('meeting_failed', handleRefresh);
     };
-  }, [onRefresh, selectedProject?.id]);
+  }, [on, off, onRefresh, selectedProject]);
 
   if (!selectedProject) {
     return (

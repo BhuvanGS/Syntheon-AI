@@ -5,6 +5,7 @@ import {
   checkHardBlockers,
   getAllTickets,
   getAllTicketsByOrg,
+  getTicketsPaginated,
   getDependenciesForTicket,
   incrementDependencyIgnoreCount,
   updateTicketStatus,
@@ -18,8 +19,19 @@ export async function GET(req: NextRequest) {
     const { userId, orgId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const tickets = orgId ? await getAllTicketsByOrg(orgId) : await getAllTickets(userId);
-    return NextResponse.json(tickets);
+    const { searchParams } = new URL(req.url);
+    const projectId = searchParams.get('projectId');
+    const meetingId = searchParams.get('meetingId');
+    const limit = Math.min(parseInt(searchParams.get('limit') ?? '50', 10), 100);
+    const offset = Math.max(parseInt(searchParams.get('offset') ?? '0', 10), 0);
+
+    if (orgId) {
+      const result = await getTicketsPaginated(orgId, { projectId, meetingId, limit, offset });
+      return NextResponse.json(result);
+    }
+
+    const tickets = await getAllTickets(userId);
+    return NextResponse.json({ tickets, total: tickets.length });
   } catch (error) {
     console.error('Failed to fetch tickets:', error);
     return NextResponse.json({ error: 'Failed to fetch tickets' }, { status: 500 });

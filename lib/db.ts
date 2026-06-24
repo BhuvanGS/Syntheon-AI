@@ -15,7 +15,8 @@ import {
   swarmnetRuns as runsTable,
   swarmnetArtifacts as artifactsTable,
 } from '@/db/schema';
-import { eq, and, desc, asc, inArray, isNull, gte, sql } from 'drizzle-orm';
+import { eq, and, desc, asc, inArray, isNull, gte, sql, count } from 'drizzle-orm';
+import { broadcast } from '@/lib/event-bus';
 
 // ─── Types ─────────────────────────────────────────────────────
 export interface Meeting {
@@ -248,6 +249,7 @@ export async function getMeetingByBotId(botId: string): Promise<Meeting | undefi
 
 export async function updateMeetingStatus(id: string, status: Meeting['status']): Promise<void> {
   await db.update(meetingsTable).set({ status }).where(eq(meetingsTable.id, id));
+  broadcast({ type: 'meeting_status_changed', payload: { meetingId: id, status } });
 }
 
 export async function updateMeetingSpecs(
@@ -1088,6 +1090,55 @@ export async function getAllTicketsByOrg(orgId: string): Promise<Ticket[]> {
   return deduplicated;
 }
 
+export async function getTicketsPaginated(
+  orgId: string,
+  options: { projectId?: string | null; meetingId?: string | null; limit?: number; offset?: number } = {}
+): Promise<{ tickets: Ticket[]; total: number }> {
+  const { projectId, meetingId, limit = 50, offset = 0 } = options;
+  const conditions = [eq(ticketsTable.orgId, orgId)];
+  if (projectId) conditions.push(eq(ticketsTable.projectId, projectId));
+  if (meetingId) conditions.push(eq(ticketsTable.meetingId, meetingId));
+
+  const [rows, totalResult] = await Promise.all([
+    db
+      .select()
+      .from(ticketsTable)
+      .where(and(...conditions))
+      .orderBy(desc(ticketsTable.createdAt))
+      .limit(limit)
+      .offset(offset),
+    db.select({ value: count() }).from(ticketsTable).where(and(...conditions)),
+  ]);
+
+  return { tickets: rows.map(rowToTicket), total: totalResult[0]?.value ?? 0 };
+}
+
+export async function getMeetingsPaginated(
+  orgId: string,
+  options: { projectId?: string | null; limit?: number; offset?: number } = {}
+): Promise<{ meetings: Meeting[]; total: number }> {
+  const { projectId, limit = 50, offset = 0 } = options;
+  const conditions = [eq(meetingsTable.orgId, orgId)];
+  if (projectId) {
+    conditions.push(
+      sql`${meetingsTable.projectId} = ${projectId} OR ${meetingsTable.projectId} IS NULL`
+    );
+  }
+
+  const [rows, totalResult] = await Promise.all([
+    db
+      .select()
+      .from(meetingsTable)
+      .where(and(...conditions))
+      .orderBy(desc(meetingsTable.date))
+      .limit(limit)
+      .offset(offset),
+    db.select({ value: count() }).from(meetingsTable).where(and(...conditions)),
+  ]);
+
+  return { meetings: rows.map(rowToMeeting), total: totalResult[0]?.value ?? 0 };
+}
+
 export async function saveProjectForOrg(project: Project & { org_id: string }): Promise<void> {
   await db.insert(projectsTable).values({
     id: project.id,
@@ -1228,7 +1279,7 @@ export async function createNotification(
       ticketId: values.ticket_id ?? null,
     })
     .returning();
-  return {
+  const notification = {
     id: row.id,
     user_id: row.userId,
     org_id: row.orgId,
@@ -1239,6 +1290,17 @@ export async function createNotification(
     read: row.read ?? false,
     created_at: ts(row.createdAt),
   };
+  broadcast({
+    type: 'notification_new',
+    payload: {
+      userId: values.user_id,
+      type: values.type,
+      title: values.title,
+      message: values.message,
+      ticketId: values.ticket_id ?? null,
+    },
+  });
+  return notification;
 }
 
 export async function getNotificationsForUser(

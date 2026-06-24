@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState, Suspense } from 'react';
+import { useCallback, useEffect, useRef, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/sidebar';
 import { ProjectsWorkspace } from '@/components/projects-workspace';
@@ -99,10 +99,16 @@ function ProjectContent() {
     }
   }, [searchParams]);
 
+  const lastFetchRef = useRef(0);
+
   useEffect(() => {
+    // Skip re-fetch on tab resume (fetched within last 5s)
+    if (Date.now() - lastFetchRef.current < 5000) return;
+
     let isMounted = true;
 
     async function loadWorkspace() {
+      lastFetchRef.current = Date.now();
       try {
         const [projectsRes, meetingsRes, ticketsRes] = await Promise.all([
           fetch('/api/projects'),
@@ -228,9 +234,20 @@ function ProjectContent() {
           <div className="flex items-center gap-2">
             <NotificationBell />
             <DynamicIslandSearch
+              onSelectTicket={(id) => {
+                const t = tickets.find((x) => x.id === id);
+                if (t?.projectId) {
+                  router.push(`/project?projectId=${t.projectId}&tab=list`);
+                } else {
+                  router.push('/dashboard?view=tickets');
+                }
+              }}
               onSelectMeeting={(id) => {
                 setSelectedMeeting(id);
                 setCurrentView('ticket-detail');
+              }}
+              onSelectProject={(id) => {
+                router.push(`/project?projectId=${id}`);
               }}
             />
           </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useSse } from '@/components/sse-provider';
 import { stripHtml } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -114,12 +115,26 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
     fetchMeetingData();
   }, [meetingId]);
 
+  const { on, off } = useSse();
+
   useEffect(() => {
     if (shipResult.status !== 'done') return;
     if (meetingData?.deployUrl) return;
-    const interval = setInterval(fetchMeetingData, 10000);
-    return () => clearInterval(interval);
-  }, [shipResult.status, meetingData?.deployUrl]);
+
+    const handleUpdate = () => {
+      void fetchMeetingData();
+    };
+
+    on('meeting_status_changed', handleUpdate);
+    on('meeting_ready', handleUpdate);
+    on('meeting_failed', handleUpdate);
+
+    return () => {
+      off('meeting_status_changed', handleUpdate);
+      off('meeting_ready', handleUpdate);
+      off('meeting_failed', handleUpdate);
+    };
+  }, [shipResult.status, meetingData?.deployUrl, on, off]);
 
   useEffect(() => {
     if (meetingData?.projectId) fetchProject(meetingData.projectId);

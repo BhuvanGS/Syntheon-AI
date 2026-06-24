@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useSse } from '@/components/sse-provider';
 import {
   Bell,
   Check,
@@ -97,11 +98,20 @@ export function NotificationBell({ onNavigateToTicket }: NotificationBellProps) 
     }
   }, []);
 
+  const { on, off } = useSse();
+
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
   }, [fetchNotifications]);
+
+  // Listen for real-time notification events
+  useEffect(() => {
+    const handleNew = () => {
+      fetchNotifications();
+    };
+    on('notification_new', handleNew);
+    return () => off('notification_new', handleNew);
+  }, [on, off, fetchNotifications]);
 
   // Close on outside click
   useEffect(() => {
