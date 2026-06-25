@@ -24,7 +24,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
-    const tickets = await getTicketsByMeetingId(id, { originalOnly: true });
+    const tickets = await getTicketsByMeetingId(id);
     return NextResponse.json(tickets);
   } catch (error) {
     console.error('Failed to fetch tickets:', error);

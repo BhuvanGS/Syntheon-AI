@@ -94,6 +94,7 @@ export async function POST(req: NextRequest) {
   let meeting: any = null;
   try {
     if (payload.type !== 'status_update') {
+      console.log('[bot/webhook] Ignored non-status_update event:', payload.type);
       return NextResponse.json({ ok: true });
     }
 
@@ -111,8 +112,11 @@ export async function POST(req: NextRequest) {
     }
 
     if (payload.data?.new_status !== 'finished') {
+      console.log('[bot/webhook] Ignored non-finished status:', payload.data?.new_status);
       return NextResponse.json({ ok: true });
     }
+
+    console.log('[bot/webhook] Received finished event for bot:', payload.bot_id);
 
     // Validate bot_id strictly — prevent SSRF/command injection
     const botId = payload.bot_id;
@@ -122,16 +126,34 @@ export async function POST(req: NextRequest) {
 
     meeting = await getMeetingByBotId(botId);
     if (!meeting) {
+      console.log('[bot/webhook] No meeting found for botId:', botId);
       return NextResponse.json({ ok: true });
     }
 
+    console.log('[bot/webhook] Found meeting:', meeting.id, 'for project:', meeting.projectId);
+
     const botData = await getBotTranscript(botId);
+    console.log('[bot/webhook] Bot data keys:', Object.keys(botData || {}));
+    console.log(
+      '[bot/webhook] Bot transcript type:',
+      typeof botData?.transcript,
+      'isArray:',
+      Array.isArray(botData?.transcript)
+    );
+
     const rawTranscript = botData.transcript;
     const transcript = Array.isArray(rawTranscript)
       ? rawTranscript.map((t: any) => t.transcript).join(' ')
       : typeof rawTranscript === 'string'
         ? rawTranscript
         : '';
+
+    console.log(
+      '[bot/webhook] Transcript length:',
+      transcript.length,
+      'preview:',
+      transcript.slice(0, 200)
+    );
 
     if (!transcript.trim()) {
       await updateMeetingStatus(meeting.id, 'failed');
@@ -153,7 +175,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
+    console.log('[bot/webhook] Calling Groq extractTickets...');
     const { tickets, title } = await extractTickets(transcript, meeting.id);
+    console.log('[bot/webhook] Groq returned', tickets.length, 'tickets, title:', title);
+    if (tickets.length > 0) {
+      console.log('[bot/webhook] First ticket:', JSON.stringify(tickets[0], null, 2).slice(0, 300));
+    }
 
     const ticketsWithUser = tickets.map((ticket: any) => ({
       ...ticket,
@@ -164,6 +191,7 @@ export async function POST(req: NextRequest) {
     }));
 
     const insertedTickets = await saveExtractedTickets(ticketsWithUser);
+    console.log('[bot/webhook] Saved', insertedTickets.length, 'tickets to DB');
     await updateMeetingSpecs(meeting.id, transcript, insertedTickets.length);
     await updateMeetingName(meeting.id, title);
 
@@ -197,7 +225,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true });
   } catch (err: any) {
-    console.error('[bot/webhook] Failed to process meeting:', err?.message || err);
+    console.error('[bot/webhook] FAILED to process meeting:', err?.message || err);
+    console.error('[bot/webhook] Error stack:', err?.stack);
     if (meeting) {
       await updateMeetingStatus(meeting.id, 'failed');
       await createNotification({
