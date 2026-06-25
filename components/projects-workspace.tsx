@@ -8,7 +8,7 @@ const ORG_QUERY_CONFIG = {
   memberships: { infinite: true, pageSize: 50 },
   invitations: { infinite: true, pageSize: 50 },
 };
-import { stripHtml } from '@/lib/utils';
+import { stripHtml, cn } from '@/lib/utils';
 import { parseISO, isPast, isToday, isTomorrow, format } from 'date-fns';
 import { AssigneePicker, type AssigneeValue } from '@/components/assignee-picker';
 import { Badge } from '@/components/ui/badge';
@@ -53,6 +53,7 @@ import { MentionEditor } from '@/components/mention-editor';
 import { useToast } from '@/components/island-toast';
 import { ProjectTicketImportDialog } from '@/components/project-ticket-import-dialog';
 import { ProjectMeetingDialog } from '@/components/project-meeting-dialog';
+import { MeetingCalendar } from '@/components/meeting-calendar';
 import {
   FolderKanban,
   Plus,
@@ -183,6 +184,7 @@ export function ProjectsWorkspace({
     'all'
   );
   const [projectTab, setProjectTab] = useState<ProjectTab>('kanban');
+  const [meetingsViewMode, setMeetingsViewMode] = useState<'list' | 'calendar'>('list');
 
   interface ProjectMemberRow {
     id: string;
@@ -1470,12 +1472,52 @@ export function ProjectsWorkspace({
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="font-playfair text-2xl font-bold text-foreground">Meetings</h2>
-              <Button onClick={() => setIsMeetingDialogOpen(true)} className="rounded-full gap-2">
-                <Video className="h-4 w-4" />
-                New meeting
-              </Button>
+              <div className="flex items-center gap-2">
+                {/* View toggle */}
+                <div className="flex items-center rounded-full border border-border bg-card p-0.5 mr-1">
+                  <button
+                    onClick={() => setMeetingsViewMode('list')}
+                    className={cn(
+                      'h-8 px-3 rounded-full text-xs font-medium flex items-center gap-1.5 transition-colors',
+                      meetingsViewMode === 'list'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    <LayoutList className="h-3.5 w-3.5" />
+                    List
+                  </button>
+                  <button
+                    onClick={() => setMeetingsViewMode('calendar')}
+                    className={cn(
+                      'h-8 px-3 rounded-full text-xs font-medium flex items-center gap-1.5 transition-colors',
+                      meetingsViewMode === 'calendar'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    <Calendar className="h-3.5 w-3.5" />
+                    Calendar
+                  </button>
+                </div>
+                <Button onClick={() => setIsMeetingDialogOpen(true)} className="rounded-full gap-2">
+                  <Video className="h-4 w-4" />
+                  New meeting
+                </Button>
+              </div>
             </div>
-            {projectMeetings.length === 0 ? (
+            {meetingsViewMode === 'calendar' ? (
+              <MeetingCalendar
+                meetings={projectMeetings.map((m) => ({
+                  id: m.id,
+                  projectName: m.projectName,
+                  date: m.date,
+                  status: m.status,
+                  platform: m.platform,
+                }))}
+                onSelectMeeting={onSelectMeeting}
+              />
+            ) : projectMeetings.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
                 <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
                   <Calendar className="h-6 w-6 text-primary" />

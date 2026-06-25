@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { useSignIn } from '@clerk/nextjs/legacy';
 import { useAuth, useClerk } from '@clerk/nextjs';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 
-export default function AcceptInvitePage() {
+function AcceptInviteContent() {
   const { isLoaded, signIn, setActive } = useSignIn();
   const { isSignedIn, isLoaded: authLoaded } = useAuth();
   const clerk = useClerk();
@@ -76,5 +76,22 @@ export default function AcceptInvitePage() {
         <p className="text-sm text-white/50">Accepting invitation...</p>
       </div>
     </div>
+  );
+}
+
+export default function AcceptInvitePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-black flex items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="h-6 w-6 animate-spin text-white/60" />
+            <p className="text-sm text-white/50">Loading...</p>
+          </div>
+        </div>
+      }
+    >
+      <AcceptInviteContent />
+    </Suspense>
   );
 }

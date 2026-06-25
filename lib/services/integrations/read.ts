@@ -24,6 +24,8 @@ export async function getIntegrationByUserId(
       github_owner: orgScoped.githubOwner,
       github_repo: orgScoped.githubRepo,
       github_access_token: orgScoped.githubAccessToken,
+      google_token: orgScoped.googleToken,
+      google_refresh_token: orgScoped.googleRefreshToken,
       webhook_secret: orgScoped.webhookSecret,
     };
   }
@@ -40,6 +42,8 @@ export async function getIntegrationByUserId(
     github_owner: row.githubOwner,
     github_repo: row.githubRepo,
     github_access_token: row.githubAccessToken,
+    google_token: row.googleToken,
+    google_refresh_token: row.googleRefreshToken,
     webhook_secret: row.webhookSecret,
   };
 }
@@ -80,11 +84,40 @@ export function getGithubWebhookSecret(integration: IntegrationRow): string | nu
   }
 }
 
+export function getGoogleToken(integration: IntegrationRow): string | null {
+  if (!integration) return null;
+  const token = integration.google_token || null;
+  if (!token) return null;
+  try {
+    return decrypt(token);
+  } catch {
+    console.error('[SECURITY] Failed to decrypt Google token');
+    return null;
+  }
+}
+
+export async function getGoogleTokenForUser(userId: string): Promise<string | null> {
+  // Always user-scoped — Google Calendar is personal, never org-shared
+  const [row] = await db
+    .select({ googleToken: integrations.googleToken })
+    .from(integrations)
+    .where(eq(integrations.userId, userId))
+    .limit(1);
+  if (!row?.googleToken) return null;
+  try {
+    return decrypt(row.googleToken);
+  } catch {
+    console.error('[SECURITY] Failed to decrypt Google token');
+    return null;
+  }
+}
+
 export async function getIntegrationStatus(userId: string, orgId?: string | null) {
   const integration = await getIntegrationByUserId(userId, orgId);
   return {
     githubConnected: Boolean(getGithubToken(integration)),
     githubUser: getGithubOwner(integration),
     githubRepo: getGithubRepo(integration),
+    googleConnected: Boolean(getGoogleToken(integration)),
   };
 }

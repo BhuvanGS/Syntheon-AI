@@ -183,6 +183,8 @@ export const integrations = pgTable('integrations', {
   githubOwner: text('github_owner'),
   githubRepo: text('github_repo'),
   githubAccessToken: text('github_access_token'),
+  googleToken: text('google_token'),
+  googleRefreshToken: text('google_refresh_token'),
   webhookSecret: text('webhook_secret'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });

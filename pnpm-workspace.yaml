@@ -1,6 +1,6 @@
 allowBuilds:
   '@clerk/shared': set this to true or false
-  bufferutil: set this to true or false
-  esbuild: set this to true or false
+  bufferutil: true
+  esbuild: true
   msw: set this to true or false
-  sharp: set this to true or false
+  sharp: true
