@@ -14,15 +14,23 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  CheckCircle,
-  ExternalLink,
+  FileText,
+  Gavel,
+  Lightbulb,
+  ListChecks,
   Loader2,
   Pencil,
   Plus,
-  Rocket,
+  Sparkles,
   Trash2,
-  Video,
 } from 'lucide-react';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
 import { ManualTicketDialog } from '@/components/manual-ticket-dialog';
 import { AssigneePicker, type AssigneeValue } from '@/components/assignee-picker';
 import { TicketDependencyPanel } from '@/components/ticket-dependency-panel';
@@ -69,22 +77,10 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
   const [meetingTitle, setMeetingTitle] = useState('Meeting');
   const [meetingData, setMeetingData] = useState<Meeting | null>(null);
   const [project, setProject] = useState<Project | null>(null);
-  const [shipResult, setShipResult] = useState<{
-    status: 'idle' | 'planning' | 'planned' | 'executing' | 'done' | 'error';
-    plan?: any;
-    featureRequest?: string;
-    issue?: any;
-    pullRequest?: any;
-    committedFiles?: string[];
-    error?: string;
-  }>({ status: 'idle' });
-
-  // Repo picker state
-  const [repos, setRepos] = useState<{ fullName: string; name: string; owner: string }[]>([]);
-  const [selectedRepo, setSelectedRepo] = useState<string>('');
-  const [loadingRepos, setLoadingRepos] = useState(false);
-  const [repoError, setRepoError] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(Date.now());
+  const [summary, setSummary] = useState<string | null>(null);
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryGenerating, setSummaryGenerating] = useState(false);
   const [savingTicketId, setSavingTicketId] = useState<string | null>(null);
   const [blockerModalOpen, setBlockerModalOpen] = useState(false);
   const [blockerModalData, setBlockerModalData] = useState<{
@@ -118,51 +114,8 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
   const { on, off } = useSse();
 
   useEffect(() => {
-    if (shipResult.status !== 'done') return;
-    if (meetingData?.deployUrl) return;
-
-    const handleUpdate = () => {
-      void fetchMeetingData();
-    };
-
-    on('meeting_status_changed', handleUpdate);
-    on('meeting_ready', handleUpdate);
-    on('meeting_failed', handleUpdate);
-
-    return () => {
-      off('meeting_status_changed', handleUpdate);
-      off('meeting_ready', handleUpdate);
-      off('meeting_failed', handleUpdate);
-    };
-  }, [shipResult.status, meetingData?.deployUrl, on, off]);
-
-  useEffect(() => {
     if (meetingData?.projectId) fetchProject(meetingData.projectId);
   }, [meetingData?.projectId]);
-
-  // Fetch user's GitHub repos on mount
-  useEffect(() => {
-    async function fetchRepos() {
-      setLoadingRepos(true);
-      setRepoError(null);
-      try {
-        const res = await fetch('/api/swarmnet/repos');
-        const data = await res.json();
-        if (!data.success) throw new Error(data.error || 'Failed to load repos');
-        setRepos(data.repos || []);
-        // Auto-select project.repo if it exists
-        if (project?.repo) {
-          const match = data.repos.find((r: any) => r.fullName === project.repo);
-          if (match) setSelectedRepo(match.fullName);
-        }
-      } catch (err) {
-        setRepoError(err instanceof Error ? err.message : 'Failed to load repos');
-      } finally {
-        setLoadingRepos(false);
-      }
-    }
-    fetchRepos();
-  }, [project?.repo]);
 
   async function fetchTickets() {
     try {
@@ -182,6 +135,36 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
     if (!meetingToDelete || !onDeleteMeeting) return;
     await onDeleteMeeting(meetingToDelete);
     setMeetingToDelete(null);
+  }
+
+  async function fetchSummary() {
+    setSummaryLoading(true);
+    try {
+      const res = await fetch(`/api/meetings/${meetingId}/summary`);
+      if (res.ok) {
+        const data = await res.json();
+        setSummary(data.summary ?? null);
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setSummaryLoading(false);
+    }
+  }
+
+  async function handleGenerateSummary() {
+    setSummaryGenerating(true);
+    try {
+      const res = await fetch(`/api/meetings/${meetingId}/summary`, { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        setSummary(data.summary ?? null);
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setSummaryGenerating(false);
+    }
   }
 
   async function fetchMeetingData() {
@@ -268,7 +251,7 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
                 }),
               });
               if (bypassRes.ok) {
-                setRefreshKey(Date.now());
+                // refreshed
               } else if (bypassRes.status === 422) {
                 const errData = await bypassRes.json().catch(() => ({}));
                 const bwt = (errData?.blockers || []).map((b: any) => ({
@@ -339,7 +322,7 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
                   }),
                 });
                 if (bypassRes.ok) {
-                  setRefreshKey(Date.now());
+                  // refreshed
                 } else if (bypassRes.status === 422) {
                   const errData = await bypassRes.json().catch(() => ({}));
                   const bwt = (errData?.blockers || []).map((b: any) => ({
@@ -406,82 +389,6 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
     [tickets]
   );
 
-  async function handleApproveAndShip() {
-    if (readyTickets.length === 0) return;
-    setShipResult({ status: 'planning' });
-
-    try {
-      const planRes = await fetch('/api/ship/plan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tickets: readyTickets,
-          meetingTitle,
-          projectId: project?.id ?? meetingData?.projectId,
-          notes: {},
-        }),
-      });
-
-      const planData = await planRes.json();
-      if (!planData.success) throw new Error(planData.error);
-
-      setShipResult({
-        status: 'planned',
-        plan: planData.plan,
-        featureRequest: planData.featureRequest,
-      });
-    } catch (error) {
-      setShipResult({
-        status: 'error',
-        error: error instanceof Error ? error.message : 'Failed to generate plan',
-      });
-    }
-  }
-
-  async function handleExecute() {
-    if (!shipResult.plan) return;
-    setShipResult((prev) => ({ ...prev, status: 'executing' }));
-
-    const [owner, repo] = selectedRepo.includes('/') ? selectedRepo.split('/') : ['', ''];
-
-    try {
-      const execRes = await fetch('/api/ship/execute', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          featureRequest: shipResult.featureRequest,
-          plan: shipResult.plan,
-          meetingId,
-          projectId: project?.id ?? meetingData?.projectId,
-          tickets: readyTickets,
-          meetingTitle,
-          isFollowUp: !!(project?.id ?? meetingData?.projectId),
-          githubOwner: owner,
-          githubRepo: repo,
-        }),
-      });
-
-      const execData = await execRes.json();
-      if (!execData.success) throw new Error(execData.error);
-
-      setShipResult((prev) => ({
-        ...prev,
-        status: 'done',
-        issue: execData.issue,
-        pullRequest: execData.pullRequest,
-        committedFiles: execData.committedFiles,
-      }));
-
-      fetchMeetingData();
-    } catch (error) {
-      setShipResult((prev) => ({
-        ...prev,
-        status: 'error',
-        error: error instanceof Error ? error.message : 'Failed to execute',
-      }));
-    }
-  }
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -503,7 +410,6 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
     );
   }
 
-  const shippedCount = shipResult.status === 'done' ? readyTickets.length : 0;
   const blockedCount = tickets.filter((ticket) => ticket.status === 'blocked').length;
   const isFollowUp = !!(project?.id ?? meetingData?.projectId);
 
@@ -520,6 +426,16 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
         </div>
 
         <div className="flex items-center gap-3 flex-wrap">
+          <button
+            onClick={() => {
+              void fetchSummary();
+              setSummaryOpen(true);
+            }}
+            className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors"
+          >
+            <FileText className="h-4 w-4" />
+            View Summary
+          </button>
           <button
             onClick={() => setIsManualTicketOpen(true)}
             className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/15 transition-colors"
@@ -549,45 +465,7 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
         </p>
       )}
 
-      <p className="text-muted-foreground mb-8">
-        {tickets.length} tickets extracted - {readyTickets.length} ready to ship
-      </p>
-
-      {meetingData?.deployUrl && (
-        <div className="mb-8 bg-card rounded-2xl border border-primary/30 overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-            <div className="flex items-center gap-2">
-              <Video className="w-4 h-4 text-primary" />
-              <p className="font-medium text-foreground">Live Preview</p>
-              <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">
-                Deployed
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <a
-                href={meetingData.deployUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
-              >
-                Open in new tab <ExternalLink className="w-3 h-3" />
-              </a>
-              <button
-                onClick={() => setRefreshKey(Date.now())}
-                className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
-              >
-                Refresh
-              </button>
-            </div>
-          </div>
-          <iframe
-            key={refreshKey}
-            src={`${meetingData.deployUrl}?v=${refreshKey}`}
-            className="w-full h-[500px]"
-            title="Live App Preview"
-          />
-        </div>
-      )}
+      <p className="text-muted-foreground mb-8">{tickets.length} tickets extracted</p>
 
       <div className="space-y-4 mb-8">
         {tickets.map((ticket) => (
@@ -665,171 +543,18 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
         ))}
       </div>
 
-      <div className="bg-card rounded-2xl p-6 border border-border sticky bottom-6 shadow-lg">
-        {shipResult.status === 'planned' && shipResult.plan && (
-          <div className="mb-4 bg-background rounded-xl p-4 border border-border">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
-              {isFollowUp ? 'Follow-up Plan Preview' : 'Plan Preview'}
-            </p>
-            <p className="text-sm font-medium mb-2">
-              Branch: <code className="text-primary">{shipResult.plan.branch_name}</code>
-            </p>
-          </div>
-        )}
-
-        {shipResult.status === 'done' && (
-          <div className="mb-4 bg-primary/5 rounded-xl p-4 border border-primary/20">
-            <p className="text-xs font-medium text-primary uppercase tracking-wide mb-2">Shipped</p>
-            <div className="flex gap-4 flex-wrap">
-              {shipResult.issue && (
-                <a
-                  href={shipResult.issue.html_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-primary hover:underline flex items-center gap-1"
-                >
-                  Issue #{shipResult.issue.number} <ExternalLink className="w-3 h-3" />
-                </a>
-              )}
-              {shipResult.pullRequest && (
-                <a
-                  href={shipResult.pullRequest.html_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-primary hover:underline flex items-center gap-1"
-                >
-                  PR #{shipResult.pullRequest.number} <ExternalLink className="w-3 h-3" />
-                </a>
-              )}
-            </div>
-          </div>
-        )}
-
-        {shipResult.status === 'error' && (
-          <div className="mb-4 bg-destructive/5 rounded-xl p-3 border border-destructive/20">
-            <p className="text-sm text-destructive">{shipResult.error}</p>
-          </div>
-        )}
-
-        {/* ── Repo Picker ── */}
-        {!isFollowUp && shipResult.status !== 'done' && (
-          <div className="mb-4">
-            <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
-              Target Repository
-            </label>
-            {repoError && <p className="text-xs text-destructive mb-1">{repoError}</p>}
-            {loadingRepos ? (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                Loading repositories...
-              </div>
-            ) : repos.length === 0 ? (
-              <p className="text-xs text-muted-foreground">
-                No repositories found. Connect GitHub in Settings.
-              </p>
-            ) : (
-              <select
-                value={selectedRepo}
-                onChange={(e) => setSelectedRepo(e.target.value)}
-                className="w-full text-sm px-3 py-2 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
-              >
-                <option value="">Select a repository...</option>
-                {repos.map((r) => (
-                  <option key={r.fullName} value={r.fullName}>
-                    {r.fullName}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-        )}
-
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <p className="text-sm text-muted-foreground">
-            {readyTickets.length > 0
-              ? `${readyTickets.length} ticket${readyTickets.length > 1 ? 's' : ''} ready to ship`
-              : 'Move tickets to in progress or done to ship'}
-          </p>
-
-          <div className="flex gap-3 flex-wrap">
-            {shipResult.status === 'idle' && (
-              <button
-                onClick={handleApproveAndShip}
-                disabled={readyTickets.length === 0}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium bg-primary text-primary-foreground hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <Rocket className="w-4 h-4" />
-                {isFollowUp ? 'Ship Changes' : 'Approve and Ship'}
-              </button>
-            )}
-
-            {shipResult.status === 'planning' && (
-              <button
-                disabled
-                className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium bg-primary text-primary-foreground opacity-70"
-              >
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Generating Plan...
-              </button>
-            )}
-
-            {shipResult.status === 'planned' && (
-              <button
-                onClick={handleExecute}
-                disabled={!isFollowUp && !selectedRepo}
-                title={!isFollowUp && !selectedRepo ? 'Select a repository first' : ''}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium bg-primary text-primary-foreground hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <Rocket className="w-4 h-4" />
-                Execute Plan
-              </button>
-            )}
-
-            {shipResult.status === 'executing' && (
-              <button
-                disabled
-                className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium bg-primary text-primary-foreground opacity-70"
-              >
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Executing...
-              </button>
-            )}
-
-            {shipResult.status === 'done' && (
-              <button
-                disabled
-                className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium bg-primary text-primary-foreground opacity-70"
-              >
-                <CheckCircle className="w-4 h-4" />
-                Shipped
-              </button>
-            )}
-
-            {shipResult.status === 'error' && (
-              <button
-                onClick={handleApproveAndShip}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium bg-primary text-primary-foreground hover:opacity-90 transition-all"
-              >
-                <Rocket className="w-4 h-4" />
-                Retry
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-          <span>{tickets.length} total tickets</span>
-          <span>{blockedCount} blocked</span>
-        </div>
-
-        <ManualTicketDialog
-          open={isManualTicketOpen}
-          onOpenChange={setIsManualTicketOpen}
-          meetings={[{ id: meetingId, projectName: meetingTitle }]}
-          defaultMeetingId={meetingId}
-          onCreated={fetchTickets}
-        />
+      <div className="flex items-center justify-between text-xs text-muted-foreground mb-8">
+        <span>{tickets.length} total tickets</span>
+        <span>{blockedCount} blocked</span>
       </div>
+
+      <ManualTicketDialog
+        open={isManualTicketOpen}
+        onOpenChange={setIsManualTicketOpen}
+        meetings={[{ id: meetingId, projectName: meetingTitle }]}
+        defaultMeetingId={meetingId}
+        onCreated={fetchTickets}
+      />
 
       <Dialog
         open={Boolean(ticketToEdit)}
@@ -1048,6 +773,171 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
           isHardBlock={blockerModalData.isHardBlock}
         />
       )}
+
+      {/* ── Meeting Summary Sheet ── */}
+      <Sheet open={summaryOpen} onOpenChange={setSummaryOpen}>
+        <SheetContent className="w-full sm:max-w-lg border-l border-border bg-background overflow-y-auto p-0">
+          {/* Header banner */}
+          <div className="px-6 pt-8 pb-5 border-b border-border/60 bg-gradient-to-br from-primary/5 to-transparent">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="w-4 h-4 text-primary" />
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-primary">
+                AI Summary
+              </span>
+            </div>
+            <SheetTitle className="font-playfair text-2xl text-foreground">
+              Meeting Summary
+            </SheetTitle>
+            <SheetDescription className="text-muted-foreground mt-1">
+              {meetingTitle}
+            </SheetDescription>
+          </div>
+
+          <div className="px-6 py-6">
+            {summaryLoading || summaryGenerating ? (
+              <div className="flex items-center gap-3 text-muted-foreground py-8">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span className="text-sm">
+                  {summaryGenerating ? 'Generating summary...' : 'Loading summary...'}
+                </span>
+              </div>
+            ) : summary ? (
+              <div className="space-y-5">
+                <SummarySections text={summary} />
+
+                <div className="pt-4 border-t border-border/40 flex items-center justify-between">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                    Generated by AI · May contain inaccuracies
+                  </p>
+                  <button
+                    onClick={handleGenerateSummary}
+                    disabled={summaryGenerating}
+                    className="text-xs text-primary hover:text-primary/80 font-medium flex items-center gap-1 transition-colors disabled:opacity-40"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    Regenerate
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-10">
+                <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                  <FileText className="w-5 h-5 text-primary" />
+                </div>
+                <p className="text-sm text-muted-foreground mb-5">
+                  No summary available yet. Generate one from the meeting transcript.
+                </p>
+                <button
+                  onClick={handleGenerateSummary}
+                  disabled={summaryGenerating}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium bg-primary text-primary-foreground hover:opacity-90 transition-all disabled:opacity-50"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Generate Summary
+                </button>
+              </div>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+}
+
+// ─── Summary Section Parser ──────────────────────────────────────
+function SummarySections({ text }: { text: string }) {
+  const lines = text.split('\n').filter((l) => l.trim().length > 0);
+
+  const sections: {
+    title: string;
+    items: string[];
+    icon: React.ReactNode;
+    color: string;
+    bg: string;
+  }[] = [];
+  let current: { title: string; items: string[] } | null = null;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (/^DECISIONS/i.test(trimmed)) {
+      if (current)
+        sections.push({
+          ...current,
+          icon: <Gavel className="w-3.5 h-3.5" />,
+          color: 'text-amber-500',
+          bg: 'bg-amber-500/10',
+        });
+      current = { title: 'Decisions', items: [] };
+    } else if (/^ACTION ITEMS/i.test(trimmed)) {
+      if (current)
+        sections.push({
+          ...current,
+          icon: <ListChecks className="w-3.5 h-3.5" />,
+          color: 'text-emerald-500',
+          bg: 'bg-emerald-500/10',
+        });
+      current = { title: 'Action Items', items: [] };
+    } else if (/^KEY POINTS/i.test(trimmed)) {
+      if (current)
+        sections.push({
+          ...current,
+          icon: <Lightbulb className="w-3.5 h-3.5" />,
+          color: 'text-sky-500',
+          bg: 'bg-sky-500/10',
+        });
+      current = { title: 'Key Points', items: [] };
+    } else if (current && trimmed.startsWith('*')) {
+      current.items.push(trimmed.replace(/^\*+\s*/, '').trim());
+    } else if (current) {
+      current.items.push(trimmed);
+    }
+  }
+  if (current) {
+    let icon = <Lightbulb className="w-3.5 h-3.5" />;
+    let color = 'text-sky-500';
+    let bg = 'bg-sky-500/10';
+    if (current.title === 'Decisions') {
+      icon = <Gavel className="w-3.5 h-3.5" />;
+      color = 'text-amber-500';
+      bg = 'bg-amber-500/10';
+    }
+    if (current.title === 'Action Items') {
+      icon = <ListChecks className="w-3.5 h-3.5" />;
+      color = 'text-emerald-500';
+      bg = 'bg-emerald-500/10';
+    }
+    sections.push({ ...current, icon, color, bg });
+  }
+
+  // Fallback: if no sections parsed, render as plain text
+  if (sections.length === 0) {
+    return <div className="whitespace-pre-wrap text-sm leading-7 text-foreground">{text}</div>;
+  }
+
+  return (
+    <div className="space-y-4">
+      {sections.map((section) => (
+        <div key={section.title} className="bg-card rounded-2xl border border-border/60 p-5">
+          <div className="flex items-center gap-2.5 mb-3">
+            <div className={`h-7 w-7 rounded-full flex items-center justify-center ${section.bg}`}>
+              <span className={section.color}>{section.icon}</span>
+            </div>
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {section.title}
+            </span>
+          </div>
+          <ul className="space-y-2.5">
+            {section.items.map((item, i) => (
+              <li key={i} className="flex items-start gap-2.5 text-sm leading-6 text-foreground">
+                <span
+                  className={`mt-1.5 h-1.5 w-1.5 rounded-full shrink-0 ${section.color.replace('text-', 'bg-')}`}
+                />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
     </div>
   );
 }

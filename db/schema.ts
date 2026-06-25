@@ -49,6 +49,7 @@ export const meetings = pgTable(
     branchName: text('branch_name'),
     deployUrl: text('deploy_url'),
     filePath: text('file_path').default(''),
+    summary: text('summary').default(''),
     date: text('date').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),

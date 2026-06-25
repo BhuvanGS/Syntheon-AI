@@ -36,6 +36,7 @@ export interface Meeting {
   deployUrl?: string;
   projectId?: string;
   meeting_url?: string;
+  summary?: string;
 }
 
 export interface SpecBlock {
@@ -134,6 +135,7 @@ function rowToMeeting(row: typeof meetingsTable.$inferSelect): Meeting {
     deployUrl: row.deployUrl ?? undefined,
     projectId: row.projectId ?? undefined,
     meeting_url: row.meetingUrl ?? undefined,
+    summary: row.summary ?? undefined,
   };
 }
 
@@ -273,6 +275,10 @@ export async function updateMeetingDeployUrl(id: string, deployUrl: string): Pro
 
 export async function updateMeetingName(id: string, projectName: string): Promise<void> {
   await db.update(meetingsTable).set({ projectName }).where(eq(meetingsTable.id, id));
+}
+
+export async function updateMeetingSummary(id: string, summary: string): Promise<void> {
+  await db.update(meetingsTable).set({ summary }).where(eq(meetingsTable.id, id));
 }
 
 export async function deleteMeeting(id: string): Promise<void> {

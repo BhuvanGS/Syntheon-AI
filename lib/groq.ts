@@ -286,6 +286,38 @@ Use null when no deadline is mentioned for a task.`,
   }
 }
 
+export async function generateMeetingSummary(transcript: string): Promise<string> {
+  const response = await groq.chat.completions.create({
+    model: 'llama-3.3-70b-versatile',
+    messages: [
+      {
+        role: 'system',
+        content: `You are an executive assistant who writes clear, concise meeting summaries.
+Read the transcript and produce a structured summary with these sections:
+
+1. DECISIONS — Key decisions made in the meeting (bulleted)
+2. ACTION ITEMS — Tasks assigned with owners if mentioned (bulleted)
+3. KEY POINTS — Important discussion points, risks, or context (bulleted)
+
+Rules:
+- Use plain text, not markdown headers. Separate sections with blank lines.
+- Keep it concise: 3-5 bullets per section max.
+- If the transcript is empty or unreadable, return "No readable transcript available."
+- Do not include timestamps or speaker names unless critical to meaning.
+- Write in third person, past tense.`,
+      },
+      {
+        role: 'user',
+        content: `Summarize this meeting transcript:\n\n${transcript.slice(0, 12000)}`,
+      },
+    ],
+    temperature: 0.3,
+    max_tokens: 1500,
+  });
+
+  return response.choices[0].message.content?.trim() ?? '';
+}
+
 export async function inferProjectTicketDependencies(
   tickets: TicketForDependencyInference[]
 ): Promise<TicketDependencySuggestion[]> {

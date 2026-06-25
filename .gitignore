@@ -13,4 +13,7 @@ db.json
 .env.local  
 ideas.txt
 sql/
+*.tsbuildinfo
+*.bak
+scripts/
 
