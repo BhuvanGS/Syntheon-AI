@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { randomUUID } from 'crypto';
 import {
-  getAllTickets,
-  getAllTicketsByOrg,
+  getTicketById,
   createDependency,
   getDependenciesForTicket,
   createActivity,
@@ -20,8 +19,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
-    const userTickets = orgId ? await getAllTicketsByOrg(orgId) : await getAllTickets(userId);
-    if (!userTickets.find((t) => t.id === id)) {
+    const ticket = await getTicketById(id);
+    if (!ticket || (orgId && ticket.org_id !== orgId) || (!orgId && ticket.user_id !== userId)) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
@@ -39,9 +38,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id: ticketId } = await params;
-    const userTickets = orgId ? await getAllTicketsByOrg(orgId) : await getAllTickets(userId);
-    const ticket = userTickets.find((t) => t.id === ticketId);
-    if (!ticket) {
+    const ticket = await getTicketById(ticketId);
+    if (!ticket || (orgId && ticket.org_id !== orgId) || (!orgId && ticket.user_id !== userId)) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
     if (!ticket.projectId) {

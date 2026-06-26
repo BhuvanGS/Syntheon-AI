@@ -11,6 +11,15 @@ const nextConfig = {
       fullUrl: false,
     },
   },
+  
+  // ── Performance Optimizations ─────────────────────
+  compress: true, // Enable gzip compression
+  poweredByHeader: false, // Remove X-Powered-By header
+  
+  // Optimize package imports (tree-shaking)
+  experimental: {
+    optimizePackageImports: ['lucide-react'],
+  },
   // ── Dev HMR stability ─────────────────────────────
   // Rule: pick ONE origin per dev session (localhost:3000 OR ngrok).
   // Mixing origins causes Clerk cookie/session mismatches + HMR drops.

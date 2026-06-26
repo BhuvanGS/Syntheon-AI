@@ -6,14 +6,34 @@ import { ToastProvider } from '@/components/island-toast';
 import { ThemeProvider } from '@/components/theme-provider';
 import './globals.css';
 
-const _geist = Geist({ subsets: ['latin'] });
-const _geistMono = Geist_Mono({ subsets: ['latin'] });
-const _playfair = Playfair_Display({ subsets: ['latin'], variable: '--font-playfair' });
-const _dmSans = DM_Sans({ subsets: ['latin'], variable: '--font-dm-sans' });
+const _geist = Geist({ 
+  subsets: ['latin'],
+  display: 'swap',
+  preload: true,
+});
+const _geistMono = Geist_Mono({ 
+  subsets: ['latin'],
+  display: 'swap',
+  preload: false, // Only preload critical fonts
+});
+const _playfair = Playfair_Display({ 
+  subsets: ['latin'], 
+  variable: '--font-playfair',
+  display: 'swap',
+  preload: false,
+});
+const _dmSans = DM_Sans({ 
+  subsets: ['latin'], 
+  variable: '--font-dm-sans',
+  display: 'swap',
+  preload: false,
+});
 const _dmSerif = DM_Serif_Display({
   subsets: ['latin'],
   weight: '400',
   variable: '--font-dm-serif',
+  display: 'swap',
+  preload: false,
 });
 
 export const metadata: Metadata = {
@@ -50,6 +70,13 @@ export default function RootLayout({
         suppressHydrationWarning
         className={`${_playfair.variable} ${_dmSans.variable} ${_dmSerif.variable}`}
       >
+        <head>
+          {/* Preconnect to critical third-party domains */}
+          <link rel="preconnect" href="https://clerk.accounts.dev" />
+          <link rel="dns-prefetch" href="https://clerk.accounts.dev" />
+          <link rel="preconnect" href="https://fonts.googleapis.com" />
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        </head>
         <body className="font-sans antialiased bg-background text-foreground">
           <ThemeProvider
             attribute="class"

@@ -22,6 +22,7 @@ import {
   Pencil,
   LayoutGrid,
   List,
+  AlertTriangle,
 } from 'lucide-react';
 import { AssigneePicker, type AssigneeValue } from '@/components/assignee-picker';
 import { TicketDependencyPanel } from '@/components/ticket-dependency-panel';
@@ -44,6 +45,8 @@ interface Ticket {
   start_date?: string | null;
   due_date?: string | null;
   deadline_time?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface Meeting {
@@ -62,6 +65,15 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
   const { memberships } = useOrganization({ memberships: true });
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
   const [assigneeFilter, setAssigneeFilter] = useState<'all' | 'mine' | 'unassigned'>('all');
+
+  // Stale ticket detection (7 days without update, not done)
+  const isTicketStale = (ticket: (typeof tickets)[number]) => {
+    if (ticket.status === 'done') return false;
+    const now = new Date();
+    const updatedAt = ticket.updatedAt ? new Date(ticket.updatedAt) : new Date(ticket.createdAt || now);
+    const daysSinceUpdate = (now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60 * 24);
+    return daysSinceUpdate >= 7;
+  };
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1007,9 +1019,17 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                       onClick={() => openTicketSource(ticket)}
                     >
                       <div className="flex items-start justify-between gap-2 mb-1">
-                        <p className="text-sm font-medium text-foreground line-clamp-2">
-                          {ticket.title}
-                        </p>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-foreground line-clamp-2">
+                            {ticket.title}
+                          </p>
+                          {isTicketStale(ticket) && (
+                            <div className="flex items-center gap-1 mt-1 text-[10px] text-amber-600">
+                              <AlertTriangle className="w-3 h-3" />
+                              <span>Stale (7+ days)</span>
+                            </div>
+                          )}
+                        </div>
                         <button
                           type="button"
                           onClick={(e) => {
@@ -1090,7 +1110,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
           };
           return (
             <div className="rounded-2xl border border-border bg-card overflow-hidden">
-              <div className="grid grid-cols-[1fr_120px_160px_100px_80px_40px] items-center px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground border-b border-border/60 bg-muted/40">
+              <div className="grid grid-cols-[minmax(200px,1fr)_120px_160px_100px_80px_40px] items-center px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground border-b border-border/60 bg-muted/40">
                 <span>Title</span>
                 <span>Status</span>
                 <span>Source</span>
@@ -1108,16 +1128,27 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                   return (
                     <div
                       key={ticket.id}
-                      className={`grid grid-cols-[1fr_120px_160px_100px_80px_40px] items-center px-4 py-3 gap-2 hover:bg-muted/40 transition-colors ${
+                      className={`grid grid-cols-[minmax(200px,1fr)_120px_160px_100px_80px_40px] items-center px-4 py-3 gap-2 hover:bg-muted/40 transition-colors ${
                         i < filteredTickets.length - 1 ? 'border-b border-border/40' : ''
                       }`}
                     >
-                      <span
-                        className="font-medium text-sm text-foreground truncate cursor-pointer hover:text-primary transition-colors"
-                        onClick={() => openTicketSource(ticket)}
-                      >
-                        {ticket.title}
-                      </span>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          className="font-medium text-sm text-foreground truncate cursor-pointer hover:text-primary transition-colors"
+                          onClick={() => openTicketSource(ticket)}
+                        >
+                          {ticket.title}
+                        </span>
+                        {isTicketStale(ticket) && (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] bg-amber-50 text-amber-700 border-amber-200 shrink-0 whitespace-nowrap"
+                          >
+                            <AlertTriangle className="w-3 h-3 mr-1" />
+                            Stale
+                          </Badge>
+                        )}
+                      </div>
                       <span
                         className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium w-fit"
                         style={{ background: s.bg, color: s.color }}

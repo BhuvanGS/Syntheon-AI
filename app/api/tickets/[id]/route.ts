@@ -41,7 +41,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
 
     const body = await req.json();
-    console.log('[TICKET PATCH] body:', JSON.stringify(body));
     const updates: Record<string, unknown> = {};
 
     if (typeof body?.title !== 'undefined') updates.title = String(body.title).trim();
@@ -177,13 +176,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     // Log activity for assignee change
     const newAssignee = updates.assignee as string | null;
     const newAssigneeUserId = updates.assignee_user_id as string | null;
-    console.log('[TICKET PATCH] assignee check:', {
-      newAssignee,
-      previousAssignee,
-      newAssigneeUserId,
-      userId,
-      hasAssigneeChange: newAssignee !== undefined && newAssignee !== previousAssignee,
-    });
     if (newAssignee !== undefined && newAssignee !== previousAssignee) {
       await createActivity({
         ticket_id: id,
@@ -193,7 +185,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       });
       // Notify the new assignee
       if (newAssigneeUserId && newAssigneeUserId !== userId) {
-        console.log('[NOTIFY] Assigning ticket to user:', newAssigneeUserId, 'org:', orgId);
         try {
           await createNotification({
             user_id: newAssigneeUserId,
@@ -203,7 +194,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             message: `"${ticket.title}" was assigned to you`,
             ticket_id: id,
           });
-          console.log('[NOTIFY] Assignment notification created successfully');
         } catch (err) {
           console.error('[NOTIFY] Failed to create assignment notification:', err);
         }
@@ -227,7 +217,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (newStatus === 'blocked' && previousStatus !== 'blocked') {
       const targetUserId = (updates.assignee_user_id as string | null) ?? ticket.assignee_user_id;
       if (targetUserId) {
-        console.log('[NOTIFY] Ticket blocked, notifying assignee:', targetUserId);
         try {
           await createNotification({
             user_id: targetUserId,

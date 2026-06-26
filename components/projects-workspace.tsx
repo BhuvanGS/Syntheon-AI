@@ -1145,13 +1145,13 @@ export function ProjectsWorkspace({
       void onRefresh();
     };
 
-    on('ticket_updated', handleRefresh);
+    // Don't listen to ticket_updated - UI has optimistic updates, no need to refetch our own changes
+    // Only listen to meeting events since they happen server-side
     on('meeting_status_changed', handleRefresh);
     on('meeting_ready', handleRefresh);
     on('meeting_failed', handleRefresh);
 
     return () => {
-      off('ticket_updated', handleRefresh);
       off('meeting_status_changed', handleRefresh);
       off('meeting_ready', handleRefresh);
       off('meeting_failed', handleRefresh);
