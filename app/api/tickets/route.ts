@@ -32,12 +32,19 @@ export async function GET(req: NextRequest) {
 
     if (orgId) {
       const result = await getTicketsPaginated(orgId, { projectId, meetingId, limit, offset });
-      return NextResponse.json({
-        ...result,
-        limit,
-        offset,
-        hasMore: offset + result.tickets.length < result.total,
-      });
+      return NextResponse.json(
+        {
+          ...result,
+          limit,
+          offset,
+          hasMore: offset + result.tickets.length < result.total,
+        },
+        {
+          headers: {
+            'Cache-Control': 'private, max-age=10, stale-while-revalidate=30',
+          },
+        }
+      );
     }
 
     const tickets = await getAllTickets(userId);

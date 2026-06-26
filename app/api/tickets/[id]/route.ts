@@ -162,6 +162,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         action_type: 'status_changed',
         metadata: { from: previousStatus, to: newStatus },
       });
+
+      // Notify ticket owner of status change (if not the one making the change)
+      if (ticket.user_id && ticket.user_id !== userId && orgId) {
+        try {
+          const { notifyTicketStatusChanged } = await import('@/lib/db');
+          await notifyTicketStatusChanged(id, ticket.title, ticket.user_id, orgId, newStatus);
+        } catch (err) {
+          console.error('[NOTIFY] Failed to create status change notification:', err);
+        }
+      }
     }
 
     // Log activity for assignee change

@@ -54,7 +54,11 @@ export const meetings = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
   },
-  (table) => [index('meetings_org_id_idx').on(table.orgId)]
+  (table) => [
+    index('meetings_org_id_idx').on(table.orgId),
+    index('meetings_created_at_idx').on(table.createdAt),
+    index('meetings_status_idx').on(table.status),
+  ]
 );
 
 // ─── Specs (legacy) ────────────────────────────────────────────
@@ -99,6 +103,9 @@ export const tickets = pgTable(
     index('tickets_meeting_id_idx').on(table.meetingId),
     index('tickets_project_id_idx').on(table.projectId),
     index('tickets_org_id_idx').on(table.orgId),
+    index('tickets_status_idx').on(table.status),
+    index('tickets_assignee_idx').on(table.assigneeUserId),
+    index('tickets_due_date_idx').on(table.dueDate),
   ]
 );
 
@@ -221,6 +228,7 @@ export const notifications = pgTable(
     index('notifications_user_id_idx').on(table.userId),
     index('notifications_org_id_idx').on(table.orgId),
     index('notifications_read_idx').on(table.read),
+    index('notifications_created_at_idx').on(table.createdAt),
   ]
 );
 

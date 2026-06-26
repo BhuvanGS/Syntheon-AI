@@ -20,12 +20,19 @@ export async function GET(req: NextRequest) {
     const offset = parsePositiveInt(searchParams.get('offset'), 0);
 
     const result = await getMeetingsPaginated(orgId, { projectId, limit, offset });
-    return NextResponse.json({
-      ...result,
-      limit,
-      offset,
-      hasMore: offset + result.meetings.length < result.total,
-    });
+    return NextResponse.json(
+      {
+        ...result,
+        limit,
+        offset,
+        hasMore: offset + result.meetings.length < result.total,
+      },
+      {
+        headers: {
+          'Cache-Control': 'private, max-age=10, stale-while-revalidate=30',
+        },
+      }
+    );
   } catch (error) {
     console.error('Failed to fetch meetings:', error);
     return NextResponse.json({ error: 'Failed to fetch meetings' }, { status: 500 });

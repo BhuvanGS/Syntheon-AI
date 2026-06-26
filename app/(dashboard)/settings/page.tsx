@@ -98,6 +98,7 @@ function SettingsContent() {
   const isAdmin = membership?.role === 'org:admin';
 
   const [projects, setProjects] = useState<Project[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(true);
   const [githubConnected, setGithubConnected] = useState(false);
   const [githubUser, setGithubUser] = useState<string | null>(null);
   const [googleConnected, setGoogleConnected] = useState(false);
@@ -128,33 +129,40 @@ function SettingsContent() {
   useEffect(() => {
     let isMounted = true;
 
-    async function load() {
+    async function loadProjects() {
       try {
-        const [statusRes, projectsRes] = await Promise.all([
-          fetch('/api/integrations/status'),
-          fetch('/api/projects'),
-        ]);
+        setProjectsLoading(true);
+        const projectsRes = await fetch('/api/projects');
+        if (isMounted && projectsRes.ok) {
+          setProjects(await projectsRes.json());
+        }
+      } catch (error) {
+        console.error('Failed to load projects:', error);
+      } finally {
+        if (isMounted) setProjectsLoading(false);
+      }
+    }
 
-        if (!isMounted) return;
-
-        if (statusRes.ok) {
+    async function loadIntegrationStatus() {
+      try {
+        const statusRes = await fetch('/api/integrations/status');
+        if (isMounted && statusRes.ok) {
           const data = await statusRes.json();
           setGithubConnected(Boolean(data.githubConnected));
           setGithubUser(data.githubUser ?? null);
           setGoogleConnected(Boolean(data.googleConnected));
         }
-
-        if (projectsRes.ok) {
-          setProjects(await projectsRes.json());
-        }
       } catch (error) {
-        console.error('Failed to load settings data:', error);
+        console.error('Failed to load integration status:', error);
       } finally {
         if (isMounted) setIntegrationStatusLoaded(true);
       }
     }
 
-    void load();
+    // Load projects immediately, don't wait for slow integration status
+    void loadProjects();
+    void loadIntegrationStatus();
+
     return () => {
       isMounted = false;
     };

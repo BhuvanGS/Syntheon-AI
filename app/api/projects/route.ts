@@ -37,7 +37,11 @@ export async function GET(req: NextRequest) {
     const projects = isOrgAdmin(ctx)
       ? await getProjectsByOrg(orgId)
       : await getProjectsForMember(orgId, userId);
-    return NextResponse.json(projects);
+    return NextResponse.json(projects, {
+      headers: {
+        'Cache-Control': 'private, max-age=60', // Cache for 60 seconds
+      },
+    });
   } catch (error) {
     console.error('Failed to fetch projects:', error);
     return NextResponse.json({ error: 'Failed to fetch projects' }, { status: 500 });

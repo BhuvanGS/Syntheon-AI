@@ -1379,6 +1379,115 @@ export async function markAllNotificationsAsRead(userId: string, orgId: string):
     );
 }
 
+// Notification Helpers
+export async function notifyTicketAssigned(
+  ticketId: string,
+  ticketTitle: string,
+  assigneeUserId: string,
+  orgId: string
+): Promise<void> {
+  await createNotification({
+    user_id: assigneeUserId,
+    org_id: orgId,
+    type: 'assigned',
+    title: 'New ticket assigned',
+    message: ticketTitle,
+    ticket_id: ticketId,
+  });
+}
+
+export async function notifyTicketStatusChanged(
+  ticketId: string,
+  ticketTitle: string,
+  ownerId: string,
+  orgId: string,
+  newStatus: string
+): Promise<void> {
+  if (!ownerId || ownerId === 'system') return;
+  await createNotification({
+    user_id: ownerId,
+    org_id: orgId,
+    type: 'assigned',
+    title: 'Ticket status updated',
+    message: `"${ticketTitle}" moved to ${newStatus.replace('_', ' ')}`,
+    ticket_id: ticketId,
+  });
+}
+
+export async function notifyMentioned(
+  ticketId: string,
+  ticketTitle: string,
+  mentionedUserId: string,
+  orgId: string
+): Promise<void> {
+  await createNotification({
+    user_id: mentionedUserId,
+    org_id: orgId,
+    type: 'mentioned',
+    title: 'You were mentioned',
+    message: `in "${ticketTitle}"`,
+    ticket_id: ticketId,
+  });
+}
+
+export async function notifyTicketDueSoon(
+  ticketId: string,
+  ticketTitle: string,
+  assigneeUserId: string,
+  orgId: string,
+  dueDate: string
+): Promise<void> {
+  await createNotification({
+    user_id: assigneeUserId,
+    org_id: orgId,
+    type: 'due_soon',
+    title: 'Ticket due soon',
+    message: `"${ticketTitle}" due ${dueDate}`,
+    ticket_id: ticketId,
+  });
+}
+
+export async function notifyMeetingReady(
+  meetingId: string,
+  projectName: string,
+  userId: string,
+  orgId: string
+): Promise<void> {
+  await createNotification({
+    user_id: userId,
+    org_id: orgId,
+    type: 'meeting_ready',
+    title: 'Meeting ready',
+    message: `"${projectName}" meeting transcript is ready`,
+    ticket_id: undefined,
+  });
+}
+
+// Extract @mentions from comment content
+// Supports format: @[User Name](userId) or @userId
+export function extractMentions(content: string): string[] {
+  const mentions: string[] = [];
+
+  // Match @[name](userId) format (from rich text editors)
+  const richMentionRegex = /@\[([^\]]+)\]\(([^)]+)\)/g;
+  let match;
+  while ((match = richMentionRegex.exec(content)) !== null) {
+    mentions.push(match[2]); // userId
+  }
+
+  // Match @userId format (plain text)
+  const plainMentionRegex = /@([a-zA-Z0-9_-]+)/g;
+  while ((match = plainMentionRegex.exec(content)) !== null) {
+    const userId = match[1];
+    // Only add if looks like a valid userId (not already added from rich format)
+    if (!mentions.includes(userId) && userId.length > 10) {
+      mentions.push(userId);
+    }
+  }
+
+  return [...new Set(mentions)]; // Remove duplicates
+}
+
 // ─── SwarmNet Runs ─────────────────────────────────────────────
 
 export interface SwarmnetRun {

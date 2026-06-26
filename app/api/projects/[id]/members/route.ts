@@ -14,7 +14,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     const members = await getProjectMembers(id);
-    return NextResponse.json(members);
+    return NextResponse.json(members, {
+      headers: {
+        'Cache-Control': 'private, max-age=30, stale-while-revalidate=60',
+      },
+    });
   } catch (err) {
     console.error('GET /members error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

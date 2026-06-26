@@ -25,6 +25,19 @@ const nextConfig = {
           process.env.NGROK_URL,
         ].filter(Boolean)
       : [],
+
+  // ── Turbopack config (Next.js 16+) ────────────────
+  turbopack: {
+    // Empty config to acknowledge we're using Turbopack
+    // HMR works well with Turbopack by default
+  },
+
+  // ── Note about ngrok ──────────────────────────────
+  // ngrok free tier blocks WebSocket connections for HMR
+  // If you see WebSocket errors when using ngrok:
+  // 1. Use localhost for development (recommended)
+  // 2. Or upgrade to ngrok paid tier
+  // 3. Or use manual refresh when on ngrok
 };
 
 export default nextConfig;

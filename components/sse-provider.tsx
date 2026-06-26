@@ -90,15 +90,17 @@ export function SseProvider({ children }: { children: React.ReactNode }) {
 
     connect();
 
-    // Close SSE when tab is hidden (makes tab lightweight, avoids browser suspension)
+    // Only reconnect on visibility change if connection was lost
+    // Don't aggressively close/reconnect - causes unnecessary refetches
     const handleVisibility = () => {
-      if (document.hidden) {
-        sourceRef.current?.close();
-        sourceRef.current = null;
-        setConnected(false);
-      } else {
-        connect();
+      if (!document.hidden) {
+        // Tab became visible - reconnect only if disconnected
+        if (!sourceRef.current || sourceRef.current.readyState === EventSource.CLOSED) {
+          connect();
+        }
       }
+      // Don't close on hidden - let browser handle connection management
+      // This prevents refetches when switching tabs
     };
     document.addEventListener('visibilitychange', handleVisibility);
 

@@ -165,7 +165,8 @@ export function NotificationBell({ onNavigateToTicket }: NotificationBellProps) 
         type="button"
         onClick={() => {
           setOpen((v) => !v);
-          if (!open) fetchNotifications();
+          // Don't refetch on open - we already have SSE updates
+          // This prevents unnecessary API calls when switching tabs
         }}
         aria-label="Notifications"
         className={cn(

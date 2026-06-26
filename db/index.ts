@@ -5,11 +5,14 @@ import * as schema from './schema';
 
 const connectionString = process.env.DATABASE_URL!;
 
-// Use a single connection in serverless environments
+// Connection pool configuration
+// IMPORTANT: Use Supabase Transaction Pooler (pooler.supabase.com:6543) for best performance
+// With pooler: max can be higher since pooler handles connection management
 const client = postgres(connectionString, {
-  max: 1,
+  max: 10, // 10 concurrent connections (pooler handles this efficiently)
   idle_timeout: 20,
   connect_timeout: 10,
+  prepare: false, // Required for Supabase transaction pooler (pgbouncer)
 });
 
 export const db = drizzle(client, { schema });

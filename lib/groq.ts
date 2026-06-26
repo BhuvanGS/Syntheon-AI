@@ -118,99 +118,49 @@ export async function extractTickets(
   transcript: string,
   meetingId: string
 ): Promise<{ title: string; tickets: TicketBlock[] }> {
+  // Truncate very long transcripts to save tokens and API costs
+  const MAX_TRANSCRIPT_LENGTH = 10000;
+  const truncatedTranscript =
+    transcript.length > MAX_TRANSCRIPT_LENGTH
+      ? transcript.slice(0, MAX_TRANSCRIPT_LENGTH) + '\n\n[Transcript truncated for length]'
+      : transcript;
+
   const response = await groq.chat.completions.create({
     model: 'llama-3.3-70b-versatile',
     messages: [
       {
         role: 'system',
-        content: `You are a senior engineering PM who extracts implementation-ready Jira tickets from meeting transcripts. Your tickets are so precise that an engineer can start coding without asking a single clarifying question.
+        content: `Extract implementation-ready tickets from meeting transcripts.
 
-RULES FOR TITLES:
-- Must start with a verb: "Implement", "Fix", "Add", "Update", "Refactor", "Remove", "Configure"
-- Must include the specific system/component affected
-- Must be under 80 characters
-- BAD: "Auth stuff" → GOOD: "Implement OAuth2 Google login with JWT session"
-- BAD: "API changes" → GOOD: "Add POST /v1/invoices endpoint with validation"
+TITLE: Start with verb (Implement/Fix/Add/Update), include component, <80 chars
 
-RULES FOR DESCRIPTIONS (minimum 3 sentences, no maximum):
-- Paragraph 1: WHAT — the exact change needed. Include specific file names, routes, components, or DB tables mentioned.
-- Paragraph 2: WHY — the business or technical reason this matters.
-- Paragraph 3: ACCEPTANCE CRITERIA — bullet points an engineer can check off. Be specific about expected behavior, error states, edge cases.
-- If technical details were mentioned (API endpoints, DB schemas, file paths, libraries), include them VERBATIM.
-- If deadlines, priorities, or blockers were mentioned, include them.
-- ASSIGNEE IS ALWAYS null — the transcript does not reliably identify speakers, so never guess assignees.
+DESCRIPTION (3+ sentences):
+1. WHAT: Exact change with specific file names, routes, tables mentioned
+2. WHY: Business/technical reason
+3. ACCEPTANCE: Bullet points with behavior, errors, edge cases
+Include technical details verbatim. ASSIGNEE always null.
 
-RULES FOR DUE_DATE:
-- If someone mentions a deadline (e.g., "by Friday", "before end of July", "needs to ship by Aug 15"), infer the exact date and output it as "YYYY-MM-DD".
-- Use the meeting date or context to resolve relative dates (e.g., if meeting is June 24 and someone says "by Friday", output "2026-06-27").
-- If no deadline is mentioned for a ticket, output "due_date": null.
-- NEVER output relative strings like "Friday" or "next week" — always convert to an absolute ISO date.
+DUE_DATE: Convert relative dates to "YYYY-MM-DD" (e.g., "by Friday" → "2026-06-27") or null if not mentioned.
 
-RULES FOR STATUS:
-- "done" = someone explicitly said they completed it, merged it, or deployed it
-- "in_progress" = someone is actively working on it, has a branch, or mentioned "I'm on it"
-- "blocked" = someone mentioned they can't proceed, are waiting, or a dependency is missing
-- "backlog" = everything else, including "we should", "let's think about", "maybe later"
+STATUS: done (completed/merged), in_progress (actively working), blocked (waiting/dependency), backlog (default)
 
-RULES FOR GRANULARITY:
-- If a discussion contains multiple distinct tasks, create SEPARATE tickets for each
-- "Build the dashboard" is one task → break into: "Implement dashboard layout", "Connect dashboard to analytics API", "Add dashboard real-time refresh"
-- If someone mentions a feature AND a bug in the same breath → two tickets
+GRANULARITY: Separate tickets for distinct tasks. Break large features into multiple tickets.
 
-STRICTLY FORBIDDEN IN DESCRIPTIONS:
-- "Discuss..." (tickets are for doing, not discussing)
-- "Consider..." (vague, unactionable)
-- "Look into..." (no measurable outcome)
-- Summaries of the meeting conversation
-- Generic phrases like "improve performance" without specific metrics or methods
+FORBIDDEN: "Discuss", "Consider", "Look into", meeting summaries, vague phrases
 
-Also generate a short human-readable title for this meeting (max 5 words).
-
-Respond ONLY with valid JSON. No markdown, no explanation, no code fences.`,
+Generate short meeting title (max 5 words). Return ONLY valid JSON, no markdown.`,
       },
       {
         role: 'user',
-        content: `Extract implementation-ready tickets and generate a meeting title from this transcript:
+        content: `Transcript:
 
-${transcript}
+${truncatedTranscript}
 
-Return JSON with this exact structure. Every ticket MUST include ALL fields shown, including due_date (use an ISO date string "YYYY-MM-DD" when a deadline is mentioned, otherwise null):
-{
-  "title": "OAuth Sprint Planning",
-  "tickets": [
-    {
-      "id": "${meetingId}-ticket-1",
-      "title": "Implement Google OAuth2 login with JWT session cookies",
-      "description": "Add Google OAuth2 authentication to the login page at /auth/login. Use the passport-google-oauth20 strategy and store refresh tokens in the users table (column: google_refresh_token). On successful auth, issue a JWT access token (15min expiry) and HTTP-only refresh cookie (7 days).\\n\\nThe product team needs this for the public beta launch next week. Without it, external users cannot access the platform.\\n\\nAcceptance criteria:\\n- User can click 'Sign in with Google' on /auth/login\\n- On success, user is redirected to /dashboard with valid JWT\\n- On failure, user sees specific error: 'Google auth failed: [reason]'\\n- Refresh token is stored encrypted in DB\\n- JWT expiry is exactly 15 minutes, refresh cookie is 7 days\\n- Unauthorized requests to /api/* return 401 with www-authenticate header",
-      "status": "backlog",
-      "assignee": null,
-      "assignee_user_id": null,
-      "project_id": null,
-      "meeting_id": "${meetingId}",
-      "dependency_ticket_id": null,
-      "due_date": "2026-06-30"
-    },
-    {
-      "id": "${meetingId}-ticket-2",
-      "title": "Refactor database connection pool",
-      "description": "Increase the PostgreSQL connection pool size from 20 to 50 and add connection retry logic with exponential backoff.\n\nCurrent pool size is causing request queuing during peak hours.\n\nAcceptance criteria:\n- Pool size is 50\n- Retry logic handles 3 attempts with 100ms, 500ms, 1s delays\n- Failed connections log detailed error messages",
-      "status": "backlog",
-      "assignee": null,
-      "assignee_user_id": null,
-      "project_id": null,
-      "meeting_id": "${meetingId}",
-      "dependency_ticket_id": null,
-      "due_date": null
-    }
-  ]
-}
-
-REMINDER: Every ticket MUST include "due_date" — either an ISO date "YYYY-MM-DD" or null. Never omit the field.
-Return ONLY the JSON object, nothing else.`,
+Return JSON: {"title": "Meeting Title", "tickets": [{"id": "${meetingId}-ticket-1", "title": "...", "description": "...", "status": "backlog", "assignee": null, "assignee_user_id": null, "project_id": null, "meeting_id": "${meetingId}", "dependency_ticket_id": null, "due_date": "YYYY-MM-DD or null"}]}`,
       },
     ],
-    temperature: 0.2,
-    max_tokens: 4000,
+    temperature: 0.1,
+    max_tokens: 3000,
     response_format: { type: 'json_object' },
   });
 
