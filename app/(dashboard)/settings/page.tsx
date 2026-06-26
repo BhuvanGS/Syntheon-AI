@@ -22,6 +22,7 @@ import {
   UserMinus,
   ChevronDown,
   ExternalLink,
+  Calendar,
   X,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -80,6 +81,14 @@ function SettingsContent() {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
   const [activeTab, setActiveTab] = useState<TabId>('connections');
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam && TABS.some((t) => t.id === tabParam)) {
+      setActiveTab(tabParam as TabId);
+    }
+  }, [searchParams]);
+
   const { setActive, userMemberships, createOrganization } = useOrganizationList({
     userMemberships: true,
   });
@@ -91,6 +100,7 @@ function SettingsContent() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [githubConnected, setGithubConnected] = useState(false);
   const [githubUser, setGithubUser] = useState<string | null>(null);
+  const [googleConnected, setGoogleConnected] = useState(false);
   const [integrationStatusLoaded, setIntegrationStatusLoaded] = useState(false);
   const [isProjectCreateOpen, setIsProjectCreateOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -131,6 +141,7 @@ function SettingsContent() {
           const data = await statusRes.json();
           setGithubConnected(Boolean(data.githubConnected));
           setGithubUser(data.githubUser ?? null);
+          setGoogleConnected(Boolean(data.googleConnected));
         }
 
         if (projectsRes.ok) {
@@ -214,7 +225,15 @@ function SettingsContent() {
     const githubConnectedParam = searchParams.get('github_connected');
     const githubError = searchParams.get('github_error');
     const githubUserParam = searchParams.get('github_user');
-    if (!integrationStatusLoaded && !githubConnectedParam && !githubError) {
+    const googleConnectedParam = searchParams.get('google_connected');
+    const googleError = searchParams.get('google_error');
+    if (
+      !integrationStatusLoaded &&
+      !githubConnectedParam &&
+      !githubError &&
+      !googleConnectedParam &&
+      !googleError
+    ) {
       return;
     }
 
@@ -229,6 +248,23 @@ function SettingsContent() {
       toast({
         title: '❌ Connection Failed',
         description: detail || githubError,
+        variant: 'destructive',
+      });
+    }
+
+    if (googleConnectedParam === 'true') {
+      setGoogleConnected(true);
+      toast({
+        title: '✅ Google Calendar Connected!',
+        description: 'You can now create Google Meet links from Syntheon.',
+      });
+    }
+
+    if (googleError) {
+      const detail = searchParams.get('google_error_detail');
+      toast({
+        title: '❌ Google Connection Failed',
+        description: detail || googleError,
         variant: 'destructive',
       });
     }
@@ -335,6 +371,28 @@ function SettingsContent() {
       toast({
         title: 'Error',
         description: 'Failed to disconnect GitHub. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  }
+
+  async function handleConnectGoogle() {
+    try {
+      const res = await fetch('/api/oauth/google/initiate', { method: 'POST' });
+      const data = await res.json();
+      if (data.authorizationUrl) {
+        window.location.href = data.authorizationUrl;
+      } else {
+        toast({
+          title: 'Failed to start Google OAuth',
+          description: 'Please try again.',
+          variant: 'destructive',
+        });
+      }
+    } catch {
+      toast({
+        title: 'Failed to start Google OAuth',
+        description: 'Please try again.',
         variant: 'destructive',
       });
     }
@@ -475,6 +533,61 @@ function SettingsContent() {
                       <p className="text-sm text-muted-foreground">
                         GitHub repository not connected
                       </p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Google Calendar */}
+                <Card className="border-border/60 shadow-none">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                          <Calendar className="h-5 w-5 text-foreground" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-sm font-semibold">Google Calendar</CardTitle>
+                          <CardDescription className="text-xs mt-0.5">
+                            Create Google Meet links directly from Syntheon
+                          </CardDescription>
+                        </div>
+                      </div>
+                      {googleConnected && (
+                        <Badge variant="default" className="text-[10px] gap-1">
+                          <CheckCircle2 className="h-3 w-3" /> Connected
+                        </Badge>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <Separator />
+                  <CardContent className="pt-4">
+                    {googleConnected ? (
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">
+                            Google Calendar is connected
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            You can create Google Meet links from any project.
+                          </p>
+                        </div>
+                        {isAdmin && (
+                          <Badge variant="outline" className="text-[10px]">
+                            Active
+                          </Badge>
+                        )}
+                      </div>
+                    ) : isAdmin ? (
+                      <Button
+                        onClick={handleConnectGoogle}
+                        className="rounded-full gap-2"
+                        size="sm"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        Connect Google Calendar
+                      </Button>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Google Calendar not connected</p>
                     )}
                   </CardContent>
                 </Card>

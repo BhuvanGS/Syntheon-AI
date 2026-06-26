@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Video, Sparkles, Link2, CalendarDays, ExternalLink, AlertCircle } from 'lucide-react';
+import { Video, Sparkles, Link2, CalendarDays, AlertCircle, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type Mode = 'paste' | 'create';
@@ -62,18 +62,6 @@ export function ProjectMeetingDialog({
       .then((data) => setGoogleConnected(Boolean(data.googleConnected)))
       .finally(() => setCheckingGoogle(false));
   }, [open]);
-
-  async function handleConnectGoogle() {
-    try {
-      const res = await fetch('/api/oauth/google/initiate', { method: 'POST' });
-      const data = await res.json();
-      if (data.authorizationUrl) {
-        window.location.href = data.authorizationUrl;
-      }
-    } catch (err) {
-      setError('Failed to start Google OAuth');
-    }
-  }
 
   async function handlePasteSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -258,15 +246,16 @@ export function ProjectMeetingDialog({
                   </div>
                   <p className="font-medium text-foreground">Google Calendar not connected</p>
                   <p className="text-sm text-muted-foreground">
-                    Connect your Google account to create Meet links directly from Syntheon.
+                    Connect Google Calendar in Settings to create Meet links directly from Syntheon.
                   </p>
                   <Button
                     type="button"
-                    onClick={handleConnectGoogle}
+                    variant="outline"
+                    onClick={() => (window.location.href = '/settings?tab=connections')}
                     className="rounded-full gap-2"
                   >
-                    <ExternalLink className="h-4 w-4" />
-                    Connect Google Calendar
+                    <Settings className="h-4 w-4" />
+                    Open Settings
                   </Button>
                 </div>
               ) : (
