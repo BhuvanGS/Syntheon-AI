@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import {
   deleteTicketById,
-  getAllTickets,
-  getAllTicketsByOrg,
   updateTicket,
   checkHardBlockers,
   cascadeDepRegressionForParent,
@@ -27,16 +25,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
-    const userTickets = orgId ? await getAllTicketsByOrg(orgId) : await getAllTickets(userId);
-    let ticket = userTickets.find((item) => item.id === id);
-
-    // Fallback: ticket may have been created before org_id was set — look up directly
-    if (!ticket) {
-      ticket = (await getTicketById(id)) ?? undefined;
-      if (ticket && orgId && ticket.org_id !== orgId) ticket = undefined;
-    }
-
-    if (!ticket) {
+    // Single-row lookup instead of scanning the entire org's tickets
+    const ticket = (await getTicketById(id)) ?? undefined;
+    if (!ticket || (orgId ? ticket.org_id !== orgId : ticket.user_id !== userId)) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
@@ -275,15 +266,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
-    const userTickets = await getAllTicketsByOrg(ctx.orgId);
-    let ticket = userTickets.find((item) => item.id === id);
-
-    if (!ticket) {
-      ticket = (await getTicketById(id)) ?? undefined;
-      if (ticket && ticket.org_id !== ctx.orgId) ticket = undefined;
-    }
-
-    if (!ticket) {
+    const ticket = (await getTicketById(id)) ?? undefined;
+    if (!ticket || ticket.org_id !== ctx.orgId) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 

@@ -70,7 +70,9 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
   const isTicketStale = (ticket: (typeof tickets)[number]) => {
     if (ticket.status === 'done') return false;
     const now = new Date();
-    const updatedAt = ticket.updatedAt ? new Date(ticket.updatedAt) : new Date(ticket.createdAt || now);
+    const updatedAt = ticket.updatedAt
+      ? new Date(ticket.updatedAt)
+      : new Date(ticket.createdAt || now);
     const daysSinceUpdate = (now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60 * 24);
     return daysSinceUpdate >= 7;
   };

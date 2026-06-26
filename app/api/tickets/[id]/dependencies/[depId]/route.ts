@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import {
-  getAllTickets,
+  getTicketById,
   deleteDependency,
   getDependenciesForTicket,
   incrementDependencyIgnoreCount,
@@ -19,11 +19,12 @@ const DEP_STRENGTHS = new Set<DependencyStrength>(['soft', 'hard']);
 async function getDepByIdForUser(
   ticketId: string,
   depId: string,
-  userId: string
+  userId: string,
+  orgId?: string | null
 ): Promise<{ found: boolean }> {
-  const userTickets = await getAllTickets(userId);
-  const ticket = userTickets.find((t) => t.id === ticketId);
+  const ticket = await getTicketById(ticketId);
   if (!ticket) return { found: false };
+  if (orgId ? ticket.org_id !== orgId : ticket.user_id !== userId) return { found: false };
 
   const { parents, children } = await getDependenciesForTicket(ticketId);
   const dep = [...parents, ...children].find((d) => d.id === depId);
@@ -35,11 +36,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; depId: string }> }
 ) {
   try {
-    const { userId } = await auth();
+    const { userId, orgId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id: ticketId, depId } = await params;
-    const { found } = await getDepByIdForUser(ticketId, depId, userId);
+    const { found } = await getDepByIdForUser(ticketId, depId, userId, orgId);
     if (!found) return NextResponse.json({ error: 'Dependency not found' }, { status: 404 });
 
     await deleteDependency(depId);
@@ -64,11 +65,11 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string; depId: string }> }
 ) {
   try {
-    const { userId } = await auth();
+    const { userId, orgId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id: ticketId, depId } = await params;
-    const { found } = await getDepByIdForUser(ticketId, depId, userId);
+    const { found } = await getDepByIdForUser(ticketId, depId, userId, orgId);
     if (!found) return NextResponse.json({ error: 'Dependency not found' }, { status: 404 });
 
     const body = await req.json();

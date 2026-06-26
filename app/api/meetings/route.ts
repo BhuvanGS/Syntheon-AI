@@ -1,7 +1,7 @@
 // app/api/meetings/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { getMeetingsByOrg, getMeetingsPaginated } from '@/lib/db';
+import { getMeetingsPaginated } from '@/lib/db';
 
 function parsePositiveInt(value: string | null, fallback: number): number {
   const parsed = Number.parseInt(value ?? '', 10);

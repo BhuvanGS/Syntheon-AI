@@ -4,7 +4,7 @@ import {
   cascadeDepRegressionForParent,
   checkHardBlockers,
   getAllTickets,
-  getAllTicketsByOrg,
+  getTicketsByIds,
   getTicketsPaginated,
   getDependenciesForTicket,
   incrementDependencyIgnoreCount,
@@ -75,18 +75,24 @@ export async function PATCH(req: NextRequest) {
 
     const allowedStatuses = new Set(['backlog', 'in_progress', 'done', 'blocked']);
     const bypassGate = body?.bypassGate === true;
-    const userTickets = orgId ? await getAllTicketsByOrg(orgId) : await getAllTickets(userId);
-    const userTicketIds = new Set(userTickets.map((ticket) => ticket.id));
-    const ticketById = new Map(userTickets.map((ticket) => [ticket.id, ticket]));
 
+    // Validate payload shape before touching the DB
+    const changeIds: string[] = [];
     for (const change of changes) {
       const ticketId = typeof change?.ticketId === 'string' ? change.ticketId : '';
       const status = typeof change?.status === 'string' ? change.status : '';
-
       if (!ticketId || !allowedStatuses.has(status)) {
         return NextResponse.json({ error: 'Invalid ticket update payload' }, { status: 400 });
       }
+      changeIds.push(ticketId);
+    }
 
+    // Fetch only the tickets being changed (scoped to org/user) — no full-table scan
+    const userTickets = await getTicketsByIds(changeIds, { orgId, userId });
+    const userTicketIds = new Set(userTickets.map((ticket) => ticket.id));
+    const ticketById = new Map(userTickets.map((ticket) => [ticket.id, ticket]));
+
+    for (const ticketId of changeIds) {
       if (!userTicketIds.has(ticketId)) {
         return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
       }

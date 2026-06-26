@@ -58,6 +58,8 @@ export const meetings = pgTable(
     index('meetings_org_id_idx').on(table.orgId),
     index('meetings_created_at_idx').on(table.createdAt),
     index('meetings_status_idx').on(table.status),
+    // For getMeetingsPaginated: WHERE org_id = ? AND project_id = ? ORDER BY date DESC
+    index('meetings_org_project_date_idx').on(table.orgId, table.projectId, table.date),
   ]
 );
 
@@ -106,26 +108,38 @@ export const tickets = pgTable(
     index('tickets_status_idx').on(table.status),
     index('tickets_assignee_idx').on(table.assigneeUserId),
     index('tickets_due_date_idx').on(table.dueDate),
+    // Composite index for the common paginated list query:
+    // WHERE org_id = ? AND project_id = ? ORDER BY created_at DESC
+    index('tickets_org_project_created_idx').on(table.orgId, table.projectId, table.createdAt),
+    // Composite for stale detection: WHERE org_id = ? AND status != done AND updated_at < ?
+    index('tickets_org_status_updated_idx').on(table.orgId, table.status, table.updatedAt),
   ]
 );
 
 // ─── Projects ──────────────────────────────────────────────────
-export const projects = pgTable('projects', {
-  id: text('id').primaryKey(),
-  userId: text('user_id'),
-  orgId: text('org_id'),
-  name: text('name').notNull(),
-  repo: text('repo').notNull(),
-  deployUrl: text('deploy_url'),
-  branchBase: text('branch_base').default('main'),
-  agentTier: text('agent_tier').default('standard'),
-  meetingsArr: text('meetings').notNull().default('[]'),
-  specIds: text('spec_ids').notNull().default('[]'),
-  files: text('files').notNull().default('[]'),
-  context: text('context').default(''),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
-});
+export const projects = pgTable(
+  'projects',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id'),
+    orgId: text('org_id'),
+    name: text('name').notNull(),
+    repo: text('repo').notNull(),
+    deployUrl: text('deploy_url'),
+    branchBase: text('branch_base').default('main'),
+    agentTier: text('agent_tier').default('standard'),
+    meetingsArr: text('meetings').notNull().default('[]'),
+    specIds: text('spec_ids').notNull().default('[]'),
+    files: text('files').notNull().default('[]'),
+    context: text('context').default(''),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index('projects_org_id_idx').on(table.orgId),
+    index('projects_user_id_idx').on(table.userId),
+  ]
+);
 
 // ─── Ticket Dependencies ───────────────────────────────────────
 export const ticketDependencies = pgTable(
@@ -207,7 +221,11 @@ export const projectMembers = pgTable(
     role: text('role').default('member'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   },
-  (table) => [uniqueIndex('project_user_unique').on(table.projectId, table.userId)]
+  (table) => [
+    uniqueIndex('project_user_unique').on(table.projectId, table.userId),
+    // For getProjectsForMember: WHERE org_id = ? AND user_id = ?
+    index('project_members_org_user_idx').on(table.orgId, table.userId),
+  ]
 );
 
 // ─── Notifications ─────────────────────────────────────────────
@@ -229,6 +247,10 @@ export const notifications = pgTable(
     index('notifications_org_id_idx').on(table.orgId),
     index('notifications_read_idx').on(table.read),
     index('notifications_created_at_idx').on(table.createdAt),
+    // For getNotificationsForUser: WHERE user_id = ? AND org_id = ? ORDER BY created_at DESC
+    index('notifications_user_org_created_idx').on(table.userId, table.orgId, table.createdAt),
+    // For getUnreadNotificationCount: WHERE user_id = ? AND org_id = ? AND read = ?
+    index('notifications_user_org_read_idx').on(table.userId, table.orgId, table.read),
   ]
 );
 

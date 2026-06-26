@@ -560,6 +560,26 @@ export async function getTicketById(id: string): Promise<Ticket | null> {
   return row ? rowToTicket(row) : null;
 }
 
+// Fetch only the specified tickets, scoped by org (or user when no org).
+// Avoids full-table scans when validating a known set of ticket IDs.
+export async function getTicketsByIds(
+  ids: string[],
+  scope: { orgId?: string | null; userId?: string }
+): Promise<Ticket[]> {
+  if (ids.length === 0) return [];
+  const conditions = [inArray(ticketsTable.id, ids)];
+  if (scope.orgId) {
+    conditions.push(eq(ticketsTable.orgId, scope.orgId));
+  } else if (scope.userId) {
+    conditions.push(eq(ticketsTable.userId, scope.userId));
+  }
+  const rows = await db
+    .select()
+    .from(ticketsTable)
+    .where(and(...conditions));
+  return rows.map(rowToTicket);
+}
+
 export async function updateTicketStatus(id: string, status: Ticket['status']): Promise<void> {
   await db
     .update(ticketsTable)
@@ -1063,36 +1083,6 @@ export async function getProjectsByOrg(orgId: string): Promise<Project[]> {
   return rows.map(rowToProject);
 }
 
-export async function getMeetingsByOrg(orgId: string): Promise<Meeting[]> {
-  const rows = await db
-    .select()
-    .from(meetingsTable)
-    .where(eq(meetingsTable.orgId, orgId))
-    .orderBy(desc(meetingsTable.date));
-  return rows.map(rowToMeeting);
-}
-
-export async function getAllTicketsByOrg(orgId: string): Promise<Ticket[]> {
-  const rows = await db
-    .select()
-    .from(ticketsTable)
-    .where(eq(ticketsTable.orgId, orgId))
-    .orderBy(desc(ticketsTable.createdAt));
-  const tickets = rows.map(rowToTicket);
-
-  // Deduplicate by (meeting_id + title + description) to avoid showing same ticket multiple times
-  const seen = new Set<string>();
-  const deduplicated: Ticket[] = [];
-  for (const ticket of tickets) {
-    const key = `${ticket.meeting_id || 'null'}::${ticket.title.trim().toLowerCase()}::${(ticket.description || '').trim().toLowerCase()}`;
-    if (!seen.has(key)) {
-      seen.add(key);
-      deduplicated.push(ticket);
-    }
-  }
-  return deduplicated;
-}
-
 export async function getTicketsPaginated(
   orgId: string,
   options: {
@@ -1130,7 +1120,9 @@ export function isTicketStale(ticket: Ticket, staleDays: number = 7): boolean {
   if (ticket.status === 'done') return false;
 
   const now = new Date();
-  const updatedAt = ticket.updatedAt ? new Date(ticket.updatedAt) : new Date(ticket.createdAt || now);
+  const updatedAt = ticket.updatedAt
+    ? new Date(ticket.updatedAt)
+    : new Date(ticket.createdAt || now);
   const daysSinceUpdate = (now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60 * 24);
 
   return daysSinceUpdate >= staleDays;

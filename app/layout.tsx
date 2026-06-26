@@ -6,24 +6,24 @@ import { ToastProvider } from '@/components/island-toast';
 import { ThemeProvider } from '@/components/theme-provider';
 import './globals.css';
 
-const _geist = Geist({ 
+const _geist = Geist({
   subsets: ['latin'],
   display: 'swap',
   preload: true,
 });
-const _geistMono = Geist_Mono({ 
+const _geistMono = Geist_Mono({
   subsets: ['latin'],
   display: 'swap',
   preload: false, // Only preload critical fonts
 });
-const _playfair = Playfair_Display({ 
-  subsets: ['latin'], 
+const _playfair = Playfair_Display({
+  subsets: ['latin'],
   variable: '--font-playfair',
   display: 'swap',
   preload: false,
 });
-const _dmSans = DM_Sans({ 
-  subsets: ['latin'], 
+const _dmSans = DM_Sans({
+  subsets: ['latin'],
   variable: '--font-dm-sans',
   display: 'swap',
   preload: false,

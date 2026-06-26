@@ -3,6 +3,7 @@
 ## Date: June 26, 2026
 
 ## Summary
+
 Removed all SwarmNet-related code and database tables from the codebase.
 
 ---
@@ -10,6 +11,7 @@ Removed all SwarmNet-related code and database tables from the codebase.
 ## Files Deleted
 
 ### API Routes
+
 - `app/api/swarmnet/agents/[id]/run/route.ts`
 - `app/api/swarmnet/runs/[id]/route.ts`
 - `app/api/swarmnet/repos/route.ts`
@@ -17,6 +19,7 @@ Removed all SwarmNet-related code and database tables from the codebase.
 - **Entire directory:** `app/api/swarmnet/`
 
 ### Components
+
 - `components/swarmnet-build-panel.tsx`
 
 ---
@@ -24,24 +27,30 @@ Removed all SwarmNet-related code and database tables from the codebase.
 ## Files Modified
 
 ### Database Schema (`db/schema.ts`)
+
 **Removed Tables:**
+
 - `swarmnetAgents` - Agent definitions with domain expertise
 - `swarmnetRuns` - Run execution tracking
 - `swarmnetArtifacts` - Generated code artifacts
 
 ### Database Layer (`lib/db.ts`)
+
 **Removed Imports:**
+
 - `swarmnetAgents as agentsTable`
 - `swarmnetRuns as runsTable`
 - `swarmnetArtifacts as artifactsTable`
 
 **Removed Functions:**
+
 - `createSwarmnetRun()` - Create agent run
 - `getSwarmnetRun()` - Fetch run details
 - `updateSwarmnetRun()` - Update run status
 - `createSwarmnetArtifact()` - Store generated code
 
 **Removed Types:**
+
 - `SwarmnetRun` interface
 
 ---
@@ -60,6 +69,7 @@ DROP TABLE IF EXISTS swarmnet_agents CASCADE;
 ```
 
 Or use psql:
+
 ```bash
 psql $DATABASE_URL -f migrations/drop-swarmnet-tables.sql
 ```
@@ -69,11 +79,13 @@ psql $DATABASE_URL -f migrations/drop-swarmnet-tables.sql
 ## Impact Analysis
 
 ### ✅ No Breaking Changes
+
 - SwarmNet was an experimental feature not yet integrated into the main UI
 - No user-facing features depend on these tables
 - Tickets and projects continue working normally
 
 ### 🧹 Cleanup Benefits
+
 - **Simpler schema** - 3 fewer tables to maintain
 - **Reduced complexity** - Removed unused API routes
 - **Smaller bundle** - Removed unused components
@@ -100,6 +112,7 @@ If you need to restore SwarmNet:
 ---
 
 ## Related Commits
+
 - Removed SwarmNet tables from schema
 - Removed SwarmNet functions from lib/db.ts
 - Deleted SwarmNet API routes

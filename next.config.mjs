@@ -11,11 +11,11 @@ const nextConfig = {
       fullUrl: false,
     },
   },
-  
+
   // ── Performance Optimizations ─────────────────────
   compress: true, // Enable gzip compression
   poweredByHeader: false, // Remove X-Powered-By header
-  
+
   // Optimize package imports (tree-shaking)
   experimental: {
     optimizePackageImports: ['lucide-react'],
