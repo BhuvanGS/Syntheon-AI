@@ -4,3 +4,13 @@ allowBuilds:
   esbuild: true
   msw: set this to true or false
   sharp: true
+minimumReleaseAgeExclude:
+  - sst-darwin-arm64@4.17.0
+  - sst-darwin-x64@4.17.0
+  - sst-linux-arm64@4.17.0
+  - sst-linux-x64@4.17.0
+  - sst-linux-x86@4.17.0
+  - sst-win32-arm64@4.17.0
+  - sst-win32-x64@4.17.0
+  - sst-win32-x86@4.17.0
+  - sst@4.17.0

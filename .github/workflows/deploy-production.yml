@@ -1,0 +1,78 @@
+name: Deploy Production
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      GITHUB_OWNER: ${{ secrets.GH_OWNER }}
+      GITHUB_REPO: ${{ secrets.GH_REPO }}
+      NEXT_PUBLIC_CLERK_SIGN_IN_URL: ${{ secrets.NEXT_PUBLIC_CLERK_SIGN_IN_URL }}
+      NEXT_PUBLIC_CLERK_SIGN_UP_URL: ${{ secrets.NEXT_PUBLIC_CLERK_SIGN_UP_URL }}
+      NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL: ${{ secrets.NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL }}
+      NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL: ${{ secrets.NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL }}
+      NEXT_PUBLIC_VERCEL_ANALYTICS_ID: ${{ secrets.NEXT_PUBLIC_VERCEL_ANALYTICS_ID }}
+      CLERK_TELEMETRY_DISABLED: ${{ secrets.CLERK_TELEMETRY_DISABLED }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+      - name: Set SST secrets
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          SKRIBBY_API_KEY: ${{ secrets.SKRIBBY_API_KEY }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          CLERK_WEBHOOK_SECRET: ${{ secrets.CLERK_WEBHOOK_SECRET }}
+          DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_OWNER: ${{ secrets.GH_OWNER }}
+          GH_REPO: ${{ secrets.GH_REPO }}
+          SKRIBBY_WEBHOOK_SECRET: ${{ secrets.SKRIBBY_WEBHOOK_SECRET }}
+          WEBHOOK_ACCESS_TOKEN: ${{ secrets.WEBHOOK_ACCESS_TOKEN }}
+          GH_OAUTH_CLIENT_ID: ${{ secrets.GH_OAUTH_CLIENT_ID }}
+          GH_OAUTH_CLIENT_SECRET: ${{ secrets.GH_OAUTH_CLIENT_SECRET }}
+          GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+          TOKEN_ENCRYPTION_KEY: ${{ secrets.TOKEN_ENCRYPTION_KEY }}
+        run: |
+          npx sst secret set SupabaseServiceRoleKey "$SUPABASE_SERVICE_ROLE_KEY" --stage production
+          npx sst secret set GroqApiKey "$GROQ_API_KEY" --stage production
+          npx sst secret set SkribbyApiKey "$SKRIBBY_API_KEY" --stage production
+          npx sst secret set ClerkSecretKey "$CLERK_SECRET_KEY" --stage production
+          npx sst secret set ClerkWebhookSecret "$CLERK_WEBHOOK_SECRET" --stage production
+          npx sst secret set DeepgramApiKey "$DEEPGRAM_API_KEY" --stage production
+          npx sst secret set GithubToken "$GH_TOKEN" --stage production
+          npx sst secret set SkribbyWebhookSecret "$SKRIBBY_WEBHOOK_SECRET" --stage production
+          npx sst secret set WebhookAccessToken "$WEBHOOK_ACCESS_TOKEN" --stage production
+          npx sst secret set GithubOauthClientId "$GH_OAUTH_CLIENT_ID" --stage production
+          npx sst secret set GithubOauthClientSecret "$GH_OAUTH_CLIENT_SECRET" --stage production
+          npx sst secret set GoogleOauthClientSecret "$GOOGLE_OAUTH_CLIENT_SECRET" --stage production
+          npx sst secret set TokenEncryptionKey "$TOKEN_ENCRYPTION_KEY" --stage production
+
+      - name: Deploy to production
+        run: npx sst deploy --stage production

@@ -16,4 +16,11 @@ sql/
 *.tsbuildinfo
 *.bak
 scripts/
+AWS.txt
 
+
+# sst
+.sst
+
+# open-next
+.open-next
