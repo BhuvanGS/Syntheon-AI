@@ -5,6 +5,15 @@ import { useSse } from '@/components/sse-provider';
 import { stripHtml } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -402,7 +411,7 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
     return (
       <div className="max-w-5xl">
         <h1 className="text-4xl font-playfair font-bold text-foreground mb-2">{meetingTitle}</h1>
-        <div className="bg-card rounded-2xl p-12 border border-border text-center mt-8">
+        <div className="bg-muted/50 rounded-2xl p-12 border border-border text-center mt-8">
           <p className="text-2xl font-playfair font-bold mb-2">No tickets yet</p>
           <p className="text-muted-foreground">This meeting has not produced any tickets yet.</p>
         </div>
@@ -431,7 +440,7 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
               void fetchSummary();
               setSummaryOpen(true);
             }}
-            className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors"
+            className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/50 px-4 py-2 text-sm font-medium text-foreground hover:bg-muted/70 transition-colors"
           >
             <FileText className="h-4 w-4" />
             View Summary
@@ -471,7 +480,7 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
         {tickets.map((ticket) => (
           <div
             key={ticket.id}
-            className="bg-card rounded-2xl p-6 border border-border transition-all duration-200"
+            className="bg-muted/50 rounded-2xl p-6 border border-border hover:border-primary/30 transition-all duration-200"
           >
             <div className="flex items-start justify-between gap-4 mb-4">
               <div>
@@ -573,9 +582,9 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
           </DialogHeader>
 
           <div className="space-y-4 py-2">
-            <label className="block text-sm text-muted-foreground">
-              Name
-              <input
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Name</label>
+              <Input
                 value={ticketEditForm.title}
                 onChange={(e) =>
                   setTicketEditForm((prev) => ({
@@ -583,14 +592,13 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
                     title: e.target.value,
                   }))
                 }
-                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
                 placeholder="Ticket title"
               />
-            </label>
+            </div>
 
-            <label className="block text-sm text-muted-foreground">
-              Description
-              <textarea
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Description</label>
+              <Textarea
                 value={ticketEditForm.description}
                 onChange={(e) =>
                   setTicketEditForm((prev) => ({
@@ -598,40 +606,42 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
                     description: e.target.value,
                   }))
                 }
-                className="mt-1 min-h-24 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
                 placeholder="Describe the ticket"
+                className="min-h-24"
               />
-            </label>
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <label className="block text-sm text-muted-foreground">
-                Assignee
-                <div className="mt-1">
-                  <AssigneePicker
-                    value={ticketEditForm.assignee}
-                    onChange={(val) => setTicketEditForm((prev) => ({ ...prev, assignee: val }))}
-                  />
-                </div>
-              </label>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Assignee</label>
+                <AssigneePicker
+                  value={ticketEditForm.assignee}
+                  onChange={(val) => setTicketEditForm((prev) => ({ ...prev, assignee: val }))}
+                />
+              </div>
 
-              <label className="block text-sm text-muted-foreground">
-                Status
-                <select
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Status</label>
+                <Select
                   value={ticketEditForm.status}
-                  onChange={(e) =>
+                  onValueChange={(value) =>
                     setTicketEditForm((prev) => ({
                       ...prev,
-                      status: e.target.value as Ticket['status'],
+                      status: value as Ticket['status'],
                     }))
                   }
-                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
                 >
-                  <option value="backlog">Backlog</option>
-                  <option value="in_progress">In progress</option>
-                  <option value="done">Done</option>
-                  <option value="blocked">Blocked</option>
-                </select>
-              </label>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="backlog">Backlog</SelectItem>
+                    <SelectItem value="in_progress">In progress</SelectItem>
+                    <SelectItem value="done">Done</SelectItem>
+                    <SelectItem value="blocked">Blocked</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {ticketToEdit && (
@@ -917,7 +927,7 @@ function SummarySections({ text }: { text: string }) {
   return (
     <div className="space-y-4">
       {sections.map((section) => (
-        <div key={section.title} className="bg-card rounded-2xl border border-border/60 p-5">
+        <div key={section.title} className="bg-muted/50 rounded-2xl border border-border/60 p-5">
           <div className="flex items-center gap-2.5 mb-3">
             <div className={`h-7 w-7 rounded-full flex items-center justify-center ${section.bg}`}>
               <span className={section.color}>{section.icon}</span>

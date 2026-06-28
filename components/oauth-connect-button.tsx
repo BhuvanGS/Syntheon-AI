@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/components/island-toast';
 
 type OAuthConnectButtonProps = {
   label: string;
@@ -18,6 +18,7 @@ export function OAuthConnectButton({
   initiateEndpoint,
   onSuccess,
 }: OAuthConnectButtonProps) {
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
 
   const handleConnect = async () => {
@@ -38,11 +39,7 @@ export function OAuthConnectButton({
       onSuccess?.();
     } catch (error) {
       console.error(`Failed to connect ${providerName}:`, error);
-      toast({
-        title: 'Connection Failed',
-        description: `Could not start ${providerName} authentication`,
-        variant: 'destructive',
-      });
+      showToast(`Could not start ${providerName} authentication`, 'error');
       setLoading(false);
     }
   };

@@ -157,7 +157,7 @@ export function TicketCommentsPanel({ ticketId, currentUserId }: TicketCommentsP
           {comments.map((comment) => (
             <div
               key={comment.id}
-              className="flex gap-3 p-3 rounded-lg border border-border bg-card/40"
+              className="flex gap-3 p-3 rounded-lg border border-border bg-muted/50"
             >
               <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                 <User className="h-4 w-4" />

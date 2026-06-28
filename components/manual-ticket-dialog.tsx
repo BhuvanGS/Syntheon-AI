@@ -12,6 +12,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { CirclePlus, Sparkles } from 'lucide-react';
 import { AssigneePicker, type AssigneeValue } from '@/components/assignee-picker';
 
@@ -154,37 +161,44 @@ export function ManualTicketDialog({
             {!projectOnly && (
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Meeting</label>
-                <select
+                <Select
                   value={resolvedMeetingId}
-                  onChange={(e) => setMeetingId(e.target.value)}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground"
+                  onValueChange={(value) => setMeetingId(value)}
                   disabled={meetings.length === 0}
                 >
-                  {meetings.length === 0 ? (
-                    <option value="">No meetings available</option>
-                  ) : (
-                    meetings.map((meeting) => (
-                      <option key={meeting.id} value={meeting.id}>
-                        {meeting.projectName}
-                      </option>
-                    ))
-                  )}
-                </select>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a meeting" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {meetings.length === 0 ? (
+                      <SelectItem value="" disabled>
+                        No meetings available
+                      </SelectItem>
+                    ) : (
+                      meetings.map((meeting) => (
+                        <SelectItem key={meeting.id} value={meeting.id}>
+                          {meeting.projectName}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
             )}
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Status</label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as typeof status)}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground"
-              >
-                <option value="backlog">Backlog</option>
-                <option value="in_progress">In progress</option>
-                <option value="done">Done</option>
-                <option value="blocked">Blocked</option>
-              </select>
+              <Select value={status} onValueChange={(value) => setStatus(value as typeof status)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="backlog">Backlog</SelectItem>
+                  <SelectItem value="in_progress">In progress</SelectItem>
+                  <SelectItem value="done">Done</SelectItem>
+                  <SelectItem value="blocked">Blocked</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

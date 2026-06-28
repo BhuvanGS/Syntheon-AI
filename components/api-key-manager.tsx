@@ -13,9 +13,10 @@ import {
   EyeOff,
   Check,
 } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/components/island-toast';
 
 export function ApiKeyManager() {
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [hasExistingKey, setHasExistingKey] = useState(false);
@@ -59,17 +60,10 @@ export function ApiKeyManager() {
       setHasExistingKey(true);
       setShowKey(false); // Start with masked view
 
-      toast({
-        title: '✅ API Key Generated',
-        description: 'Your new API key has been created. Save it securely!',
-      });
+      showToast('API Key generated. Save it securely!', 'success');
     } catch (error) {
       console.error('Failed to generate key:', error);
-      toast({
-        title: '❌ Generation Failed',
-        description: 'Could not generate API key',
-        variant: 'destructive',
-      });
+      showToast('Could not generate API key', 'error');
     } finally {
       setLoading(false);
     }
@@ -93,21 +87,14 @@ export function ApiKeyManager() {
       // Reset copied state after 2 seconds
       setTimeout(() => setCopied(false), 2000);
 
-      toast({
-        title: '✅ Copied!',
-        description: 'API key copied to clipboard',
-      });
+      showToast('API key copied to clipboard', 'success');
     } catch (error) {
-      toast({
-        title: '❌ Copy Failed',
-        description: 'Could not copy to clipboard',
-        variant: 'destructive',
-      });
+      showToast('Could not copy to clipboard', 'error');
     }
   };
 
   return (
-    <div className="rounded-lg border border-border/60 bg-card">
+    <div className="rounded-lg border border-border/60 bg-muted/50">
       {/* Header */}
       <div className="flex items-start justify-between p-5 pb-4">
         <div className="flex items-center gap-3">

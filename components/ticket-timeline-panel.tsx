@@ -194,7 +194,7 @@ export function TicketTimelinePanel({ ticket, subtasks = [] }: TicketTimelinePan
 
       {/* Progress Section */}
       {totalSubtasks > 0 && (
-        <div className="rounded-xl border border-border bg-card/40 p-4">
+        <div className="rounded-xl border border-border bg-muted/50 p-4">
           <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
             <CheckCircle className="h-4 w-4" />
             Progress ({completedSubtasks}/{totalSubtasks} subtasks)
@@ -211,7 +211,7 @@ export function TicketTimelinePanel({ ticket, subtasks = [] }: TicketTimelinePan
 
       {/* Subtasks Timeline */}
       {subtasks.length > 0 && (
-        <div className="rounded-xl border border-border bg-card/40 p-4">
+        <div className="rounded-xl border border-border bg-muted/50 p-4">
           <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
             <Calendar className="h-4 w-4" />
             Subtasks Timeline
@@ -245,11 +245,11 @@ export function TicketTimelinePanel({ ticket, subtasks = [] }: TicketTimelinePan
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-lg border border-border bg-card/40 p-3">
+        <div className="rounded-lg border border-border bg-muted/50 p-3">
           <p className="text-xs text-muted-foreground mb-1">Created</p>
           <p className="text-sm font-medium text-foreground">{formatDate(ticket.createdAt)}</p>
         </div>
-        <div className="rounded-lg border border-border bg-card/40 p-3">
+        <div className="rounded-lg border border-border bg-muted/50 p-3">
           <p className="text-xs text-muted-foreground mb-1">Last Updated</p>
           <p className="text-sm font-medium text-foreground">{formatDate(ticket.updatedAt)}</p>
         </div>

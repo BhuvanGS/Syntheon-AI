@@ -82,13 +82,13 @@ export function MeetingCalendar({ meetings, onSelectMeeting }: MeetingCalendarPr
           <div className="flex items-center gap-1">
             <button
               onClick={prevMonth}
-              className="h-8 w-8 rounded-lg border border-border bg-card flex items-center justify-center hover:bg-accent transition-colors"
+              className="h-8 w-8 rounded-lg border border-border bg-muted/50 flex items-center justify-center hover:bg-muted/70 transition-colors"
             >
               <ChevronLeft className="h-4 w-4 text-muted-foreground" />
             </button>
             <button
               onClick={nextMonth}
-              className="h-8 w-8 rounded-lg border border-border bg-card flex items-center justify-center hover:bg-accent transition-colors"
+              className="h-8 w-8 rounded-lg border border-border bg-muted/50 flex items-center justify-center hover:bg-muted/70 transition-colors"
             >
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </button>
@@ -120,7 +120,7 @@ export function MeetingCalendar({ meetings, onSelectMeeting }: MeetingCalendarPr
       </div>
 
       {/* Calendar grid */}
-      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      <div className="rounded-2xl border border-border bg-muted/50 overflow-hidden">
         {/* Weekday headers */}
         <div className="grid grid-cols-7 border-b border-border">
           {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
@@ -221,7 +221,7 @@ export function MeetingCalendar({ meetings, onSelectMeeting }: MeetingCalendarPr
 
       {/* Selected day detail */}
       {selectedDate && selectedMeetings.length > 0 && (
-        <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+        <div className="rounded-2xl border border-border bg-muted/50 p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h4 className="font-playfair text-lg font-semibold text-foreground">
               {format(selectedDate, 'EEEE, MMMM do')}
@@ -265,7 +265,7 @@ export function MeetingCalendar({ meetings, onSelectMeeting }: MeetingCalendarPr
       )}
 
       {selectedDate && selectedMeetings.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-border bg-card p-8 text-center">
+        <div className="rounded-2xl border border-dashed border-border bg-muted/50 p-8 text-center">
           <p className="text-sm text-muted-foreground">
             No meetings on {format(selectedDate, 'MMMM do')}.
           </p>

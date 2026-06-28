@@ -239,10 +239,10 @@ export function DashboardGrid({
                   <button
                     key={meeting.id}
                     onClick={(e) => handleMeetingClick(meeting.id, e)}
-                    className="w-full flex items-center gap-3 p-3 text-left rounded-lg border border-border/60 bg-card hover:border-blue-500/30 hover:shadow-sm transition-all group"
+                    className="w-full flex items-center gap-3 p-3 text-left rounded-lg border border-border/60 bg-muted/50 hover:border-primary/30 hover:shadow-sm transition-all group"
                   >
-                    <div className="h-9 w-9 rounded-md bg-blue-500/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                      <Video className="h-4 w-4 text-blue-500" />
+                    <div className="h-9 w-9 rounded-md bg-primary/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                      <Video className="h-4 w-4 text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">
@@ -338,7 +338,7 @@ export function DashboardGrid({
                     <button
                       key={project.id}
                       onClick={(e) => handleProjectClick(project.id, e)}
-                      className="w-full text-left rounded-lg border border-border/60 bg-card p-3 hover:border-primary/40 hover:shadow-sm transition-all group"
+                      className="w-full text-left rounded-lg border border-border/60 bg-muted/50 p-3 hover:border-primary/30 hover:shadow-sm transition-all group"
                     >
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2.5 min-w-0">
@@ -401,7 +401,7 @@ export function DashboardGrid({
                   return (
                     <div
                       key={m.id}
-                      className="flex items-center gap-3 p-3 rounded-lg border border-border/60 bg-card"
+                      className="flex items-center gap-3 p-3 rounded-lg border border-border/60 bg-muted/50"
                     >
                       <Avatar className="h-8 w-8 shrink-0">
                         <AvatarImage src={m.publicUserData?.imageUrl} />

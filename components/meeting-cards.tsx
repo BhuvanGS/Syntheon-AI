@@ -89,7 +89,7 @@ export function MeetingCards({ onSelectMeeting, onCreateTicket }: MeetingCardsPr
 
   if (error)
     return (
-      <div className="bg-card rounded-2xl p-8 border border-border text-center animate-fade-in">
+      <div className="bg-muted/50 rounded-2xl p-8 border border-border text-center animate-fade-in">
         <p className="text-destructive">{error}</p>
         <Button onClick={fetchMeetings} className="mt-4">
           Retry
@@ -99,7 +99,7 @@ export function MeetingCards({ onSelectMeeting, onCreateTicket }: MeetingCardsPr
 
   if (meetings.length === 0)
     return (
-      <div className="bg-card rounded-2xl p-12 border border-border text-center animate-fade-in-up">
+      <div className="bg-muted/50 rounded-2xl p-12 border border-border text-center animate-fade-in-up">
         <p className="text-2xl font-playfair font-bold text-foreground mb-2">No meetings yet</p>
         <p className="text-muted-foreground">
           Start recording a meeting with the Syntheon extension.
@@ -109,7 +109,7 @@ export function MeetingCards({ onSelectMeeting, onCreateTicket }: MeetingCardsPr
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between rounded-xl border border-border/60 bg-card px-3 py-2">
+      <div className="flex items-center justify-between rounded-xl border border-border/60 bg-muted/30 px-3 py-2">
         <span className="text-xs text-muted-foreground">
           Showing {(page - 1) * PAGE_SIZE + 1}-{Math.min(page * PAGE_SIZE, total || 0)} of {total}
         </span>
@@ -142,7 +142,7 @@ export function MeetingCards({ onSelectMeeting, onCreateTicket }: MeetingCardsPr
         {meetings.map((meeting) => (
           <div
             key={meeting.id}
-            className="bg-card rounded-2xl p-6 border border-border hover:border-primary/30 hover-lift cursor-pointer group press-down"
+            className="bg-muted/50 rounded-2xl p-6 border border-border hover:border-primary/30 hover-lift cursor-pointer group press-down transition-all"
             onClick={() => onSelectMeeting(meeting.id)}
           >
             <div className="flex justify-between items-start mb-4">
@@ -190,7 +190,7 @@ export function MeetingCards({ onSelectMeeting, onCreateTicket }: MeetingCardsPr
               </Badge>
             </div>
 
-            <div className="bg-background rounded-lg p-4 mb-4">
+            <div className="bg-background/50 rounded-lg p-4 mb-4 border border-border/40">
               <div className="text-center">
                 <p className="text-3xl font-bold text-primary">{meeting.specsDetected}</p>
                 <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">

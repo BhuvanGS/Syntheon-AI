@@ -210,8 +210,8 @@ export function TicketDependencyGraph({
   }
 
   return (
-    <div className="relative w-full rounded-2xl border border-border bg-card overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border/70 bg-card">
+    <div className="relative w-full rounded-2xl border border-border bg-muted/50 overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border/70 bg-muted/50">
         <div className="flex items-center gap-2 text-sm font-medium text-foreground">
           <GitBranch className="w-4 h-4 text-primary" />
           Dependency Graph
@@ -404,7 +404,7 @@ export function TicketDependencyGraph({
           </g>
         </svg>
 
-        <div className="absolute bottom-3 right-3 flex items-center gap-3 text-[11px] text-muted-foreground bg-card/90 backdrop-blur-sm rounded-lg px-3 py-1.5 border border-border/60">
+        <div className="absolute bottom-3 right-3 flex items-center gap-3 text-[11px] text-muted-foreground bg-muted/90 backdrop-blur-sm rounded-lg px-3 py-1.5 border border-border/60">
           <span className="flex items-center gap-1">
             <span className="inline-block w-5 h-0.5 bg-destructive/70" />
             Hard block

@@ -249,7 +249,7 @@ export function TicketAttachmentsPanel({ ticketId }: TicketAttachmentsPanelProps
           {attachments.map((attachment) => (
             <div
               key={attachment.id}
-              className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card/40 hover:bg-card/60 transition-colors"
+              className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/50 hover:bg-muted/60 transition-colors"
             >
               <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
                 {getFileIcon(attachment.file_type)}

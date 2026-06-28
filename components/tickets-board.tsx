@@ -5,6 +5,15 @@ import { useUser, useOrganization } from '@clerk/nextjs';
 import { stripHtml } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -568,7 +577,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
       key: 'backlog',
       title: 'Backlog',
       icon: <Circle className="w-4 h-4" />,
-      color: 'border-border bg-card',
+      color: 'border-border bg-muted/30',
       badge: 'bg-muted text-muted-foreground',
     },
     {
@@ -605,7 +614,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
 
   if (tickets.length === 0) {
     return (
-      <div className="bg-card rounded-2xl p-12 border border-border text-center animate-fade-in-up">
+      <div className="bg-muted/50 rounded-2xl p-12 border border-border text-center animate-fade-in-up">
         <p className="text-2xl font-playfair font-bold text-foreground mb-2">No tickets yet</p>
         <p className="text-muted-foreground">Record a meeting to extract Jira-like tickets.</p>
       </div>
@@ -733,9 +742,9 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
           </DialogHeader>
 
           <div className="space-y-4 py-2">
-            <label className="block text-sm text-muted-foreground">
-              Name
-              <input
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Name</label>
+              <Input
                 value={ticketEditForm.title}
                 onChange={(e) =>
                   setTicketEditForm((prev) => ({
@@ -743,13 +752,12 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                     title: e.target.value,
                   }))
                 }
-                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
                 placeholder="Ticket title"
               />
-            </label>
+            </div>
 
             <div className="space-y-1">
-              <label className="block text-sm text-muted-foreground">Description</label>
+              <label className="text-sm font-medium text-foreground">Description</label>
               <MentionEditor
                 content={ticketEditForm.description}
                 onChange={(html) =>
@@ -774,34 +782,36 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <label className="block text-sm text-muted-foreground">
-                Assignee
-                <div className="mt-1">
-                  <AssigneePicker
-                    value={ticketEditForm.assignee}
-                    onChange={(val) => setTicketEditForm((prev) => ({ ...prev, assignee: val }))}
-                  />
-                </div>
-              </label>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Assignee</label>
+                <AssigneePicker
+                  value={ticketEditForm.assignee}
+                  onChange={(val) => setTicketEditForm((prev) => ({ ...prev, assignee: val }))}
+                />
+              </div>
 
-              <label className="block text-sm text-muted-foreground">
-                Status
-                <select
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Status</label>
+                <Select
                   value={ticketEditForm.status}
-                  onChange={(e) =>
+                  onValueChange={(value) =>
                     setTicketEditForm((prev) => ({
                       ...prev,
-                      status: e.target.value as TicketStatus,
+                      status: value as TicketStatus,
                     }))
                   }
-                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
                 >
-                  <option value="backlog">Backlog</option>
-                  <option value="in_progress">In progress</option>
-                  <option value="done">Done</option>
-                  <option value="blocked">Blocked</option>
-                </select>
-              </label>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="backlog">Backlog</SelectItem>
+                    <SelectItem value="in_progress">In progress</SelectItem>
+                    <SelectItem value="done">Done</SelectItem>
+                    <SelectItem value="blocked">Blocked</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div>
@@ -911,7 +921,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
         </DialogContent>
       </Dialog>
 
-      <div className="flex items-center justify-between rounded-xl border border-border/60 bg-card px-3 py-2">
+      <div className="flex items-center justify-between rounded-xl border border-border/60 bg-muted/30 px-3 py-2">
         <span className="text-xs text-muted-foreground">
           Showing {(ticketPage - 1) * PAGE_SIZE + 1}-
           {Math.min(ticketPage * PAGE_SIZE, ticketsTotal || 0)} of {ticketsTotal}
@@ -971,7 +981,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                 className={`min-w-[280px] w-[280px] rounded-2xl border-2 transition-colors h-fit flex flex-col ${
                   dragOverColumn === column.key
                     ? 'border-primary/50 bg-primary/5'
-                    : 'border-border bg-muted/40'
+                    : 'border-border bg-muted/50'
                 }`}
               >
                 <div className="flex items-center justify-between px-4 pt-4 pb-2">
@@ -990,7 +1000,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                       {column.title}
                     </span>
                   </div>
-                  <span className="text-xs font-bold text-muted-foreground bg-card rounded-full px-2 py-0.5 border border-border">
+                  <span className="text-xs font-bold text-muted-foreground bg-background rounded-full px-2 py-0.5 border border-border">
                     {columnTickets.length}
                   </span>
                 </div>
@@ -1015,7 +1025,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                         setDraggedTicketId(null);
                         setDragOverColumn(null);
                       }}
-                      className={`rounded-xl border border-border bg-card p-3 cursor-grab active:cursor-grabbing shadow-sm hover-lift text-left ${
+                      className={`rounded-xl border border-border bg-muted/40 p-3 cursor-grab active:cursor-grabbing shadow-sm hover-lift text-left hover:bg-muted/60 transition-colors ${
                         draggedTicketId === ticket.id ? 'opacity-40 scale-[0.98]' : ''
                       }`}
                       onClick={() => openTicketSource(ticket)}
@@ -1111,7 +1121,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
             blocked: 'Blocked',
           };
           return (
-            <div className="rounded-2xl border border-border bg-card overflow-hidden">
+            <div className="rounded-2xl border border-border bg-muted/30 overflow-hidden">
               <div className="grid grid-cols-[minmax(200px,1fr)_120px_160px_100px_80px_40px] items-center px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground border-b border-border/60 bg-muted/40">
                 <span>Title</span>
                 <span>Status</span>
@@ -1144,7 +1154,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                         {isTicketStale(ticket) && (
                           <Badge
                             variant="outline"
-                            className="text-[10px] bg-amber-50 text-amber-700 border-amber-200 shrink-0 whitespace-nowrap"
+                            className="text-[10px] bg-yellow-500/10 text-yellow-700 border-yellow-500/20 shrink-0 whitespace-nowrap"
                           >
                             <AlertTriangle className="w-3 h-3 mr-1" />
                             Stale

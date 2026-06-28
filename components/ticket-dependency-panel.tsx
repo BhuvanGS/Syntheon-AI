@@ -3,6 +3,14 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Loader2, Plus, Trash2, AlertTriangle, ArrowRight, Link2, Pencil } from 'lucide-react';
 import { useToast } from '@/components/island-toast';
 
@@ -379,46 +387,54 @@ export function TicketDependencyPanel({
           })()}
 
           <div className="grid grid-cols-2 gap-2">
-            <label className="block text-xs text-muted-foreground">
-              Type
-              <select
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-foreground">Type</label>
+              <Select
                 value={editDep.dependency_type}
-                onChange={(e) =>
-                  setEditDep((p) => ({ ...p, dependency_type: e.target.value as DependencyType }))
+                onValueChange={(value) =>
+                  setEditDep((p) => ({ ...p, dependency_type: value as DependencyType }))
                 }
-                className="mt-1 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground"
               >
-                <option value="logical">Logical</option>
-                <option value="data">Data</option>
-                <option value="structural">Structural</option>
-                <option value="resource">Resource</option>
-              </select>
-            </label>
+                <SelectTrigger className="text-xs h-8">
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="logical">Logical</SelectItem>
+                  <SelectItem value="data">Data</SelectItem>
+                  <SelectItem value="structural">Structural</SelectItem>
+                  <SelectItem value="resource">Resource</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-            <label className="block text-xs text-muted-foreground">
-              Strength
-              <select
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-foreground">Strength</label>
+              <Select
                 value={editDep.strength}
-                onChange={(e) =>
-                  setEditDep((p) => ({ ...p, strength: e.target.value as DependencyStrength }))
+                onValueChange={(value) =>
+                  setEditDep((p) => ({ ...p, strength: value as DependencyStrength }))
                 }
-                className="mt-1 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground"
               >
-                <option value="soft">Soft (advisory)</option>
-                <option value="hard">Hard (blocking)</option>
-              </select>
-            </label>
+                <SelectTrigger className="text-xs h-8">
+                  <SelectValue placeholder="Select strength" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="soft">Soft (advisory)</SelectItem>
+                  <SelectItem value="hard">Hard (blocking)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <label className="block text-xs text-muted-foreground">
-            Note (optional)
-            <input
-              value={editDep.note}
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-foreground">Note (optional)</label>
+            <Input
+              value={editDep.note ?? ''}
               onChange={(e) => setEditDep((p) => ({ ...p, note: e.target.value }))}
               placeholder="Why this dependency exists"
-              className="mt-1 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground"
+              className="h-8 text-xs"
             />
-          </label>
+          </div>
 
           {editError && <p className="text-xs text-destructive">{editError}</p>}
 
@@ -459,68 +475,81 @@ export function TicketDependencyPanel({
             </p>
           ) : (
             <>
-              <label className="block text-xs text-muted-foreground">
-                This ticket depends on
-                <select
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">
+                  This ticket depends on
+                </label>
+                <Select
                   value={newDep.depends_on_ticket_id}
-                  onChange={(e) =>
-                    setNewDep((p) => ({ ...p, depends_on_ticket_id: e.target.value }))
+                  onValueChange={(value) =>
+                    setNewDep((p) => ({ ...p, depends_on_ticket_id: value }))
                   }
-                  className="mt-1 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground"
                 >
-                  <option value="">Select ticket…</option>
-                  {availableTickets.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.title}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <div className="grid grid-cols-2 gap-2">
-                <label className="block text-xs text-muted-foreground">
-                  Type
-                  <select
-                    value={newDep.dependency_type}
-                    onChange={(e) =>
-                      setNewDep((p) => ({
-                        ...p,
-                        dependency_type: e.target.value as DependencyType,
-                      }))
-                    }
-                    className="mt-1 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground"
-                  >
-                    <option value="logical">Logical</option>
-                    <option value="data">Data</option>
-                    <option value="structural">Structural</option>
-                    <option value="resource">Resource</option>
-                  </select>
-                </label>
-
-                <label className="block text-xs text-muted-foreground">
-                  Strength
-                  <select
-                    value={newDep.strength}
-                    onChange={(e) =>
-                      setNewDep((p) => ({ ...p, strength: e.target.value as DependencyStrength }))
-                    }
-                    className="mt-1 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground"
-                  >
-                    <option value="soft">Soft (advisory)</option>
-                    <option value="hard">Hard (blocking)</option>
-                  </select>
-                </label>
+                  <SelectTrigger className="text-xs h-8">
+                    <SelectValue placeholder="Select ticket…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableTickets.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
-              <label className="block text-xs text-muted-foreground">
-                Note (optional)
-                <input
-                  value={newDep.note}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-foreground">Type</label>
+                  <Select
+                    value={newDep.dependency_type}
+                    onValueChange={(value) =>
+                      setNewDep((p) => ({
+                        ...p,
+                        dependency_type: value as DependencyType,
+                      }))
+                    }
+                  >
+                    <SelectTrigger className="text-xs h-8">
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="logical">Logical</SelectItem>
+                      <SelectItem value="data">Data</SelectItem>
+                      <SelectItem value="structural">Structural</SelectItem>
+                      <SelectItem value="resource">Resource</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-foreground">Strength</label>
+                  <Select
+                    value={newDep.strength}
+                    onValueChange={(value) =>
+                      setNewDep((p) => ({ ...p, strength: value as DependencyStrength }))
+                    }
+                  >
+                    <SelectTrigger className="text-xs h-8">
+                      <SelectValue placeholder="Select strength" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="soft">Soft (advisory)</SelectItem>
+                      <SelectItem value="hard">Hard (blocking)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">Note (optional)</label>
+                <Input
+                  value={newDep.note ?? ''}
                   onChange={(e) => setNewDep((p) => ({ ...p, note: e.target.value }))}
                   placeholder="Why this dependency exists"
-                  className="mt-1 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground"
+                  className="h-8 text-xs"
                 />
-              </label>
+              </div>
             </>
           )}
 

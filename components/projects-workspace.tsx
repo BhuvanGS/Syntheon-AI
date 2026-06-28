@@ -17,6 +17,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -216,8 +223,6 @@ export function ProjectsWorkspace({
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isRenameProjectOpen, setIsRenameProjectOpen] = useState(false);
   const [projectNameDraft, setProjectNameDraft] = useState('');
-  const [projectDeployUrlDraft, setProjectDeployUrlDraft] = useState('');
-  const [projectBranchBaseDraft, setProjectBranchBaseDraft] = useState('main');
   const [projectContextDraft, setProjectContextDraft] = useState('');
   const [savingProjectSettings, setSavingProjectSettings] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
@@ -291,8 +296,6 @@ export function ProjectsWorkspace({
   useEffect(() => {
     if (selectedProject) {
       setProjectNameDraft(selectedProject.name);
-      setProjectDeployUrlDraft(selectedProject.deployUrl || '');
-      setProjectBranchBaseDraft(selectedProject.branchBase || 'main');
       setProjectContextDraft(selectedProject.context || '');
     }
   }, [selectedProject?.id]);
@@ -1099,8 +1102,6 @@ export function ProjectsWorkspace({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: projectNameDraft.trim(),
-          deployUrl: projectDeployUrlDraft.trim(),
-          branchBase: projectBranchBaseDraft.trim() || 'main',
           context: projectContextDraft.trim(),
         }),
       });
@@ -1124,8 +1125,6 @@ export function ProjectsWorkspace({
   useEffect(() => {
     if (!selectedProject) return;
     setProjectNameDraft(selectedProject.name);
-    setProjectDeployUrlDraft(selectedProject.deployUrl || '');
-    setProjectBranchBaseDraft(selectedProject.branchBase || 'main');
     setProjectContextDraft(selectedProject.context || '');
   }, [selectedProject?.id]);
 
@@ -1209,7 +1208,7 @@ export function ProjectsWorkspace({
               return (
                 <Card
                   key={project.id}
-                  className="cursor-pointer border-border bg-card hover:border-primary/30 hover:shadow-lg transition-all duration-200"
+                  className="cursor-pointer border-border bg-muted/50 hover:border-primary/30 hover:shadow-lg transition-all duration-200"
                   onClick={() => onSelectProject(project.id)}
                 >
                   <CardHeader className="space-y-3">
@@ -1471,7 +1470,7 @@ export function ProjectsWorkspace({
               <h2 className="font-playfair text-2xl font-bold text-foreground">Meetings</h2>
               <div className="flex items-center gap-2">
                 {/* View toggle */}
-                <div className="flex items-center rounded-full border border-border bg-card p-0.5 mr-1">
+                <div className="flex items-center rounded-full border border-border bg-muted/50 p-0.5 mr-1">
                   <button
                     onClick={() => setMeetingsViewMode('list')}
                     className={cn(
@@ -1515,7 +1514,7 @@ export function ProjectsWorkspace({
                 onSelectMeeting={onSelectMeeting}
               />
             ) : projectMeetings.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
+              <div className="rounded-2xl border border-dashed border-border bg-muted/50 p-12 text-center">
                 <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
                   <Calendar className="h-6 w-6 text-primary" />
                 </div>
@@ -1534,7 +1533,7 @@ export function ProjectsWorkspace({
                   <button
                     key={meeting.id}
                     onClick={() => onSelectMeeting(meeting.id)}
-                    className="text-left rounded-2xl border border-border bg-card p-5 hover:border-primary/30 hover:shadow-md transition-all"
+                    className="text-left rounded-2xl border border-border bg-muted/50 p-5 hover:border-primary/30 hover:shadow-md transition-all"
                   >
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <p className="font-playfair text-lg font-bold text-foreground">
@@ -1572,7 +1571,7 @@ export function ProjectsWorkspace({
                 <Button
                   variant="outline"
                   onClick={() => setIsImportDialogOpen(true)}
-                  className="rounded-full gap-2 bg-card"
+                  className="rounded-full gap-2 bg-muted/50 hover:bg-muted/70"
                   disabled={meetings.length === 0}
                 >
                   <Download className="h-4 w-4" />
@@ -1585,7 +1584,7 @@ export function ProjectsWorkspace({
               </div>
             </div>
             {rootProjectTickets.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
+              <div className="rounded-2xl border border-dashed border-border bg-muted/50 p-12 text-center">
                 <p className="font-medium text-foreground mb-2">No tickets yet</p>
                 <p className="text-sm text-muted-foreground mb-5">
                   Import tickets from a meeting or create them manually.
@@ -1608,7 +1607,7 @@ export function ProjectsWorkspace({
                       key={ticket.id}
                       type="button"
                       onClick={() => openTicketEditor(ticket)}
-                      className="rounded-2xl border border-border bg-card p-4 flex flex-col gap-3 text-left hover:border-primary/40 hover:shadow-md transition-all"
+                      className="rounded-2xl border border-border bg-muted/50 p-4 flex flex-col gap-3 text-left hover:border-primary/40 hover:shadow-md transition-all"
                     >
                       <h3 className="font-playfair text-base font-bold text-foreground line-clamp-2">
                         {ticket.title}
@@ -1641,11 +1640,11 @@ export function ProjectsWorkspace({
           <div className="space-y-4">
             <h2 className="font-playfair text-2xl font-bold text-foreground">List</h2>
             {rootProjectTickets.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
+              <div className="rounded-2xl border border-dashed border-border bg-muted/50 p-12 text-center">
                 <p className="text-muted-foreground">No tickets in this project yet.</p>
               </div>
             ) : (
-              <div className="rounded-2xl border border-border bg-card overflow-hidden">
+              <div className="rounded-2xl border border-border bg-muted/30 overflow-hidden">
                 <div className="grid grid-cols-[1fr_120px_120px_40px] items-center px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground border-b border-border/60 bg-muted/40">
                   <span>Title</span>
                   <span>Status</span>
@@ -1775,7 +1774,7 @@ export function ProjectsWorkspace({
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
-                        <span className="text-xs font-bold text-muted-foreground bg-card rounded-full px-2 py-0.5 border border-border">
+                        <span className="text-xs font-bold text-muted-foreground bg-background rounded-full px-2 py-0.5 border border-border">
                           {colTickets.length}
                         </span>
                         <Button
@@ -1821,7 +1820,7 @@ export function ProjectsWorkspace({
                             e.stopPropagation();
                             setDraggedTicketId(null);
                           }}
-                          className={`rounded-xl border border-border bg-card p-3 cursor-grab active:cursor-grabbing shadow-sm hover:shadow-md transition-shadow text-left ${
+                          className={`rounded-xl border border-border bg-muted/40 p-3 cursor-grab active:cursor-grabbing shadow-sm hover:shadow-md transition-shadow text-left hover:bg-muted/60 ${
                             draggedTicketId === ticket.id ? 'opacity-50' : ''
                           }`}
                         >
@@ -1879,7 +1878,7 @@ export function ProjectsWorkspace({
               <button
                 type="button"
                 onClick={openAddStageDialog}
-                className="min-w-[280px] w-[280px] rounded-2xl border border-dashed border-border bg-card/60 text-left p-4 hover:border-primary/40 hover:bg-card transition-colors"
+                className="min-w-[280px] w-[280px] rounded-2xl border border-dashed border-border bg-muted/50 text-left p-4 hover:border-primary/40 hover:bg-muted/70 transition-colors"
               >
                 <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                   <PlusCircle className="h-4 w-4 text-primary" />
@@ -1914,7 +1913,7 @@ export function ProjectsWorkspace({
                   ].map((stat) => (
                     <div
                       key={stat.label}
-                      className="rounded-2xl border border-border bg-card p-5 space-y-1"
+                      className="rounded-2xl border border-border bg-muted/50 p-5 space-y-1"
                     >
                       <p
                         className="text-xs uppercase tracking-wide font-medium"
@@ -1929,7 +1928,7 @@ export function ProjectsWorkspace({
                     </div>
                   ))}
                 </div>
-                <div className="rounded-2xl border border-border bg-card p-6 space-y-4">
+                <div className="rounded-2xl border border-border bg-muted/50 p-6 space-y-4">
                   <p className="font-playfair text-lg font-bold text-foreground">
                     Progress overview
                   </p>
@@ -1962,7 +1961,7 @@ export function ProjectsWorkspace({
                   </div>
                 </div>
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                  <div className="rounded-2xl border border-border bg-card p-5 space-y-2">
+                  <div className="rounded-2xl border border-border bg-muted/50 p-5 space-y-2">
                     <p className="text-xs uppercase tracking-wide text-muted-foreground">
                       Meetings
                     </p>
@@ -1970,7 +1969,7 @@ export function ProjectsWorkspace({
                       {projectMeetings.length}
                     </p>
                   </div>
-                  <div className="rounded-2xl border border-border bg-card p-5 space-y-2">
+                  <div className="rounded-2xl border border-border bg-muted/50 p-5 space-y-2">
                     <p className="text-xs uppercase tracking-wide text-muted-foreground">
                       Completion rate
                     </p>
@@ -2028,7 +2027,7 @@ export function ProjectsWorkspace({
                 <h2 className="font-playfair text-2xl font-bold text-foreground">Members</h2>
 
                 {/* Current project members */}
-                <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+                <div className="rounded-2xl border border-border bg-muted/50 p-4 space-y-3">
                   <p className="text-xs font-medium text-muted-foreground">Project members</p>
                   {projectMembersLoading ? (
                     <p className="text-sm text-muted-foreground">Loading...</p>
@@ -2104,7 +2103,7 @@ export function ProjectsWorkspace({
 
                 {/* Add org members to project — admin only */}
                 {isAdmin && notYetAdded.length > 0 && (
-                  <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+                  <div className="rounded-2xl border border-border bg-muted/50 p-4 space-y-3">
                     <p className="text-xs font-medium text-muted-foreground">
                       Add org members to this project
                     </p>
@@ -2162,7 +2161,7 @@ export function ProjectsWorkspace({
 
                 {/* Pending org invitations */}
                 {isAdmin && (invitations?.data?.length ?? 0) > 0 && (
-                  <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+                  <div className="rounded-2xl border border-border bg-muted/50 p-4 space-y-3">
                     <p className="text-xs font-medium text-muted-foreground">
                       Pending org invitations
                     </p>
@@ -2199,7 +2198,7 @@ export function ProjectsWorkspace({
         {projectTab === 'dependencies' && (
           <div className="space-y-4">
             <h2 className="font-playfair text-2xl font-bold text-foreground">Dependencies</h2>
-            <div className="rounded-2xl border border-border bg-card p-4">
+            <div className="rounded-2xl border border-border bg-muted/50 p-4">
               <TicketDependencyGraph
                 projectId={selectedProject.id}
                 subtaskCounts={Object.fromEntries(
@@ -2223,7 +2222,7 @@ export function ProjectsWorkspace({
           <div className="space-y-6 max-w-2xl">
             <h2 className="font-playfair text-2xl font-bold text-foreground">Project Settings</h2>
 
-            <div className="rounded-2xl border border-border bg-card p-6 space-y-5">
+            <div className="rounded-2xl border border-border bg-muted/50 p-6 space-y-5">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Project name</label>
                 <Input
@@ -2231,30 +2230,6 @@ export function ProjectsWorkspace({
                   onChange={(e) => setProjectNameDraft(e.target.value)}
                   placeholder="Project name"
                 />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Deployment URL</label>
-                <Input
-                  value={projectDeployUrlDraft}
-                  onChange={(e) => setProjectDeployUrlDraft(e.target.value)}
-                  placeholder="https://app.example.com"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Where your app is deployed. Used for preview links and webhook checks.
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Base branch</label>
-                <Input
-                  value={projectBranchBaseDraft}
-                  onChange={(e) => setProjectBranchBaseDraft(e.target.value)}
-                  placeholder="main"
-                />
-                <p className="text-xs text-muted-foreground">
-                  The default branch that agent PRs target.
-                </p>
               </div>
 
               <div className="space-y-2">
@@ -2305,9 +2280,9 @@ export function ProjectsWorkspace({
           </DialogHeader>
 
           <div className="space-y-4 py-2">
-            <label className="block text-sm text-muted-foreground">
-              Stage name
-              <input
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Stage name</label>
+              <Input
                 value={stageForm.label}
                 onChange={(e) =>
                   setStageForm((prev) => ({
@@ -2315,13 +2290,12 @@ export function ProjectsWorkspace({
                     label: e.target.value,
                   }))
                 }
-                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
                 placeholder="e.g. QA Review"
               />
-            </label>
+            </div>
 
-            <label className="block text-sm text-muted-foreground">
-              Color
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Color</label>
               <input
                 type="color"
                 value={stageForm.color}
@@ -2331,9 +2305,9 @@ export function ProjectsWorkspace({
                     color: e.target.value,
                   }))
                 }
-                className="mt-1 h-10 w-full rounded-lg border border-border bg-background px-2"
+                className="h-10 w-full rounded-lg border border-border bg-background px-2"
               />
-            </label>
+            </div>
           </div>
 
           <DialogFooter>
@@ -2372,24 +2346,27 @@ export function ProjectsWorkspace({
             </DialogDescription>
           </DialogHeader>
 
-          <label className="block text-sm text-muted-foreground">
-            Destination stage
-            <select
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Destination stage</label>
+            <Select
               value={relocateStageId}
-              onChange={(e) => setRelocateStageId(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+              onValueChange={(value) => setRelocateStageId(value)}
               disabled={Boolean(savingTicketId)}
             >
-              <option value="">Select stage</option>
-              {stages
-                .filter((stage) => stage.id !== stageToDelete?.id)
-                .map((stage) => (
-                  <option key={stage.id} value={stage.id}>
-                    {stage.label}
-                  </option>
-                ))}
-            </select>
-          </label>
+              <SelectTrigger>
+                <SelectValue placeholder="Select stage" />
+              </SelectTrigger>
+              <SelectContent>
+                {stages
+                  .filter((stage) => stage.id !== stageToDelete?.id)
+                  .map((stage) => (
+                    <SelectItem key={stage.id} value={stage.id}>
+                      {stage.label}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           <DialogFooter className="pt-2">
             <Button
@@ -2476,16 +2453,13 @@ export function ProjectsWorkspace({
               Update the project name used in your workspace.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-2">
-            <label className="block text-sm text-muted-foreground">
-              Project name
-              <input
-                value={projectNameDraft}
-                onChange={(e) => setProjectNameDraft(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-                placeholder="Project name"
-              />
-            </label>
+          <div className="py-2 space-y-2">
+            <label className="text-sm font-medium text-foreground">Project name</label>
+            <Input
+              value={projectNameDraft}
+              onChange={(e) => setProjectNameDraft(e.target.value)}
+              placeholder="Project name"
+            />
           </div>
           <DialogFooter>
             <Button
@@ -2590,9 +2564,9 @@ export function ProjectsWorkspace({
           <div className="flex-1 overflow-auto px-6 py-5 space-y-5">
             {ticketEditTab === 'details' && (
               <>
-                <label className="block text-sm text-muted-foreground">
-                  Name
-                  <input
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Name</label>
+                  <Input
                     value={ticketEditForm.title}
                     onChange={(e) =>
                       setTicketEditForm((prev) => ({
@@ -2600,13 +2574,12 @@ export function ProjectsWorkspace({
                         title: e.target.value,
                       }))
                     }
-                    className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
                     placeholder="Ticket title"
                   />
-                </label>
+                </div>
 
                 <div className="space-y-1">
-                  <label className="block text-sm text-muted-foreground">Description</label>
+                  <label className="text-sm font-medium text-foreground">Description</label>
                   <MentionEditor
                     content={ticketEditForm.description}
                     onChange={(html) =>
@@ -2636,36 +2609,36 @@ export function ProjectsWorkspace({
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <label className="block text-sm text-muted-foreground">
-                    Assignee
-                    <div className="mt-1">
-                      <AssigneePicker
-                        value={ticketEditForm.assignee}
-                        onChange={(val) =>
-                          setTicketEditForm((prev) => ({ ...prev, assignee: val }))
-                        }
-                      />
-                    </div>
-                  </label>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">Assignee</label>
+                    <AssigneePicker
+                      value={ticketEditForm.assignee}
+                      onChange={(val) => setTicketEditForm((prev) => ({ ...prev, assignee: val }))}
+                    />
+                  </div>
 
-                  <label className="block text-sm text-muted-foreground">
-                    Status
-                    <select
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">Status</label>
+                    <Select
                       value={ticketEditForm.status}
-                      onChange={(e) =>
+                      onValueChange={(value) =>
                         setTicketEditForm((prev) => ({
                           ...prev,
-                          status: e.target.value as Ticket['status'],
+                          status: value as Ticket['status'],
                         }))
                       }
-                      className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
                     >
-                      <option value="backlog">Backlog</option>
-                      <option value="in_progress">In progress</option>
-                      <option value="done">Done</option>
-                      <option value="blocked">Blocked</option>
-                    </select>
-                  </label>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="backlog">Backlog</SelectItem>
+                        <SelectItem value="in_progress">In progress</SelectItem>
+                        <SelectItem value="done">Done</SelectItem>
+                        <SelectItem value="blocked">Blocked</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
                   <label className="block text-sm text-muted-foreground">
                     Dates
@@ -2699,7 +2672,7 @@ export function ProjectsWorkspace({
                 </div>
 
                 {ticketToEdit && (
-                  <div className="rounded-lg border border-border bg-card/40">
+                  <div className="rounded-lg border border-border bg-muted/50">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 px-3 py-2.5">
                         <h3 className="text-sm font-semibold text-foreground">Subtasks</h3>
@@ -2730,7 +2703,7 @@ export function ProjectsWorkspace({
                       <div className="border-t border-border/60 bg-primary/5 px-2 py-2">
                         <div className="flex items-center gap-2">
                           <Circle className="h-4 w-4 text-muted-foreground" />
-                          <input
+                          <Input
                             value={newChildDraft.title}
                             onChange={(e) =>
                               setNewChildDraft((prev) => ({
@@ -2738,7 +2711,7 @@ export function ProjectsWorkspace({
                                 title: e.target.value,
                               }))
                             }
-                            className="flex-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-sm"
+                            className="flex-1 h-8"
                             placeholder="Subtask name"
                             autoFocus
                             onKeyDown={(e) => {
@@ -2882,22 +2855,25 @@ export function ProjectsWorkspace({
 
           {/* Reassign dropdown */}
           {deleteMode === 'reassign' && (
-            <div className="py-1">
-              <label className="block text-sm text-muted-foreground mb-1">Move subtasks to</label>
-              <select
+            <div className="py-1 space-y-2">
+              <label className="text-sm font-medium text-foreground">Move subtasks to</label>
+              <Select
                 value={subtaskReassignTargetId}
-                onChange={(e) => setSubtaskReassignTargetId(e.target.value)}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                onValueChange={(value) => setSubtaskReassignTargetId(value)}
               >
-                <option value="">Select a ticket…</option>
-                {projectTickets
-                  .filter((t) => t.id !== ticketToDelete?.id && !t.dependency_ticket_id)
-                  .map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.title}
-                    </option>
-                  ))}
-              </select>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a ticket…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {projectTickets
+                    .filter((t) => t.id !== ticketToDelete?.id && !t.dependency_ticket_id)
+                    .map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.title}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
 
@@ -3060,7 +3036,7 @@ export function ProjectsWorkspace({
             {(childrenByParentId[subtasksPopupTicket?.id ?? ''] ?? []).length === 0 ? (
               <p className="text-sm text-muted-foreground">No subtasks yet.</p>
             ) : (
-              <div className="space-y-1 rounded-lg border border-border bg-card/40">
+              <div className="space-y-1 rounded-lg border border-border bg-muted/50">
                 {(childrenByParentId[subtasksPopupTicket?.id ?? ''] ?? []).map((child) => (
                   <div
                     key={child.id}
