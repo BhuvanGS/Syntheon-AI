@@ -115,9 +115,6 @@ export async function getGoogleTokenForUser(userId: string): Promise<string | nu
 export async function getIntegrationStatus(userId: string, orgId?: string | null) {
   const integration = await getIntegrationByUserId(userId, orgId);
   return {
-    githubConnected: Boolean(getGithubToken(integration)),
-    githubUser: getGithubOwner(integration),
-    githubRepo: getGithubRepo(integration),
     googleConnected: Boolean(getGoogleToken(integration)),
   };
 }

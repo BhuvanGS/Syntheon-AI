@@ -228,6 +228,60 @@ export const projectMembers = pgTable(
   ]
 );
 
+// ─── Organization Metadata ─────────────────────────────────────
+export const organizationMetadata = pgTable('organization_metadata', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: text('org_id').unique().notNull(),
+  companyName: text('company_name'),
+  managerName: text('manager_name'),
+  allowAccessRequests: boolean('allow_access_requests').default(false),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+});
+
+// ─── Organization Invites ──────────────────────────────────────
+export const organizationInvites = pgTable(
+  'organization_invites',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    orgId: text('org_id').notNull(),
+    email: text('email').notNull(),
+    status: text('status').default('pending'), // pending, accepted, revoked
+    token: text('token').unique(),
+    invitedBy: text('invited_by').notNull(),
+    invitedAt: timestamp('invited_at', { withTimezone: true }).defaultNow(),
+    respondedAt: timestamp('responded_at', { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex('org_email_invite_unique').on(table.orgId, table.email),
+    index('org_invites_org_idx').on(table.orgId),
+    index('org_invites_email_idx').on(table.email),
+    index('org_invites_status_idx').on(table.status),
+  ]
+);
+
+// ─── Organization Access Requests ──────────────────────────────
+export const organizationAccessRequests = pgTable(
+  'organization_access_requests',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    orgId: text('org_id').notNull(),
+    userId: text('user_id').notNull(),
+    userEmail: text('user_email').notNull(),
+    userName: text('user_name'),
+    status: text('status').default('pending'), // pending, approved, rejected
+    requestedAt: timestamp('requested_at', { withTimezone: true }).defaultNow(),
+    respondedAt: timestamp('responded_at', { withTimezone: true }),
+    respondedBy: text('responded_by'),
+  },
+  (table) => [
+    uniqueIndex('org_user_request_unique').on(table.orgId, table.userId),
+    index('org_access_requests_org_idx').on(table.orgId),
+    index('org_access_requests_user_idx').on(table.userId),
+    index('org_access_requests_status_idx').on(table.status),
+  ]
+);
+
 // ─── Notifications ─────────────────────────────────────────────
 export const notifications = pgTable(
   'notifications',

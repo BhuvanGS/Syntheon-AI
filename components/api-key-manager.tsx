@@ -248,8 +248,8 @@ export function ApiKeyManager() {
           {[
             'Authenticate the Syntheon browser extension',
             'Access your meeting data and tickets',
-            'Generate code and create pull requests',
-            'Sync with your GitHub repositories',
+            'Create and manage project tickets',
+            'Sync with your Syntheon workspace',
           ].map((item, i) => (
             <li key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
               <span className="h-1 w-1 rounded-full bg-muted-foreground/50 shrink-0" />

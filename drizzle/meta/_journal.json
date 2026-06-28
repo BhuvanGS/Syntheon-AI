@@ -15,6 +15,13 @@
       "when": 1782479945571,
       "tag": "0001_colossal_shaman",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782643776481,
+      "tag": "0002_keen_gwen_stacy",
+      "breakpoints": true
     }
   ]
 }

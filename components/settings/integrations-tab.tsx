@@ -1,0 +1,126 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useUser } from '@clerk/nextjs';
+import { Calendar, Loader2 } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { toast } from '@/hooks/use-toast';
+
+export function IntegrationsTab() {
+  const { user } = useUser();
+  const [googleConnected, setGoogleConnected] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadStatus() {
+      if (!user) return;
+      try {
+        const res = await fetch('/api/integrations/status');
+        if (res.ok) {
+          const data = await res.json();
+          setGoogleConnected(data.googleConnected ?? false);
+        }
+      } catch (error) {
+        console.error('Failed to load integration status:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    void loadStatus();
+  }, [user]);
+
+  async function handleGoogleConnect() {
+    try {
+      const res = await fetch('/api/auth/google/initiate', { method: 'POST' });
+      if (!res.ok) throw new Error('Failed to initiate Google OAuth');
+      const { url } = await res.json();
+      window.location.href = url;
+    } catch (error) {
+      toast({
+        title: 'Connection failed',
+        description: 'Could not connect to Google Calendar',
+        variant: 'destructive',
+      });
+    }
+  }
+
+  async function handleGoogleDisconnect() {
+    try {
+      const res = await fetch('/api/integrations/google/disconnect', { method: 'POST' });
+      if (!res.ok) throw new Error('Failed to disconnect');
+      setGoogleConnected(false);
+      toast({ title: 'Disconnected', description: 'Google Calendar has been disconnected' });
+    } catch (error) {
+      toast({
+        title: 'Failed to disconnect',
+        description: 'Please try again',
+        variant: 'destructive',
+      });
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 lg:p-8">
+      <div className="mb-6">
+        <h2 className="text-2xl font-semibold text-foreground">Integrations</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Connect external services to enhance your workflow
+        </p>
+      </div>
+
+      <Card className="border-border/60 shadow-none">
+        <CardHeader className="pb-4">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
+              <Calendar className="h-5 w-5 text-blue-500" />
+            </div>
+            <div>
+              <CardTitle className="text-sm font-semibold">Google Calendar</CardTitle>
+              <CardDescription className="text-xs mt-0.5">
+                Create meetings and sync events
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <Separator />
+        <CardContent className="pt-4">
+          {googleConnected ? (
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-foreground">Connected</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Your Google Calendar is linked
+                </p>
+              </div>
+              <Button variant="outline" size="sm" onClick={handleGoogleDisconnect}>
+                Disconnect
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-foreground">Not connected</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Connect to create Google Meet links
+                </p>
+              </div>
+              <Button size="sm" onClick={handleGoogleConnect}>
+                Connect
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

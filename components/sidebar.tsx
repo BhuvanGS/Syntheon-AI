@@ -7,7 +7,6 @@ import {
   LayoutDashboard,
   Settings,
   FolderKanban,
-  Plus,
   Users,
   CalendarDays,
   Ticket,
@@ -195,30 +194,17 @@ export function Sidebar({
 
       {/* Projects */}
       <div className="px-2 pt-3 flex-1 min-h-0 flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between px-2 mb-2 shrink-0">
+        <div className="flex items-center px-2 mb-2 shrink-0">
           <span className="text-[10px] font-semibold tracking-[0.1em] uppercase text-muted-foreground">
             Projects
           </span>
-          {isAdmin && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-5 w-5 rounded text-muted-foreground hover:text-foreground hover:bg-accent"
-              onClick={onCreateProject}
-              title="New project"
-            >
-              <Plus className="h-3 w-3" />
-            </Button>
-          )}
         </div>
 
         <ScrollArea className="flex-1 -mx-1 px-1">
           {projects.length === 0 ? (
-            <div className="mx-1 border border-dashed border-border rounded-lg p-3 text-center animate-fade-in">
+            <div className="mx-1 text-center">
               <p className="text-[11px] text-muted-foreground leading-relaxed">
-                {isAdmin
-                  ? 'No projects yet. Create one to get started.'
-                  : 'No projects assigned yet.'}
+                {isAdmin ? 'No projects yet.' : 'No projects assigned yet.'}
               </p>
             </div>
           ) : (

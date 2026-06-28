@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { getGoogleTokenForUser } from '@/lib/services/integrations/read';
+import { getValidGoogleAccessToken } from '@/lib/services/integrations/google';
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,11 +21,17 @@ export async function POST(req: NextRequest) {
 
     // Always use the user's own Google token — never org-scoped.
     // Each user connects their own Google Calendar and creates events there.
-    const accessToken = await getGoogleTokenForUser(session.userId);
+    const { token: accessToken, error: tokenError } = await getValidGoogleAccessToken(
+      session.userId
+    );
 
     if (!accessToken) {
       return NextResponse.json(
-        { error: 'Google Calendar not connected. Please connect your Google account in Settings.' },
+        {
+          error:
+            tokenError ||
+            'Google Calendar not connected. Please connect your Google account in Settings.',
+        },
         { status: 403 }
       );
     }

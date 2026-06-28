@@ -60,7 +60,6 @@ import {
   Video,
   Ticket,
   ArrowRight,
-  Sparkles,
   Download,
   Pencil,
   Trash2,
@@ -1172,29 +1171,22 @@ export function ProjectsWorkspace({
               Create a workspace, link meetings, and write tickets like Jira.
             </p>
           </div>
-
-          <Button onClick={onCreateProject} className="rounded-full gap-2">
-            <Plus className="h-4 w-4" />
-            New project
-          </Button>
         </div>
 
         {projects.length === 0 ? (
-          <div className="bg-card rounded-2xl p-12 border border-border text-center">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-              <FolderKanban className="h-7 w-7" />
+          <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-6">
+            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <FolderKanban className="h-8 w-8" />
             </div>
-            <h2 className="text-2xl font-playfair font-bold text-foreground mb-2">
-              No projects yet
+            <h2 className="text-2xl font-playfair font-bold text-foreground mb-3">
+              You don't have a project
             </h2>
-            <p className="text-muted-foreground mb-6">
-              {isAdmin
-                ? 'Create your first project to start organizing meetings and tickets.'
-                : 'No projects have been created yet. Ask your org admin to create one.'}
+            <p className="text-muted-foreground mb-8 max-w-sm">
+              Create your first project to start organizing meetings and tickets.
             </p>
             {isAdmin && (
-              <Button onClick={onCreateProject} className="rounded-full gap-2">
-                <Sparkles className="h-4 w-4" />
+              <Button onClick={onCreateProject} className="rounded-full gap-2 px-6">
+                <Plus className="h-4 w-4" />
                 Create project
               </Button>
             )}

@@ -199,9 +199,9 @@ function ProjectContent() {
     }
     await Promise.all([loadProjects(), refreshWorkspace()]);
     if (projectId === id) {
-      router.push('/dashboard');
+      router.push('/dashboard?view=projects');
     }
-    toast({ title: 'Project deleted', description: 'The project was removed from Supabase.' });
+    toast({ title: 'Project deleted', description: 'The project was removed.' });
   }
 
   async function handleCreateProject(payload: {
