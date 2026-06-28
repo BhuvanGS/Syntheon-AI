@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import { useUser, useOrganization } from '@clerk/nextjs';
-import { Settings, Building2, Sliders } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Settings, Building2, Sliders, ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { IntegrationsTab } from '@/components/settings/integrations-tab';
 import { OrganizationsTab } from '@/components/settings/organizations-tab';
@@ -19,6 +21,7 @@ const tabs: Array<{ id: SettingsTab; label: string; icon: typeof Settings }> = [
 export default function SettingsPage() {
   const { user } = useUser();
   const { organization } = useOrganization();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<SettingsTab>('integrations');
 
   if (!user || !organization) {
@@ -32,7 +35,16 @@ export default function SettingsPage() {
   return (
     <div className="flex h-screen bg-background">
       <aside className="w-64 border-r border-border/60 bg-card/30 p-6">
-        <div className="mb-8">
+        <div className="mb-6">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start gap-2 px-2 text-muted-foreground hover:text-foreground mb-4"
+            onClick={() => router.push('/dashboard')}
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Dashboard
+          </Button>
           <h1 className="text-lg font-semibold text-foreground">Settings</h1>
           <p className="text-xs text-muted-foreground mt-1">Manage your workspace</p>
         </div>

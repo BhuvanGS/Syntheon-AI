@@ -3,16 +3,14 @@ import { auth } from '@clerk/nextjs/server';
 import {
   cascadeDepRegressionForParent,
   checkHardBlockers,
-  getAllTickets,
   getTicketsByIds,
-  getTicketsPaginated,
   getDependenciesForTicket,
   incrementDependencyIgnoreCount,
   updateTicketStatus,
 } from '@/lib/db';
 import { db } from '@/db/index';
 import { tickets as ticketsTable } from '@/db/schema';
-import { inArray } from 'drizzle-orm';
+import { and, count, desc, eq, inArray, or } from 'drizzle-orm';
 
 function parsePositiveInt(value: string | null, fallback: number): number {
   const parsed = Number.parseInt(value ?? '', 10);
@@ -30,31 +28,61 @@ export async function GET(req: NextRequest) {
     const limit = Math.min(parsePositiveInt(searchParams.get('limit'), 50), 100);
     const offset = parsePositiveInt(searchParams.get('offset'), 0);
 
-    if (orgId) {
-      const result = await getTicketsPaginated(orgId, { projectId, meetingId, limit, offset });
-      return NextResponse.json(
-        {
-          ...result,
-          limit,
-          offset,
-          hasMore: offset + result.tickets.length < result.total,
-        },
-        {
-          headers: {
-            'Cache-Control': 'private, max-age=10, stale-while-revalidate=30',
-          },
-        }
-      );
-    }
+    const conditions: any[] = [];
+    if (orgId) conditions.push(eq(ticketsTable.orgId, orgId));
+    if (userId) conditions.push(eq(ticketsTable.userId, userId));
+    if (projectId) conditions.push(eq(ticketsTable.projectId, projectId));
+    if (meetingId) conditions.push(eq(ticketsTable.meetingId, meetingId));
 
-    const tickets = await getAllTickets(userId);
-    return NextResponse.json({
-      tickets,
-      total: tickets.length,
-      limit: tickets.length,
-      offset: 0,
-      hasMore: false,
-    });
+    const whereClause = conditions.length > 0 ? or(...conditions) : undefined;
+    const filterClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const [rows, totalResult] = await Promise.all([
+      db
+        .select()
+        .from(ticketsTable)
+        .where(filterClause)
+        .orderBy(desc(ticketsTable.createdAt))
+        .limit(limit)
+        .offset(offset),
+      db.select({ value: count() }).from(ticketsTable).where(filterClause),
+    ]);
+
+    // Deduplicate in case a ticket matches both userId and orgId
+    const uniqueRows = Array.from(new Map(rows.map((row) => [row.id, row])).values());
+
+    return NextResponse.json(
+      {
+        tickets: uniqueRows.map((row) => ({
+          id: row.id,
+          user_id: row.userId ?? undefined,
+          org_id: row.orgId ?? undefined,
+          meeting_id: row.meetingId ?? null,
+          projectId: row.projectId ?? undefined,
+          parent_id: row.parentId ?? null,
+          title: row.title,
+          description: row.description ?? '',
+          status: row.status,
+          assignee: row.assignee ?? null,
+          assignee_user_id: row.assigneeUserId ?? null,
+          dependency_ticket_id: row.dependencyTicketId ?? null,
+          start_date: row.startDate ?? null,
+          due_date: row.dueDate ?? null,
+          deadline_time: row.deadlineTime ?? null,
+          createdAt: row.createdAt?.toISOString() ?? null,
+          updatedAt: row.updatedAt?.toISOString() ?? null,
+        })),
+        total: totalResult[0]?.value ?? 0,
+        limit,
+        offset,
+        hasMore: offset + uniqueRows.length < (totalResult[0]?.value ?? 0),
+      },
+      {
+        headers: {
+          'Cache-Control': 'private, max-age=10, stale-while-revalidate=30',
+        },
+      }
+    );
   } catch (error) {
     console.error('Failed to fetch tickets:', error);
     return NextResponse.json({ error: 'Failed to fetch tickets' }, { status: 500 });

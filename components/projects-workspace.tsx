@@ -161,6 +161,7 @@ interface ProjectsWorkspaceProps {
   onCreateProject: () => void;
   onDeleteProject: (projectId: string) => Promise<void> | void;
   onRefresh: () => Promise<void> | void;
+  showHeader?: boolean;
 }
 
 export function ProjectsWorkspace({
@@ -175,6 +176,7 @@ export function ProjectsWorkspace({
   onCreateProject,
   onDeleteProject,
   onRefresh,
+  showHeader = true,
 }: ProjectsWorkspaceProps) {
   const { membership, memberships, invitations } = useOrganization(ORG_QUERY_CONFIG);
   const { user } = useUser();
@@ -219,6 +221,7 @@ export function ProjectsWorkspace({
   const [projectContextDraft, setProjectContextDraft] = useState('');
   const [savingProjectSettings, setSavingProjectSettings] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+  const [projectDeleteConfirm, setProjectDeleteConfirm] = useState('');
   const [ticketToDelete, setTicketToDelete] = useState<Ticket | null>(null);
   const [deleteMode, setDeleteMode] = useState<'confirm' | 'reassign' | null>(null);
   const [subtaskReassignTargetId, setSubtaskReassignTargetId] = useState<string>('');
@@ -1160,18 +1163,20 @@ export function ProjectsWorkspace({
   if (!selectedProject) {
     return (
       <div className="space-y-6">
-        <div className="flex items-end justify-between gap-4 flex-wrap">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary mb-3">
-              <FolderKanban className="h-3.5 w-3.5" />
-              Projects
+        {showHeader && (
+          <div className="flex items-end justify-between gap-4 flex-wrap">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary mb-3">
+                <FolderKanban className="h-3.5 w-3.5" />
+                Projects
+              </div>
+              <h1 className="text-4xl font-playfair font-bold text-foreground">Your projects</h1>
+              <p className="text-muted-foreground mt-2">
+                Create a workspace, link meetings, and write tickets like Jira.
+              </p>
             </div>
-            <h1 className="text-4xl font-playfair font-bold text-foreground">Your projects</h1>
-            <p className="text-muted-foreground mt-2">
-              Create a workspace, link meetings, and write tickets like Jira.
-            </p>
           </div>
-        </div>
+        )}
 
         {projects.length === 0 ? (
           <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-6">
@@ -1359,9 +1364,9 @@ export function ProjectsWorkspace({
   return (
     <div className="flex flex-col h-full">
       {/* Top bar: back + project name + project nav/actions */}
-      <div className="border-b border-border bg-background px-8 flex flex-col gap-0">
+      <div className="border-b border-border bg-background px-6 lg:px-8 flex flex-col gap-0">
         {/* Row 1: back + title */}
-        <div className="flex items-center justify-between py-3 gap-4">
+        <div className="flex items-center justify-between py-4 gap-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => onSelectProject('')}
@@ -1458,7 +1463,7 @@ export function ProjectsWorkspace({
       </div>
 
       {/* Tab content */}
-      <div className="flex-1 overflow-auto p-6 space-y-6">
+      <div className="flex-1 overflow-auto p-6 lg:p-8 space-y-6">
         {/* ── MEETINGS tab ── */}
         {projectTab === 'meetings' && (
           <div className="space-y-4">
@@ -2978,7 +2983,10 @@ export function ProjectsWorkspace({
       <Dialog
         open={Boolean(projectToDelete)}
         onOpenChange={(open) => {
-          if (!open) setProjectToDelete(null);
+          if (!open) {
+            setProjectToDelete(null);
+            setProjectDeleteConfirm('');
+          }
         }}
       >
         <DialogContent className="sm:max-w-xl border-border bg-background shadow-2xl">
@@ -2987,15 +2995,29 @@ export function ProjectsWorkspace({
               Delete this project?
             </DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              This will remove the project from Supabase and unlink its meetings and tickets from
-              the project. This cannot be undone.
+              This will remove <strong>{projectToDelete?.name}</strong> from Supabase and unlink its
+              meetings and tickets. This cannot be undone.
             </DialogDescription>
           </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-sm text-muted-foreground">
+              Type <strong>{projectToDelete?.name}</strong> to confirm deletion.
+            </p>
+            <Input
+              value={projectDeleteConfirm}
+              onChange={(e) => setProjectDeleteConfirm(e.target.value)}
+              placeholder={`Type ${projectToDelete?.name} to confirm`}
+              className="bg-white"
+            />
+          </div>
           <DialogFooter className="pt-2">
             <Button
               type="button"
               variant="outline"
-              onClick={() => setProjectToDelete(null)}
+              onClick={() => {
+                setProjectToDelete(null);
+                setProjectDeleteConfirm('');
+              }}
               className="rounded-full"
             >
               Cancel
@@ -3003,10 +3025,12 @@ export function ProjectsWorkspace({
             <Button
               type="button"
               variant="destructive"
+              disabled={projectDeleteConfirm !== projectToDelete?.name}
               onClick={async () => {
-                if (!projectToDelete) return;
+                if (!projectToDelete || projectDeleteConfirm !== projectToDelete.name) return;
                 await onDeleteProject(projectToDelete.id);
                 setProjectToDelete(null);
+                setProjectDeleteConfirm('');
               }}
               className="rounded-full"
             >

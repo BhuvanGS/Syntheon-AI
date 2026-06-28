@@ -17,27 +17,18 @@ import { FolderPlus, Sparkles } from 'lucide-react';
 interface ProjectCreateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreate: (payload: {
-    name: string;
-    context: string;
-    deployUrl: string;
-    branchBase: string;
-  }) => Promise<void> | void;
+  onCreate: (payload: { name: string; context: string }) => Promise<void> | void;
 }
 
 export function ProjectCreateDialog({ open, onOpenChange, onCreate }: ProjectCreateDialogProps) {
   const [name, setName] = useState('');
   const [context, setContext] = useState('');
-  const [deployUrl, setDeployUrl] = useState('');
-  const [branchBase, setBranchBase] = useState('main');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setName('');
     setContext('');
-    setDeployUrl('');
-    setBranchBase('main');
     setSubmitting(false);
   }, [open]);
 
@@ -50,8 +41,6 @@ export function ProjectCreateDialog({ open, onOpenChange, onCreate }: ProjectCre
       await onCreate({
         name: name.trim(),
         context: context.trim(),
-        deployUrl: deployUrl.trim(),
-        branchBase: branchBase.trim() || 'main',
       });
       onOpenChange(false);
     } finally {
@@ -96,27 +85,6 @@ export function ProjectCreateDialog({ open, onOpenChange, onCreate }: ProjectCre
               placeholder="A short description of the project goals, scope, and constraints."
               className="min-h-28 bg-white"
             />
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Deploy URL</label>
-              <Input
-                value={deployUrl}
-                onChange={(e) => setDeployUrl(e.target.value)}
-                placeholder="https://app.example.com"
-                className="bg-white"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Base branch</label>
-              <Input
-                value={branchBase}
-                onChange={(e) => setBranchBase(e.target.value)}
-                placeholder="main"
-                className="bg-white"
-              />
-            </div>
           </div>
 
           <DialogFooter className="pt-2">

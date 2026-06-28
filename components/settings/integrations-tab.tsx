@@ -6,10 +6,11 @@ import { Calendar, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/components/island-toast';
 
 export function IntegrationsTab() {
   const { user } = useUser();
+  const { showToast } = useToast();
   const [googleConnected, setGoogleConnected] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -38,11 +39,7 @@ export function IntegrationsTab() {
       const { url } = await res.json();
       window.location.href = url;
     } catch (error) {
-      toast({
-        title: 'Connection failed',
-        description: 'Could not connect to Google Calendar',
-        variant: 'destructive',
-      });
+      showToast('Could not connect to Google Calendar', 'error');
     }
   }
 
@@ -51,19 +48,15 @@ export function IntegrationsTab() {
       const res = await fetch('/api/integrations/google/disconnect', { method: 'POST' });
       if (!res.ok) throw new Error('Failed to disconnect');
       setGoogleConnected(false);
-      toast({ title: 'Disconnected', description: 'Google Calendar has been disconnected' });
+      showToast('Google Calendar has been disconnected', 'success');
     } catch (error) {
-      toast({
-        title: 'Failed to disconnect',
-        description: 'Please try again',
-        variant: 'destructive',
-      });
+      showToast('Failed to disconnect. Please try again.', 'error');
     }
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex items-center justify-center min-h-[50vh]">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );

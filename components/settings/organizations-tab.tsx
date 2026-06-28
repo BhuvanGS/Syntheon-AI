@@ -12,6 +12,8 @@ import {
   Clock,
   AlertTriangle,
   Loader2,
+  Copy,
+  CheckCircle,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,7 +31,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/components/island-toast';
 import { cn } from '@/lib/utils';
 
 interface OrgMetadata {
@@ -58,6 +60,7 @@ interface SentInvite {
 export function OrganizationsTab() {
   const { user } = useUser();
   const { organization, isLoaded: orgLoaded } = useOrganization();
+  const { showToast } = useToast();
   const { userMemberships, setActive } = useOrganizationList({
     userMemberships: { infinite: true, pageSize: 50 },
   });
@@ -86,6 +89,10 @@ export function OrganizationsTab() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviting, setInviting] = useState(false);
   const [generatedInviteLink, setGeneratedInviteLink] = useState('');
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [revokeInviteId, setRevokeInviteId] = useState<string | null>(null);
+  const [revoking, setRevoking] = useState(false);
+  const [reinviteEmail, setReinviteEmail] = useState<string | null>(null);
 
   const memberships = userMemberships?.data ?? [];
   const currentMembership = memberships.find((m) => m.organization.id === organization?.id);
@@ -159,13 +166,9 @@ export function OrganizationsTab() {
         body: JSON.stringify(orgMetadata),
       });
       if (!res.ok) throw new Error('Failed to save');
-      toast({ title: 'Saved', description: 'Organization details updated' });
+      showToast('Organization details updated', 'success');
     } catch (error) {
-      toast({
-        title: 'Failed to save',
-        description: 'Please try again',
-        variant: 'destructive',
-      });
+      showToast('Failed to save. Please try again.', 'error');
     } finally {
       setSaving(false);
     }
@@ -191,39 +194,77 @@ export function OrganizationsTab() {
       if (!res.ok) throw new Error('Failed to update');
       setOrgMetadata((prev) => ({ ...prev, allowAccessRequests: enabled }));
       setConfirmToggleDialog(false);
-      toast({
-        title: enabled ? 'Access requests enabled' : 'Access requests disabled',
-        description: enabled
+      showToast(
+        enabled
           ? 'Users can now request access to your organization'
           : 'Only invited users can join your organization',
-      });
+        'success'
+      );
     } catch (error) {
-      toast({
-        title: 'Failed to update',
-        description: 'Please try again',
-        variant: 'destructive',
-      });
+      showToast('Failed to update. Please try again.', 'error');
     } finally {
       setSaving(false);
     }
   }
 
-  async function handleRevokeInvite(inviteId: string) {
-    if (!organization?.id) return;
+  function handleRevokeInvite(inviteId: string) {
+    setRevokeInviteId(inviteId);
+  }
+
+  async function confirmRevokeInvite() {
+    if (!organization?.id || !revokeInviteId) return;
+    setRevoking(true);
     try {
-      const res = await fetch(`/api/organizations/${organization.id}/sent-invites/${inviteId}`, {
-        method: 'POST',
-      });
+      const res = await fetch(
+        `/api/organizations/${organization.id}/sent-invites/${revokeInviteId}`,
+        {
+          method: 'POST',
+        }
+      );
       if (!res.ok) throw new Error('Failed to revoke invite');
       await loadSentInvites();
-      toast({ title: 'Invite revoked', description: 'The invitation has been revoked.' });
+      showToast('The invitation has been revoked.', 'success');
     } catch (error) {
-      toast({
-        title: 'Failed to revoke invite',
-        description: 'Please try again',
-        variant: 'destructive',
-      });
+      showToast('Failed to revoke invite. Please try again.', 'error');
+    } finally {
+      setRevoking(false);
+      setRevokeInviteId(null);
     }
+  }
+
+  async function sendInvite(email: string) {
+    if (!organization?.id) return;
+    setInviting(true);
+    try {
+      const res = await fetch(`/api/organizations/${organization.id}/invites`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      if (!res.ok) throw new Error('Failed to send invite');
+      const data = await res.json();
+      setGeneratedInviteLink(data.inviteLink || '');
+      setCopiedLink(false);
+      await loadSentInvites();
+      showToast('An invitation has been sent to ' + data.email, 'success');
+    } catch (error) {
+      showToast('Failed to send invite. Please try again.', 'error');
+    } finally {
+      setInviting(false);
+    }
+  }
+
+  function handleSendInviteClick() {
+    const email = inviteEmail.trim();
+    if (!email || !organization?.id) return;
+    const wasRevoked = sentInvites.some(
+      (invite) => invite.email.toLowerCase() === email.toLowerCase() && invite.status === 'revoked'
+    );
+    if (wasRevoked) {
+      setReinviteEmail(email);
+      return;
+    }
+    void sendInvite(email);
   }
 
   async function handleAccessRequest(requestId: string, action: 'approve' | 'reject') {
@@ -239,16 +280,9 @@ export function OrganizationsTab() {
       );
       if (!res.ok) throw new Error('Failed to process request');
       await loadAccessRequests();
-      toast({
-        title: action === 'approve' ? 'Request approved' : 'Request rejected',
-        description: `Access request has been ${action}d`,
-      });
+      showToast(`Access request has been ${action}d`, 'success');
     } catch (error) {
-      toast({
-        title: 'Failed to process request',
-        description: 'Please try again',
-        variant: 'destructive',
-      });
+      showToast('Failed to process request. Please try again.', 'error');
     }
   }
 
@@ -257,14 +291,10 @@ export function OrganizationsTab() {
     setSwitchingOrgId(orgId);
     try {
       await setActive({ organization: orgId });
-      toast({ title: 'Organization switched' });
+      showToast('Organization switched', 'success');
       window.location.assign('/dashboard');
     } catch (error) {
-      toast({
-        title: 'Failed to switch',
-        description: 'Please try again',
-        variant: 'destructive',
-      });
+      showToast('Failed to switch organization. Please try again.', 'error');
     } finally {
       setSwitchingOrgId(null);
     }
@@ -281,7 +311,7 @@ export function OrganizationsTab() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex items-center justify-center min-h-[50vh]">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
@@ -394,81 +424,6 @@ export function OrganizationsTab() {
                         </p>
                       </div>
                     )}
-
-                    {/* Invite Users Component */}
-                    {orgMetadata.allowAccessRequests && (
-                      <div className="rounded-lg border border-border/60 p-4 space-y-3">
-                        <div>
-                          <p className="text-sm font-medium text-foreground">Invite Users</p>
-                          <p className="text-xs text-muted-foreground">
-                            Invite team members to your organization
-                          </p>
-                        </div>
-                        <div className="flex gap-2">
-                          <Input
-                            value={inviteEmail}
-                            onChange={(e) => setInviteEmail(e.target.value)}
-                            placeholder="colleague@company.com"
-                            className="flex-1"
-                          />
-                          <Button
-                            size="sm"
-                            onClick={async () => {
-                              if (!inviteEmail.trim()) return;
-                              setInviting(true);
-                              try {
-                                const res = await fetch(
-                                  `/api/organizations/${organization?.id}/invites`,
-                                  {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ email: inviteEmail.trim() }),
-                                  }
-                                );
-                                if (!res.ok) throw new Error('Failed to send invite');
-                                const data = await res.json();
-                                setGeneratedInviteLink(data.inviteLink || '');
-                                setInviteEmail('');
-                                await loadSentInvites();
-                                toast({
-                                  title: 'Invite sent',
-                                  description: 'An invitation has been sent to ' + data.email,
-                                });
-                              } catch (error) {
-                                toast({
-                                  title: 'Failed to send invite',
-                                  description: 'Please try again',
-                                  variant: 'destructive',
-                                });
-                              } finally {
-                                setInviting(false);
-                              }
-                            }}
-                            disabled={inviting || !inviteEmail.trim()}
-                          >
-                            {inviting ? 'Sending...' : 'Send Invite'}
-                          </Button>
-                        </div>
-                        {generatedInviteLink && (
-                          <div className="rounded-lg bg-muted/50 p-3 space-y-2">
-                            <p className="text-xs text-muted-foreground">Invite link generated</p>
-                            <div className="flex gap-2">
-                              <Input value={generatedInviteLink} readOnly className="text-xs" />
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(generatedInviteLink);
-                                  toast({ title: 'Copied', description: 'Invite link copied' });
-                                }}
-                              >
-                                Copy
-                              </Button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
                   </div>
 
                   <Button onClick={handleSaveMetadata} disabled={saving} className="w-full">
@@ -570,6 +525,67 @@ export function OrganizationsTab() {
         {/* Requests Tab (Admin Only) */}
         {isAdmin && (
           <TabsContent value="requests" className="space-y-4">
+            {/* Invite Users (only when access requests are enabled) */}
+            {orgMetadata.allowAccessRequests && (
+              <Card className="border-border/60 shadow-none">
+                <CardContent className="p-4">
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Invite Users</p>
+                      <p className="text-xs text-muted-foreground">
+                        Invite team members to your organization
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        value={inviteEmail}
+                        onChange={(e) => setInviteEmail(e.target.value)}
+                        placeholder="colleague@company.com"
+                        className="flex-1"
+                      />
+                      <Button
+                        size="sm"
+                        onClick={handleSendInviteClick}
+                        disabled={inviting || !inviteEmail.trim()}
+                      >
+                        {inviting ? 'Sending...' : 'Send Invite'}
+                      </Button>
+                    </div>
+                    {generatedInviteLink && (
+                      <div className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
+                        <p className="text-xs text-muted-foreground">Invite link generated</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(generatedInviteLink);
+                            setCopiedLink(true);
+                            showToast('Invite link copied to clipboard', 'success');
+                            setTimeout(() => setCopiedLink(false), 2000);
+                          }}
+                          className="flex items-center gap-1.5 text-xs font-medium transition-colors duration-200"
+                          style={{ color: copiedLink ? '#16a34a' : 'currentColor' }}
+                        >
+                          {copiedLink ? (
+                            <>
+                              <CheckCircle className="h-4 w-4 text-green-600 transition-all duration-200" />
+                              <span className="text-green-600 transition-colors duration-200">
+                                Copied
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="h-4 w-4 transition-all duration-200" />
+                              <span className="transition-colors duration-200">Copy link</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             <Tabs defaultValue="incoming" className="space-y-4">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="incoming">
@@ -731,7 +747,13 @@ export function OrganizationsTab() {
                             </div>
                             <div className="flex items-center gap-2">
                               <Badge
-                                variant={invite.status === 'pending' ? 'secondary' : 'outline'}
+                                variant={
+                                  invite.status === 'pending'
+                                    ? 'secondary'
+                                    : invite.status === 'revoked'
+                                      ? 'destructive'
+                                      : 'outline'
+                                }
                                 className="text-xs capitalize"
                               >
                                 {invite.status}
@@ -884,17 +906,10 @@ export function OrganizationsTab() {
                     managerName: '',
                     allowAccessRequests: false,
                   });
-                  toast({
-                    title: 'Organization created',
-                    description: `${data.name} has been created successfully.`,
-                  });
+                  showToast(`${data.name} has been created successfully.`, 'success');
                   window.location.reload();
                 } catch (error) {
-                  toast({
-                    title: 'Failed to create organization',
-                    description: 'Please try again',
-                    variant: 'destructive',
-                  });
+                  showToast('Failed to create organization. Please try again.', 'error');
                 } finally {
                   setCreatingOrg(false);
                 }
@@ -902,6 +917,71 @@ export function OrganizationsTab() {
               disabled={creatingOrg || !newOrgForm.name.trim()}
             >
               {creatingOrg ? 'Creating...' : 'Create Organization'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Re-invite Previously Revoked User Dialog */}
+      <Dialog
+        open={Boolean(reinviteEmail)}
+        onOpenChange={(open) => {
+          if (!open) setReinviteEmail(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Previously revoked user
+            </DialogTitle>
+            <DialogDescription>
+              <strong>{reinviteEmail}</strong> was previously revoked. Do you want to send a new
+              invitation?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReinviteEmail(null)} disabled={inviting}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (!reinviteEmail) return;
+                void sendInvite(reinviteEmail);
+                setReinviteEmail(null);
+              }}
+              disabled={inviting}
+            >
+              {inviting ? 'Sending...' : 'Send Invite'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Revoke Invite Confirmation Dialog */}
+      <Dialog
+        open={Boolean(revokeInviteId)}
+        onOpenChange={(open) => {
+          if (!open) setRevokeInviteId(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Revoke Invitation?
+            </DialogTitle>
+            <DialogDescription>
+              This will cancel the invitation and the recipient will no longer be able to join your
+              organization using this link.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRevokeInviteId(null)} disabled={revoking}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmRevokeInvite} disabled={revoking}>
+              {revoking ? 'Revoking...' : 'Revoke Invite'}
             </Button>
           </DialogFooter>
         </DialogContent>

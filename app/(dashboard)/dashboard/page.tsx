@@ -12,6 +12,7 @@ import {
   BarChart3,
   Clock,
   AlertCircle,
+  Plus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sidebar } from '@/components/sidebar';
@@ -229,12 +230,7 @@ function DashboardContent() {
     await loadWorkspaceData();
   }, [loadWorkspaceData]);
 
-  async function handleCreateProject(payload: {
-    name: string;
-    context: string;
-    deployUrl: string;
-    branchBase: string;
-  }) {
+  async function handleCreateProject(payload: { name: string; context: string }) {
     const res = await fetch('/api/projects', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -637,7 +633,19 @@ function DashboardContent() {
 
           {/* ── PROJECTS ── */}
           {currentView === 'projects' && (
-            <div className="p-6">
+            <div className="p-6 space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-semibold text-foreground">Projects</h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Manage your workspaces and teams
+                  </p>
+                </div>
+                <Button onClick={() => setIsProjectCreateOpen(true)} className="rounded-full gap-2">
+                  <Plus className="h-4 w-4" />
+                  New project
+                </Button>
+              </div>
               <ProjectsWorkspace
                 projects={projects}
                 meetings={meetings}
@@ -648,6 +656,7 @@ function DashboardContent() {
                 onCreateProject={() => setIsProjectCreateOpen(true)}
                 onDeleteProject={handleDeleteProject}
                 onRefresh={refreshWorkspace}
+                showHeader={false}
               />
             </div>
           )}

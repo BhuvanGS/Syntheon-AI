@@ -204,12 +204,7 @@ function ProjectContent() {
     toast({ title: 'Project deleted', description: 'The project was removed.' });
   }
 
-  async function handleCreateProject(payload: {
-    name: string;
-    context: string;
-    deployUrl: string;
-    branchBase: string;
-  }) {
+  async function handleCreateProject(payload: { name: string; context: string }) {
     const res = await fetch('/api/projects', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
