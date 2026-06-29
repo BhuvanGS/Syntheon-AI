@@ -14,6 +14,8 @@ import {
   Loader2,
   Copy,
   CheckCircle,
+  KeyRound,
+  RefreshCw,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -38,6 +40,7 @@ interface OrgMetadata {
   companyName: string;
   managerName: string;
   allowAccessRequests: boolean;
+  joinCode: string | null;
 }
 
 interface AccessRequest {
@@ -68,6 +71,7 @@ export function OrganizationsTab() {
     companyName: '',
     managerName: '',
     allowAccessRequests: false,
+    joinCode: null,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -90,6 +94,9 @@ export function OrganizationsTab() {
   const [inviting, setInviting] = useState(false);
   const [generatedInviteLink, setGeneratedInviteLink] = useState('');
   const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedJoinCode, setCopiedJoinCode] = useState(false);
+  const [rotatingCode, setRotatingCode] = useState(false);
+  const [confirmRotateCode, setConfirmRotateCode] = useState(false);
   const [revokeInviteId, setRevokeInviteId] = useState<string | null>(null);
   const [revoking, setRevoking] = useState(false);
   const [reinviteEmail, setReinviteEmail] = useState<string | null>(null);
@@ -101,9 +108,11 @@ export function OrganizationsTab() {
   useEffect(() => {
     if (!organization?.id) return;
     void loadOrgMetadata();
-    void loadAccessRequests();
-    void loadSentInvites();
-  }, [organization?.id]);
+    if (isAdmin) {
+      void loadAccessRequests();
+      void loadSentInvites();
+    }
+  }, [organization?.id, isAdmin]);
 
   async function loadOrgMetadata() {
     if (!organization?.id) return;
@@ -115,6 +124,7 @@ export function OrganizationsTab() {
           companyName: data.companyName || '',
           managerName: data.managerName || '',
           allowAccessRequests: data.allowAccessRequests || false,
+          joinCode: data.joinCode || null,
         });
       }
     } catch (error) {
@@ -525,6 +535,101 @@ export function OrganizationsTab() {
         {/* Requests Tab (Admin Only) */}
         {isAdmin && (
           <TabsContent value="requests" className="space-y-4">
+            {/* Join Code Card */}
+            <Card className="border-border/60 shadow-none overflow-hidden">
+              <div className="relative bg-muted/30 p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <KeyRound className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Organization Join Code</p>
+                    <p className="text-xs text-muted-foreground">
+                      Share this code with team members so they can join
+                    </p>
+                  </div>
+                </div>
+                {orgMetadata.joinCode ? (
+                  <div className="flex items-center justify-between rounded-2xl border border-border bg-muted/50 px-6 py-5">
+                    <code className="text-4xl font-mono font-black tracking-[0.15em] text-foreground">
+                      {orgMetadata.joinCode.slice(0, 4)}
+                      <span className="text-primary/40 mx-1">-</span>
+                      {orgMetadata.joinCode.slice(4)}
+                    </code>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setConfirmRotateCode(true)}
+                        disabled={rotatingCode}
+                        className="flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors duration-200"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                        <span>Rotate</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(orgMetadata.joinCode!);
+                          setCopiedJoinCode(true);
+                          showToast('Join code copied to clipboard', 'success');
+                          setTimeout(() => setCopiedJoinCode(false), 2000);
+                        }}
+                        className="flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg bg-primary/10 hover:bg-primary/15 transition-colors duration-200"
+                      >
+                        {copiedJoinCode ? (
+                          <>
+                            <CheckCircle className="h-4 w-4 text-primary transition-all duration-200" />
+                            <span className="text-primary">Copied</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-4 w-4 transition-all duration-200" />
+                            <span>Copy code</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!organization?.id) return;
+                      setRotatingCode(true);
+                      try {
+                        const res = await fetch(
+                          `/api/organizations/${organization.id}/rotate-join-code`,
+                          { method: 'POST' }
+                        );
+                        if (!res.ok) throw new Error('Failed to generate code');
+                        const data = await res.json();
+                        setOrgMetadata((prev) => ({ ...prev, joinCode: data.joinCode }));
+                        showToast('Join code generated', 'success');
+                      } catch {
+                        showToast('Failed to generate join code', 'error');
+                      } finally {
+                        setRotatingCode(false);
+                      }
+                    }}
+                    disabled={rotatingCode}
+                    className="flex items-center justify-center gap-2 w-full rounded-2xl border-2 border-dashed border-primary/30 px-6 py-5 text-sm font-medium text-primary hover:bg-primary/5 transition-colors duration-200"
+                  >
+                    {rotatingCode ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <KeyRound className="h-4 w-4" />
+                        Generate join code
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+            </Card>
+
             {/* Invite Users (only when access requests are enabled) */}
             {orgMetadata.allowAccessRequests && (
               <Card className="border-border/60 shadow-none">
@@ -982,6 +1087,67 @@ export function OrganizationsTab() {
             </Button>
             <Button variant="destructive" onClick={confirmRevokeInvite} disabled={revoking}>
               {revoking ? 'Revoking...' : 'Revoke Invite'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rotate Join Code Confirmation */}
+      <Dialog
+        open={confirmRotateCode}
+        onOpenChange={(open) => {
+          if (!open) setConfirmRotateCode(false);
+        }}
+      >
+        <DialogContent className="sm:max-w-md border-border bg-background shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-playfair text-2xl text-foreground flex items-center gap-2">
+              <RefreshCw className="h-5 w-5 text-primary" />
+              Rotate Join Code?
+            </DialogTitle>
+            <DialogDescription>
+              A new 8-digit code will be generated. The old code will stop working immediately.
+              Anyone trying to join with the old code will be rejected.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmRotateCode(false)}
+              disabled={rotatingCode}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!organization?.id) return;
+                setRotatingCode(true);
+                try {
+                  const res = await fetch(
+                    `/api/organizations/${organization.id}/rotate-join-code`,
+                    { method: 'POST' }
+                  );
+                  if (!res.ok) throw new Error('Failed to rotate code');
+                  const data = await res.json();
+                  setOrgMetadata((prev) => ({ ...prev, joinCode: data.joinCode }));
+                  setConfirmRotateCode(false);
+                  showToast('Join code rotated successfully', 'success');
+                } catch {
+                  showToast('Failed to rotate join code', 'error');
+                } finally {
+                  setRotatingCode(false);
+                }
+              }}
+              disabled={rotatingCode}
+            >
+              {rotatingCode ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Rotating...
+                </>
+              ) : (
+                'Rotate Code'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

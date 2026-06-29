@@ -10,6 +10,7 @@ import { TicketDetail } from '@/components/ticket-detail';
 import { Button } from '@/components/ui/button';
 import { DynamicIslandSearch } from '@/components/dynamic-island-search';
 import { NotificationBell } from '@/components/notification-bell';
+import { TrialBanner } from '@/components/trial-banner';
 import { toast } from '@/hooks/use-toast';
 
 type ViewType = 'project' | 'ticket-detail';
@@ -237,7 +238,8 @@ function ProjectContent() {
           <h1 className="text-sm font-semibold text-foreground">
             {currentView === 'project' ? 'Project Workspace' : 'Meeting Tickets'}
           </h1>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <TrialBanner />
             <NotificationBell />
             <DynamicIslandSearch
               onSelectTicket={(id) => {

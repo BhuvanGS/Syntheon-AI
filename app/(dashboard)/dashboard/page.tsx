@@ -26,6 +26,7 @@ import { DynamicIslandSearch } from '@/components/dynamic-island-search';
 import { NotificationBell } from '@/components/notification-bell';
 import { GanttCalendar } from '@/components/gantt-calendar';
 import { DashboardGrid } from '@/components/dashboard-grid';
+import { TrialBanner } from '@/components/trial-banner';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -284,7 +285,8 @@ function DashboardContent() {
             {currentView === 'calendar' && 'Calendar'}
             {currentView === 'ticket-detail' && 'Meeting Tickets'}
           </h1>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <TrialBanner />
             <NotificationBell onNavigateToTicket={() => handleViewChange('tickets')} />
             <DynamicIslandSearch
               onSelectTicket={(id) => {

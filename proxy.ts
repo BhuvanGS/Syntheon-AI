@@ -26,7 +26,19 @@ const isApiRoute = createRouteMatcher(['/api/(.*)']);
 
 const isDashboardRoute = createRouteMatcher(['/dashboard(.*)', '/project(.*)', '/settings(.*)']);
 
+// Clerk session task URLs — intercept and redirect to our custom onboarding
+const isClerkSessionTask = createRouteMatcher(['/sign-up/tasks(.*)', '/sign-in/tasks(.*)']);
+
 export default clerkMiddleware(async (auth, request) => {
+  // Intercept Clerk's built-in org creation session task
+  if (isClerkSessionTask(request)) {
+    const session = await auth();
+    if (session.userId) {
+      return NextResponse.redirect(new URL('/onboarding', request.url));
+    }
+    return NextResponse.redirect(new URL('/sign-up', request.url));
+  }
+
   // Always let public routes through
   if (isPublicRoute(request)) return NextResponse.next();
 

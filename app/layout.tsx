@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Geist, Geist_Mono, Playfair_Display, DM_Sans, DM_Serif_Display } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/next';
 import { ClerkProvider } from '@clerk/nextjs';
+import { shadcn } from '@clerk/ui/themes';
 import { ToastProvider } from '@/components/island-toast';
 import { ThemeProvider } from '@/components/theme-provider';
 import './globals.css';
@@ -56,28 +57,27 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider
-      signInUrl="/sign-in"
-      signUpUrl="/sign-up"
-      signInFallbackRedirectUrl="/onboarding"
-      signUpFallbackRedirectUrl="/onboarding"
-      taskUrls={{
-        'choose-organization': '/onboarding',
-      }}
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${_playfair.variable} ${_dmSans.variable} ${_dmSerif.variable}`}
     >
-      <html
-        lang="en"
-        suppressHydrationWarning
-        className={`${_playfair.variable} ${_dmSans.variable} ${_dmSerif.variable}`}
-      >
-        <head>
-          {/* Preconnect to critical third-party domains */}
-          <link rel="preconnect" href="https://clerk.accounts.dev" />
-          <link rel="dns-prefetch" href="https://clerk.accounts.dev" />
-          <link rel="preconnect" href="https://fonts.googleapis.com" />
-          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        </head>
-        <body className="font-sans antialiased bg-background text-foreground">
+      <head>
+        {/* Preconnect to critical third-party domains */}
+        <link rel="preconnect" href="https://clerk.accounts.dev" />
+        <link rel="dns-prefetch" href="https://clerk.accounts.dev" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      </head>
+      <body className="font-sans antialiased bg-background text-foreground">
+        <ClerkProvider
+          appearance={{ theme: shadcn }}
+          signInUrl="/sign-in"
+          signUpUrl="/sign-up"
+          signInFallbackRedirectUrl="/onboarding"
+          signUpFallbackRedirectUrl="/onboarding"
+          taskUrls={{ 'choose-organization': '/onboarding' }}
+        >
           <ThemeProvider
             attribute="class"
             defaultTheme="dark"
@@ -89,8 +89,8 @@ export default function RootLayout({
               <Analytics />
             </ToastProvider>
           </ThemeProvider>
-        </body>
-      </html>
-    </ClerkProvider>
+        </ClerkProvider>
+      </body>
+    </html>
   );
 }

@@ -16,6 +16,7 @@ sql/
 *.tsbuildinfo
 *.bak
 scripts/
+.agents
 AWS.txt
 
 

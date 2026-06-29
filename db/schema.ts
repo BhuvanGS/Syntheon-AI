@@ -234,7 +234,10 @@ export const organizationMetadata = pgTable('organization_metadata', {
   orgId: text('org_id').unique().notNull(),
   companyName: text('company_name'),
   managerName: text('manager_name'),
+  domain: text('domain'),
+  joinCode: text('join_code'),
   allowAccessRequests: boolean('allow_access_requests').default(false),
+  trialStartedAt: timestamp('trial_started_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });

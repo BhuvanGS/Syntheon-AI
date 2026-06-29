@@ -3,13 +3,13 @@ import { auth } from '@clerk/nextjs/server';
 import {
   deleteTicketById,
   updateTicket,
-  checkHardBlockers,
   cascadeDepRegressionForParent,
   getDependenciesForTicket,
   incrementDependencyIgnoreCount,
   createActivity,
   getTicketById,
   createNotification,
+  notifyTicketStatusChanged,
 } from '@/lib/db';
 import { broadcast } from '@/lib/event-bus';
 import { requireAuth } from '@/lib/rbac';
@@ -72,15 +72,34 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const newStatus = updates.status as string | undefined;
     const bypassGate = body?.bypassGate === true;
 
-    // Block status changes when there are unresolved hard dependencies
+    // Block status changes when there are unresolved hard or soft dependencies
     if (newStatus === 'in_progress' || newStatus === 'done') {
-      const { blocked, blockers } = await checkHardBlockers(id);
-      if (blocked) {
+      const { parents } = await getDependenciesForTicket(id);
+      const hardParents = parents.filter((d) => d.strength === 'hard' || d.escalated);
+      const softParents = parents.filter((d) => d.strength === 'soft' && !d.escalated);
+      const parentIds = [
+        ...new Set([...hardParents, ...softParents].map((d) => d.depends_on_ticket_id)),
+      ];
+
+      const parentTickets =
+        parentIds.length > 0
+          ? await db
+              .select({ id: ticketsTable.id, status: ticketsTable.status })
+              .from(ticketsTable)
+              .where(inArray(ticketsTable.id, parentIds))
+          : [];
+
+      const unresolvedHard = hardParents.filter((dep) => {
+        const parent = parentTickets.find((t) => t.id === dep.depends_on_ticket_id);
+        return parent?.status !== 'done';
+      });
+
+      if (unresolvedHard.length > 0) {
         return NextResponse.json(
           {
             error: 'hard_blocked',
-            message: `This ticket has ${blockers.length} unresolved hard dependenc${blockers.length === 1 ? 'y' : 'ies'} that must be resolved first.`,
-            blockers: blockers.map((b) => ({
+            message: `This ticket has ${unresolvedHard.length} unresolved hard dependenc${unresolvedHard.length === 1 ? 'y' : 'ies'} that must be resolved first.`,
+            blockers: unresolvedHard.map((b) => ({
               id: b.id,
               depends_on: b.depends_on_ticket_id,
               type: b.dependency_type,
@@ -90,44 +109,29 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         );
       }
 
-      // Soft dependencies warn on any progressing status (in_progress or done)
-      if (newStatus === 'in_progress' || newStatus === 'done') {
-        const { parents } = await getDependenciesForTicket(id);
-        const softParentIds = parents
-          .filter((d) => d.strength === 'soft' && !d.escalated)
-          .map((d) => d.depends_on_ticket_id);
+      const unresolvedSoft = softParents.filter((dep) => {
+        const parent = parentTickets.find((t) => t.id === dep.depends_on_ticket_id);
+        return parent?.status !== 'done';
+      });
 
-        if (softParentIds.length > 0) {
-          const softParentTickets = await db
-            .select({ id: ticketsTable.id, status: ticketsTable.status })
-            .from(ticketsTable)
-            .where(inArray(ticketsTable.id, softParentIds));
-          const unresolvedSoft = parents.filter((dep) => {
-            if (dep.strength !== 'soft' || dep.escalated) return false;
-            const parent = softParentTickets.find((t) => t.id === dep.depends_on_ticket_id);
-            return parent?.status !== 'done';
-          });
+      if (unresolvedSoft.length > 0 && !bypassGate) {
+        return NextResponse.json(
+          {
+            error: 'soft_blocked',
+            message: `This ticket has ${unresolvedSoft.length} unresolved soft dependenc${unresolvedSoft.length === 1 ? 'y' : 'ies'}. You can proceed anyway.`,
+            blockers: unresolvedSoft.map((b) => ({
+              id: b.id,
+              depends_on: b.depends_on_ticket_id,
+              type: b.dependency_type,
+              ignore_count: b.ignore_count,
+            })),
+          },
+          { status: 422 }
+        );
+      }
 
-          if (unresolvedSoft.length > 0 && !bypassGate) {
-            return NextResponse.json(
-              {
-                error: 'soft_blocked',
-                message: `This ticket has ${unresolvedSoft.length} unresolved soft dependenc${unresolvedSoft.length === 1 ? 'y' : 'ies'}. You can proceed anyway.`,
-                blockers: unresolvedSoft.map((b) => ({
-                  id: b.id,
-                  depends_on: b.depends_on_ticket_id,
-                  type: b.dependency_type,
-                  ignore_count: b.ignore_count,
-                })),
-              },
-              { status: 422 }
-            );
-          }
-
-          if (bypassGate && unresolvedSoft.length > 0) {
-            await Promise.all(unresolvedSoft.map((d) => incrementDependencyIgnoreCount(d.id)));
-          }
-        }
+      if (bypassGate && unresolvedSoft.length > 0) {
+        await Promise.all(unresolvedSoft.map((d) => incrementDependencyIgnoreCount(d.id)));
       }
     }
 
@@ -156,7 +160,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       // Notify ticket owner of status change (if not the one making the change)
       if (ticket.user_id && ticket.user_id !== userId && orgId) {
         try {
-          const { notifyTicketStatusChanged } = await import('@/lib/db');
           await notifyTicketStatusChanged(id, ticket.title, ticket.user_id, orgId, newStatus);
         } catch (err) {
           console.error('[NOTIFY] Failed to create status change notification:', err);

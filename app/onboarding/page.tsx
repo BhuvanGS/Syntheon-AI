@@ -1,13 +1,38 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useOrganizationList, useUser } from '@clerk/nextjs';
-import { Building2, Users, ArrowRight, Loader2, Sparkles } from 'lucide-react';
+import {
+  Building2,
+  Users,
+  ArrowRight,
+  Loader2,
+  Sparkles,
+  KeyRound,
+  CheckCircle2,
+  Clock,
+  ArrowLeft,
+} from 'lucide-react';
+import { isPublicDomainEmail, generateOrgNameFromDomain } from '@/lib/org-utils';
+import { extractDomain } from '@/lib/public-domains';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+  InputOTPSeparator,
+} from '@/components/ui/input-otp';
 import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'motion/react';
 
-type Step = 'choose' | 'create' | 'join';
+type Step = 'loading' | 'choose' | 'create' | 'join' | 'join-existing' | 'waitlisted' | 'error';
+
+type DomainCheckResult = {
+  exists: boolean;
+  orgId?: string;
+  orgName?: string;
+} | null;
 
 export default function OnboardingPage() {
   const { user } = useUser();
@@ -15,26 +40,117 @@ export default function OnboardingPage() {
     userMemberships: true,
   });
 
-  const [step, setStep] = useState<Step>('choose');
+  const [step, setStep] = useState<Step>('loading');
   const [orgName, setOrgName] = useState('');
-  const [inviteCode, setInviteCode] = useState('');
+  const [joinCode, setJoinCode] = useState('');
+  const rawJoinCode = joinCode.replace(/\D/g, '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [domainCheck, setDomainCheck] = useState<DomainCheckResult>(null);
   const memberships = userMemberships.data ?? [];
 
-  async function handleSelectOrg(selectedOrgId: string) {
-    if (!setActive) return;
-    setLoading(true);
-    setError('');
-    try {
-      await setActive({ organization: selectedOrgId });
-      window.location.assign('/dashboard');
-    } catch (err: any) {
-      setError(err?.errors?.[0]?.message || 'Failed to switch organization');
-    } finally {
-      setLoading(false);
+  const userEmail = user?.primaryEmailAddress?.emailAddress ?? '';
+  const isPublicDomain = userEmail ? isPublicDomainEmail(userEmail) : false;
+  const emailDomain = userEmail ? extractDomain(userEmail) : null;
+
+  // Check if an org already exists for this user's private domain
+  useEffect(() => {
+    if (!user || !userEmail || isPublicDomain || !emailDomain) return;
+    if (memberships.length > 0) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/organizations?email=${encodeURIComponent(userEmail)}`);
+        const data = await res.json();
+        if (!cancelled) {
+          setDomainCheck(data);
+          if (data.exists) {
+            setStep('join-existing');
+          } else {
+            const suggestedName = generateOrgNameFromDomain(emailDomain);
+            setOrgName(suggestedName);
+            setStep('create');
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setStep('choose');
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, userEmail, isPublicDomain, emailDomain, memberships.length]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    if (memberships.length > 0 && setActive) {
+      const firstOrg = memberships[0];
+      setActive({ organization: firstOrg.organization.id })
+        .then(() => window.location.assign('/dashboard'))
+        .catch(() => {
+          if (isPublicDomain) {
+            setStep('error');
+          } else {
+            setStep('choose');
+          }
+        });
+      return;
     }
-  }
+
+    if (isPublicDomain) {
+      const timeout = setTimeout(() => {
+        if (memberships.length === 0) {
+          setStep('error');
+        }
+      }, 15000);
+      return () => clearTimeout(timeout);
+    }
+
+    // B2B users: domain check effect handles setting the step
+    // Fallback: if domain check hasn't resolved in 10s, show choose
+    if (!isPublicDomain && domainCheck === null) {
+      const timeout = setTimeout(() => {
+        setStep((prev) => (prev === 'loading' ? 'choose' : prev));
+      }, 10000);
+      return () => clearTimeout(timeout);
+    }
+  }, [user, memberships, isPublicDomain, setActive, domainCheck]);
+
+  useEffect(() => {
+    if (isPublicDomain && memberships.length > 0 && step === 'loading' && setActive) {
+      const org = memberships[0];
+      setActive({ organization: org.organization.id })
+        .then(() => window.location.assign('/dashboard'))
+        .catch(() => setStep('error'));
+    }
+  }, [isPublicDomain, memberships, step, setActive]);
+
+  const handleSelectOrg = useCallback(
+    (orgId: string) => {
+      if (!setActive) return;
+      setLoading(true);
+      setError('');
+      setActive({ organization: orgId })
+        .then(() => window.location.assign('/dashboard'))
+        .catch((err: any) => {
+          setError(err?.errors?.[0]?.message || 'Failed to switch organization');
+          setLoading(false);
+        });
+    },
+    [setActive]
+  );
+
+  const handleRetry = useCallback(() => {
+    setError('');
+    setLoading(true);
+    setStep('loading');
+    window.location.reload();
+  }, []);
 
   async function handleCreateOrg(e: React.FormEvent) {
     e.preventDefault();
@@ -42,40 +158,156 @@ export default function OnboardingPage() {
     setLoading(true);
     setError('');
     try {
-      const org = await createOrganization({ name: orgName.trim() });
-      await setActive({ organization: org.id });
+      const res = await fetch('/api/organizations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          name: orgName.trim(),
+          domain: emailDomain,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to create organization');
+      await setActive({ organization: data.id });
       window.location.assign('/dashboard');
     } catch (err: any) {
-      setError(err?.errors?.[0]?.message || 'Failed to create organization');
+      setError(err?.message || 'Failed to create organization');
     } finally {
       setLoading(false);
     }
   }
 
-  async function handleJoinViaInvite(e: React.FormEvent) {
+  async function handleJoinWithCode(e: React.FormEvent) {
     e.preventDefault();
-    if (!inviteCode.trim()) return;
+    if (rawJoinCode.length !== 8) return;
+
     setLoading(true);
     setError('');
     try {
-      // Clerk invite links are handled via the /accept-invitation route
-      // We redirect to the Clerk-managed invite URL
-      const url = inviteCode.trim();
-      if (url.startsWith('http')) {
-        window.location.href = url;
-      } else {
-        setError('Please paste the full invite link you received.');
+      const res = await fetch('/api/organizations/join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ code: joinCode }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to join');
+
+      if (data.waitlisted) {
+        setStep('waitlisted');
+        return;
+      }
+
+      if (data.alreadyMember || data.joined) {
+        if (data.orgId && setActive) {
+          await setActive({ organization: data.orgId });
+        }
+        window.location.assign('/dashboard');
       }
     } catch (err: any) {
-      setError(err?.errors?.[0]?.message || 'Invalid invite link');
+      setError(err?.message || 'Failed to join organization');
     } finally {
       setLoading(false);
     }
+  }
+
+  if (step === 'loading' && !isPublicDomain && domainCheck === null) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="flex items-center gap-2 mb-12"
+        >
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+            <Sparkles className="h-5 w-5" />
+          </div>
+          <span className="font-playfair text-xl font-bold text-foreground">Syntheon</span>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2, duration: 0.4 }}
+          className="flex flex-col items-center gap-4"
+        >
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Checking your workspace...</p>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (step === 'loading' && isPublicDomain) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="flex items-center gap-2 mb-12"
+        >
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+            <Sparkles className="h-5 w-5" />
+          </div>
+          <span className="font-playfair text-xl font-bold text-foreground">Syntheon</span>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2, duration: 0.4 }}
+          className="flex flex-col items-center gap-4"
+        >
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Setting up your workspace...</p>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (step === 'error' && isPublicDomain) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+        <div className="flex items-center gap-2 mb-12">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+            <Sparkles className="h-5 w-5" />
+          </div>
+          <span className="font-playfair text-xl font-bold text-foreground">Syntheon</span>
+        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="w-full max-w-md space-y-6 text-center"
+        >
+          <div className="flex justify-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/50 text-muted-foreground">
+              <Clock className="h-7 w-7" />
+            </div>
+          </div>
+          <h1 className="font-playfair text-2xl font-bold text-foreground">
+            Taking a moment to set up
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Your workspace is still being created. This usually takes a few seconds. If it&apos;s
+            taking too long, try again.
+          </p>
+          <Button onClick={handleRetry} className="w-full rounded-full gap-2" disabled={loading}>
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4" />
+            )}
+            {loading ? 'Retrying...' : 'Retry'}
+          </Button>
+        </motion.div>
+      </div>
+    );
   }
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
-      {/* Logo */}
       <div className="flex items-center gap-2 mb-12">
         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
           <Sparkles className="h-5 w-5" />
@@ -84,181 +316,350 @@ export default function OnboardingPage() {
       </div>
 
       <div className="w-full max-w-md">
-        {step === 'choose' && (
-          <div className="space-y-6">
-            <div className="text-center space-y-2">
-              <h1 className="font-playfair text-3xl font-bold text-foreground">
-                Welcome{user?.firstName ? `, ${user.firstName}` : ''}
-              </h1>
-              <p className="text-muted-foreground">
-                Get started by setting up your organization workspace.
-              </p>
-            </div>
-
-            {memberships.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                  Continue with an existing organization
+        <AnimatePresence mode="wait">
+          {step === 'choose' && (
+            <motion.div
+              key="choose"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-6"
+            >
+              <div className="text-center space-y-2">
+                <h1 className="font-playfair text-3xl font-bold text-foreground">
+                  Welcome{user?.firstName ? `, ${user.firstName}` : ''}
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  Get started by setting up your organization workspace.
                 </p>
+              </div>
+
+              {memberships.length > 0 && (
                 <div className="space-y-2">
-                  {memberships.map((membership) => (
-                    <button
-                      key={membership.id}
-                      type="button"
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Continue with an existing organization
+                  </p>
+                  <div className="space-y-2">
+                    {memberships.map((membership) => (
+                      <button
+                        key={membership.id}
+                        type="button"
+                        disabled={loading}
+                        onClick={() => handleSelectOrg(membership.organization.id)}
+                        className="w-full flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3 text-left transition-all hover:border-primary/30 hover:shadow-sm disabled:opacity-60"
+                      >
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">
+                            {membership.organization.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground capitalize">
+                            {membership.role === 'org:admin' ? 'Admin' : 'Member'}
+                          </p>
+                        </div>
+                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="grid gap-3">
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => setStep('create')}
+                  className="flex items-start gap-4 rounded-2xl border border-border bg-muted/40 p-5 text-left transition-all hover:border-primary/30 hover:shadow-md disabled:opacity-60"
+                >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <Building2 className="h-5 w-5" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="font-semibold text-foreground">Create an organization</p>
+                    <p className="text-sm text-muted-foreground">
+                      Set up a new workspace for your team. You'll be the admin.
+                    </p>
+                  </div>
+                  <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-muted-foreground mt-1" />
+                </button>
+
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => setStep('join')}
+                  className="flex items-start gap-4 rounded-2xl border border-border bg-muted/40 p-5 text-left transition-all hover:border-primary/30 hover:shadow-md"
+                >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <KeyRound className="h-5 w-5" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="font-semibold text-foreground">Join with a code</p>
+                    <p className="text-sm text-muted-foreground">
+                      Have an 8-digit join code? Enter it to join your team.
+                    </p>
+                  </div>
+                  <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-muted-foreground mt-1" />
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {step === 'create' && (
+            <motion.div
+              key="create"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-6"
+            >
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setStep(domainCheck?.exists ? 'join-existing' : 'choose')}
+                  className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  Back
+                </button>
+                <h1 className="font-playfair text-3xl font-bold text-foreground">
+                  Create your organization
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  This will be your team's shared workspace in Syntheon.
+                </p>
+              </div>
+
+              <form onSubmit={handleCreateOrg} className="space-y-4">
+                <div className="rounded-2xl border border-border bg-muted/40 p-6 space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Organization name
+                    </label>
+                    <Input
+                      value={orgName}
+                      onChange={(e) => setOrgName(e.target.value)}
+                      placeholder="e.g. ChannelWorks, SyntheonHQ..."
+                      autoFocus
                       disabled={loading}
-                      onClick={() => handleSelectOrg(membership.organization.id)}
-                      className="w-full flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 text-left transition-all hover:border-primary/40 hover:shadow-sm disabled:opacity-60"
+                    />
+                  </div>
+                </div>
+
+                {error && <p className="text-sm text-destructive">{error}</p>}
+
+                <Button
+                  type="submit"
+                  className="w-full rounded-full gap-2"
+                  disabled={loading || !orgName.trim()}
+                >
+                  {loading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Building2 className="h-4 w-4" />
+                  )}
+                  {loading ? 'Creating...' : 'Create organization'}
+                </Button>
+              </form>
+            </motion.div>
+          )}
+
+          {step === 'join-existing' && domainCheck?.exists && (
+            <motion.div
+              key="join-existing"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-6"
+            >
+              <div className="space-y-2">
+                <h1 className="font-playfair text-3xl font-bold text-foreground">Join your team</h1>
+                <p className="text-sm text-muted-foreground">
+                  An organization for{' '}
+                  <span className="font-medium text-foreground">{emailDomain}</span> already exists.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-border bg-muted/40 p-5 space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <Building2 className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-foreground">{domainCheck.orgName}</p>
+                    <p className="text-xs text-muted-foreground">{emailDomain}</p>
+                  </div>
+                </div>
+              </div>
+
+              <form onSubmit={handleJoinWithCode} className="space-y-4">
+                <div className="space-y-3">
+                  <label className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Enter join code
+                  </label>
+                  <div className="flex justify-center pt-1">
+                    <InputOTP
+                      maxLength={8}
+                      value={joinCode}
+                      onChange={(val) => setJoinCode(val)}
+                      disabled={loading}
+                      containerClassName="justify-center"
                     >
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">
-                          {membership.organization.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground capitalize">
-                          {membership.role === 'org:admin' ? 'Admin' : 'Member'}
-                        </p>
-                      </div>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="grid gap-3">
-              <button
-                type="button"
-                onClick={() => setStep('create')}
-                className={cn(
-                  'flex items-start gap-4 rounded-2xl border border-border bg-card p-5 text-left transition-all hover:border-primary/40 hover:shadow-md'
-                )}
-              >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <Building2 className="h-5 w-5" />
-                </div>
-                <div className="space-y-1">
-                  <p className="font-semibold text-foreground">Create an organization</p>
-                  <p className="text-sm text-muted-foreground">
-                    Set up a new workspace for your team. You'll be the admin.
+                      <InputOTPGroup>
+                        <InputOTPSlot index={0} className="h-12 w-10 text-lg font-bold" />
+                        <InputOTPSlot index={1} className="h-12 w-10 text-lg font-bold" />
+                        <InputOTPSlot index={2} className="h-12 w-10 text-lg font-bold" />
+                        <InputOTPSlot index={3} className="h-12 w-10 text-lg font-bold" />
+                      </InputOTPGroup>
+                      <InputOTPSeparator className="mx-1" />
+                      <InputOTPGroup>
+                        <InputOTPSlot index={4} className="h-12 w-10 text-lg font-bold" />
+                        <InputOTPSlot index={5} className="h-12 w-10 text-lg font-bold" />
+                        <InputOTPSlot index={6} className="h-12 w-10 text-lg font-bold" />
+                        <InputOTPSlot index={7} className="h-12 w-10 text-lg font-bold" />
+                      </InputOTPGroup>
+                    </InputOTP>
+                  </div>
+                  <p className="text-xs text-muted-foreground text-center">
+                    Ask your admin for the 8-digit join code.
                   </p>
                 </div>
-                <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-muted-foreground mt-1" />
-              </button>
 
-              <button
-                type="button"
-                onClick={() => setStep('join')}
-                className={cn(
-                  'flex items-start gap-4 rounded-2xl border border-border bg-card p-5 text-left transition-all hover:border-primary/40 hover:shadow-md'
-                )}
-              >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <Users className="h-5 w-5" />
-                </div>
-                <div className="space-y-1">
-                  <p className="font-semibold text-foreground">Join via invite link</p>
-                  <p className="text-sm text-muted-foreground">
-                    Your admin sent you an invite. Paste the link to join.
-                  </p>
-                </div>
-                <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-muted-foreground mt-1" />
-              </button>
-            </div>
-          </div>
-        )}
+                {error && <p className="text-sm text-destructive text-center">{error}</p>}
 
-        {step === 'create' && (
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => setStep('choose')}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                ← Back
-              </button>
-              <h1 className="font-playfair text-3xl font-bold text-foreground">
-                Create your organization
-              </h1>
-              <p className="text-muted-foreground">
-                This will be your team's shared workspace in Syntheon.
-              </p>
-            </div>
+                <Button
+                  type="submit"
+                  className="w-full rounded-full gap-2"
+                  disabled={loading || rawJoinCode.length !== 8}
+                >
+                  {loading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <KeyRound className="h-4 w-4" />
+                  )}
+                  {loading ? 'Joining...' : 'Join organization'}
+                </Button>
+              </form>
+            </motion.div>
+          )}
 
-            <form onSubmit={handleCreateOrg} className="space-y-4">
+          {step === 'waitlisted' && (
+            <motion.div
+              key="waitlisted"
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-6 text-center"
+            >
+              <div className="flex justify-center">
+                <motion.div
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: 0.1, type: 'spring', stiffness: 200, damping: 15 }}
+                  className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted/50 text-muted-foreground"
+                >
+                  <Clock className="h-8 w-8" />
+                </motion.div>
+              </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Organization name</label>
-                <Input
-                  value={orgName}
-                  onChange={(e) => setOrgName(e.target.value)}
-                  placeholder="e.g. ChannelWorks, SyntheonHQ..."
-                  autoFocus
-                  disabled={loading}
-                />
+                <h1 className="font-playfair text-3xl font-bold text-foreground">
+                  You're on the waitlist
+                </h1>
+                <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                  Your join request has been sent to the organization admin. You'll get access once
+                  they approve it.
+                </p>
+              </div>
+              <div className="rounded-xl border border-border bg-muted/40 p-4">
+                <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                  <Clock className="h-3.5 w-3.5" />
+                  <span>Pending admin approval</span>
+                </div>
+              </div>
+              <Button
+                onClick={() => window.location.assign('/')}
+                variant="outline"
+                className="rounded-full"
+              >
+                Back to home
+              </Button>
+            </motion.div>
+          )}
+
+          {step === 'join' && (
+            <motion.div
+              key="join"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-6"
+            >
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setStep(domainCheck?.exists ? 'join-existing' : 'choose')}
+                  className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  Back
+                </button>
+                <h1 className="font-playfair text-3xl font-bold text-foreground">Join your team</h1>
+                <p className="text-sm text-muted-foreground">
+                  Enter the 8-digit join code your admin shared with you.
+                </p>
               </div>
 
-              {error && <p className="text-sm text-destructive">{error}</p>}
+              <form onSubmit={handleJoinWithCode} className="space-y-4">
+                <div className="space-y-3">
+                  <label className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Join code
+                  </label>
+                  <div className="flex justify-center pt-1">
+                    <InputOTP
+                      maxLength={8}
+                      value={joinCode}
+                      onChange={(val) => setJoinCode(val)}
+                      disabled={loading}
+                      containerClassName="justify-center"
+                    >
+                      <InputOTPGroup>
+                        <InputOTPSlot index={0} className="h-12 w-10 text-lg font-bold" />
+                        <InputOTPSlot index={1} className="h-12 w-10 text-lg font-bold" />
+                        <InputOTPSlot index={2} className="h-12 w-10 text-lg font-bold" />
+                        <InputOTPSlot index={3} className="h-12 w-10 text-lg font-bold" />
+                      </InputOTPGroup>
+                      <InputOTPSeparator className="mx-1" />
+                      <InputOTPGroup>
+                        <InputOTPSlot index={4} className="h-12 w-10 text-lg font-bold" />
+                        <InputOTPSlot index={5} className="h-12 w-10 text-lg font-bold" />
+                        <InputOTPSlot index={6} className="h-12 w-10 text-lg font-bold" />
+                        <InputOTPSlot index={7} className="h-12 w-10 text-lg font-bold" />
+                      </InputOTPGroup>
+                    </InputOTP>
+                  </div>
+                </div>
 
-              <Button
-                type="submit"
-                className="w-full rounded-full gap-2"
-                disabled={loading || !orgName.trim()}
-              >
-                {loading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Building2 className="h-4 w-4" />
-                )}
-                {loading ? 'Creating...' : 'Create organization'}
-              </Button>
-            </form>
-          </div>
-        )}
+                {error && <p className="text-sm text-destructive text-center">{error}</p>}
 
-        {step === 'join' && (
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => setStep('choose')}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                ← Back
-              </button>
-              <h1 className="font-playfair text-3xl font-bold text-foreground">Join your team</h1>
-              <p className="text-muted-foreground">
-                Paste the invite link your admin shared with you.
-              </p>
-            </div>
-
-            <form onSubmit={handleJoinViaInvite} className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Invite link</label>
-                <Input
-                  value={inviteCode}
-                  onChange={(e) => setInviteCode(e.target.value)}
-                  placeholder="https://..."
-                  autoFocus
-                  disabled={loading}
-                />
-              </div>
-
-              {error && <p className="text-sm text-destructive">{error}</p>}
-
-              <Button
-                type="submit"
-                className="w-full rounded-full gap-2"
-                disabled={loading || !inviteCode.trim()}
-              >
-                {loading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Users className="h-4 w-4" />
-                )}
-                {loading ? 'Joining...' : 'Join organization'}
-              </Button>
-            </form>
-          </div>
-        )}
+                <Button
+                  type="submit"
+                  className="w-full rounded-full gap-2"
+                  disabled={loading || rawJoinCode.length !== 8}
+                >
+                  {loading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <KeyRound className="h-4 w-4" />
+                  )}
+                  {loading ? 'Joining...' : 'Join organization'}
+                </Button>
+              </form>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

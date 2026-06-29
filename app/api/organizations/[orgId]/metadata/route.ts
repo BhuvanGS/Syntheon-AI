@@ -24,6 +24,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ orgI
         companyName: null,
         managerName: null,
         allowAccessRequests: false,
+        joinCode: null,
       });
     }
 
@@ -31,6 +32,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ orgI
       companyName: metadata.companyName,
       managerName: metadata.managerName,
       allowAccessRequests: metadata.allowAccessRequests,
+      joinCode: metadata.joinCode,
     });
   } catch (error) {
     console.error('Error fetching org metadata:', error);

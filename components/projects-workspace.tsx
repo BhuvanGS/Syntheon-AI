@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useOrganization, useUser } from '@clerk/nextjs';
 import { useSse } from '@/components/sse-provider';
+import { useProjectTickets } from '@/lib/swr';
 
 const ORG_QUERY_CONFIG = {
   memberships: { infinite: true, pageSize: 50 },
@@ -313,12 +314,17 @@ export function ProjectsWorkspace({
     [tickets, selectedProject?.id]
   );
 
+  const { tickets: swrProjectTickets, mutate: mutateSwrProjectTickets } = useProjectTickets(
+    selectedProject?.id,
+    projectTickets
+  );
+
   const rootProjectTickets = useMemo(() => {
-    const base = projectTickets.filter((ticket) => !ticket.dependency_ticket_id);
+    const base = swrProjectTickets.filter((ticket) => !ticket.dependency_ticket_id);
     if (kanbanAssigneeFilter === 'unassigned') return base.filter((t) => !t.assignee_user_id);
     if (kanbanAssigneeFilter === 'mine') return base.filter((t) => t.assignee_user_id === user?.id);
     return base;
-  }, [projectTickets, kanbanAssigneeFilter, user?.id]);
+  }, [swrProjectTickets, kanbanAssigneeFilter, user?.id]);
 
   const totalTickets = projectTickets.length;
 
@@ -405,7 +411,7 @@ export function ProjectsWorkspace({
 
   useEffect(() => {
     setTicketStageMap((prev) => {
-      const validTicketIds = new Set(projectTickets.map((ticket) => ticket.id));
+      const validTicketIds = new Set(swrProjectTickets.map((ticket) => ticket.id));
       const validStageIds = new Set(stages.map((stage) => stage.id));
       const next: Record<string, string> = {};
 
@@ -415,7 +421,7 @@ export function ProjectsWorkspace({
         next[ticketId] = stageId;
       }
 
-      for (const ticket of projectTickets) {
+      for (const ticket of swrProjectTickets) {
         if (next[ticket.id]) continue;
         const fallbackStage = stages.find((stage) => stage.status === ticket.status) ?? stages[0];
         if (fallbackStage) {
@@ -429,7 +435,7 @@ export function ProjectsWorkspace({
 
       return changed ? next : prev;
     });
-  }, [projectTickets, stages]);
+  }, [swrProjectTickets, stages]);
 
   function toggleExpanded(ticketId: string) {
     setExpandedTicketIds((prev) => ({ ...prev, [ticketId]: !prev[ticketId] }));
@@ -490,9 +496,13 @@ export function ProjectsWorkspace({
     }
   }
 
-  async function moveTicketToStage(ticketId: string, stage: StageConfig, skipRefresh = false) {
-    const ticket = projectTickets.find((entry) => entry.id === ticketId);
-    if (!ticket) return;
+  async function moveTicketToStage(
+    ticketId: string,
+    stage: StageConfig,
+    skipRefresh = false
+  ): Promise<boolean> {
+    const ticket = swrProjectTickets.find((entry) => entry.id === ticketId);
+    if (!ticket) return false;
 
     let moved = true;
     if (ticket.status !== stage.status) {
@@ -508,7 +518,7 @@ export function ProjectsWorkspace({
           // Show blocker modal instead of alert
           const blockersWithTitles = (data?.blockers || []).map((b: any) => ({
             ...b,
-            title: projectTickets.find((t) => t.id === b.depends_on)?.title,
+            title: swrProjectTickets.find((t) => t.id === b.depends_on)?.title,
           }));
           setBlockerModalData({
             message: data?.message || 'Blocked by unresolved hard dependencies.',
@@ -528,7 +538,7 @@ export function ProjectsWorkspace({
         } else if (res.status === 422 && data?.error === 'soft_blocked') {
           const blockersWithTitles = (data?.blockers || []).map((b: any) => ({
             ...b,
-            title: projectTickets.find((t) => t.id === b.depends_on)?.title,
+            title: swrProjectTickets.find((t) => t.id === b.depends_on)?.title,
           }));
           setBlockerModalData({
             message: data?.message || 'Unresolved soft dependencies.',
@@ -574,7 +584,7 @@ export function ProjectsWorkspace({
       }
     }
 
-    if (!moved) return;
+    if (!moved) return false;
 
     setTicketStageMap((prev) => ({
       ...prev,
@@ -584,6 +594,7 @@ export function ProjectsWorkspace({
     if (!skipRefresh) {
       await onRefresh();
     }
+    return true;
   }
 
   function openAddStageDialog() {
@@ -851,7 +862,7 @@ export function ProjectsWorkspace({
         if (res.status === 422 && data?.error === 'soft_blocked') {
           const blockersWithTitles = (data?.blockers || []).map((b: any) => ({
             ...b,
-            title: projectTickets.find((t) => t.id === b.depends_on)?.title,
+            title: swrProjectTickets.find((t) => t.id === b.depends_on)?.title,
           }));
           setBlockerModalData({
             message: data?.message || 'This move has unresolved soft dependencies.',
@@ -1063,7 +1074,25 @@ export function ProjectsWorkspace({
   async function handleKanbanDrop(ticketId: string, stageId: string) {
     const stage = stages.find((entry) => entry.id === stageId);
     if (!stage) return;
-    await moveTicketToStage(ticketId, stage);
+    const ticket = swrProjectTickets.find((t) => t.id === ticketId);
+    if (!ticket || ticket.status === stage.status) return;
+
+    // Optimistically update the SWR cache so the UI feels instant
+    const optimisticTickets = swrProjectTickets.map((t) =>
+      t.id === ticketId ? { ...t, status: stage.status } : t
+    );
+    await mutateSwrProjectTickets(optimisticTickets, false);
+
+    const moved = await moveTicketToStage(ticketId, stage, true);
+
+    if (moved) {
+      // Revalidate in background to confirm the server state
+      await mutateSwrProjectTickets();
+      await onRefresh?.();
+    } else {
+      // Rollback the optimistic update on block/error
+      await mutateSwrProjectTickets();
+    }
   }
 
   async function handleRenameProject() {

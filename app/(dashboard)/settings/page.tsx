@@ -3,18 +3,20 @@
 import { useState } from 'react';
 import { useUser, useOrganization } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
-import { Settings, Building2, Sliders, ArrowLeft } from 'lucide-react';
+import { Settings, Building2, Sliders, ArrowLeft, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { IntegrationsTab } from '@/components/settings/integrations-tab';
 import { OrganizationsTab } from '@/components/settings/organizations-tab';
+import { OrganizationDomainsTab } from '@/components/settings/organization-domains-tab';
 import { PreferencesTab } from '@/components/settings/preferences-tab';
 
-type SettingsTab = 'integrations' | 'organizations' | 'preferences';
+type SettingsTab = 'integrations' | 'organizations' | 'domains' | 'preferences';
 
 const tabs: Array<{ id: SettingsTab; label: string; icon: typeof Settings }> = [
   { id: 'integrations', label: 'Integrations', icon: Settings },
   { id: 'organizations', label: 'Organizations', icon: Building2 },
+  { id: 'domains', label: 'Verified Domains', icon: Shield },
   { id: 'preferences', label: 'Preferences', icon: Sliders },
 ];
 
@@ -75,6 +77,7 @@ export default function SettingsPage() {
         <div className="max-w-5xl mx-auto">
           {activeTab === 'integrations' && <IntegrationsTab />}
           {activeTab === 'organizations' && <OrganizationsTab />}
+          {activeTab === 'domains' && <OrganizationDomainsTab />}
           {activeTab === 'preferences' && <PreferencesTab />}
         </div>
       </main>
