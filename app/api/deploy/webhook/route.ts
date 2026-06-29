@@ -1,9 +1,7 @@
 // app/api/deploy/webhook/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { updateMeetingDeployUrl } from '@/lib/db';
-import { db } from '@/db/index';
-import { meetings as meetingsTable } from '@/db/schema';
-import { isNull, isNotNull, desc, and } from 'drizzle-orm';
+import { MeetingsEntity } from '@/db/entities';
 import { verifyWebhookSignature } from '@/lib/webhook';
 
 const GITHUB_WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET;
@@ -60,12 +58,10 @@ export async function POST(req: NextRequest) {
     const deployUrl = getGithubPagesUrl(owner, repo);
 
     // Find most recent meeting with branchName but no deployUrl
-    const [meeting] = await db
-      .select()
-      .from(meetingsTable)
-      .where(and(isNotNull(meetingsTable.branchName), isNull(meetingsTable.deployUrl)))
-      .orderBy(desc(meetingsTable.date))
-      .limit(1);
+    const scanRes = await MeetingsEntity.scan.go();
+    const meeting = (scanRes.data ?? [])
+      .filter((m: any) => m.branchName && !m.deployUrl)
+      .sort((a: any, b: any) => (b.date || '').localeCompare(a.date || ''))[0];
 
     if (!meeting) {
       return NextResponse.json({ ok: true });

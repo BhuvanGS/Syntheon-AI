@@ -1,7 +1,6 @@
-import { db } from '@/db/index';
-import { integrations } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { IntegrationsEntity } from '@/db/entities';
 import { encrypt } from '@/lib/crypto';
+import { randomUUID } from 'crypto';
 
 export async function saveGithubIntegration(params: {
   userId: string;
@@ -10,58 +9,38 @@ export async function saveGithubIntegration(params: {
   githubOwner: string;
   githubRepo?: string | null;
 }) {
-  // Manual upsert — avoids depending on DB unique-constraint for onConflictDoUpdate
-  const existing = await db
-    .select({ id: integrations.id })
-    .from(integrations)
-    .where(eq(integrations.userId, params.userId))
-    .limit(1);
-
+  const existing = await IntegrationsEntity.get({ userId: params.userId }).go();
   const encryptedToken = encrypt(params.githubToken);
 
-  if (existing.length > 0) {
-    await db
-      .update(integrations)
+  if (existing.data) {
+    await IntegrationsEntity.update({ userId: params.userId })
       .set({
         githubToken: encryptedToken,
         githubOwner: params.githubOwner,
         githubRepo: params.githubRepo ?? null,
         orgId: params.orgId ?? null,
-        updatedAt: new Date(),
+        updatedAt: new Date().toISOString(),
       })
-      .where(eq(integrations.id, existing[0].id));
+      .go();
   } else {
-    await db.insert(integrations).values({
+    await IntegrationsEntity.create({
+      id: randomUUID(),
       userId: params.userId,
       orgId: params.orgId ?? null,
       githubToken: encryptedToken,
       githubOwner: params.githubOwner,
       githubRepo: params.githubRepo ?? null,
-      updatedAt: new Date(),
-    });
+    }).go();
   }
 }
 
 export async function deleteGithubIntegration(userId: string, orgId?: string | null) {
-  if (orgId) {
-    await db
-      .update(integrations)
-      .set({
-        githubToken: null,
-        githubOwner: null,
-        githubRepo: null,
-        updatedAt: new Date(),
-      })
-      .where(and(eq(integrations.userId, userId), eq(integrations.orgId, orgId)));
-  } else {
-    await db
-      .update(integrations)
-      .set({
-        githubToken: null,
-        githubOwner: null,
-        githubRepo: null,
-        updatedAt: new Date(),
-      })
-      .where(eq(integrations.userId, userId));
-  }
+  await IntegrationsEntity.update({ userId })
+    .set({
+      githubToken: null,
+      githubOwner: null,
+      githubRepo: null,
+      updatedAt: new Date().toISOString(),
+    })
+    .go();
 }

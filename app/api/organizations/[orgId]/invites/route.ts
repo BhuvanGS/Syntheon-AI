@@ -1,69 +1,51 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
-import { db } from '@/db';
-import { organizationInvites } from '@/db/schema';
+import { OrganizationInvitesEntity } from '@/db/entities';
+import { randomUUID } from 'crypto';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ orgId: string }> }) {
   const session = await auth();
-  if (!session.userId) {
+  if (!session.userId || !session.orgId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const { orgId } = await params;
-  const body = await req.json();
-  const { email } = body;
+  if (session.orgId !== orgId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
 
+  const { email } = await req.json();
   if (!email?.trim()) {
     return NextResponse.json({ error: 'Email is required' }, { status: 400 });
   }
 
+  // Check for existing invite
+  const existing = await OrganizationInvitesEntity.get({ orgId, email: email.trim().toLowerCase() }).go();
+  if (existing.data) {
+    return NextResponse.json({ error: 'Invite already sent' }, { status: 409 });
+  }
+
+  const token = randomUUID();
+  await OrganizationInvitesEntity.create({
+    id: randomUUID(),
+    orgId,
+    email: email.trim().toLowerCase(),
+    status: 'pending',
+    token,
+    invitedBy: session.userId,
+  }).go();
+
+  // Send invitation via Clerk
   try {
     const client = await clerkClient();
-    let inviteUrl: string | null = null;
-    let clerkInvitationId: string | null = null;
-
-    try {
-      const invitation = await client.organizations.createOrganizationInvitation({
-        organizationId: orgId,
-        emailAddress: email.trim(),
-        role: 'org:member',
-      });
-      inviteUrl = invitation.url ?? null;
-      clerkInvitationId = invitation.id;
-    } catch (clerkError: any) {
-      console.error('Clerk invitation failed:', clerkError);
-      // If Clerk fails, we still create a local invite record so admin can track it
-      if (clerkError.errors?.[0]?.code === 'already_a_member_in_organization') {
-        return NextResponse.json(
-          { error: 'This user is already a member of the organization' },
-          { status: 400 }
-        );
-      }
-    }
-
-    const [invite] = await db
-      .insert(organizationInvites)
-      .values({
-        orgId,
-        email: email.trim(),
-        invitedBy: session.userId,
-        token: clerkInvitationId,
-      })
-      .onConflictDoNothing()
-      .returning();
-
-    return NextResponse.json({
-      email: email.trim(),
-      inviteLink:
-        inviteUrl ||
-        `${process.env.NEXT_PUBLIC_APP_URL}/invite?orgId=${orgId}&email=${encodeURIComponent(email.trim())}`,
-      success: true,
+    await client.organizations.createOrganizationInvitation({
+      organizationId: orgId,
+      emailAddress: email.trim().toLowerCase(),
+      role: 'org:member',
     });
-  } catch (error: any) {
-    console.error('Error creating invitation:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to create invitation' },
-      { status: 500 }
-    );
+  } catch (error) {
+    console.error('Clerk invite error:', error);
   }
+
+  return NextResponse.json({ success: true, token });
 }

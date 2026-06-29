@@ -1,16 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { PutObjectCommand } from '@aws-sdk/client-s3';
+import { s3Client, S3_BUCKET } from '@/lib/s3';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Body size limit for this route
-export const bodyParser = {
-  sizeLimit: '15mb',
-};
-
-export const maxBodyLength = 15 * 1024 * 1024; // 15MB
+export const maxBodyLength = 15 * 1024 * 1024;
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,33 +17,23 @@ export async function POST(req: NextRequest) {
     const file = formData.get('file') as File | null;
     const ticketId = formData.get('ticketId') as string | null;
 
-    if (!file) {
-      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
-    }
+    if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+    if (!ticketId) return NextResponse.json({ error: 'ticketId is required' }, { status: 400 });
 
-    if (!ticketId) {
-      return NextResponse.json({ error: 'ticketId is required' }, { status: 400 });
-    }
-
-    // Validate file size (max 15MB)
     const maxSize = 15 * 1024 * 1024;
     if (file.size > maxSize) {
       return NextResponse.json({ error: 'File size exceeds 15MB limit' }, { status: 400 });
     }
 
-    // Read first 8 bytes for magic-byte validation (cannot trust client MIME type)
     const headerBytes = new Uint8Array(await file.slice(0, 8).arrayBuffer());
-    const hex = Array.from(headerBytes)
-      .map((b) => b.toString(16).padStart(2, '0'))
-      .join('');
+    const hex = Array.from(headerBytes).map((b) => b.toString(16).padStart(2, '0')).join('');
 
-    // Blocked types regardless of claimed MIME: HTML, JS, SVG-with-script, PHP, shell
     const BLOCKED_MAGIC: Record<string, string> = {
-      '3c21444f4354': 'html', // <!DOCT
-      '3c68746d6c': 'html', // <html
-      '3c736372697': 'script', // <scrip
-      '23212f62696e': 'shell', // #!/bin
-      '3c3f706870': 'php', // <?php
+      '3c21444f4354': 'html',
+      '3c68746d6c': 'html',
+      '3c736372697': 'script',
+      '23212f62696e': 'shell',
+      '3c3f706870': 'php',
     };
     for (const [magic, label] of Object.entries(BLOCKED_MAGIC)) {
       if (hex.startsWith(magic)) {
@@ -55,37 +41,16 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Known safe magic bytes — at least one must match
     const ALLOWED_MAGIC_PREFIXES = [
-      'ffd8ff', // JPEG
-      '89504e47', // PNG
-      '47494638', // GIF
-      '52494646', // WEBP (RIFF)
-      '25504446', // PDF
-      '494433', // MP3
-      '1a45dfa3', // WebM/MKV
-      '000000', // MP4/MOV (ftyp box)
-      '66747970', // MP4 (ftyp)
-      'fffb', // MP3 no ID3
-      '4f676753', // OGG
+      'ffd8ff', '89504e47', '47494638', '52494646', '25504446',
+      '494433', '1a45dfa3', '000000', '66747970', 'fffb', '4f676753',
     ];
 
-    // Text/image types without a distinctive header — allow by safe MIME only
     const ALLOWED_TEXT_TYPES = ['text/plain', 'text/csv', 'text/markdown'];
-    const ALLOWED_IMAGE_TYPES = [
-      'image/jpeg',
-      'image/png',
-      'image/gif',
-      'image/webp',
-      'image/avif',
-    ];
+    const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif'];
     const ALLOWED_BINARY_TYPES = [
-      'application/pdf',
-      'video/mp4',
-      'video/webm',
-      'audio/mpeg',
-      'audio/ogg',
-      'audio/wav',
+      'application/pdf', 'video/mp4', 'video/webm',
+      'audio/mpeg', 'audio/ogg', 'audio/wav',
     ];
 
     const claimedType = file.type.toLowerCase();
@@ -102,52 +67,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'File type not allowed' }, { status: 400 });
     }
 
-    // Generate unique file path
     const timestamp = Date.now();
     const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
     const filePath = `${userId}/${ticketId}/${timestamp}_${sanitizedName}`;
 
-    // Upload to Supabase Storage
-    const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
-      .from('ticket-attachments')
-      .upload(filePath, file, {
-        contentType: file.type,
-        upsert: false,
-      });
+    const buffer = Buffer.from(await file.arrayBuffer());
 
-    if (uploadError) {
-      console.error('[upload] Storage upload error:', uploadError.message);
-      return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 });
-    }
+    await s3Client.send(
+      new PutObjectCommand({
+        Bucket: S3_BUCKET,
+        Key: filePath,
+        Body: buffer,
+        ContentType: file.type,
+      })
+    );
 
-    // Get public URL
-    const { data: urlData } = supabaseAdmin.storage
-      .from('ticket-attachments')
-      .getPublicUrl(filePath);
+    const fileUrl = `https://${S3_BUCKET}.s3.${process.env.AWS_REGION || 'ap-south-1'}.amazonaws.com/${filePath}`;
 
     return NextResponse.json({
       filePath,
-      fileUrl: urlData.publicUrl,
+      fileUrl,
       fileSize: file.size,
       fileType: file.type,
       filename: file.name,
     });
   } catch (err) {
     console.error('POST /upload error:', err);
-
-    // Check for body size limit exceeded
-    const errorMessage = err instanceof Error ? err.message : String(err);
-    if (
-      errorMessage.includes('exceeded') ||
-      errorMessage.includes('body size') ||
-      errorMessage.includes('maximum') ||
-      errorMessage.includes('payload too large') ||
-      errorMessage.includes('Request body') ||
-      errorMessage.includes('10MB')
-    ) {
-      return NextResponse.json({ error: 'File size exceeds 15MB limit' }, { status: 413 });
-    }
-
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

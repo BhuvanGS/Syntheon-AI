@@ -4,9 +4,10 @@
 /* deno-fmt-ignore-file */
 /* biome-ignore-all lint: auto-generated */
 
-declare module 'sst' {
-  export interface Resource {}
+declare module "sst" {
+  export interface Resource {
+  }
 }
 
-import 'sst';
-export {};
+import "sst"
+export {}

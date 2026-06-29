@@ -8,9 +8,7 @@ import {
   createPullRequest,
   getRepoInfo,
 } from '@/lib/shipai/github';
-import { db } from '@/db/index';
-import { meetings as meetingsTable } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { MeetingsEntity } from '@/db/entities';
 import {
   getIntegrationByUserId,
   getGithubToken,
@@ -168,10 +166,7 @@ export async function POST(req: NextRequest) {
 
         // Link meeting to project
         if (meetingId) {
-          await db
-            .update(meetingsTable)
-            .set({ projectId: newProjectId })
-            .where(eq(meetingsTable.id, meetingId));
+          await MeetingsEntity.update({ id: meetingId }).set({ projectId: newProjectId }).go();
         }
 
         console.log('New project created');

@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
-import { eq, ilike } from 'drizzle-orm';
-import { db } from '@/db';
-import { organizationMetadata, users } from '@/db/schema';
+import { OrganizationMetadataEntity, UsersEntity } from '@/db/entities';
 import { extractDomain } from '@/lib/public-domains';
+import { randomUUID } from 'crypto';
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -28,14 +27,15 @@ export async function POST(req: NextRequest) {
 
     const joinCode = Math.random().toString().slice(2, 10).padEnd(8, '0');
 
-    await db.insert(organizationMetadata).values({
+    await OrganizationMetadataEntity.create({
+      id: randomUUID(),
       orgId: created.id,
       companyName: companyName?.trim() || null,
       managerName: managerName?.trim() || null,
       domain: domain?.trim() || null,
       joinCode,
       allowAccessRequests: allowAccessRequests ?? false,
-    });
+    }).go();
 
     return NextResponse.json({
       id: created.id,
@@ -67,42 +67,31 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid email' }, { status: 400 });
   }
 
-  const existing = await db
-    .select({
-      orgId: organizationMetadata.orgId,
-      companyName: organizationMetadata.companyName,
-    })
-    .from(organizationMetadata)
-    .where(eq(organizationMetadata.domain, domain))
-    .limit(1);
+  // Scan for org metadata with matching domain
+  const scanRes = await OrganizationMetadataEntity.scan.go();
+  const existing = (scanRes.data ?? []).find((m: any) => m.domain === domain);
 
-  if (existing.length > 0) {
+  if (existing) {
     const client = await clerkClient();
     try {
       const org = await client.organizations.getOrganization({
-        organizationId: existing[0].orgId,
+        organizationId: existing.orgId,
       });
       return NextResponse.json({
         exists: true,
-        orgId: existing[0].orgId,
+        orgId: existing.orgId,
         orgName: org.name,
       });
     } catch {
-      // Org was deleted from Clerk but stale row remains in DB — clean it up
-      await db
-        .delete(organizationMetadata)
-        .where(eq(organizationMetadata.orgId, existing[0].orgId));
+      await OrganizationMetadataEntity.delete({ orgId: existing.orgId }).go();
     }
   }
 
   // Fallback: check if any other user in DB has the same email domain
-  // and has org memberships in Clerk (handles orgs created before domain column)
-  const domainPattern = `%@${domain}`;
-  const sameDomainUsers = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(ilike(users.email, domainPattern))
-    .limit(10);
+  const userScanRes = await UsersEntity.scan.go();
+  const sameDomainUsers = (userScanRes.data ?? []).filter((u: any) =>
+    u.email?.toLowerCase().endsWith(`@${domain}`)
+  ).slice(0, 10);
 
   if (sameDomainUsers.length > 0) {
     const client = await clerkClient();
@@ -115,11 +104,7 @@ export async function GET(req: NextRequest) {
         if (memberships.data.length > 0) {
           const orgId = memberships.data[0].organization.id;
           const org = await client.organizations.getOrganization({ organizationId: orgId });
-          // Update the metadata row to store the domain for future lookups
-          await db
-            .update(organizationMetadata)
-            .set({ domain })
-            .where(eq(organizationMetadata.orgId, orgId));
+          await OrganizationMetadataEntity.update({ orgId }).set({ domain }).go();
           return NextResponse.json({
             exists: true,
             orgId,

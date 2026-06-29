@@ -4,13 +4,13 @@ import {
   cascadeDepRegressionForParent,
   checkHardBlockers,
   getTicketsByIds,
+  getTicketsPaginated,
   getDependenciesForTicket,
+  getTicketById,
   incrementDependencyIgnoreCount,
   updateTicketStatus,
 } from '@/lib/db';
-import { db } from '@/db/index';
-import { tickets as ticketsTable } from '@/db/schema';
-import { and, count, desc, eq, inArray, or } from 'drizzle-orm';
+import { TicketsEntity } from '@/db/entities';
 
 function parsePositiveInt(value: string | null, fallback: number): number {
   const parsed = Number.parseInt(value ?? '', 10);
@@ -28,60 +28,76 @@ export async function GET(req: NextRequest) {
     const limit = Math.min(parsePositiveInt(searchParams.get('limit'), 50), 100);
     const offset = parsePositiveInt(searchParams.get('offset'), 0);
 
-    const conditions: any[] = [];
-    if (orgId) conditions.push(eq(ticketsTable.orgId, orgId));
-    if (userId) conditions.push(eq(ticketsTable.userId, userId));
-    if (projectId) conditions.push(eq(ticketsTable.projectId, projectId));
-    if (meetingId) conditions.push(eq(ticketsTable.meetingId, meetingId));
+    const { tickets: allTickets, total } = await getTicketsPaginated(orgId || '', {
+      projectId: projectId || null,
+      meetingId: meetingId || null,
+      limit,
+      offset,
+    });
 
-    const whereClause = conditions.length > 0 ? or(...conditions) : undefined;
-    const filterClause = conditions.length > 0 ? and(...conditions) : undefined;
-
-    const [rows, totalResult] = await Promise.all([
-      db
-        .select()
-        .from(ticketsTable)
-        .where(filterClause)
-        .orderBy(desc(ticketsTable.createdAt))
-        .limit(limit)
-        .offset(offset),
-      db.select({ value: count() }).from(ticketsTable).where(filterClause),
-    ]);
-
-    // Deduplicate in case a ticket matches both userId and orgId
-    const uniqueRows = Array.from(new Map(rows.map((row) => [row.id, row])).values());
+    // If no orgId, fall back to user-scoped query
+    let tickets = allTickets;
+    if (!orgId) {
+      const userRes = await TicketsEntity.query.byUser({ userId }).go();
+      tickets = (userRes.data ?? []).map((t: any) => ({
+        id: t.id,
+        user_id: t.userId ?? undefined,
+        org_id: t.orgId ?? undefined,
+        meeting_id: t.meetingId ?? null,
+        projectId: t.projectId ?? undefined,
+        parent_id: t.parentId ?? null,
+        title: t.title,
+        description: t.description ?? '',
+        status: t.status,
+        assignee: t.assignee ?? null,
+        assignee_user_id: t.assigneeUserId ?? null,
+        dependency_ticket_id: t.dependencyTicketId ?? null,
+        start_date: t.startDate ?? null,
+        due_date: t.dueDate ?? null,
+        deadline_time: t.deadlineTime ?? null,
+        createdAt: t.createdAt ?? null,
+        updatedAt: t.updatedAt ?? null,
+      }));
+      if (projectId) tickets = tickets.filter((t) => t.projectId === projectId);
+      if (meetingId) tickets = tickets.filter((t) => t.meeting_id === meetingId);
+      tickets.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+      const sliced = tickets.slice(offset, offset + limit);
+      return NextResponse.json({
+        tickets: sliced,
+        total: tickets.length,
+        limit,
+        offset,
+        hasMore: offset + sliced.length < tickets.length,
+      }, { headers: { 'Cache-Control': 'private, max-age=10, stale-while-revalidate=30' } });
+    }
 
     return NextResponse.json(
       {
-        tickets: uniqueRows.map((row) => ({
-          id: row.id,
-          user_id: row.userId ?? undefined,
-          org_id: row.orgId ?? undefined,
-          meeting_id: row.meetingId ?? null,
-          projectId: row.projectId ?? undefined,
-          parent_id: row.parentId ?? null,
-          title: row.title,
-          description: row.description ?? '',
-          status: row.status,
-          assignee: row.assignee ?? null,
-          assignee_user_id: row.assigneeUserId ?? null,
-          dependency_ticket_id: row.dependencyTicketId ?? null,
-          start_date: row.startDate ?? null,
-          due_date: row.dueDate ?? null,
-          deadline_time: row.deadlineTime ?? null,
-          createdAt: row.createdAt?.toISOString() ?? null,
-          updatedAt: row.updatedAt?.toISOString() ?? null,
+        tickets: tickets.map((t) => ({
+          id: t.id,
+          user_id: t.user_id,
+          org_id: t.org_id,
+          meeting_id: t.meeting_id,
+          projectId: t.projectId,
+          parent_id: t.parent_id,
+          title: t.title,
+          description: t.description,
+          status: t.status,
+          assignee: t.assignee,
+          assignee_user_id: t.assignee_user_id,
+          dependency_ticket_id: t.dependency_ticket_id,
+          start_date: t.start_date,
+          due_date: t.due_date,
+          deadline_time: t.deadline_time,
+          createdAt: t.createdAt,
+          updatedAt: t.updatedAt,
         })),
-        total: totalResult[0]?.value ?? 0,
+        total,
         limit,
         offset,
-        hasMore: offset + uniqueRows.length < (totalResult[0]?.value ?? 0),
+        hasMore: offset + tickets.length < total,
       },
-      {
-        headers: {
-          'Cache-Control': 'private, max-age=10, stale-while-revalidate=30',
-        },
-      }
+      { headers: { 'Cache-Control': 'private, max-age=10, stale-while-revalidate=30' } }
     );
   } catch (error) {
     console.error('Failed to fetch tickets:', error);
@@ -151,11 +167,11 @@ export async function PATCH(req: NextRequest) {
         const { parents } = await getDependenciesForTicket(ticketId);
         const softParents = parents.filter((d) => d.strength === 'soft' && !d.escalated);
         if (softParents.length > 0) {
-          const softParentIds = softParents.map((d) => d.depends_on_ticket_id);
-          const softParentTickets = await db
-            .select({ id: ticketsTable.id, status: ticketsTable.status })
-            .from(ticketsTable)
-            .where(inArray(ticketsTable.id, softParentIds));
+          const softParentTickets: { id: string; status: string }[] = [];
+          for (const dep of softParents) {
+            const t = await getTicketById(dep.depends_on_ticket_id);
+            if (t) softParentTickets.push({ id: t.id, status: t.status });
+          }
 
           const unresolvedSoft = softParents.filter((dep) => {
             const parent = softParentTickets.find((t) => t.id === dep.depends_on_ticket_id);

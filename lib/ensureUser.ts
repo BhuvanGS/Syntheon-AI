@@ -1,21 +1,15 @@
-import { db } from '@/db/index';
-import { users } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { UsersEntity } from '@/db/entities';
 
 export async function ensureUser(userId: string, email: string) {
-  const existing = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
+  const existing = await UsersEntity.get({ id: userId }).go();
 
-  if (existing.length > 0) {
+  if (existing.data) {
     console.log('User exists (by ID)');
     return;
   }
 
   try {
-    await db.insert(users).values({ id: userId, email });
+    await UsersEntity.create({ id: userId, email, plan: 'starter' }).go();
     console.log('User created');
   } catch (err) {
     console.error('ensureUser insert failed:', err);

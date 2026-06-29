@@ -5,20 +5,16 @@ import { auth, clerkClient } from '@clerk/nextjs/server';
 import crypto from 'crypto';
 
 import { createBot } from '@/lib/skribby';
-import { saveMeeting, getActiveMeetingByUrl } from '@/lib/db';
-import { db } from '@/db/index';
-import { apiKeys, meetings as meetingsTable } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { saveMeeting, getActiveMeetingByUrl, updateMeetingStatus } from '@/lib/db';
+import { ApiKeysEntity, MeetingsEntity } from '@/db/entities';
 
 // 🔐 API key → user resolver
 async function getUserFromApiKey(apiKey: string) {
   const hash = crypto.createHash('sha256').update(apiKey).digest('hex');
 
-  const [row] = await db
-    .select({ userId: apiKeys.userId })
-    .from(apiKeys)
-    .where(eq(apiKeys.keyHash, hash))
-    .limit(1);
+  // Scan for key hash — API keys table uses userId as PK, so we scan
+  const allKeys = await ApiKeysEntity.scan.go();
+  const row = (allKeys.data ?? []).find((k: any) => k.keyHash === hash);
 
   return row?.userId || null;
 }
@@ -117,7 +113,7 @@ export async function POST(req: NextRequest) {
     console.log('Bot created:', bot.id, 'status:', bot.status);
 
     // 🔥 STEP 3: UPDATE BOT ID
-    await db.update(meetingsTable).set({ botId: bot.id }).where(eq(meetingsTable.id, meetingId));
+    await MeetingsEntity.update({ id: meetingId }).set({ botId: bot.id, updatedAt: new Date().toISOString() }).go();
 
     return NextResponse.json({
       success: true,

@@ -108,6 +108,12 @@
       "sourceType": "github",
       "skillPath": "skills/features/clerk-webhooks/SKILL.md",
       "computedHash": "de12deda380be19d32d62c4106a6b78736cd4d9cc6dd5b214f6039853ad89e54"
+    },
+    "grill-me": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/productivity/grill-me/SKILL.md",
+      "computedHash": "f321507f77702a54af1db66549ec1685fc625390d06c57d7949cdcda8eb1b5c7"
     }
   }
 }

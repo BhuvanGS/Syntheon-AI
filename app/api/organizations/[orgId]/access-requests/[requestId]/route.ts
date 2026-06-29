@@ -1,62 +1,61 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
-import { db } from '@/db';
-import { organizationAccessRequests } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { OrganizationAccessRequestsEntity } from '@/db/entities';
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ orgId: string; requestId: string }> }
 ) {
   const session = await auth();
-  if (!session.userId) {
+  if (!session.userId || !session.orgId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const { orgId, requestId } = await params;
+  if (session.orgId !== orgId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  if (session.orgRole !== 'org:admin') {
+    return NextResponse.json({ error: 'Only admins can manage access requests' }, { status: 403 });
+  }
+
   const body = await req.json();
   const { action } = body;
 
-  if (action !== 'approve' && action !== 'reject') {
-    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+  // Find the request by scanning
+  const res = await OrganizationAccessRequestsEntity.query.primary({ orgId }).go();
+  const request = (res.data ?? []).find((r: any) => r.id === requestId);
+  if (!request) {
+    return NextResponse.json({ error: 'Access request not found' }, { status: 404 });
   }
 
-  try {
-    const [request] = await db
-      .select()
-      .from(organizationAccessRequests)
-      .where(eq(organizationAccessRequests.id, requestId))
-      .limit(1);
+  if (action === 'approve') {
+    await OrganizationAccessRequestsEntity.update({ orgId, userId: request.userId })
+      .set({ status: 'approved', respondedAt: new Date().toISOString(), respondedBy: session.userId })
+      .go();
 
-    if (!request || request.orgId !== orgId) {
-      return NextResponse.json({ error: 'Request not found' }, { status: 404 });
-    }
-
-    if (request.status !== 'pending') {
-      return NextResponse.json({ error: 'Request already processed' }, { status: 400 });
-    }
-
-    if (action === 'approve') {
+    try {
       const client = await clerkClient();
       await client.organizations.createOrganizationMembership({
         organizationId: orgId,
         userId: request.userId,
         role: 'org:member',
       });
+    } catch (error) {
+      console.error('Clerk add member error:', error);
     }
 
-    await db
-      .update(organizationAccessRequests)
-      .set({
-        status: action === 'approve' ? 'approved' : 'rejected',
-        respondedAt: new Date(),
-        respondedBy: session.userId,
-      })
-      .where(eq(organizationAccessRequests.id, requestId));
+    return NextResponse.json({ success: true });
+  }
+
+  if (action === 'reject') {
+    await OrganizationAccessRequestsEntity.update({ orgId, userId: request.userId })
+      .set({ status: 'rejected', respondedAt: new Date().toISOString(), respondedBy: session.userId })
+      .go();
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Error processing access request:', error);
-    return NextResponse.json({ error: 'Failed to process request' }, { status: 500 });
   }
+
+  return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
 }

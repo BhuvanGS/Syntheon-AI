@@ -1,27 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { db } from '@/db';
-import { organizationInvites } from '@/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { OrganizationInvitesEntity } from '@/db/entities';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ orgId: string }> }) {
   const session = await auth();
-  if (!session.userId) {
+  if (!session.userId || !session.orgId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const { orgId } = await params;
-
-  try {
-    const invites = await db
-      .select()
-      .from(organizationInvites)
-      .where(eq(organizationInvites.orgId, orgId))
-      .orderBy(desc(organizationInvites.invitedAt));
-
-    return NextResponse.json({ invites });
-  } catch (error) {
-    console.error('Error fetching sent invites:', error);
-    return NextResponse.json({ error: 'Failed to fetch invites' }, { status: 500 });
+  if (session.orgId !== orgId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
+
+  const res = await OrganizationInvitesEntity.query.primary({ orgId }).go();
+  const invites = (res.data ?? []).sort((a: any, b: any) =>
+    (b.invitedAt || '').localeCompare(a.invitedAt || '')
+  );
+
+  return NextResponse.json({ invites });
 }

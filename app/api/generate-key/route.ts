@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, currentUser } from '@clerk/nextjs/server';
 import crypto from 'crypto';
-import { db } from '@/db/index';
-import { apiKeys } from '@/db/schema';
+import { ApiKeysEntity } from '@/db/entities';
 import { ensureUser } from '@/lib/ensureUser';
 
 export async function POST(req: NextRequest) {
@@ -26,11 +25,13 @@ export async function POST(req: NextRequest) {
     // Hash before storing
     const keyHash = crypto.createHash('sha256').update(rawKey).digest('hex');
 
-    // Upsert → ensures ONE key per user (no duplicates)
-    await db.insert(apiKeys).values({ userId, keyHash }).onConflictDoUpdate({
-      target: apiKeys.userId,
-      set: { keyHash },
-    });
+    // Upsert → ensures ONE key per user
+    const existing = await ApiKeysEntity.get({ userId }).go();
+    if (existing.data) {
+      await ApiKeysEntity.update({ userId }).set({ keyHash }).go();
+    } else {
+      await ApiKeysEntity.create({ id: crypto.randomUUID(), userId, keyHash }).go();
+    }
 
     // Return raw key ONLY ONCE
     return NextResponse.json({ apiKey: rawKey });

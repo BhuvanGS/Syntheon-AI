@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { db } from '@/db';
-import { organizationMetadata } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { OrganizationMetadataEntity } from '@/db/entities';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ orgId: string }> }) {
   const session = await auth();
@@ -11,36 +9,23 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ orgI
   }
 
   const { orgId } = await params;
+  const res = await OrganizationMetadataEntity.get({ orgId }).go();
 
-  try {
-    const [metadata] = await db
-      .select()
-      .from(organizationMetadata)
-      .where(eq(organizationMetadata.orgId, orgId))
-      .limit(1);
-
-    if (!metadata) {
-      return NextResponse.json({
-        companyName: null,
-        managerName: null,
-        allowAccessRequests: false,
-        joinCode: null,
-      });
-    }
-
-    return NextResponse.json({
-      companyName: metadata.companyName,
-      managerName: metadata.managerName,
-      allowAccessRequests: metadata.allowAccessRequests,
-      joinCode: metadata.joinCode,
-    });
-  } catch (error) {
-    console.error('Error fetching org metadata:', error);
-    return NextResponse.json({ error: 'Failed to fetch metadata' }, { status: 500 });
+  if (!res.data) {
+    return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
   }
+
+  return NextResponse.json({
+    orgId: res.data.orgId,
+    companyName: res.data.companyName,
+    managerName: res.data.managerName,
+    domain: res.data.domain,
+    joinCode: res.data.joinCode,
+    allowAccessRequests: res.data.allowAccessRequests,
+  });
 }
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ orgId: string }> }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ orgId: string }> }) {
   const session = await auth();
   if (!session.userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -48,37 +33,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ org
 
   const { orgId } = await params;
   const body = await req.json();
-  const { companyName, managerName, allowAccessRequests } = body;
 
-  try {
-    const [existing] = await db
-      .select()
-      .from(organizationMetadata)
-      .where(eq(organizationMetadata.orgId, orgId))
-      .limit(1);
+  const set: Record<string, any> = { updatedAt: new Date().toISOString() };
+  if (typeof body.companyName !== 'undefined') set.companyName = body.companyName;
+  if (typeof body.managerName !== 'undefined') set.managerName = body.managerName;
+  if (typeof body.domain !== 'undefined') set.domain = body.domain;
+  if (typeof body.allowAccessRequests !== 'undefined') set.allowAccessRequests = body.allowAccessRequests;
 
-    if (existing) {
-      await db
-        .update(organizationMetadata)
-        .set({
-          companyName,
-          managerName,
-          allowAccessRequests,
-          updatedAt: new Date(),
-        })
-        .where(eq(organizationMetadata.orgId, orgId));
-    } else {
-      await db.insert(organizationMetadata).values({
-        orgId,
-        companyName,
-        managerName,
-        allowAccessRequests,
-      });
-    }
+  await OrganizationMetadataEntity.update({ orgId }).set(set).go();
 
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Error saving org metadata:', error);
-    return NextResponse.json({ error: 'Failed to save metadata' }, { status: 500 });
-  }
+  return NextResponse.json({ success: true });
 }

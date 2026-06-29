@@ -1,109 +1,71 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { db } from '@/db';
-import {
-  tickets as ticketsTable,
-  meetings as meetingsTable,
-  projects as projectsTable,
-  projectMembers as projectMembersTable,
-} from '@/db/schema';
-import { and, eq, or, sql } from 'drizzle-orm';
+import { TicketsEntity, MeetingsEntity, ProjectsEntity, ProjectMembersEntity } from '@/db/entities';
 
 export async function GET(req: NextRequest) {
   try {
     const { userId, orgId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    if (!orgId) return NextResponse.json({ error: 'No organization' }, { status: 403 });
 
     const { searchParams } = new URL(req.url);
-    const query = searchParams.get('q');
+    const q = (searchParams.get('q') || '').trim().toLowerCase();
 
-    if (!query || query.trim().length < 2) {
-      return NextResponse.json({ results: [] });
+    if (!q || q.length < 1) {
+      return NextResponse.json({ tickets: [], meetings: [], projects: [] });
     }
 
-    const q = `%${query.toLowerCase()}%`;
+    const [ticketsRes, meetingsRes, projectsRes] = await Promise.all([
+      orgId ? TicketsEntity.query.byOrg({ orgId }).go() : TicketsEntity.query.byUser({ userId }).go(),
+      orgId ? MeetingsEntity.query.byOrg({ orgId }).go() : MeetingsEntity.query.byUser({ userId }).go(),
+      orgId ? ProjectsEntity.query.byOrg({ orgId }).go() : ProjectsEntity.query.byUser({ userId }).go(),
+    ]);
 
-    // Search tickets
-    const ticketResults = await db
-      .select({
-        id: ticketsTable.id,
-        title: ticketsTable.title,
-        status: ticketsTable.status,
-      })
-      .from(ticketsTable)
-      .where(
-        and(
-          eq(ticketsTable.orgId, orgId),
-          or(
-            sql`lower(${ticketsTable.title}) like ${q}`,
-            sql`lower(${ticketsTable.description}) like ${q}`
-          )
-        )
-      )
-      .limit(5);
+    const tickets = (ticketsRes.data ?? []).filter((t: any) =>
+      t.title?.toLowerCase().includes(q) || t.description?.toLowerCase().includes(q)
+    ).slice(0, 10).map((t: any) => ({
+      id: t.id,
+      title: t.title,
+      type: 'ticket',
+      status: t.status,
+    }));
 
-    // Search meetings
-    const meetingResults = await db
-      .select({
-        id: meetingsTable.id,
-        projectName: meetingsTable.projectName,
-        platform: meetingsTable.platform,
-      })
-      .from(meetingsTable)
-      .where(
-        and(eq(meetingsTable.orgId, orgId), sql`lower(${meetingsTable.projectName}) like ${q}`)
-      )
-      .limit(3);
+    const meetings = (meetingsRes.data ?? []).filter((m: any) =>
+      m.projectName?.toLowerCase().includes(q) || m.summary?.toLowerCase().includes(q)
+    ).slice(0, 10).map((m: any) => ({
+      id: m.id,
+      title: m.projectName,
+      type: 'meeting',
+      date: m.date,
+    }));
 
-    // Search projects (only projects user is member of)
-    const projectResults = await db
-      .select({
-        id: projectsTable.id,
-        name: projectsTable.name,
-      })
-      .from(projectsTable)
-      .innerJoin(
-        projectMembersTable,
-        and(
-          eq(projectMembersTable.projectId, projectsTable.id),
-          eq(projectMembersTable.userId, userId)
-        )
-      )
-      .where(and(eq(projectsTable.orgId, orgId), sql`lower(${projectsTable.name}) like ${q}`))
-      .limit(3);
-
-    const results = [
-      ...ticketResults.map((t) => ({
-        id: t.id,
-        type: 'ticket' as const,
-        title: t.title,
-        subtitle: t.status?.replace('_', ' '),
-      })),
-      ...meetingResults.map((m) => ({
-        id: m.id,
-        type: 'meeting' as const,
-        title: m.projectName,
-        subtitle: m.platform,
-      })),
-      ...projectResults.map((p) => ({
-        id: p.id,
-        type: 'project' as const,
-        title: p.name,
-        subtitle: 'Project',
-      })),
-    ];
-
-    return NextResponse.json(
-      { results },
-      {
-        headers: {
-          'Cache-Control': 'no-cache', // Search results should not be cached
-        },
+    // For projects, also check member projects
+    let projectRows = projectsRes.data ?? [];
+    if (orgId) {
+      const memberRes = await ProjectMembersEntity.query.byOrgUser({ orgId }).go();
+      const memberProjectIds = (memberRes.data ?? [])
+        .filter((m: any) => m.userId === userId)
+        .map((m: any) => m.projectId);
+      
+      for (const pid of memberProjectIds) {
+        const pRes = await ProjectsEntity.get({ id: pid }).go();
+        if (pRes.data && !projectRows.find((p: any) => p.id === pid)) {
+          projectRows.push(pRes.data);
+        }
       }
-    );
+    }
+
+    const projects = projectRows
+      .filter((p: any) => p.name?.toLowerCase().includes(q))
+      .slice(0, 10)
+      .map((p: any) => ({
+        id: p.id,
+        title: p.name,
+        type: 'project',
+      }));
+
+    return NextResponse.json({ tickets, meetings, projects });
   } catch (error) {
-    console.error('Search failed:', error);
+    console.error('Search error:', error);
     return NextResponse.json({ error: 'Search failed' }, { status: 500 });
   }
 }

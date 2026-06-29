@@ -1,7 +1,6 @@
-import { db } from '@/db/index';
-import { integrations } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { IntegrationsEntity } from '@/db/entities';
 import { encrypt, decrypt } from '@/lib/crypto';
+import { randomUUID } from 'crypto';
 
 interface RefreshTokenResponse {
   access_token: string;
@@ -42,27 +41,19 @@ export async function getValidGoogleAccessToken(userId: string): Promise<{
   error?: string;
 }> {
   try {
-    const [row] = await db
-      .select({
-        googleToken: integrations.googleToken,
-        googleRefreshToken: integrations.googleRefreshToken,
-      })
-      .from(integrations)
-      .where(eq(integrations.userId, userId))
-      .limit(1);
+    const res = await IntegrationsEntity.get({ userId }).go();
 
-    if (!row?.googleToken) {
+    if (!res.data?.googleToken) {
       return { token: null, error: 'Google Calendar not connected' };
     }
 
     let accessToken: string;
     try {
-      accessToken = decrypt(row.googleToken);
+      accessToken = decrypt(res.data.googleToken);
     } catch {
       return { token: null, error: 'Failed to decrypt stored Google token' };
     }
 
-    // Test if the access token is still valid
     const tokenInfoResponse = await fetch(
       `https://oauth2.googleapis.com/tokeninfo?access_token=${accessToken}`,
       { method: 'GET' }
@@ -72,8 +63,7 @@ export async function getValidGoogleAccessToken(userId: string): Promise<{
       return { token: accessToken };
     }
 
-    // Access token expired — try to refresh
-    if (!row.googleRefreshToken) {
+    if (!res.data.googleRefreshToken) {
       return {
         token: null,
         error: 'Google session expired. Please reconnect your Google Calendar in Settings.',
@@ -82,7 +72,7 @@ export async function getValidGoogleAccessToken(userId: string): Promise<{
 
     let refreshToken: string;
     try {
-      refreshToken = decrypt(row.googleRefreshToken);
+      refreshToken = decrypt(res.data.googleRefreshToken);
     } catch {
       return { token: null, error: 'Failed to decrypt Google refresh token' };
     }
@@ -95,14 +85,12 @@ export async function getValidGoogleAccessToken(userId: string): Promise<{
       };
     }
 
-    // Save the new access token
-    await db
-      .update(integrations)
+    await IntegrationsEntity.update({ userId })
       .set({
         googleToken: encrypt(newAccessToken),
-        updatedAt: new Date(),
+        updatedAt: new Date().toISOString(),
       })
-      .where(eq(integrations.userId, userId));
+      .go();
 
     return { token: newAccessToken };
   } catch (error) {
@@ -117,32 +105,27 @@ export async function saveGoogleIntegration(params: {
   googleToken: string;
   googleRefreshToken?: string | null;
 }) {
-  const existing = await db
-    .select({ id: integrations.id })
-    .from(integrations)
-    .where(eq(integrations.userId, params.userId))
-    .limit(1);
+  const existing = await IntegrationsEntity.get({ userId: params.userId }).go();
 
   const encryptedToken = encrypt(params.googleToken);
   const encryptedRefresh = params.googleRefreshToken ? encrypt(params.googleRefreshToken) : null;
 
-  if (existing.length > 0) {
-    await db
-      .update(integrations)
+  if (existing.data) {
+    await IntegrationsEntity.update({ userId: params.userId })
       .set({
         googleToken: encryptedToken,
         googleRefreshToken: encryptedRefresh,
         orgId: params.orgId ?? null,
-        updatedAt: new Date(),
+        updatedAt: new Date().toISOString(),
       })
-      .where(eq(integrations.id, existing[0].id));
+      .go();
   } else {
-    await db.insert(integrations).values({
+    await IntegrationsEntity.create({
+      id: randomUUID(),
       userId: params.userId,
       orgId: params.orgId ?? null,
       googleToken: encryptedToken,
       googleRefreshToken: encryptedRefresh,
-      updatedAt: new Date(),
-    });
+    }).go();
   }
 }

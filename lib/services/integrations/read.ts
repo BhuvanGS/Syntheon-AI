@@ -1,6 +1,4 @@
-import { db } from '@/db/index';
-import { integrations } from '@/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { IntegrationsEntity } from '@/db/entities';
 import { decrypt } from '@/lib/crypto';
 
 export type IntegrationRow = Record<string, any> | null;
@@ -9,15 +7,9 @@ export async function getIntegrationByUserId(
   userId: string,
   orgId?: string | null
 ): Promise<IntegrationRow> {
-  // If orgId is provided, treat the integration as org-shared so all members
-  // in the active organization see the same connection state.
   if (orgId) {
-    const [orgScoped] = await db
-      .select()
-      .from(integrations)
-      .where(eq(integrations.orgId, orgId))
-      .orderBy(desc(integrations.updatedAt))
-      .limit(1);
+    const res = await IntegrationsEntity.query.byOrg({ orgId }).go();
+    const orgScoped = res.data?.[0];
     if (!orgScoped) return null;
     return {
       github_token: orgScoped.githubToken,
@@ -30,21 +22,16 @@ export async function getIntegrationByUserId(
     };
   }
 
-  // Fall back to user-scoped (legacy or no org)
-  const [row] = await db
-    .select()
-    .from(integrations)
-    .where(eq(integrations.userId, userId))
-    .limit(1);
-  if (!row) return null;
+  const res = await IntegrationsEntity.get({ userId }).go();
+  if (!res.data) return null;
   return {
-    github_token: row.githubToken,
-    github_owner: row.githubOwner,
-    github_repo: row.githubRepo,
-    github_access_token: row.githubAccessToken,
-    google_token: row.googleToken,
-    google_refresh_token: row.googleRefreshToken,
-    webhook_secret: row.webhookSecret,
+    github_token: res.data.githubToken,
+    github_owner: res.data.githubOwner,
+    github_repo: res.data.githubRepo,
+    github_access_token: res.data.githubAccessToken,
+    google_token: res.data.googleToken,
+    google_refresh_token: res.data.googleRefreshToken,
+    webhook_secret: res.data.webhookSecret,
   };
 }
 
@@ -97,15 +84,10 @@ export function getGoogleToken(integration: IntegrationRow): string | null {
 }
 
 export async function getGoogleTokenForUser(userId: string): Promise<string | null> {
-  // Always user-scoped — Google Calendar is personal, never org-shared
-  const [row] = await db
-    .select({ googleToken: integrations.googleToken })
-    .from(integrations)
-    .where(eq(integrations.userId, userId))
-    .limit(1);
-  if (!row?.googleToken) return null;
+  const res = await IntegrationsEntity.get({ userId }).go();
+  if (!res.data?.googleToken) return null;
   try {
-    return decrypt(row.googleToken);
+    return decrypt(res.data.googleToken);
   } catch {
     console.error('[SECURITY] Failed to decrypt Google token');
     return null;

@@ -1,7 +1,7 @@
 import { clerkClient } from '@clerk/nextjs/server';
-import { db } from '@/db/index';
-import { users, organizationMetadata } from '@/db/schema';
+import { UsersEntity, OrganizationMetadataEntity } from '@/db/entities';
 import { isPublicDomainEmail, generatePersonalOrgName } from '@/lib/org-utils';
+import { randomUUID } from 'crypto';
 
 export async function handleClerkWebhook(evt: any) {
   if (evt.type === 'user.created') {
@@ -9,7 +9,10 @@ export async function handleClerkWebhook(evt: any) {
     const email = email_addresses[0]?.email_address ?? '';
     const name = `${first_name ?? ''} ${last_name ?? ''}`.trim() || 'User';
 
-    await db.insert(users).values({ id, email, name, plan: 'starter' }).onConflictDoNothing();
+    const existing = await UsersEntity.get({ id }).go();
+    if (!existing.data) {
+      await UsersEntity.create({ id, email, name, plan: 'starter' }).go();
+    }
 
     console.log('[webhook] User created in DB:', id, email);
 
@@ -20,15 +23,16 @@ export async function handleClerkWebhook(evt: any) {
 
   if (evt.type === 'organization.created') {
     const { id, name } = evt.data;
-    await db
-      .insert(organizationMetadata)
-      .values({
+    const existing = await OrganizationMetadataEntity.get({ orgId: id }).go();
+    if (!existing.data) {
+      await OrganizationMetadataEntity.create({
+        id: randomUUID(),
         orgId: id,
         companyName: null,
         managerName: null,
         allowAccessRequests: false,
-      })
-      .onConflictDoNothing();
+      }).go();
+    }
 
     console.log('[webhook] Organization metadata created:', id, name);
   }
@@ -60,16 +64,14 @@ async function createPersonalOrg(userId: string, email: string, userDisplayName?
         createdBy: userId,
       });
 
-      await db
-        .insert(organizationMetadata)
-        .values({
-          orgId: org.id,
-          companyName: null,
-          managerName: null,
-          allowAccessRequests: false,
-          trialStartedAt: new Date(),
-        })
-        .onConflictDoNothing();
+      await OrganizationMetadataEntity.create({
+        id: randomUUID(),
+        orgId: org.id,
+        companyName: null,
+        managerName: null,
+        allowAccessRequests: false,
+        trialStartedAt: new Date().toISOString(),
+      }).go();
 
       console.log('[webhook] Personal org created:', org.id, name);
       return;

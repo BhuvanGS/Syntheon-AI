@@ -1,5 +1,6 @@
 import { auth } from '@clerk/nextjs/server';
 import { isProjectMember, getProjectById } from '@/lib/db';
+import { ProjectMembersEntity } from '@/db/entities';
 
 export type OrgRole = 'org:admin' | 'org:member' | null;
 
@@ -29,13 +30,6 @@ export async function canManageProject(ctx: AuthContext, projectId: string): Pro
 
 export async function canAdminProject(ctx: AuthContext, projectId: string): Promise<boolean> {
   if (isOrgAdmin(ctx)) return true;
-  const { db } = await import('@/db/index');
-  const { projectMembers } = await import('@/db/schema');
-  const { eq, and } = await import('drizzle-orm');
-  const [row] = await db
-    .select({ role: projectMembers.role })
-    .from(projectMembers)
-    .where(and(eq(projectMembers.projectId, projectId), eq(projectMembers.userId, ctx.userId)))
-    .limit(1);
-  return row?.role === 'admin';
+  const res = await ProjectMembersEntity.get({ projectId, userId: ctx.userId }).go();
+  return res.data?.role === 'admin';
 }

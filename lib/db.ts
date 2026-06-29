@@ -1,19 +1,23 @@
-// lib/db.ts — Drizzle ORM data-access layer
-import { db } from '@/db/index';
-import {
-  meetings as meetingsTable,
-  specs as specsTable,
-  tickets as ticketsTable,
-  projects as projectsTable,
-  ticketDependencies as depsTable,
-  ticketAttachments as attachmentsTable,
-  ticketComments as commentsTable,
-  ticketActivities as activitiesTable,
-  projectMembers as membersTable,
-  notifications as notificationsTable,
-} from '@/db/schema';
-import { eq, and, or, desc, asc, inArray, isNull, gte, sql, count } from 'drizzle-orm';
+import { randomUUID } from 'crypto';
 import { broadcast } from '@/lib/event-bus';
+import {
+  UsersEntity,
+  ApiKeysEntity,
+  MeetingsEntity,
+  SpecsEntity,
+  TicketsEntity,
+  ProjectsEntity,
+  TicketDependenciesEntity,
+  TicketAttachmentsEntity,
+  TicketCommentsEntity,
+  TicketActivitiesEntity,
+  IntegrationsEntity,
+  ProjectMembersEntity,
+  OrganizationMetadataEntity,
+  OrganizationInvitesEntity,
+  OrganizationAccessRequestsEntity,
+  NotificationsEntity,
+} from '@/db/entities';
 
 // ─── Types ─────────────────────────────────────────────────────
 export interface Meeting {
@@ -109,145 +113,165 @@ export interface TicketComment {
   updated_at: string;
 }
 
-// ─── Helpers — map Drizzle rows to app types ───────────────────
-function ts(d: Date | null | undefined): string {
-  return d?.toISOString() ?? new Date().toISOString();
-}
-
-function rowToMeeting(row: typeof meetingsTable.$inferSelect): Meeting {
+// ─── Mappers ───────────────────────────────────────────────────
+function entityToMeeting(e: any): Meeting {
   return {
-    id: row.id,
-    user_id: row.userId ?? undefined,
-    org_id: row.orgId ?? undefined,
-    projectName: row.projectName,
-    meetingId: row.meetingId,
-    platform: row.platform,
-    transcript: row.transcript ?? '',
-    specsDetected: row.specsDetected ?? 0,
-    status: row.status as Meeting['status'],
-    date: row.date,
-    filePath: row.filePath ?? '',
-    botId: row.botId ?? undefined,
-    branchName: row.branchName ?? undefined,
-    deployUrl: row.deployUrl ?? undefined,
-    projectId: row.projectId ?? undefined,
-    meeting_url: row.meetingUrl ?? undefined,
-    summary: row.summary ?? undefined,
+    id: e.id,
+    user_id: e.userId ?? undefined,
+    org_id: e.orgId ?? undefined,
+    projectName: e.projectName,
+    meetingId: e.meetingId,
+    platform: e.platform,
+    transcript: e.transcript ?? '',
+    specsDetected: e.specsDetected ?? 0,
+    status: e.status as Meeting['status'],
+    date: e.date,
+    filePath: e.filePath ?? '',
+    botId: e.botId ?? undefined,
+    branchName: e.branchName ?? undefined,
+    deployUrl: e.deployUrl ?? undefined,
+    projectId: e.projectId ?? undefined,
+    meeting_url: e.meetingUrl ?? undefined,
+    summary: e.summary ?? undefined,
   };
 }
 
-function rowToTicket(row: typeof ticketsTable.$inferSelect): Ticket {
+function entityToTicket(e: any): Ticket {
   return {
-    id: row.id,
-    user_id: row.userId ?? undefined,
-    org_id: row.orgId ?? undefined,
-    meeting_id: row.meetingId ?? null,
-    projectId: row.projectId ?? undefined,
-    parent_id: row.parentId ?? null,
-    title: row.title,
-    description: row.description ?? '',
-    status: row.status as Ticket['status'],
-    assignee: row.assignee ?? null,
-    assignee_user_id: row.assigneeUserId ?? null,
-    dependency_ticket_id: row.dependencyTicketId ?? null,
-    start_date: row.startDate ?? null,
-    due_date: row.dueDate ?? null,
-    deadline_time: row.deadlineTime ?? null,
-    createdAt: ts(row.createdAt),
-    updatedAt: ts(row.updatedAt),
+    id: e.id,
+    user_id: e.userId ?? undefined,
+    org_id: e.orgId ?? undefined,
+    meeting_id: e.meetingId ?? null,
+    projectId: e.projectId ?? undefined,
+    parent_id: e.parentId ?? null,
+    title: e.title,
+    description: e.description ?? '',
+    status: e.status as Ticket['status'],
+    assignee: e.assignee ?? null,
+    assignee_user_id: e.assigneeUserId ?? null,
+    dependency_ticket_id: e.dependencyTicketId ?? null,
+    start_date: e.startDate ?? null,
+    due_date: e.dueDate ?? null,
+    deadline_time: e.deadlineTime ?? null,
+    createdAt: e.createdAt,
+    updatedAt: e.updatedAt,
   };
 }
 
-function rowToSpec(row: typeof specsTable.$inferSelect): SpecBlock {
+function entityToSpec(e: any): SpecBlock {
   return {
-    id: row.id,
-    user_id: row.userId ?? undefined,
-    title: row.title,
-    type: row.type as SpecBlock['type'],
-    confidence: row.confidence,
-    meeting_id: row.meetingId,
-    timestamp: row.timestamp,
-    note: row.note ?? undefined,
-    projectId: row.projectId ?? undefined,
+    id: e.id,
+    user_id: e.userId ?? undefined,
+    title: e.title,
+    type: e.type as SpecBlock['type'],
+    confidence: e.confidence,
+    meeting_id: e.meetingId,
+    timestamp: e.timestamp,
+    note: e.note ?? undefined,
+    projectId: e.projectId ?? undefined,
+    parentSpecId: e.parentSpecId ?? undefined,
   };
 }
 
-function parseJsonArray(val: string | null): string[] {
-  if (!val || val === '[]') return [];
-  try {
-    const parsed = JSON.parse(val);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+function entityToProject(e: any): Project {
+  return {
+    id: e.id,
+    user_id: e.userId ?? undefined,
+    org_id: e.orgId ?? undefined,
+    name: e.name,
+    repo: e.repo,
+    deployUrl: e.deployUrl ?? undefined,
+    branchBase: e.branchBase ?? 'main',
+    agentTier: e.agentTier ?? undefined,
+    meetings: e.meetings ?? [],
+    ticketIds: e.ticketIds ?? [],
+    files: e.files ?? [],
+    context: e.context ?? '',
+    createdAt: e.createdAt,
+    updatedAt: e.updatedAt,
+  };
 }
 
-function rowToProject(row: typeof projectsTable.$inferSelect): Project {
+function entityToTicketDependency(e: any): TicketDependency {
   return {
-    id: row.id,
-    user_id: row.userId ?? undefined,
-    org_id: row.orgId ?? undefined,
-    name: row.name,
-    repo: row.repo,
-    deployUrl: row.deployUrl ?? undefined,
-    branchBase: row.branchBase ?? 'main',
-    agentTier: row.agentTier ?? undefined,
-    meetings: parseJsonArray(row.meetingsArr),
-    ticketIds: parseJsonArray(row.specIds),
-    files: parseJsonArray(row.files),
-    context: row.context ?? '',
-    createdAt: ts(row.createdAt),
-    updatedAt: ts(row.updatedAt),
+    id: e.id,
+    project_id: e.projectId,
+    ticket_id: e.ticketId,
+    depends_on_ticket_id: e.dependsOnTicketId,
+    dependency_type: e.dependencyType as DependencyType,
+    strength: e.strength as DependencyStrength,
+    note: e.note ?? null,
+    ignore_count: e.ignoreCount ?? 0,
+    escalated: e.escalated ?? false,
+    created_at: e.createdAt,
+    updated_at: e.updatedAt,
+  };
+}
+
+function entityToNotification(e: any): Notification {
+  return {
+    id: e.id,
+    user_id: e.userId,
+    org_id: e.orgId,
+    type: e.type as Notification['type'],
+    title: e.title,
+    message: e.message ?? undefined,
+    ticket_id: e.ticketId ?? undefined,
+    read: e.read ?? false,
+    created_at: e.createdAt,
+  };
+}
+
+function entityToProjectMember(e: any): ProjectMember {
+  return {
+    id: e.id,
+    project_id: e.projectId,
+    org_id: e.orgId,
+    user_id: e.userId,
+    role: e.role as 'admin' | 'member',
+    created_at: e.createdAt,
   };
 }
 
 // ─── Meetings ───────────────────────────────────────────────────
 export async function saveMeeting(meeting: Meeting): Promise<void> {
-  await db.insert(meetingsTable).values({
+  await MeetingsEntity.create({
     id: meeting.id,
-    userId: meeting.user_id,
-    orgId: meeting.org_id ?? null,
-    projectId: meeting.projectId ?? null,
+    userId: meeting.user_id ?? undefined,
+    orgId: meeting.org_id ?? undefined,
+    projectId: meeting.projectId ?? undefined,
     projectName: meeting.projectName,
     meetingId: meeting.meetingId,
-    meetingUrl: meeting.meeting_url ?? null,
+    meetingUrl: meeting.meeting_url ?? undefined,
     platform: meeting.platform,
     transcript: meeting.transcript ?? '',
     specsDetected: meeting.specsDetected,
     status: meeting.status,
-    botId: meeting.botId ?? null,
-    branchName: meeting.branchName ?? null,
-    deployUrl: meeting.deployUrl ?? null,
+    botId: meeting.botId ?? undefined,
+    branchName: meeting.branchName ?? undefined,
+    deployUrl: meeting.deployUrl ?? undefined,
     filePath: meeting.filePath ?? '',
     date: meeting.date,
-  });
+  }).go();
 }
 
 export async function getMeetings(userId: string): Promise<Meeting[]> {
-  const rows = await db
-    .select()
-    .from(meetingsTable)
-    .where(eq(meetingsTable.userId, userId))
-    .orderBy(desc(meetingsTable.date));
-  return rows.map(rowToMeeting);
+  const res = await MeetingsEntity.query.byUser({ userId }).go();
+  return (res.data ?? []).map(entityToMeeting).sort((a: Meeting, b: Meeting) => b.date.localeCompare(a.date));
 }
 
 export async function getMeetingById(id: string): Promise<Meeting | undefined> {
-  const [row] = await db.select().from(meetingsTable).where(eq(meetingsTable.id, id)).limit(1);
-  return row ? rowToMeeting(row) : undefined;
+  const res = await MeetingsEntity.get({ id }).go();
+  return res.data ? entityToMeeting(res.data) : undefined;
 }
 
 export async function getMeetingByBotId(botId: string): Promise<Meeting | undefined> {
-  const [row] = await db
-    .select()
-    .from(meetingsTable)
-    .where(eq(meetingsTable.botId, botId))
-    .limit(1);
-  return row ? rowToMeeting(row) : undefined;
+  const res = await MeetingsEntity.query.byBot({ botId }).go();
+  return res.data?.[0] ? entityToMeeting(res.data[0]) : undefined;
 }
 
 export async function updateMeetingStatus(id: string, status: Meeting['status']): Promise<void> {
-  await db.update(meetingsTable).set({ status }).where(eq(meetingsTable.id, id));
+  await MeetingsEntity.update({ id }).set({ status, updatedAt: new Date().toISOString() }).go();
   broadcast({ type: 'meeting_status_changed', payload: { meetingId: id, status } });
 }
 
@@ -256,46 +280,38 @@ export async function updateMeetingSpecs(
   transcript: string,
   specsDetected: number
 ): Promise<void> {
-  await db
-    .update(meetingsTable)
-    .set({ transcript, specsDetected, status: 'completed' })
-    .where(eq(meetingsTable.id, id));
+  await MeetingsEntity.update({ id })
+    .set({ transcript, specsDetected, status: 'completed', updatedAt: new Date().toISOString() })
+    .go();
 }
 
 export async function updateMeetingBranch(id: string, branchName: string): Promise<void> {
-  await db.update(meetingsTable).set({ branchName }).where(eq(meetingsTable.id, id));
+  await MeetingsEntity.update({ id }).set({ branchName, updatedAt: new Date().toISOString() }).go();
 }
 
 export async function updateMeetingDeployUrl(id: string, deployUrl: string): Promise<void> {
-  await db.update(meetingsTable).set({ deployUrl }).where(eq(meetingsTable.id, id));
+  await MeetingsEntity.update({ id }).set({ deployUrl, updatedAt: new Date().toISOString() }).go();
 }
 
 export async function updateMeetingName(id: string, projectName: string): Promise<void> {
-  await db.update(meetingsTable).set({ projectName }).where(eq(meetingsTable.id, id));
+  await MeetingsEntity.update({ id }).set({ projectName, updatedAt: new Date().toISOString() }).go();
 }
 
 export async function updateMeetingSummary(id: string, summary: string): Promise<void> {
-  await db.update(meetingsTable).set({ summary }).where(eq(meetingsTable.id, id));
+  await MeetingsEntity.update({ id }).set({ summary, updatedAt: new Date().toISOString() }).go();
 }
 
 export async function deleteMeeting(id: string): Promise<void> {
-  await db.delete(meetingsTable).where(eq(meetingsTable.id, id));
+  await MeetingsEntity.delete({ id }).go();
 }
 
 export async function getActiveMeetingByUrl(meetingUrl: string, userId: string) {
   try {
-    const [row] = await db
-      .select()
-      .from(meetingsTable)
-      .where(
-        and(
-          eq(meetingsTable.userId, userId),
-          eq(meetingsTable.meetingUrl, meetingUrl),
-          eq(meetingsTable.status, 'processing')
-        )
-      )
-      .limit(1);
-    return row ?? null;
+    const res = await MeetingsEntity.query.byUser({ userId }).go();
+    const found = (res.data ?? []).find(
+      (m: any) => m.meetingUrl === meetingUrl && m.status === 'processing'
+    );
+    return found ?? null;
   } catch (error) {
     console.error('Error fetching active meeting:', error);
     return null;
@@ -305,18 +321,11 @@ export async function getActiveMeetingByUrl(meetingUrl: string, userId: string) 
 export async function getRecentMeetingByUrl(meetingUrl: string, userId: string) {
   const fiveSecondsAgo = new Date(Date.now() - 5000).toISOString();
   try {
-    const [row] = await db
-      .select()
-      .from(meetingsTable)
-      .where(
-        and(
-          eq(meetingsTable.userId, userId),
-          eq(meetingsTable.meetingUrl, meetingUrl),
-          gte(meetingsTable.date, fiveSecondsAgo)
-        )
-      )
-      .limit(1);
-    return row ?? null;
+    const res = await MeetingsEntity.query.byUser({ userId }).go();
+    const found = (res.data ?? []).find(
+      (m: any) => m.meetingUrl === meetingUrl && m.date >= fiveSecondsAgo
+    );
+    return found ?? null;
   } catch (error) {
     console.error('Error checking recent meeting:', error);
     return null;
@@ -326,108 +335,91 @@ export async function getRecentMeetingByUrl(meetingUrl: string, userId: string) 
 // ─── Specs ──────────────────────────────────────────────────────
 export async function saveSpecs(specsList: SpecBlock[]): Promise<void> {
   if (specsList.length === 0) return;
-  await db.insert(specsTable).values(
-    specsList.map((s) => ({
+  for (const s of specsList) {
+    await SpecsEntity.create({
       id: s.id,
-      userId: s.user_id,
+      userId: s.user_id ?? undefined,
       meetingId: s.meeting_id,
-      projectId: s.projectId ?? null,
+      projectId: s.projectId ?? undefined,
       title: s.title,
       type: s.type,
       confidence: s.confidence,
-      note: s.note ?? null,
+      note: s.note ?? undefined,
       timestamp: s.timestamp,
-    }))
-  );
+    }).go();
+  }
 }
 
 export async function getSpecsByMeetingId(meetingId: string): Promise<SpecBlock[]> {
-  const rows = await db
-    .select()
-    .from(specsTable)
-    .where(eq(specsTable.meetingId, meetingId))
-    .orderBy(asc(specsTable.timestamp));
-  return rows.map(rowToSpec);
+  const res = await SpecsEntity.query.byMeeting({ meetingId }).go();
+  return (res.data ?? []).map(entityToSpec);
 }
 
 export async function getSpecsByProjectId(projectId: string): Promise<SpecBlock[]> {
-  const rows = await db
-    .select()
-    .from(specsTable)
-    .where(eq(specsTable.projectId, projectId))
-    .orderBy(asc(specsTable.timestamp));
-  return rows.map(rowToSpec);
+  const res = await SpecsEntity.query.byProject({ projectId }).go();
+  return (res.data ?? []).map(entityToSpec);
 }
 
 export async function getAllSpecs(userId: string): Promise<SpecBlock[]> {
-  const rows = await db
-    .select()
-    .from(specsTable)
-    .where(eq(specsTable.userId, userId))
-    .orderBy(desc(specsTable.timestamp));
-  return rows.map(rowToSpec);
+  const res = await SpecsEntity.query.byUser({ userId }).go();
+  return (res.data ?? []).map(entityToSpec).sort((a: SpecBlock, b: SpecBlock) => b.timestamp.localeCompare(a.timestamp));
 }
 
 export async function updateSpecNote(specId: string, note: string): Promise<void> {
-  await db.update(specsTable).set({ note }).where(eq(specsTable.id, specId));
+  await SpecsEntity.update({ id: specId }).set({ note, updatedAt: new Date().toISOString() }).go();
 }
 
 export async function deleteSpecsByMeetingId(meetingId: string): Promise<void> {
-  await db.delete(specsTable).where(eq(specsTable.meetingId, meetingId));
+  const res = await SpecsEntity.query.byMeeting({ meetingId }).go();
+  for (const spec of res.data ?? []) {
+    await SpecsEntity.delete({ id: spec.id }).go();
+  }
 }
 
 // ─── Projects ───────────────────────────────────────────────────
 export async function saveProject(project: Project): Promise<void> {
-  await db.insert(projectsTable).values({
+  await ProjectsEntity.create({
     id: project.id,
-    userId: project.user_id,
+    userId: project.user_id ?? undefined,
+    orgId: project.org_id ?? undefined,
     name: project.name,
     repo: project.repo,
-    deployUrl: project.deployUrl ?? null,
+    deployUrl: project.deployUrl ?? undefined,
     branchBase: project.branchBase,
     agentTier: project.agentTier ?? 'standard',
-    meetingsArr: JSON.stringify(project.meetings),
-    specIds: JSON.stringify(project.ticketIds),
-    files: JSON.stringify(project.files),
+    meetings: project.meetings,
+    ticketIds: project.ticketIds,
+    files: project.files,
     context: project.context,
-  });
+  }).go();
 }
 
 export async function getProjects(userId: string): Promise<Project[]> {
-  const rows = await db
-    .select()
-    .from(projectsTable)
-    .where(eq(projectsTable.userId, userId))
-    .orderBy(desc(projectsTable.createdAt));
-  return rows.map(rowToProject);
+  const res = await ProjectsEntity.query.byUser({ userId }).go();
+  return (res.data ?? []).map(entityToProject).sort((a: Project, b: Project) => b.createdAt.localeCompare(a.createdAt));
 }
 
 export async function getProjectById(id: string): Promise<Project | undefined> {
-  const [row] = await db.select().from(projectsTable).where(eq(projectsTable.id, id)).limit(1);
-  return row ? rowToProject(row) : undefined;
+  const res = await ProjectsEntity.get({ id }).go();
+  return res.data ? entityToProject(res.data) : undefined;
 }
 
 export async function getProjectByMeetingId(meetingId: string): Promise<Project | undefined> {
-  const [row] = await db
-    .select({ projectId: meetingsTable.projectId })
-    .from(meetingsTable)
-    .where(eq(meetingsTable.id, meetingId))
-    .limit(1);
-  if (!row?.projectId) return undefined;
-  return getProjectById(row.projectId);
+  const meeting = await getMeetingById(meetingId);
+  if (!meeting?.projectId) return undefined;
+  return getProjectById(meeting.projectId);
 }
 
 export async function updateProject(id: string, updates: Partial<Project>): Promise<void> {
-  const set: Record<string, unknown> = { updatedAt: new Date() };
+  const set: Record<string, any> = { updatedAt: new Date().toISOString() };
   if (updates.name) set.name = updates.name;
   if (updates.deployUrl) set.deployUrl = updates.deployUrl;
   if (updates.agentTier) set.agentTier = updates.agentTier;
   if (updates.context) set.context = updates.context;
-  if (updates.files) set.files = JSON.stringify(updates.files);
-  if (updates.ticketIds) set.specIds = JSON.stringify(updates.ticketIds);
-  if (updates.meetings) set.meetingsArr = JSON.stringify(updates.meetings);
-
-  await db.update(projectsTable).set(set).where(eq(projectsTable.id, id));
+  if (updates.files) set.files = updates.files;
+  if (updates.ticketIds) set.ticketIds = updates.ticketIds;
+  if (updates.meetings) set.meetings = updates.meetings;
+  await ProjectsEntity.update({ id }).set(set).go();
 }
 
 export async function addMeetingToProject(projectId: string, meetingId: string): Promise<void> {
@@ -439,36 +431,46 @@ export async function addMeetingToProject(projectId: string, meetingId: string):
 
 export async function deleteProject(id: string): Promise<void> {
   // Delete ticket dependencies for this project
-  await db.delete(depsTable).where(eq(depsTable.projectId, id));
+  const deps = await TicketDependenciesEntity.query.byProject({ projectId: id }).go();
+  for (const dep of deps.data ?? []) {
+    await TicketDependenciesEntity.delete({ id: dep.id }).go();
+  }
 
-  // Delete all tickets in this project (both with and without meetingId)
-  await db.delete(ticketsTable).where(eq(ticketsTable.projectId, id));
+  // Delete all tickets in this project
+  const tickets = await TicketsEntity.query.byProject({ projectId: id }).go();
+  for (const ticket of tickets.data ?? []) {
+    await TicketsEntity.delete({ id: ticket.id }).go();
+  }
 
   // Unlink meetings
-  await db.update(meetingsTable).set({ projectId: null }).where(eq(meetingsTable.projectId, id));
+  const meetingsRes = await MeetingsEntity.scan.go();
+  for (const meeting of (meetingsRes.data ?? []).filter((m: any) => m.projectId === id)) {
+    await MeetingsEntity.update({ id: meeting.id }).set({ projectId: null }).go();
+  }
 
   // Delete project
-  await db.delete(projectsTable).where(eq(projectsTable.id, id));
+  await ProjectsEntity.delete({ id }).go();
 }
 
+// ─── Tickets ────────────────────────────────────────────────────
 export async function saveTickets(ticketsList: Ticket[]): Promise<void> {
   if (ticketsList.length === 0) return;
-  await db.insert(ticketsTable).values(
-    ticketsList.map((ticket) => ({
+  for (const ticket of ticketsList) {
+    await TicketsEntity.create({
       id: ticket.id,
       userId: ticket.user_id,
-      orgId: ticket.org_id ?? null,
-      meetingId: ticket.meeting_id ?? null,
-      projectId: ticket.projectId ?? null,
+      orgId: ticket.org_id,
+      meetingId: ticket.meeting_id ?? undefined,
+      projectId: ticket.projectId,
       title: ticket.title,
       description: ticket.description,
       status: ticket.status,
-      assignee: ticket.assignee ?? null,
-      assigneeUserId: ticket.assignee_user_id ?? null,
-      dependencyTicketId: ticket.dependency_ticket_id ?? null,
-      dueDate: ticket.due_date ?? null,
-    }))
-  );
+      assignee: ticket.assignee ?? undefined,
+      assigneeUserId: ticket.assignee_user_id ?? undefined,
+      dependencyTicketId: ticket.dependency_ticket_id ?? undefined,
+      dueDate: ticket.due_date ?? undefined,
+    }).go();
+  }
 }
 
 function ticketFingerprint(
@@ -486,7 +488,6 @@ function ticketFingerprint(
 
 export async function saveExtractedTickets(ticketsList: Ticket[]): Promise<Ticket[]> {
   if (ticketsList.length === 0) return [];
-
   const meetingId = ticketsList[0]?.meeting_id;
   if (!meetingId) return [];
 
@@ -496,15 +497,12 @@ export async function saveExtractedTickets(ticketsList: Ticket[]): Promise<Ticke
 
   const uniqueTickets = ticketsList.filter((ticket) => {
     const fingerprint = ticketFingerprint(ticket);
-    if (existingFingerprints.has(fingerprint) || seenFingerprints.has(fingerprint)) {
-      return false;
-    }
+    if (existingFingerprints.has(fingerprint) || seenFingerprints.has(fingerprint)) return false;
     seenFingerprints.add(fingerprint);
     return true;
   });
 
   if (uniqueTickets.length === 0) return [];
-
   await saveTickets(uniqueTickets);
   return uniqueTickets;
 }
@@ -513,36 +511,23 @@ export async function getTicketsByMeetingId(
   meetingId: string,
   options?: { originalOnly?: boolean }
 ): Promise<Ticket[]> {
-  const conditions = [eq(ticketsTable.meetingId, meetingId)];
+  const res = await TicketsEntity.query.byMeeting({ meetingId }).go();
+  let tickets = (res.data ?? []).map(entityToTicket);
   if (options?.originalOnly) {
-    conditions.push(isNull(ticketsTable.projectId));
+    tickets = tickets.filter((t: Ticket) => !t.projectId);
   }
-  const rows = await db
-    .select()
-    .from(ticketsTable)
-    .where(and(...conditions))
-    .orderBy(asc(ticketsTable.createdAt));
-  return rows.map(rowToTicket);
+  return tickets.sort((a: Ticket, b: Ticket) => (a.createdAt ?? '').localeCompare(b.createdAt ?? ''));
 }
 
 export async function getTicketsByProjectId(projectId: string): Promise<Ticket[]> {
-  const rows = await db
-    .select()
-    .from(ticketsTable)
-    .where(eq(ticketsTable.projectId, projectId))
-    .orderBy(asc(ticketsTable.createdAt));
-  return rows.map(rowToTicket);
+  const res = await TicketsEntity.query.byProject({ projectId }).go();
+  return (res.data ?? []).map(entityToTicket).sort((a: Ticket, b: Ticket) => (a.createdAt ?? '').localeCompare(b.createdAt ?? ''));
 }
 
 export async function getAllTickets(userId: string): Promise<Ticket[]> {
-  const rows = await db
-    .select()
-    .from(ticketsTable)
-    .where(eq(ticketsTable.userId, userId))
-    .orderBy(desc(ticketsTable.createdAt));
-  const tickets = rows.map(rowToTicket);
+  const res = await TicketsEntity.query.byUser({ userId }).go();
+  const tickets = (res.data ?? []).map(entityToTicket).sort((a: Ticket, b: Ticket) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
 
-  // Deduplicate by (meeting_id + title + description) to avoid showing same ticket multiple times
   const seen = new Set<string>();
   const deduplicated: Ticket[] = [];
   for (const ticket of tickets) {
@@ -556,35 +541,30 @@ export async function getAllTickets(userId: string): Promise<Ticket[]> {
 }
 
 export async function getTicketById(id: string): Promise<Ticket | null> {
-  const [row] = await db.select().from(ticketsTable).where(eq(ticketsTable.id, id)).limit(1);
-  return row ? rowToTicket(row) : null;
+  const res = await TicketsEntity.get({ id }).go();
+  return res.data ? entityToTicket(res.data) : null;
 }
 
-// Fetch only the specified tickets, scoped by org (or user when no org).
-// Avoids full-table scans when validating a known set of ticket IDs.
 export async function getTicketsByIds(
   ids: string[],
   scope: { orgId?: string | null; userId?: string }
 ): Promise<Ticket[]> {
   if (ids.length === 0) return [];
-  const conditions = [inArray(ticketsTable.id, ids)];
-  if (scope.orgId) {
-    conditions.push(eq(ticketsTable.orgId, scope.orgId));
-  } else if (scope.userId) {
-    conditions.push(eq(ticketsTable.userId, scope.userId));
+  const results: Ticket[] = [];
+  for (const id of ids) {
+    const res = await TicketsEntity.get({ id }).go();
+    if (res.data) {
+      const ticket = entityToTicket(res.data);
+      if (scope.orgId && ticket.org_id !== scope.orgId) continue;
+      if (!scope.orgId && scope.userId && ticket.user_id !== scope.userId) continue;
+      results.push(ticket);
+    }
   }
-  const rows = await db
-    .select()
-    .from(ticketsTable)
-    .where(and(...conditions));
-  return rows.map(rowToTicket);
+  return results;
 }
 
 export async function updateTicketStatus(id: string, status: Ticket['status']): Promise<void> {
-  await db
-    .update(ticketsTable)
-    .set({ status, updatedAt: new Date() })
-    .where(eq(ticketsTable.id, id));
+  await TicketsEntity.update({ id }).set({ status, updatedAt: new Date().toISOString() }).go();
 }
 
 export async function updateTicketAssignee(
@@ -592,20 +572,18 @@ export async function updateTicketAssignee(
   assignee: string | null,
   assigneeUserId: string | null = null
 ): Promise<void> {
-  await db
-    .update(ticketsTable)
-    .set({ assignee, assigneeUserId, updatedAt: new Date() })
-    .where(eq(ticketsTable.id, id));
+  await TicketsEntity.update({ id })
+    .set({ assignee, assigneeUserId, updatedAt: new Date().toISOString() })
+    .go();
 }
 
 export async function updateTicketDependency(
   id: string,
   dependencyTicketId: string | null
 ): Promise<void> {
-  await db
-    .update(ticketsTable)
-    .set({ dependencyTicketId, updatedAt: new Date() })
-    .where(eq(ticketsTable.id, id));
+  await TicketsEntity.update({ id })
+    .set({ dependencyTicketId, updatedAt: new Date().toISOString() })
+    .go();
 }
 
 export async function updateTicket(
@@ -625,31 +603,28 @@ export async function updateTicket(
     >
   >
 ): Promise<void> {
-  const set: Record<string, unknown> = { updatedAt: new Date() };
-
+  const set: Record<string, any> = { updatedAt: new Date().toISOString() };
   if (typeof updates.title !== 'undefined') set.title = updates.title;
   if (typeof updates.description !== 'undefined') set.description = updates.description;
   if (typeof updates.status !== 'undefined') set.status = updates.status;
   if (typeof updates.assignee !== 'undefined') set.assignee = updates.assignee;
-  if (typeof updates.assignee_user_id !== 'undefined') {
-    set.assigneeUserId = updates.assignee_user_id;
-  }
-  if (typeof updates.dependency_ticket_id !== 'undefined') {
-    set.dependencyTicketId = updates.dependency_ticket_id;
-  }
+  if (typeof updates.assignee_user_id !== 'undefined') set.assigneeUserId = updates.assignee_user_id;
+  if (typeof updates.dependency_ticket_id !== 'undefined') set.dependencyTicketId = updates.dependency_ticket_id;
   if (typeof updates.start_date !== 'undefined') set.startDate = updates.start_date;
   if (typeof updates.due_date !== 'undefined') set.dueDate = updates.due_date;
   if (typeof updates.deadline_time !== 'undefined') set.deadlineTime = updates.deadline_time;
-
-  await db.update(ticketsTable).set(set).where(eq(ticketsTable.id, id));
+  await TicketsEntity.update({ id }).set(set).go();
 }
 
 export async function deleteTicketById(id: string): Promise<void> {
-  await db.delete(ticketsTable).where(eq(ticketsTable.id, id));
+  await TicketsEntity.delete({ id }).go();
 }
 
 export async function deleteTicketsByMeetingId(meetingId: string): Promise<void> {
-  await db.delete(ticketsTable).where(eq(ticketsTable.meetingId, meetingId));
+  const res = await TicketsEntity.query.byMeeting({ meetingId }).go();
+  for (const ticket of res.data ?? []) {
+    await TicketsEntity.delete({ id: ticket.id }).go();
+  }
 }
 
 export async function addTicketsToProject(projectId: string, ticketIds: string[]): Promise<void> {
@@ -658,7 +633,9 @@ export async function addTicketsToProject(projectId: string, ticketIds: string[]
   const merged = [...new Set([...project.ticketIds, ...ticketIds])];
   await updateProject(projectId, { ticketIds: merged });
 
-  await db.update(ticketsTable).set({ projectId }).where(inArray(ticketsTable.id, ticketIds));
+  for (const id of ticketIds) {
+    await TicketsEntity.update({ id }).set({ projectId }).go();
+  }
 }
 
 export async function addFilesToProject(projectId: string, files: string[]): Promise<void> {
@@ -677,7 +654,6 @@ export async function updateMeetingSpecs2(
 }
 
 // ─── Ticket Dependencies ────────────────────────────────────────
-
 export type DependencyType = 'data' | 'structural' | 'logical' | 'resource';
 export type DependencyStrength = 'soft' | 'hard';
 
@@ -695,51 +671,23 @@ export interface TicketDependency {
   updated_at: string;
 }
 
-function rowToTicketDependency(row: typeof depsTable.$inferSelect): TicketDependency {
-  return {
-    id: row.id,
-    project_id: row.projectId,
-    ticket_id: row.ticketId,
-    depends_on_ticket_id: row.dependsOnTicketId,
-    dependency_type: row.dependencyType as DependencyType,
-    strength: row.strength as DependencyStrength,
-    note: row.note ?? null,
-    ignore_count: row.ignoreCount ?? 0,
-    escalated: row.escalated ?? false,
-    created_at: ts(row.createdAt),
-    updated_at: ts(row.updatedAt),
-  };
-}
-
 export async function getDependenciesForTicket(ticketId: string): Promise<{
   parents: TicketDependency[];
   children: TicketDependency[];
 }> {
-  const [parents, children] = await Promise.all([
-    db
-      .select()
-      .from(depsTable)
-      .where(eq(depsTable.ticketId, ticketId))
-      .orderBy(asc(depsTable.createdAt)),
-    db
-      .select()
-      .from(depsTable)
-      .where(eq(depsTable.dependsOnTicketId, ticketId))
-      .orderBy(asc(depsTable.createdAt)),
+  const [parentsRes, childrenRes] = await Promise.all([
+    TicketDependenciesEntity.query.byTicket({ ticketId }).go(),
+    TicketDependenciesEntity.query.byDependsOn({ dependsOnTicketId: ticketId }).go(),
   ]);
   return {
-    parents: parents.map(rowToTicketDependency),
-    children: children.map(rowToTicketDependency),
+    parents: (parentsRes.data ?? []).map(entityToTicketDependency),
+    children: (childrenRes.data ?? []).map(entityToTicketDependency),
   };
 }
 
 export async function getDependenciesForProject(projectId: string): Promise<TicketDependency[]> {
-  const rows = await db
-    .select()
-    .from(depsTable)
-    .where(eq(depsTable.projectId, projectId))
-    .orderBy(asc(depsTable.createdAt));
-  return rows.map(rowToTicketDependency);
+  const res = await TicketDependenciesEntity.query.byProject({ projectId }).go();
+  return (res.data ?? []).map(entityToTicketDependency);
 }
 
 async function _hasPath(fromId: string, toId: string): Promise<boolean> {
@@ -750,11 +698,8 @@ async function _hasPath(fromId: string, toId: string): Promise<boolean> {
     if (current === toId) return true;
     if (visited.has(current)) continue;
     visited.add(current);
-    const rows = await db
-      .select({ dependsOnTicketId: depsTable.dependsOnTicketId })
-      .from(depsTable)
-      .where(eq(depsTable.ticketId, current));
-    for (const row of rows) {
+    const res = await TicketDependenciesEntity.query.byTicket({ ticketId: current }).go();
+    for (const row of res.data ?? []) {
       if (!visited.has(row.dependsOnTicketId)) {
         queue.push(row.dependsOnTicketId);
       }
@@ -776,15 +721,11 @@ export async function createDependency(dep: {
     return { error: 'A ticket cannot depend on itself.' };
   }
 
-  const [parentTicket] = await db
-    .select({ projectId: ticketsTable.projectId })
-    .from(ticketsTable)
-    .where(eq(ticketsTable.id, dep.depends_on_ticket_id))
-    .limit(1);
-  if (!parentTicket) {
+  const parentTicketRes = await TicketsEntity.get({ id: dep.depends_on_ticket_id }).go();
+  if (!parentTicketRes.data) {
     return { error: 'Parent ticket not found.' };
   }
-  if (parentTicket.projectId !== dep.project_id) {
+  if (parentTicketRes.data.projectId !== dep.project_id) {
     return { error: 'Cross-project dependencies are not allowed.' };
   }
 
@@ -796,22 +737,16 @@ export async function createDependency(dep: {
     };
   }
 
-  const [existing] = await db
-    .select({ id: depsTable.id })
-    .from(depsTable)
-    .where(
-      and(
-        eq(depsTable.ticketId, dep.ticket_id),
-        eq(depsTable.dependsOnTicketId, dep.depends_on_ticket_id)
-      )
-    )
-    .limit(1);
+  const existingDeps = await TicketDependenciesEntity.query.byTicket({ ticketId: dep.ticket_id }).go();
+  const existing = (existingDeps.data ?? []).find(
+    (d: any) => d.dependsOnTicketId === dep.depends_on_ticket_id
+  );
   if (existing) {
     return { error: 'This dependency already exists.' };
   }
 
   try {
-    await db.insert(depsTable).values({
+    await TicketDependenciesEntity.create({
       id: dep.id,
       projectId: dep.project_id,
       ticketId: dep.ticket_id,
@@ -821,7 +756,7 @@ export async function createDependency(dep: {
       note: dep.note ?? null,
       ignoreCount: 0,
       escalated: false,
-    });
+    }).go();
     return {};
   } catch (err: any) {
     return { error: err.message };
@@ -829,28 +764,23 @@ export async function createDependency(dep: {
 }
 
 export async function deleteDependency(id: string): Promise<void> {
-  await db.delete(depsTable).where(eq(depsTable.id, id));
+  await TicketDependenciesEntity.delete({ id }).go();
 }
 
 export async function incrementDependencyIgnoreCount(id: string): Promise<void> {
-  const [row] = await db
-    .select({ ignoreCount: depsTable.ignoreCount, strength: depsTable.strength })
-    .from(depsTable)
-    .where(eq(depsTable.id, id))
-    .limit(1);
-  if (!row) return;
+  const res = await TicketDependenciesEntity.get({ id }).go();
+  if (!res.data) return;
 
-  const newCount = (row.ignoreCount ?? 0) + 1;
-  const shouldEscalate = row.strength === 'soft' && newCount >= 3;
-  await db
-    .update(depsTable)
+  const newCount = (res.data.ignoreCount ?? 0) + 1;
+  const shouldEscalate = res.data.strength === 'soft' && newCount >= 3;
+  await TicketDependenciesEntity.update({ id })
     .set({
       ignoreCount: newCount,
       escalated: shouldEscalate || undefined,
-      strength: shouldEscalate ? 'hard' : row.strength,
-      updatedAt: new Date(),
+      strength: shouldEscalate ? 'hard' : res.data.strength,
+      updatedAt: new Date().toISOString(),
     })
-    .where(eq(depsTable.id, id));
+    .go();
 }
 
 export async function checkHardBlockers(ticketId: string): Promise<{
@@ -861,11 +791,11 @@ export async function checkHardBlockers(ticketId: string): Promise<{
   const hardParents = parents.filter((d) => d.strength === 'hard' || d.escalated);
   if (hardParents.length === 0) return { blocked: false, blockers: [] };
 
-  const parentIds = hardParents.map((d) => d.depends_on_ticket_id);
-  const parentTickets = await db
-    .select({ id: ticketsTable.id, status: ticketsTable.status })
-    .from(ticketsTable)
-    .where(inArray(ticketsTable.id, parentIds));
+  const parentTickets: { id: string; status: string }[] = [];
+  for (const dep of hardParents) {
+    const res = await TicketsEntity.get({ id: dep.depends_on_ticket_id }).go();
+    if (res.data) parentTickets.push({ id: res.data.id, status: res.data.status });
+  }
 
   const unresolved = hardParents.filter((dep) => {
     const parent = parentTickets.find((t) => t.id === dep.depends_on_ticket_id);
@@ -879,11 +809,11 @@ export async function cascadeDepRegressionForParent(parentId: string): Promise<v
   const { children } = await getDependenciesForTicket(parentId);
   if (children.length === 0) return;
 
-  const childIds = children.map((d) => d.ticket_id);
-  const childTickets = await db
-    .select({ id: ticketsTable.id, status: ticketsTable.status })
-    .from(ticketsTable)
-    .where(inArray(ticketsTable.id, childIds));
+  const childTickets: { id: string; status: string }[] = [];
+  for (const child of children) {
+    const res = await TicketsEntity.get({ id: child.ticket_id }).go();
+    if (res.data) childTickets.push({ id: res.data.id, status: res.data.status });
+  }
 
   const toBlock = childTickets
     .filter((t) => t.status === 'done' || t.status === 'in_progress')
@@ -891,20 +821,15 @@ export async function cascadeDepRegressionForParent(parentId: string): Promise<v
 
   if (toBlock.length === 0) return;
 
-  await db
-    .update(ticketsTable)
-    .set({ status: 'blocked', updatedAt: new Date() })
-    .where(inArray(ticketsTable.id, toBlock));
+  for (const id of toBlock) {
+    await TicketsEntity.update({ id }).set({ status: 'blocked', updatedAt: new Date().toISOString() }).go();
+  }
 }
 
 // ─── Attachments ───────────────────────────────────────────────
 export async function getAttachmentsForTicket(ticketId: string): Promise<TicketAttachment[]> {
-  const rows = await db
-    .select()
-    .from(attachmentsTable)
-    .where(eq(attachmentsTable.ticketId, ticketId))
-    .orderBy(desc(attachmentsTable.createdAt));
-  return rows.map((row) => ({
+  const res = await TicketAttachmentsEntity.query.byTicket({ ticketId }).go();
+  return (res.data ?? []).map((row: any) => ({
     id: row.id,
     ticket_id: row.ticketId,
     project_id: row.projectId,
@@ -913,103 +838,98 @@ export async function getAttachmentsForTicket(ticketId: string): Promise<TicketA
     file_url: row.fileUrl,
     file_size: row.fileSize,
     file_type: row.fileType,
-    created_at: ts(row.createdAt),
-    updated_at: ts(row.updatedAt),
-  }));
+    created_at: row.createdAt,
+    updated_at: row.updatedAt,
+  })).sort((a: any, b: any) => b.created_at.localeCompare(a.created_at));
 }
 
 export async function createAttachment(
   attachment: Omit<TicketAttachment, 'id' | 'created_at' | 'updated_at'>
 ): Promise<TicketAttachment> {
-  const [data] = await db
-    .insert(attachmentsTable)
-    .values({
-      ticketId: attachment.ticket_id,
-      projectId: attachment.project_id,
-      userId: attachment.user_id,
-      filename: attachment.filename,
-      fileUrl: attachment.file_url,
-      fileSize: attachment.file_size,
-      fileType: attachment.file_type,
-    })
-    .returning();
+  const id = randomUUID();
+  const now = new Date().toISOString();
+  await TicketAttachmentsEntity.create({
+    id,
+    ticketId: attachment.ticket_id,
+    projectId: attachment.project_id ?? undefined,
+    userId: attachment.user_id,
+    filename: attachment.filename,
+    fileUrl: attachment.file_url,
+    fileSize: attachment.file_size,
+    fileType: attachment.file_type ?? undefined,
+  }).go();
   return {
-    id: data.id,
-    ticket_id: data.ticketId,
-    project_id: data.projectId,
-    user_id: data.userId,
-    filename: data.filename,
-    file_url: data.fileUrl,
-    file_size: data.fileSize,
-    file_type: data.fileType,
-    created_at: ts(data.createdAt),
-    updated_at: ts(data.updatedAt),
+    id,
+    ticket_id: attachment.ticket_id,
+    project_id: attachment.project_id,
+    user_id: attachment.user_id,
+    filename: attachment.filename,
+    file_url: attachment.file_url,
+    file_size: attachment.file_size,
+    file_type: attachment.file_type,
+    created_at: now,
+    updated_at: now,
   };
 }
 
 export async function deleteAttachment(id: string): Promise<void> {
-  await db.delete(attachmentsTable).where(eq(attachmentsTable.id, id));
+  await TicketAttachmentsEntity.delete({ id }).go();
 }
 
 // ─── Comments ────────────────────────────────────────────────────
 export async function getCommentsForTicket(ticketId: string): Promise<TicketComment[]> {
-  const rows = await db
-    .select()
-    .from(commentsTable)
-    .where(eq(commentsTable.ticketId, ticketId))
-    .orderBy(asc(commentsTable.createdAt));
-  return rows.map((row) => ({
+  const res = await TicketCommentsEntity.query.byTicket({ ticketId }).go();
+  return (res.data ?? []).map((row: any) => ({
     id: row.id,
     ticket_id: row.ticketId,
     project_id: row.projectId,
     user_id: row.userId,
     content: row.content,
-    created_at: ts(row.createdAt),
-    updated_at: ts(row.updatedAt),
-  }));
+    created_at: row.createdAt,
+    updated_at: row.updatedAt,
+  })).sort((a: any, b: any) => a.created_at.localeCompare(b.created_at));
 }
 
 export async function createComment(
   comment: Omit<TicketComment, 'id' | 'created_at' | 'updated_at'>
 ): Promise<TicketComment> {
-  const [data] = await db
-    .insert(commentsTable)
-    .values({
-      ticketId: comment.ticket_id,
-      projectId: comment.project_id,
-      userId: comment.user_id,
-      content: comment.content,
-    })
-    .returning();
+  const id = randomUUID();
+  const now = new Date().toISOString();
+  await TicketCommentsEntity.create({
+    id,
+    ticketId: comment.ticket_id,
+    projectId: comment.project_id ?? undefined,
+    userId: comment.user_id,
+    content: comment.content,
+  }).go();
   return {
-    id: data.id,
-    ticket_id: data.ticketId,
-    project_id: data.projectId,
-    user_id: data.userId,
-    content: data.content,
-    created_at: ts(data.createdAt),
-    updated_at: ts(data.updatedAt),
+    id,
+    ticket_id: comment.ticket_id,
+    project_id: comment.project_id,
+    user_id: comment.user_id,
+    content: comment.content,
+    created_at: now,
+    updated_at: now,
   };
 }
 
 export async function deleteComment(id: string): Promise<void> {
-  await db.delete(commentsTable).where(eq(commentsTable.id, id));
+  await TicketCommentsEntity.delete({ id }).go();
 }
 
 export async function updateComment(id: string, content: string): Promise<TicketComment> {
-  const [data] = await db
-    .update(commentsTable)
-    .set({ content, updatedAt: new Date() })
-    .where(eq(commentsTable.id, id))
-    .returning();
+  const now = new Date().toISOString();
+  await TicketCommentsEntity.update({ id }).set({ content, updatedAt: now }).go();
+  const res = await TicketCommentsEntity.get({ id }).go();
+  const data = res.data!;
   return {
     id: data.id,
     ticket_id: data.ticketId,
     project_id: data.projectId,
     user_id: data.userId,
     content: data.content,
-    created_at: ts(data.createdAt),
-    updated_at: ts(data.updatedAt),
+    created_at: data.createdAt,
+    updated_at: now,
   };
 }
 
@@ -1024,63 +944,52 @@ export interface TicketActivity {
 }
 
 export async function getActivitiesForTicket(ticketId: string): Promise<TicketActivity[]> {
-  const rows = await db
-    .select()
-    .from(activitiesTable)
-    .where(eq(activitiesTable.ticketId, ticketId))
-    .orderBy(desc(activitiesTable.createdAt));
-  return rows.map((row) => ({
+  const res = await TicketActivitiesEntity.query.byTicket({ ticketId }).go();
+  return (res.data ?? []).map((row: any) => ({
     id: row.id,
     ticket_id: row.ticketId,
     user_id: row.userId,
     action_type: row.actionType,
-    metadata: (row.metadata as Record<string, unknown>) ?? {},
-    created_at: ts(row.createdAt),
-  }));
+    metadata: row.metadata ?? {},
+    created_at: row.createdAt,
+  })).sort((a: any, b: any) => b.created_at.localeCompare(a.created_at));
 }
 
 export async function createActivity(
   activity: Omit<TicketActivity, 'id' | 'created_at'>
 ): Promise<TicketActivity> {
-  const [data] = await db
-    .insert(activitiesTable)
-    .values({
-      ticketId: activity.ticket_id,
-      userId: activity.user_id,
-      actionType: activity.action_type,
-      metadata: activity.metadata || {},
-    })
-    .returning();
-  if (!data) throw new Error('Failed to create activity');
+  const id = randomUUID();
+  const now = new Date().toISOString();
+  await TicketActivitiesEntity.create({
+    id,
+    ticketId: activity.ticket_id,
+    userId: activity.user_id,
+    actionType: activity.action_type,
+    metadata: activity.metadata || {},
+  }).go();
   return {
-    id: data.id,
-    ticket_id: data.ticketId,
-    user_id: data.userId,
-    action_type: data.actionType,
-    metadata: (data.metadata as Record<string, unknown>) ?? {},
-    created_at: ts(data.createdAt),
+    id,
+    ticket_id: activity.ticket_id,
+    user_id: activity.user_id,
+    action_type: activity.action_type,
+    metadata: activity.metadata || {},
+    created_at: now,
   };
 }
 
-// ─── Legacy compatibility (db.json style) ──────────────────────
-// These are kept so old code doesn't break during migration
+// ─── Legacy compatibility ──────────────────────────────────────
 export function loadDB() {
-  throw new Error('loadDB is deprecated — use Drizzle async functions');
+  throw new Error('loadDB is deprecated — use async DynamoDB functions');
 }
 
 export function saveDB() {
-  throw new Error('saveDB is deprecated — use Drizzle async functions');
+  throw new Error('saveDB is deprecated — use async DynamoDB functions');
 }
 
 // ─── Org-scoped functions ───────────────────────────────────────
-
 export async function getProjectsByOrg(orgId: string): Promise<Project[]> {
-  const rows = await db
-    .select()
-    .from(projectsTable)
-    .where(eq(projectsTable.orgId, orgId))
-    .orderBy(desc(projectsTable.createdAt));
-  return rows.map(rowToProject);
+  const res = await ProjectsEntity.query.byOrg({ orgId }).go();
+  return (res.data ?? []).map(entityToProject).sort((a: Project, b: Project) => b.createdAt.localeCompare(a.createdAt));
 }
 
 export async function getTicketsPaginated(
@@ -1093,38 +1002,25 @@ export async function getTicketsPaginated(
   } = {}
 ): Promise<{ tickets: Ticket[]; total: number }> {
   const { projectId, meetingId, limit = 50, offset = 0 } = options;
-  const conditions = [eq(ticketsTable.orgId, orgId)];
-  if (projectId) conditions.push(eq(ticketsTable.projectId, projectId));
-  if (meetingId) conditions.push(eq(ticketsTable.meetingId, meetingId));
+  const res = await TicketsEntity.query.byOrg({ orgId }).go();
+  let tickets = (res.data ?? []).map(entityToTicket);
 
-  const [rows, totalResult] = await Promise.all([
-    db
-      .select()
-      .from(ticketsTable)
-      .where(and(...conditions))
-      .orderBy(desc(ticketsTable.createdAt))
-      .limit(limit)
-      .offset(offset),
-    db
-      .select({ value: count() })
-      .from(ticketsTable)
-      .where(and(...conditions)),
-  ]);
+  if (projectId) tickets = tickets.filter((t: Ticket) => t.projectId === projectId);
+  if (meetingId) tickets = tickets.filter((t: Ticket) => t.meeting_id === meetingId);
 
-  return { tickets: rows.map(rowToTicket), total: totalResult[0]?.value ?? 0 };
+  tickets.sort((a: Ticket, b: Ticket) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
+  const total = tickets.length;
+  return { tickets: tickets.slice(offset, offset + limit), total };
 }
 
 // ─── Stale Ticket Detection ────────────────────────────────────
 export function isTicketStale(ticket: Ticket, staleDays: number = 7): boolean {
-  // Done tickets are never stale
   if (ticket.status === 'done') return false;
-
   const now = new Date();
   const updatedAt = ticket.updatedAt
     ? new Date(ticket.updatedAt)
     : new Date(ticket.createdAt || now);
   const daysSinceUpdate = (now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60 * 24);
-
   return daysSinceUpdate >= staleDays;
 }
 
@@ -1133,26 +1029,18 @@ export async function getStaleTickets(
   projectId?: string | null,
   staleDays: number = 7
 ): Promise<Ticket[]> {
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - staleDays);
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - staleDays);
+  const cutoffStr = cutoff.toISOString();
 
-  const conditions = [
-    eq(ticketsTable.orgId, orgId),
-    sql`${ticketsTable.status} != 'done'`,
-    sql`${ticketsTable.updatedAt} < ${sevenDaysAgo.toISOString()}`,
-  ];
-
-  if (projectId) {
-    conditions.push(eq(ticketsTable.projectId, projectId));
-  }
-
-  const rows = await db
-    .select()
-    .from(ticketsTable)
-    .where(and(...conditions))
-    .orderBy(asc(ticketsTable.updatedAt));
-
-  return rows.map(rowToTicket);
+  const res = await TicketsEntity.query.byOrg({ orgId }).go();
+  let tickets = (res.data ?? []).map(entityToTicket);
+  tickets = tickets.filter(
+    (t: Ticket) => t.status !== 'done' && (t.updatedAt ?? '') < cutoffStr
+  );
+  if (projectId) tickets = tickets.filter((t: Ticket) => t.projectId === projectId);
+  tickets.sort((a: Ticket, b: Ticket) => (a.updatedAt ?? '').localeCompare(b.updatedAt ?? ''));
+  return tickets;
 }
 
 export async function getMeetingsPaginated(
@@ -1160,68 +1048,53 @@ export async function getMeetingsPaginated(
   options: { projectId?: string | null; limit?: number; offset?: number } = {}
 ): Promise<{ meetings: Meeting[]; total: number }> {
   const { projectId, limit = 50, offset = 0 } = options;
-  const conditions = [eq(meetingsTable.orgId, orgId)];
-  if (projectId) {
-    conditions.push(eq(meetingsTable.projectId, projectId));
-  }
-
-  const [rows, totalResult] = await Promise.all([
-    db
-      .select()
-      .from(meetingsTable)
-      .where(and(...conditions))
-      .orderBy(desc(meetingsTable.date))
-      .limit(limit)
-      .offset(offset),
-    db
-      .select({ value: count() })
-      .from(meetingsTable)
-      .where(and(...conditions)),
-  ]);
-
-  return { meetings: rows.map(rowToMeeting), total: totalResult[0]?.value ?? 0 };
+  const res = await MeetingsEntity.query.byOrg({ orgId }).go();
+  let meetings = (res.data ?? []).map(entityToMeeting);
+  if (projectId) meetings = meetings.filter((m: Meeting) => m.projectId === projectId);
+  meetings.sort((a: Meeting, b: Meeting) => b.date.localeCompare(a.date));
+  const total = meetings.length;
+  return { meetings: meetings.slice(offset, offset + limit), total };
 }
 
 export async function saveProjectForOrg(project: Project & { org_id: string }): Promise<void> {
-  await db.insert(projectsTable).values({
+  await ProjectsEntity.create({
     id: project.id,
-    userId: project.user_id,
+    userId: project.user_id ?? undefined,
     orgId: project.org_id,
     name: project.name,
     repo: project.repo ?? '',
-    deployUrl: project.deployUrl ?? null,
+    deployUrl: project.deployUrl ?? undefined,
     branchBase: project.branchBase ?? '',
     agentTier: project.agentTier ?? 'standard',
-    meetingsArr: JSON.stringify(project.meetings ?? []),
-    specIds: JSON.stringify(project.ticketIds ?? []),
-    files: JSON.stringify(project.files ?? []),
+    meetings: project.meetings ?? [],
+    ticketIds: project.ticketIds ?? [],
+    files: project.files ?? [],
     context: project.context ?? '',
-  });
+  }).go();
 }
 
 export async function saveMeetingForOrg(meeting: Meeting & { org_id: string }): Promise<void> {
-  await db.insert(meetingsTable).values({
+  await MeetingsEntity.create({
     id: meeting.id,
-    userId: meeting.user_id,
+    userId: meeting.user_id ?? undefined,
     orgId: meeting.org_id,
-    projectId: meeting.projectId ?? null,
+    projectId: meeting.projectId ?? undefined,
     projectName: meeting.projectName,
     meetingId: meeting.meetingId,
-    meetingUrl: meeting.meeting_url ?? null,
+    meetingUrl: meeting.meeting_url ?? undefined,
     platform: meeting.platform,
     transcript: meeting.transcript ?? '',
     specsDetected: meeting.specsDetected,
     status: meeting.status,
-    botId: meeting.botId ?? null,
-    branchName: meeting.branchName ?? null,
-    deployUrl: meeting.deployUrl ?? null,
+    botId: meeting.botId ?? undefined,
+    branchName: meeting.branchName ?? undefined,
+    deployUrl: meeting.deployUrl ?? undefined,
     filePath: meeting.filePath ?? '',
     date: meeting.date,
-  });
+  }).go();
 }
 
 // ─── Project Members ────────────────────────────────────────────
-
 export interface ProjectMember {
   id: string;
   project_id: string;
@@ -1237,71 +1110,47 @@ export async function addProjectMember(
   userId: string,
   role: 'admin' | 'member' = 'member'
 ): Promise<void> {
-  await db
-    .insert(membersTable)
-    .values({ projectId, orgId, userId, role })
-    .onConflictDoUpdate({
-      target: [membersTable.projectId, membersTable.userId],
-      set: { role },
-    });
+  const existing = await ProjectMembersEntity.get({ projectId, userId }).go();
+  if (existing.data) {
+    await ProjectMembersEntity.update({ projectId, userId }).set({ role }).go();
+  } else {
+    await ProjectMembersEntity.create({
+      id: randomUUID(),
+      projectId,
+      orgId,
+      userId,
+      role,
+    }).go();
+  }
 }
 
 export async function removeProjectMember(projectId: string, userId: string): Promise<void> {
-  await db
-    .delete(membersTable)
-    .where(and(eq(membersTable.projectId, projectId), eq(membersTable.userId, userId)));
+  await ProjectMembersEntity.delete({ projectId, userId }).go();
 }
 
 export async function getProjectMembers(projectId: string): Promise<ProjectMember[]> {
-  const rows = await db
-    .select()
-    .from(membersTable)
-    .where(eq(membersTable.projectId, projectId))
-    .orderBy(asc(membersTable.createdAt));
-  return rows.map((row) => ({
-    id: row.id,
-    project_id: row.projectId,
-    org_id: row.orgId,
-    user_id: row.userId,
-    role: row.role as 'admin' | 'member',
-    created_at: ts(row.createdAt),
-  }));
+  const res = await ProjectMembersEntity.query.primary({ projectId }).go();
+  return (res.data ?? []).map(entityToProjectMember).sort((a: ProjectMember, b: ProjectMember) => a.created_at.localeCompare(b.created_at));
 }
 
 export async function getProjectsForMember(orgId: string, userId: string): Promise<Project[]> {
-  const memberRows = await db
-    .select({ projectId: membersTable.projectId })
-    .from(membersTable)
-    .where(and(eq(membersTable.orgId, orgId), eq(membersTable.userId, userId)));
+  const memberRes = await ProjectMembersEntity.query.byOrgUser({ orgId }).go();
+  const memberRows = (memberRes.data ?? []).filter((m: any) => m.userId === userId);
+  const memberProjectIds = memberRows.map((m: any) => m.projectId);
 
-  const projectIds = memberRows.map((r) => r.projectId);
-
-  const rows = await db
-    .select()
-    .from(projectsTable)
-    .where(
-      and(
-        eq(projectsTable.orgId, orgId),
-        projectIds.length > 0
-          ? or(eq(projectsTable.userId, userId), inArray(projectsTable.id, projectIds))
-          : eq(projectsTable.userId, userId)
-      )
-    )
-    .orderBy(desc(projectsTable.createdAt));
-  return rows.map(rowToProject);
+  const projectsRes = await ProjectsEntity.query.byOrg({ orgId }).go();
+  const rows = (projectsRes.data ?? []).filter(
+    (p: any) => p.userId === userId || memberProjectIds.includes(p.id)
+  );
+  return rows.map(entityToProject).sort((a: Project, b: Project) => b.createdAt.localeCompare(a.createdAt));
 }
 
 export async function isProjectMember(projectId: string, userId: string): Promise<boolean> {
-  const [row] = await db
-    .select({ id: membersTable.id })
-    .from(membersTable)
-    .where(and(eq(membersTable.projectId, projectId), eq(membersTable.userId, userId)))
-    .limit(1);
-  return !!row;
+  const res = await ProjectMembersEntity.get({ projectId, userId }).go();
+  return !!res.data;
 }
 
 // ─── Notifications ──────────────────────────────────────────────
-
 export interface Notification {
   id: string;
   user_id: string;
@@ -1317,27 +1166,28 @@ export interface Notification {
 export async function createNotification(
   values: Omit<Notification, 'id' | 'created_at' | 'read'>
 ): Promise<Notification> {
-  const [row] = await db
-    .insert(notificationsTable)
-    .values({
-      userId: values.user_id,
-      orgId: values.org_id,
-      type: values.type,
-      title: values.title,
-      message: values.message ?? null,
-      ticketId: values.ticket_id ?? null,
-    })
-    .returning();
-  const notification = {
-    id: row.id,
-    user_id: row.userId,
-    org_id: row.orgId,
-    type: row.type as Notification['type'],
-    title: row.title,
-    message: row.message ?? undefined,
-    ticket_id: row.ticketId ?? undefined,
-    read: row.read ?? false,
-    created_at: ts(row.createdAt),
+  const id = randomUUID();
+  const now = new Date().toISOString();
+  await NotificationsEntity.create({
+    id,
+    userId: values.user_id,
+    orgId: values.org_id,
+    type: values.type,
+    title: values.title,
+    message: values.message,
+    ticketId: values.ticket_id,
+    read: false,
+  }).go();
+  const notification: Notification = {
+    id,
+    user_id: values.user_id,
+    org_id: values.org_id,
+    type: values.type as Notification['type'],
+    title: values.title,
+    message: values.message ?? undefined,
+    ticket_id: values.ticket_id ?? undefined,
+    read: false,
+    created_at: now,
   };
   broadcast({
     type: 'notification_new',
@@ -1357,54 +1207,37 @@ export async function getNotificationsForUser(
   orgId: string,
   limit = 20
 ): Promise<Notification[]> {
-  const rows = await db
-    .select()
-    .from(notificationsTable)
-    .where(and(eq(notificationsTable.userId, userId), eq(notificationsTable.orgId, orgId)))
-    .orderBy(desc(notificationsTable.createdAt))
-    .limit(limit);
-  return rows.map((row) => ({
-    id: row.id,
-    user_id: row.userId,
-    org_id: row.orgId,
-    type: row.type as Notification['type'],
-    title: row.title,
-    message: row.message ?? undefined,
-    ticket_id: row.ticketId ?? undefined,
-    read: row.read ?? false,
-    created_at: ts(row.createdAt),
-  }));
+  const res = await NotificationsEntity.query.primary({ userId }).go();
+  const all = (res.data ?? []).map(entityToNotification);
+  const filtered = all.filter((n: Notification) => n.org_id === orgId);
+  filtered.sort((a: Notification, b: Notification) => b.created_at.localeCompare(a.created_at));
+  return filtered.slice(0, limit);
 }
 
 export async function getUnreadNotificationCount(userId: string, orgId: string): Promise<number> {
-  const [row] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(notificationsTable)
-    .where(
-      and(
-        eq(notificationsTable.userId, userId),
-        eq(notificationsTable.orgId, orgId),
-        eq(notificationsTable.read, false)
-      )
-    );
-  return Number(row?.count ?? 0);
+  const res = await NotificationsEntity.query.primary({ userId }).go();
+  const all = (res.data ?? []).map(entityToNotification);
+  return all.filter((n: Notification) => n.org_id === orgId && !n.read).length;
 }
 
 export async function markNotificationAsRead(id: string): Promise<void> {
-  await db.update(notificationsTable).set({ read: true }).where(eq(notificationsTable.id, id));
+  // Need to fetch first to get the key components
+  const allRes = await NotificationsEntity.scan.go();
+  const notif = (allRes.data ?? []).find((n: any) => n.id === id);
+  if (!notif) return;
+  await NotificationsEntity.update({ userId: notif.userId, orgId: notif.orgId, createdAt: notif.createdAt })
+    .set({ read: true })
+    .go();
 }
 
 export async function markAllNotificationsAsRead(userId: string, orgId: string): Promise<void> {
-  await db
-    .update(notificationsTable)
-    .set({ read: true })
-    .where(
-      and(
-        eq(notificationsTable.userId, userId),
-        eq(notificationsTable.orgId, orgId),
-        eq(notificationsTable.read, false)
-      )
-    );
+  const res = await NotificationsEntity.query.primary({ userId }).go();
+  const unread = (res.data ?? []).filter((n: any) => n.orgId === orgId && !n.read);
+  for (const n of unread) {
+    await NotificationsEntity.update({ userId: n.userId, orgId: n.orgId, createdAt: n.createdAt })
+      .set({ read: true })
+      .go();
+  }
 }
 
 // Notification Helpers
@@ -1492,26 +1325,19 @@ export async function notifyMeetingReady(
 }
 
 // Extract @mentions from comment content
-// Supports format: @[User Name](userId) or @userId
 export function extractMentions(content: string): string[] {
   const mentions: string[] = [];
-
-  // Match @[name](userId) format (from rich text editors)
   const richMentionRegex = /@\[([^\]]+)\]\(([^)]+)\)/g;
   let match;
   while ((match = richMentionRegex.exec(content)) !== null) {
-    mentions.push(match[2]); // userId
+    mentions.push(match[2]);
   }
-
-  // Match @userId format (plain text)
   const plainMentionRegex = /@([a-zA-Z0-9_-]+)/g;
   while ((match = plainMentionRegex.exec(content)) !== null) {
     const userId = match[1];
-    // Only add if looks like a valid userId (not already added from rich format)
     if (!mentions.includes(userId) && userId.length > 10) {
       mentions.push(userId);
     }
   }
-
-  return [...new Set(mentions)]; // Remove duplicates
+  return [...new Set(mentions)];
 }

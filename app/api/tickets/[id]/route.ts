@@ -13,9 +13,7 @@ import {
 } from '@/lib/db';
 import { broadcast } from '@/lib/event-bus';
 import { requireAuth } from '@/lib/rbac';
-import { db } from '@/db/index';
-import { tickets as ticketsTable } from '@/db/schema';
-import { inArray } from 'drizzle-orm';
+import { TicketsEntity } from '@/db/entities';
 
 const allowedStatuses = new Set(['backlog', 'in_progress', 'done', 'blocked']);
 
@@ -81,13 +79,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         ...new Set([...hardParents, ...softParents].map((d) => d.depends_on_ticket_id)),
       ];
 
-      const parentTickets =
-        parentIds.length > 0
-          ? await db
-              .select({ id: ticketsTable.id, status: ticketsTable.status })
-              .from(ticketsTable)
-              .where(inArray(ticketsTable.id, parentIds))
-          : [];
+      const parentTickets: { id: string; status: string }[] = [];
+      for (const pid of parentIds) {
+        const t = await getTicketById(pid);
+        if (t) parentTickets.push({ id: t.id, status: t.status });
+      }
 
       const unresolvedHard = hardParents.filter((dep) => {
         const parent = parentTickets.find((t) => t.id === dep.depends_on_ticket_id);

@@ -9,9 +9,7 @@ import {
   type DependencyType,
   type DependencyStrength,
 } from '@/lib/db';
-import { db } from '@/db/index';
-import { ticketDependencies } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { TicketDependenciesEntity } from '@/db/entities';
 
 const DEP_TYPES = new Set<DependencyType>(['data', 'structural', 'logical', 'resource']);
 const DEP_STRENGTHS = new Set<DependencyStrength>(['soft', 'hard']);
@@ -99,12 +97,12 @@ export async function PATCH(
       return NextResponse.json({ error: 'No valid updates provided' }, { status: 400 });
     }
 
-    // Map snake_case keys to Drizzle camelCase columns
-    const drizzleSet: Record<string, unknown> = { updatedAt: new Date() };
-    if (updates.dependency_type) drizzleSet.dependencyType = updates.dependency_type;
-    if (updates.strength) drizzleSet.strength = updates.strength;
-    if (typeof updates.note !== 'undefined') drizzleSet.note = updates.note;
-    await db.update(ticketDependencies).set(drizzleSet).where(eq(ticketDependencies.id, depId));
+    // Map snake_case keys to ElectroDB camelCase attributes
+    const entitySet: Record<string, unknown> = { updatedAt: new Date().toISOString() };
+    if (updates.dependency_type) entitySet.dependencyType = updates.dependency_type;
+    if (updates.strength) entitySet.strength = updates.strength;
+    if (typeof updates.note !== 'undefined') entitySet.note = updates.note;
+    await TicketDependenciesEntity.update({ id: depId }).set(entitySet).go();
 
     // Log activity
     await createActivity({
