@@ -160,6 +160,10 @@ function ProjectContent() {
     await loadScopedWorkspace(projectId);
   }, [projectId, loadScopedWorkspace]);
 
+  const refreshProjects = useCallback(async () => {
+    await loadProjects();
+  }, [loadProjects]);
+
   function handleTabChange(tab: ProjectTab) {
     if (!projectId) return;
     setPreferredTab(tab);
@@ -301,6 +305,7 @@ function ProjectContent() {
                 onCreateProject={() => setIsProjectCreateOpen(true)}
                 onDeleteProject={handleDeleteProject}
                 onRefresh={refreshWorkspace}
+                onProjectsRefresh={refreshProjects}
               />
             </div>
           )}

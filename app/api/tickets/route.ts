@@ -11,6 +11,7 @@ import {
   updateTicketStatus,
 } from '@/lib/db';
 import { TicketsEntity } from '@/db/entities';
+import { broadcastToOrg } from '@/lib/event-bus';
 
 function parsePositiveInt(value: string | null, fallback: number): number {
   const parsed = Number.parseInt(value ?? '', 10);
@@ -68,7 +69,7 @@ export async function GET(req: NextRequest) {
         limit,
         offset,
         hasMore: offset + sliced.length < tickets.length,
-      }, { headers: { 'Cache-Control': 'private, max-age=10, stale-while-revalidate=30' } });
+      }, { headers: { 'Cache-Control': 'no-store' } });
     }
 
     return NextResponse.json(
@@ -97,7 +98,7 @@ export async function GET(req: NextRequest) {
         offset,
         hasMore: offset + tickets.length < total,
       },
-      { headers: { 'Cache-Control': 'private, max-age=10, stale-while-revalidate=30' } }
+      { headers: { 'Cache-Control': 'no-store' } }
     );
   } catch (error) {
     console.error('Failed to fetch tickets:', error);
@@ -203,6 +204,15 @@ export async function PATCH(req: NextRequest) {
 
       const previousStatus = ticketById.get(ticketId)?.status;
       await updateTicketStatus(ticketId, status);
+      broadcastToOrg(orgId ?? '', {
+        type: 'ticket_updated',
+        payload: {
+          ticketId,
+          projectId: ticketById.get(ticketId)?.projectId ?? null,
+          meetingId: ticketById.get(ticketId)?.meeting_id ?? null,
+          changes: { status },
+        },
+      });
 
       if (previousStatus === 'done' && status !== 'done') {
         await cascadeDepRegressionForParent(ticketId);

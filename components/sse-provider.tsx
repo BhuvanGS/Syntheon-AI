@@ -65,6 +65,31 @@ export function SseProvider({ children }: { children: React.ReactNode }) {
         listenersRef.current.get('ticket_updated')?.forEach((cb) => cb(data));
       });
 
+      source.addEventListener('ticket_created', (e) => {
+        const data = JSON.parse((e as MessageEvent).data) as Record<string, unknown>;
+        listenersRef.current.get('ticket_created')?.forEach((cb) => cb(data));
+      });
+
+      source.addEventListener('ticket_deleted', (e) => {
+        const data = JSON.parse((e as MessageEvent).data) as Record<string, unknown>;
+        listenersRef.current.get('ticket_deleted')?.forEach((cb) => cb(data));
+      });
+
+      source.addEventListener('project_created', (e) => {
+        const data = JSON.parse((e as MessageEvent).data) as Record<string, unknown>;
+        listenersRef.current.get('project_created')?.forEach((cb) => cb(data));
+      });
+
+      source.addEventListener('project_updated', (e) => {
+        const data = JSON.parse((e as MessageEvent).data) as Record<string, unknown>;
+        listenersRef.current.get('project_updated')?.forEach((cb) => cb(data));
+      });
+
+      source.addEventListener('project_deleted', (e) => {
+        const data = JSON.parse((e as MessageEvent).data) as Record<string, unknown>;
+        listenersRef.current.get('project_deleted')?.forEach((cb) => cb(data));
+      });
+
       source.addEventListener('notification_new', (e) => {
         const data = JSON.parse((e as MessageEvent).data) as Record<string, unknown>;
         listenersRef.current.get('notification_new')?.forEach((cb) => cb(data));

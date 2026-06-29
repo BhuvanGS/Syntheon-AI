@@ -21,6 +21,43 @@ export type SseEvent =
       };
     }
   | {
+      type: 'ticket_created';
+      payload: {
+        ticketId: string;
+        projectId?: string | null;
+        meetingId?: string | null;
+        title: string;
+      };
+    }
+  | {
+      type: 'ticket_deleted';
+      payload: {
+        ticketId: string;
+        projectId?: string | null;
+      };
+    }
+  | {
+      type: 'project_created';
+      payload: {
+        projectId: string;
+        name: string;
+      };
+    }
+  | {
+      type: 'project_updated';
+      payload: {
+        projectId: string;
+        name?: string;
+        context?: string;
+      };
+    }
+  | {
+      type: 'project_deleted';
+      payload: {
+        projectId: string;
+      };
+    }
+  | {
       type: 'notification_new';
       payload: {
         userId: string;

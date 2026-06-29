@@ -38,6 +38,7 @@ import { TicketDependencyPanel } from '@/components/ticket-dependency-panel';
 import { DependencyBlockerModal } from '@/components/dependency-blocker-modal';
 import { DateRangePicker } from '@/components/date-range-picker';
 import { MentionEditor } from '@/components/mention-editor';
+import { useSse } from '@/components/sse-provider';
 import { format, parseISO, isToday, isPast, isTomorrow } from 'date-fns';
 
 type TicketStatus = 'backlog' | 'in_progress' | 'done' | 'blocked';
@@ -116,6 +117,8 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
   const [ticketToDelete, setTicketToDelete] = useState<Ticket | null>(null);
   const [deletingTicketId, setDeletingTicketId] = useState<string | null>(null);
 
+  const { on: sseOn, off: sseOff } = useSse();
+
   // Dependency blocker modal state
   const [blockerModalOpen, setBlockerModalOpen] = useState(false);
   const [blockerModalData, setBlockerModalData] = useState<{
@@ -178,6 +181,25 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
       setLoading(false);
     }
   }
+
+  // Real-time refresh via SSE
+  useEffect(() => {
+    const handleRefresh = () => {
+      void fetchAll();
+    };
+    sseOn('ticket_created', handleRefresh);
+    sseOn('ticket_updated', handleRefresh);
+    sseOn('ticket_deleted', handleRefresh);
+    sseOn('project_updated', handleRefresh);
+    sseOn('project_deleted', handleRefresh);
+    return () => {
+      sseOff('ticket_created', handleRefresh);
+      sseOff('ticket_updated', handleRefresh);
+      sseOff('ticket_deleted', handleRefresh);
+      sseOff('project_updated', handleRefresh);
+      sseOff('project_deleted', handleRefresh);
+    };
+  }, [sseOn, sseOff]);
 
   function openTicketEditor(ticket: Ticket) {
     setTicketToEdit(ticket);

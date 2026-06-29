@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { deleteProject, getProjectById, updateProject } from '@/lib/db';
 import { requireAuth, isOrgAdmin, canAdminProject } from '@/lib/rbac';
+import { broadcastToOrg } from '@/lib/event-bus';
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -55,6 +56,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     await updateProject(id, updates);
     const updated = await getProjectById(id);
+    broadcastToOrg(ctx.orgId, { type: 'project_updated', payload: { projectId: id, name: updated?.name, context: updated?.context } });
     return NextResponse.json({ success: true, project: updated });
   } catch (error) {
     console.error('Failed to update project:', error);
@@ -75,6 +77,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     }
 
     await deleteProject(id);
+    broadcastToOrg(ctx.orgId, { type: 'project_deleted', payload: { projectId: id } });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Failed to delete project:', error);

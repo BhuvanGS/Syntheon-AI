@@ -15,7 +15,7 @@
     "sst:deploy": "sst deploy",
     "sst:remove": "sst remove",
     "db:local": "DYNAMODB_ENDPOINT=http://localhost:8000 AWS_ACCESS_KEY_ID=local AWS_SECRET_ACCESS_KEY=local npx tsx scripts/create-local-tables.ts",
-    "dev:local": "DYNAMODB_ENDPOINT=http://localhost:8000 AWS_ACCESS_KEY_ID=local AWS_SECRET_ACCESS_KEY=local npm run dev"
+    "dev:local": "DYNAMODB_ENDPOINT=http://localhost:8000 AWS_ACCESS_KEY_ID=local AWS_SECRET_ACCESS_KEY=local NEXT_PUBLIC_APP_URL=http://localhost:3000 npm run dev"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1075.0",

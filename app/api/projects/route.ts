@@ -11,6 +11,7 @@ import {
 import { requireAuth, isOrgAdmin } from '@/lib/rbac';
 import { ensureUser } from '@/lib/ensureUser';
 import { currentUser } from '@clerk/nextjs/server';
+import { broadcastToOrg } from '@/lib/event-bus';
 
 export async function GET(req: NextRequest) {
   try {
@@ -39,7 +40,7 @@ export async function GET(req: NextRequest) {
       : await getProjectsForMember(orgId, userId);
     return NextResponse.json(projects, {
       headers: {
-        'Cache-Control': 'private, max-age=60', // Cache for 60 seconds
+        'Cache-Control': 'no-store',
       },
     });
   } catch (error) {
@@ -97,6 +98,8 @@ export async function POST(req: NextRequest) {
 
     // Creator is auto-added as project admin
     await addProjectMember(projectId, orgId, userId, 'admin');
+
+    broadcastToOrg(orgId, { type: 'project_created', payload: { projectId, name } });
 
     return NextResponse.json({
       success: true,

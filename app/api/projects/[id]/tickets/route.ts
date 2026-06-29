@@ -10,6 +10,7 @@ import {
   createActivity,
   createNotification,
 } from '@/lib/db';
+import { broadcastToOrg } from '@/lib/event-bus';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -97,6 +98,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     ]);
 
     await addTicketsToProject(projectId, [ticketId]);
+
+    broadcastToOrg(orgId ?? '', { type: 'ticket_created', payload: { ticketId, projectId, meetingId: resolvedMeetingId, title } });
 
     // Log activity for ticket creation
     await createActivity({

@@ -11,7 +11,7 @@ import {
   createNotification,
   notifyTicketStatusChanged,
 } from '@/lib/db';
-import { broadcast } from '@/lib/event-bus';
+import { broadcastToOrg } from '@/lib/event-bus';
 import { requireAuth } from '@/lib/rbac';
 import { TicketsEntity } from '@/db/entities';
 
@@ -134,7 +134,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const previousStatus = ticket.status;
     const previousAssignee = ticket.assignee;
     await updateTicket(id, updates);
-    broadcast({
+    broadcastToOrg(orgId ?? '', {
       type: 'ticket_updated',
       payload: {
         ticketId: id,
@@ -271,6 +271,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     }
 
     await deleteTicketById(id);
+    broadcastToOrg(ctx.orgId, { type: 'ticket_deleted', payload: { ticketId: id, projectId: ticket.projectId } });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Failed to delete ticket:', error);

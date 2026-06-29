@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
       },
       {
         headers: {
-          'Cache-Control': 'private, max-age=10, stale-while-revalidate=30',
+          'Cache-Control': 'no-store',
         },
       }
     );

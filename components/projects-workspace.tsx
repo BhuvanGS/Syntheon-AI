@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useOrganization, useUser } from '@clerk/nextjs';
 import { useSse } from '@/components/sse-provider';
-import { useProjectTickets } from '@/lib/swr';
 
 const ORG_QUERY_CONFIG = {
   memberships: { infinite: true, pageSize: 50 },
@@ -169,6 +168,7 @@ interface ProjectsWorkspaceProps {
   onCreateProject: () => void;
   onDeleteProject: (projectId: string) => Promise<void> | void;
   onRefresh: () => Promise<void> | void;
+  onProjectsRefresh?: () => Promise<void> | void;
   showHeader?: boolean;
 }
 
@@ -184,6 +184,7 @@ export function ProjectsWorkspace({
   onCreateProject,
   onDeleteProject,
   onRefresh,
+  onProjectsRefresh,
   showHeader = true,
 }: ProjectsWorkspaceProps) {
   const { membership, memberships, invitations } = useOrganization(ORG_QUERY_CONFIG);
@@ -192,6 +193,7 @@ export function ProjectsWorkspace({
   const [kanbanAssigneeFilter, setKanbanAssigneeFilter] = useState<'all' | 'unassigned' | 'mine'>(
     'all'
   );
+  const [optimisticTicketOverrides, setOptimisticTicketOverrides] = useState<Record<string, Partial<Ticket>>>({});
   const [projectTab, setProjectTab] = useState<ProjectTab>('kanban');
   const [meetingsViewMode, setMeetingsViewMode] = useState<'list' | 'calendar'>('list');
 
@@ -310,21 +312,19 @@ export function ProjectsWorkspace({
   }, [meetings, selectedProject?.id, selectedProject?.meetings]);
 
   const projectTickets = useMemo(
-    () => tickets.filter((ticket) => ticket.projectId === selectedProject?.id),
-    [tickets, selectedProject?.id]
-  );
-
-  const { tickets: swrProjectTickets, mutate: mutateSwrProjectTickets } = useProjectTickets(
-    selectedProject?.id,
-    projectTickets
+    () =>
+      tickets
+        .filter((ticket) => ticket.projectId === selectedProject?.id)
+        .map((ticket) => ({ ...ticket, ...optimisticTicketOverrides[ticket.id] })),
+    [tickets, selectedProject?.id, optimisticTicketOverrides]
   );
 
   const rootProjectTickets = useMemo(() => {
-    const base = swrProjectTickets.filter((ticket) => !ticket.dependency_ticket_id);
+    const base = projectTickets.filter((ticket) => !ticket.dependency_ticket_id);
     if (kanbanAssigneeFilter === 'unassigned') return base.filter((t) => !t.assignee_user_id);
     if (kanbanAssigneeFilter === 'mine') return base.filter((t) => t.assignee_user_id === user?.id);
     return base;
-  }, [swrProjectTickets, kanbanAssigneeFilter, user?.id]);
+  }, [projectTickets, kanbanAssigneeFilter, user?.id]);
 
   const totalTickets = projectTickets.length;
 
@@ -411,7 +411,7 @@ export function ProjectsWorkspace({
 
   useEffect(() => {
     setTicketStageMap((prev) => {
-      const validTicketIds = new Set(swrProjectTickets.map((ticket) => ticket.id));
+      const validTicketIds = new Set(projectTickets.map((ticket) => ticket.id));
       const validStageIds = new Set(stages.map((stage) => stage.id));
       const next: Record<string, string> = {};
 
@@ -421,7 +421,7 @@ export function ProjectsWorkspace({
         next[ticketId] = stageId;
       }
 
-      for (const ticket of swrProjectTickets) {
+      for (const ticket of projectTickets) {
         if (next[ticket.id]) continue;
         const fallbackStage = stages.find((stage) => stage.status === ticket.status) ?? stages[0];
         if (fallbackStage) {
@@ -435,7 +435,7 @@ export function ProjectsWorkspace({
 
       return changed ? next : prev;
     });
-  }, [swrProjectTickets, stages]);
+  }, [projectTickets, stages]);
 
   function toggleExpanded(ticketId: string) {
     setExpandedTicketIds((prev) => ({ ...prev, [ticketId]: !prev[ticketId] }));
@@ -501,7 +501,7 @@ export function ProjectsWorkspace({
     stage: StageConfig,
     skipRefresh = false
   ): Promise<boolean> {
-    const ticket = swrProjectTickets.find((entry) => entry.id === ticketId);
+    const ticket = projectTickets.find((entry) => entry.id === ticketId);
     if (!ticket) return false;
 
     let moved = true;
@@ -518,7 +518,7 @@ export function ProjectsWorkspace({
           // Show blocker modal instead of alert
           const blockersWithTitles = (data?.blockers || []).map((b: any) => ({
             ...b,
-            title: swrProjectTickets.find((t) => t.id === b.depends_on)?.title,
+            title: projectTickets.find((t) => t.id === b.depends_on)?.title,
           }));
           setBlockerModalData({
             message: data?.message || 'Blocked by unresolved hard dependencies.',
@@ -538,7 +538,7 @@ export function ProjectsWorkspace({
         } else if (res.status === 422 && data?.error === 'soft_blocked') {
           const blockersWithTitles = (data?.blockers || []).map((b: any) => ({
             ...b,
-            title: swrProjectTickets.find((t) => t.id === b.depends_on)?.title,
+            title: projectTickets.find((t) => t.id === b.depends_on)?.title,
           }));
           setBlockerModalData({
             message: data?.message || 'Unresolved soft dependencies.',
@@ -862,7 +862,7 @@ export function ProjectsWorkspace({
         if (res.status === 422 && data?.error === 'soft_blocked') {
           const blockersWithTitles = (data?.blockers || []).map((b: any) => ({
             ...b,
-            title: swrProjectTickets.find((t) => t.id === b.depends_on)?.title,
+            title: projectTickets.find((t) => t.id === b.depends_on)?.title,
           }));
           setBlockerModalData({
             message: data?.message || 'This move has unresolved soft dependencies.',
@@ -1074,24 +1074,28 @@ export function ProjectsWorkspace({
   async function handleKanbanDrop(ticketId: string, stageId: string) {
     const stage = stages.find((entry) => entry.id === stageId);
     if (!stage) return;
-    const ticket = swrProjectTickets.find((t) => t.id === ticketId);
+    const ticket = projectTickets.find((t) => t.id === ticketId);
     if (!ticket || ticket.status === stage.status) return;
 
-    // Optimistically update the SWR cache so the UI feels instant
-    const optimisticTickets = swrProjectTickets.map((t) =>
-      t.id === ticketId ? { ...t, status: stage.status } : t
-    );
-    await mutateSwrProjectTickets(optimisticTickets, false);
+    // Optimistically update local state so the UI feels instant
+    setOptimisticTicketOverrides((prev) => ({
+      ...prev,
+      [ticketId]: { ...prev[ticketId], status: stage.status },
+    }));
 
     const moved = await moveTicketToStage(ticketId, stage, true);
 
+    // Clear optimistic override — onRefresh will bring server truth
+    setOptimisticTicketOverrides((prev) => {
+      const next = { ...prev };
+      delete next[ticketId];
+      return next;
+    });
+
     if (moved) {
-      // Revalidate in background to confirm the server state
-      await mutateSwrProjectTickets();
       await onRefresh?.();
     } else {
-      // Rollback the optimistic update on block/error
-      await mutateSwrProjectTickets();
+      await onRefresh?.();
     }
   }
 
@@ -1113,7 +1117,11 @@ export function ProjectsWorkspace({
         throw new Error(data?.error || 'Failed to update project');
       }
 
-      await onRefresh();
+      if (onProjectsRefresh) {
+        await onProjectsRefresh();
+      } else {
+        await onRefresh();
+      }
       setIsRenameProjectOpen(false);
       showToast('Project updated', 'success');
     } finally {
@@ -1140,7 +1148,11 @@ export function ProjectsWorkspace({
         throw new Error(data?.error || 'Failed to update project');
       }
 
-      await onRefresh();
+      if (onProjectsRefresh) {
+        await onProjectsRefresh();
+      } else {
+        await onRefresh();
+      }
       showToast('Project settings saved', 'success');
     } catch (err: any) {
       showToast(err.message || 'Failed to save settings', 'error');
@@ -1167,26 +1179,64 @@ export function ProjectsWorkspace({
     setProjectTab(preferredTab);
   }, [preferredTab]);
 
-  // Real-time refresh via SSE instead of 5s polling
+  // Real-time refresh via SSE
   useEffect(() => {
-    if (!selectedProject) return;
+    const handleProjectsRefresh = () => {
+      void onProjectsRefresh?.();
+    };
 
-    const handleRefresh = () => {
+    const handleWorkspaceRefresh = () => {
       void onRefresh();
     };
 
-    // Don't listen to ticket_updated - UI has optimistic updates, no need to refetch our own changes
-    // Only listen to meeting events since they happen server-side
-    on('meeting_status_changed', handleRefresh);
-    on('meeting_ready', handleRefresh);
-    on('meeting_failed', handleRefresh);
+    // Project events — refresh project list
+    on('project_created', handleProjectsRefresh);
+    on('project_updated', handleProjectsRefresh);
+    on('project_deleted', handleProjectsRefresh);
+
+    // Meeting events — refresh workspace (meetings + tickets)
+    if (selectedProject) {
+      on('meeting_status_changed', handleWorkspaceRefresh);
+      on('meeting_ready', handleWorkspaceRefresh);
+      on('meeting_failed', handleWorkspaceRefresh);
+    }
+
+    // Ticket events — refresh workspace if ticket belongs to current project
+    const handleTicketUpdated = (data: Record<string, unknown>) => {
+      const eventProjectId = data.projectId as string | null | undefined;
+      if (!eventProjectId || eventProjectId === selectedProjectId) {
+        void onRefresh();
+      }
+    };
+    const handleTicketCreated = (data: Record<string, unknown>) => {
+      const eventProjectId = data.projectId as string | null | undefined;
+      if (!eventProjectId || eventProjectId === selectedProjectId) {
+        void onRefresh();
+      }
+    };
+    const handleTicketDeleted = (data: Record<string, unknown>) => {
+      const eventProjectId = data.projectId as string | null | undefined;
+      if (!eventProjectId || eventProjectId === selectedProjectId) {
+        void onRefresh();
+      }
+    };
+
+    on('ticket_updated', handleTicketUpdated);
+    on('ticket_created', handleTicketCreated);
+    on('ticket_deleted', handleTicketDeleted);
 
     return () => {
-      off('meeting_status_changed', handleRefresh);
-      off('meeting_ready', handleRefresh);
-      off('meeting_failed', handleRefresh);
+      off('project_created', handleProjectsRefresh);
+      off('project_updated', handleProjectsRefresh);
+      off('project_deleted', handleProjectsRefresh);
+      off('meeting_status_changed', handleWorkspaceRefresh);
+      off('meeting_ready', handleWorkspaceRefresh);
+      off('meeting_failed', handleWorkspaceRefresh);
+      off('ticket_updated', handleTicketUpdated);
+      off('ticket_created', handleTicketCreated);
+      off('ticket_deleted', handleTicketDeleted);
     };
-  }, [on, off, onRefresh, selectedProject]);
+  }, [on, off, onRefresh, onProjectsRefresh, selectedProject, selectedProjectId]);
 
   if (!selectedProject) {
     return (
