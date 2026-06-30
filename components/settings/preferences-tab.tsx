@@ -19,73 +19,87 @@ export function PreferencesTab() {
   ];
 
   return (
-    <div className="p-6 lg:p-8">
-      <div className="mb-6">
-        <h2 className="text-2xl font-semibold text-foreground">Preferences</h2>
-        <p className="text-sm text-muted-foreground mt-1">Customize your workspace appearance</p>
+    <div className="p-6 lg:p-10">
+      {/* Page Header */}
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="h-10 w-10 rounded-xl bg-purple-500/10 flex items-center justify-center shrink-0">
+            <Palette className="h-5 w-5 text-purple-500" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-playfair font-bold text-foreground">Preferences</h2>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Customize your workspace appearance
+            </p>
+          </div>
+        </div>
       </div>
 
-      <Card className="border-border/60 shadow-none">
-        <CardHeader className="pb-4">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-purple-500/10 flex items-center justify-center shrink-0">
-              <Palette className="h-5 w-5 text-purple-500" />
+      <div className="space-y-4">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Appearance
+        </p>
+
+        <Card className="border-border/60 shadow-none">
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-purple-500/10 flex items-center justify-center shrink-0">
+                <Palette className="h-5 w-5 text-purple-500" />
+              </div>
+              <div>
+                <CardTitle className="text-sm font-semibold">Theme</CardTitle>
+                <CardDescription className="text-xs mt-0.5">
+                  Choose your preferred theme
+                </CardDescription>
+              </div>
             </div>
-            <div>
-              <CardTitle className="text-sm font-semibold">Appearance</CardTitle>
-              <CardDescription className="text-xs mt-0.5">
-                Choose your preferred theme
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <Separator />
-        <CardContent className="pt-6">
-          <RadioGroup value={theme} onValueChange={setTheme}>
-            <div className="space-y-3">
-              {themes.map((t) => {
-                const Icon = t.icon;
-                const isSelected = theme === t.value;
-                return (
-                  <div
-                    key={t.value}
-                    className={cn(
-                      'flex items-center gap-3 rounded-lg border px-4 py-3 cursor-pointer transition-colors',
-                      isSelected
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border/60 hover:border-border/80'
-                    )}
-                    onClick={() => setTheme(t.value)}
-                  >
-                    <RadioGroupItem value={t.value} id={t.value} />
-                    <div className="flex items-center gap-3 flex-1">
+          </CardHeader>
+          <Separator />
+          <CardContent className="pt-6">
+            <RadioGroup value={theme} onValueChange={setTheme}>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {themes.map((t) => {
+                  const Icon = t.icon;
+                  const isSelected = theme === t.value;
+                  return (
+                    <div
+                      key={t.value}
+                      className={cn(
+                        'flex flex-col items-center gap-3 rounded-xl border px-4 py-5 cursor-pointer transition-all duration-200',
+                        isSelected
+                          ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
+                          : 'border-border/60 hover:border-border hover:bg-muted/30'
+                      )}
+                      onClick={() => setTheme(t.value)}
+                    >
                       <div
                         className={cn(
-                          'h-9 w-9 rounded-lg flex items-center justify-center shrink-0',
+                          'h-12 w-12 rounded-xl flex items-center justify-center shrink-0 transition-colors',
                           isSelected ? 'bg-primary/10' : 'bg-muted/50'
                         )}
                       >
                         <Icon
                           className={cn(
-                            'h-4 w-4',
+                            'h-5 w-5',
                             isSelected ? 'text-primary' : 'text-muted-foreground'
                           )}
                         />
                       </div>
-                      <div>
+                      <div className="text-center">
                         <Label htmlFor={t.value} className="text-sm font-medium cursor-pointer">
                           {t.label}
                         </Label>
-                        <p className="text-xs text-muted-foreground">{t.description}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">{t.description}</p>
                       </div>
+                      <RadioGroupItem value={t.value} id={t.value} className="sr-only" />
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          </RadioGroup>
-        </CardContent>
-      </Card>
+                  );
+                })}
+              </div>
+            </RadioGroup>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

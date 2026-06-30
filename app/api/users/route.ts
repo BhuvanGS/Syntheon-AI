@@ -24,11 +24,13 @@ export async function GET(req: NextRequest) {
         const lastName = member.publicUserData?.lastName || '';
         const fullName = `${firstName} ${lastName}`.trim();
         const email = member.publicUserData?.identifier || '';
+        const username = member.publicUserData?.username || '';
 
         return {
           id: member.publicUserData?.userId || '',
-          name: fullName || email.split('@')[0],
+          name: fullName || username || email.split('@')[0],
           email,
+          username,
           imageUrl: member.publicUserData?.imageUrl,
         };
       })

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { OrganizationMetadataEntity } from '@/db/entities';
+import { randomUUID } from 'crypto';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ orgId: string }> }) {
   const session = await auth();
@@ -19,9 +20,23 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ org
 
   const newJoinCode = Math.random().toString().slice(2, 10).padEnd(8, '0');
 
-  await OrganizationMetadataEntity.update({ orgId })
-    .set({ joinCode: newJoinCode, updatedAt: new Date().toISOString() })
-    .go();
+  // Check if metadata exists, create if missing
+  const existing = await OrganizationMetadataEntity.get({ orgId }).go();
+  if (!existing.data) {
+    // Get org name from Clerk for domain extraction
+    const client = await clerkClient();
+    const org = await client.organizations.getOrganization({ organizationId: orgId });
+    await OrganizationMetadataEntity.create({
+      id: randomUUID(),
+      orgId,
+      joinCode: newJoinCode,
+      allowAccessRequests: false,
+    }).go();
+  } else {
+    await OrganizationMetadataEntity.update({ orgId })
+      .set({ joinCode: newJoinCode, updatedAt: new Date().toISOString() })
+      .go();
+  }
 
   return NextResponse.json({ joinCode: newJoinCode });
 }

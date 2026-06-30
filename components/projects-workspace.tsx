@@ -90,7 +90,17 @@ import {
   Users,
   UserMinus,
   Settings,
+  TrendingUp,
+  TrendingDown,
+  CalendarClock,
+  Flame,
+  Minus,
 } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import type { ChartConfig } from '@/components/ui/chart';
+import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 type ProjectTab = 'meetings' | 'tickets' | 'analytics' | 'dependencies' | 'members' | 'settings';
 
@@ -134,6 +144,8 @@ interface Ticket {
   start_date?: string | null;
   due_date?: string | null;
   deadline_time?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
 }
 
 type StageConfig = {
@@ -1408,7 +1420,6 @@ export function ProjectsWorkspace({
       id: 'analytics',
       label: 'Analytics',
       icon: <BarChart3 className="h-4 w-4" />,
-      adminOnly: true,
     },
     { id: 'dependencies', label: 'Dependencies', icon: <GitBranch className="h-4 w-4" /> },
     { id: 'members', label: 'Members', icon: <Users className="h-4 w-4" />, adminOnly: true },
@@ -2078,83 +2089,545 @@ export function ProjectsWorkspace({
             const blocked = projectTickets.filter((t) => t.status === 'blocked').length;
             const total = projectTickets.length;
             const pct = (n: number) => (total ? Math.round((n / total) * 100) : 0);
+            const overdue = projectTickets.filter(
+              (t) => t.due_date && t.status !== 'done' && new Date(t.due_date) < new Date()
+            ).length;
+            const unassigned = projectTickets.filter((t) => !t.assignee_user_id).length;
+            const STALE_DAYS = 3;
+            const stale = projectTickets.filter((t) => {
+              if (t.status === 'done') return false;
+              const updated = t.updatedAt ? new Date(t.updatedAt) : null;
+              if (!updated) return false;
+              return (Date.now() - updated.getTime()) / 86400000 >= STALE_DAYS;
+            }).length;
+
+            // Throughput data (last 14 days)
+            const throughputData = (() => {
+              const days: { label: string; completed: number }[] = [];
+              for (let i = 13; i >= 0; i--) {
+                const d = new Date();
+                d.setHours(0, 0, 0, 0);
+                d.setDate(d.getDate() - i);
+                const next = new Date(d);
+                next.setDate(d.getDate() + 1);
+                const label = d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
+                const completed = projectTickets.filter((t) => {
+                  if (!t.updatedAt || t.status !== 'done') return false;
+                  const c = new Date(t.updatedAt);
+                  return c >= d && c < next;
+                }).length;
+                days.push({ label, completed });
+              }
+              return days;
+            })();
+            const last7Completed = throughputData.slice(7).reduce((s, d) => s + d.completed, 0);
+            const prev7Completed = throughputData.slice(0, 7).reduce((s, d) => s + d.completed, 0);
+            const throughputTrend =
+              last7Completed > prev7Completed
+                ? 'up'
+                : last7Completed < prev7Completed
+                  ? 'down'
+                  : 'flat';
+
+            // Status donut data
+            const statusData = [
+              { name: 'Backlog', value: backlog, fill: '#8a8a80' },
+              { name: 'In Progress', value: inProgress, fill: '#3d7abf' },
+              { name: 'Done', value: done, fill: '#3d8a5e' },
+              { name: 'Blocked', value: blocked, fill: '#b84040' },
+            ].filter((s) => s.value > 0);
+
+            const statusChartConfig: ChartConfig = {
+              completed: { label: 'Completed' },
+            };
+
+            // Assignee workload
+            const assigneeMap = new Map<
+              string,
+              {
+                name: string;
+                imageUrl?: string;
+                open: number;
+                done: number;
+                blocked: number;
+                inProgress: number;
+              }
+            >();
+            for (const t of projectTickets) {
+              if (!t.assignee_user_id) continue;
+              const key = t.assignee_user_id;
+              if (!assigneeMap.has(key)) {
+                const member = memberships?.data?.find((m) => m.publicUserData?.userId === key);
+                const name = t.assignee || member?.publicUserData?.firstName || 'Unknown';
+                const imageUrl = member?.publicUserData?.imageUrl;
+                assigneeMap.set(key, {
+                  name,
+                  imageUrl,
+                  open: 0,
+                  done: 0,
+                  blocked: 0,
+                  inProgress: 0,
+                });
+              }
+              const entry = assigneeMap.get(key)!;
+              if (t.status === 'done') entry.done++;
+              else if (t.status === 'blocked') entry.blocked++;
+              else if (t.status === 'in_progress') entry.inProgress++;
+              else entry.open++;
+            }
+            const assigneeWorkload = Array.from(assigneeMap.values()).sort(
+              (a, b) => b.open + b.inProgress + b.blocked - (a.open + a.inProgress + a.blocked)
+            );
+
+            // Upcoming deadlines
+            const upcoming = projectTickets
+              .filter((t) => t.due_date && t.status !== 'done')
+              .sort((a, b) => new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime())
+              .slice(0, 6);
+
+            // Meeting pipeline
+            const totalSpecs = projectMeetings.reduce((sum, m) => sum + (m.specsDetected || 0), 0);
+
             return (
               <div className="space-y-6">
-                <h2 className="font-playfair text-2xl font-bold text-foreground">Analytics</h2>
-                <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-                  {[
-                    { label: 'Backlog', count: backlog, color: '#8a8a80', bg: '#f3f3f0' },
-                    { label: 'In Progress', count: inProgress, color: '#3d7abf', bg: '#eff5ff' },
-                    { label: 'Done', count: done, color: '#3d8a5e', bg: '#edf7f1' },
-                    { label: 'Blocked', count: blocked, color: '#b84040', bg: '#fdf0f0' },
-                  ].map((stat) => (
-                    <div
-                      key={stat.label}
-                      className="rounded-2xl border border-border bg-muted/50 p-5 space-y-1"
-                    >
-                      <p
-                        className="text-xs uppercase tracking-wide font-medium"
-                        style={{ color: stat.color }}
-                      >
-                        {stat.label}
-                      </p>
-                      <p className="text-4xl font-playfair font-bold text-foreground">
-                        {stat.count}
-                      </p>
-                      <p className="text-xs text-muted-foreground">{pct(stat.count)}% of total</p>
-                    </div>
-                  ))}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="font-playfair text-2xl font-bold text-foreground">
+                      Project Analytics
+                    </h2>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      {selectedProject?.name} — health, throughput, and workload
+                    </p>
+                  </div>
                 </div>
-                <div className="rounded-2xl border border-border bg-muted/50 p-6 space-y-4">
-                  <p className="font-playfair text-lg font-bold text-foreground">
-                    Progress overview
-                  </p>
-                  <div className="space-y-3">
-                    {[
-                      { label: 'Backlog', count: backlog, color: '#8a8a80' },
-                      { label: 'In Progress', count: inProgress, color: '#3d7abf' },
-                      { label: 'Done', count: done, color: '#3d8a5e' },
-                      { label: 'Blocked', count: blocked, color: '#b84040' },
-                    ].map((bar) => (
-                      <div key={bar.label} className="space-y-1">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">{bar.label}</span>
-                          <span className="font-medium text-foreground">{bar.count}</span>
-                        </div>
-                        <div className="h-2 rounded-full bg-muted overflow-hidden">
-                          <div
-                            className="h-full rounded-full transition-all duration-500"
-                            style={{ width: `${pct(bar.count)}%`, background: bar.color }}
+
+                {/* KPI Row */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="rounded-2xl border border-border bg-muted/50 p-5 space-y-1">
+                    <div className="flex items-center gap-1.5">
+                      <Ticket className="h-3.5 w-3.5 text-muted-foreground" />
+                      <p className="text-xs uppercase tracking-wide font-medium text-muted-foreground">
+                        Total Tickets
+                      </p>
+                    </div>
+                    <p className="text-3xl font-playfair font-bold text-foreground">{total}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {projectMeetings.length} meetings · {totalSpecs} extracted
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-border bg-muted/50 p-5 space-y-1">
+                    <div className="flex items-center gap-1.5">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                      <p className="text-xs uppercase tracking-wide font-medium text-emerald-600">
+                        Completion
+                      </p>
+                    </div>
+                    <p className="text-3xl font-playfair font-bold text-foreground">{pct(done)}%</p>
+                    <p className="text-xs text-muted-foreground">
+                      {done} of {total} done
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-border bg-muted/50 p-5 space-y-1">
+                    <div className="flex items-center gap-1.5">
+                      <AlertCircle className="h-3.5 w-3.5 text-red-600" />
+                      <p className="text-xs uppercase tracking-wide font-medium text-red-600">
+                        Overdue
+                      </p>
+                    </div>
+                    <p className="text-3xl font-playfair font-bold text-foreground">{overdue}</p>
+                    <p className="text-xs text-muted-foreground">{unassigned} unassigned</p>
+                  </div>
+                  <div className="rounded-2xl border border-border bg-muted/50 p-5 space-y-1">
+                    <div className="flex items-center gap-1.5">
+                      {throughputTrend === 'up' ? (
+                        <TrendingUp className="h-3.5 w-3.5 text-emerald-600" />
+                      ) : throughputTrend === 'down' ? (
+                        <TrendingDown className="h-3.5 w-3.5 text-red-600" />
+                      ) : (
+                        <Minus className="h-3.5 w-3.5 text-muted-foreground" />
+                      )}
+                      <p className="text-xs uppercase tracking-wide font-medium text-muted-foreground">
+                        Throughput (7d)
+                      </p>
+                    </div>
+                    <p className="text-3xl font-playfair font-bold text-foreground">
+                      {last7Completed}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {throughputTrend === 'up' ? '↑' : throughputTrend === 'down' ? '↓' : '→'} vs
+                      prev week
+                    </p>
+                  </div>
+                </div>
+
+                {/* Throughput Chart + Status Donut */}
+                <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-4">
+                  <div className="rounded-2xl border border-border bg-muted/50 p-5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold text-foreground">Throughput</p>
+                      <span className="text-xs text-muted-foreground">
+                        Completed per day · last 14d
+                      </span>
+                    </div>
+                    {throughputData.every((d) => d.completed === 0) ? (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <BarChart3 className="h-8 w-8 text-muted-foreground/30 mb-2" />
+                        <p className="text-sm text-muted-foreground">
+                          No completed tickets in the last 14 days
+                        </p>
+                      </div>
+                    ) : (
+                      <ChartContainer config={statusChartConfig} className="h-[200px] w-full">
+                        <BarChart data={throughputData} barCategoryGap={4}>
+                          <CartesianGrid
+                            vertical={false}
+                            strokeDasharray="3 3"
+                            stroke="hsl(var(--border))"
                           />
+                          <XAxis
+                            dataKey="label"
+                            tickLine={false}
+                            axisLine={false}
+                            tick={{ fontSize: 10 }}
+                            interval={1}
+                          />
+                          <YAxis
+                            tickLine={false}
+                            axisLine={false}
+                            tick={{ fontSize: 10 }}
+                            allowDecimals={false}
+                          />
+                          <ChartTooltip content={<ChartTooltipContent />} />
+                          <Bar
+                            dataKey="completed"
+                            fill="#3d8a5e"
+                            radius={[4, 4, 0, 0]}
+                            name="Completed"
+                          />
+                        </BarChart>
+                      </ChartContainer>
+                    )}
+                  </div>
+
+                  <div className="rounded-2xl border border-border bg-muted/50 p-5 space-y-3">
+                    <p className="text-sm font-semibold text-foreground">Status Distribution</p>
+                    {statusData.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <Circle className="h-8 w-8 text-muted-foreground/30 mb-2" />
+                        <p className="text-sm text-muted-foreground">No tickets yet</p>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-4">
+                        <ChartContainer config={statusChartConfig} className="h-[160px] w-[160px]">
+                          <PieChart>
+                            <Pie
+                              data={statusData}
+                              dataKey="value"
+                              nameKey="name"
+                              innerRadius={45}
+                              outerRadius={70}
+                              paddingAngle={2}
+                            >
+                              {statusData.map((entry) => (
+                                <Cell key={entry.name} fill={entry.fill} />
+                              ))}
+                            </Pie>
+                            <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                          </PieChart>
+                        </ChartContainer>
+                        <div className="space-y-1.5 flex-1">
+                          {[
+                            { label: 'Backlog', count: backlog, color: '#8a8a80' },
+                            { label: 'In Progress', count: inProgress, color: '#3d7abf' },
+                            { label: 'Done', count: done, color: '#3d8a5e' },
+                            { label: 'Blocked', count: blocked, color: '#b84040' },
+                          ].map((s) => (
+                            <div key={s.label} className="flex items-center gap-2 text-xs">
+                              <div
+                                className="h-2.5 w-2.5 rounded-full"
+                                style={{ background: s.color }}
+                              />
+                              <span className="text-muted-foreground flex-1">{s.label}</span>
+                              <span className="font-medium text-foreground">{s.count}</span>
+                            </div>
+                          ))}
                         </div>
                       </div>
-                    ))}
-                  </div>
-                  <div className="pt-2 border-t border-border/60 flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Total tickets</span>
-                    <span className="font-playfair text-2xl font-bold text-foreground">
-                      {total}
-                    </span>
+                    )}
                   </div>
                 </div>
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                  <div className="rounded-2xl border border-border bg-muted/50 p-5 space-y-2">
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                      Meetings
-                    </p>
-                    <p className="text-4xl font-playfair font-bold text-foreground">
-                      {projectMeetings.length}
-                    </p>
+
+                {/* Needs Attention + Upcoming Deadlines */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {/* Needs Attention */}
+                  <div className="rounded-2xl border border-border bg-muted/50 p-5 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Flame className="h-4 w-4 text-amber-600" />
+                      <p className="text-sm font-semibold text-foreground">Needs Attention</p>
+                    </div>
+                    <div className="space-y-2">
+                      {overdue > 0 && (
+                        <div className="flex items-center justify-between rounded-lg bg-red-500/10 px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <AlertCircle className="h-4 w-4 text-red-600" />
+                            <span className="text-sm text-foreground">Overdue tickets</span>
+                          </div>
+                          <span className="text-sm font-bold text-red-600">{overdue}</span>
+                        </div>
+                      )}
+                      {blocked > 0 && (
+                        <div className="flex items-center justify-between rounded-lg bg-red-500/10 px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <AlertCircle className="h-4 w-4 text-red-600" />
+                            <span className="text-sm text-foreground">Blocked tickets</span>
+                          </div>
+                          <span className="text-sm font-bold text-red-600">{blocked}</span>
+                        </div>
+                      )}
+                      {stale > 0 && (
+                        <div className="flex items-center justify-between rounded-lg bg-amber-500/10 px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-amber-600" />
+                            <span className="text-sm text-foreground">
+                              Stale (3+ days no update)
+                            </span>
+                          </div>
+                          <span className="text-sm font-bold text-amber-600">{stale}</span>
+                        </div>
+                      )}
+                      {unassigned > 0 && (
+                        <div className="flex items-center justify-between rounded-lg bg-blue-500/10 px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4 text-blue-600" />
+                            <span className="text-sm text-foreground">Unassigned tickets</span>
+                          </div>
+                          <span className="text-sm font-bold text-blue-600">{unassigned}</span>
+                        </div>
+                      )}
+                      {overdue === 0 && blocked === 0 && stale === 0 && unassigned === 0 && (
+                        <div className="flex flex-col items-center justify-center py-8 text-center">
+                          <CheckCircle2 className="h-7 w-7 text-emerald-500/50 mb-2" />
+                          <p className="text-sm text-muted-foreground">
+                            All clear — nothing needs attention
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="rounded-2xl border border-border bg-muted/50 p-5 space-y-2">
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                      Completion rate
-                    </p>
-                    <p className="text-4xl font-playfair font-bold text-foreground">{pct(done)}%</p>
-                    <p className="text-xs text-muted-foreground">
-                      {done} of {total} tickets done
-                    </p>
+
+                  {/* Upcoming Deadlines */}
+                  <div className="rounded-2xl border border-border bg-muted/50 p-5 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <CalendarClock className="h-4 w-4 text-muted-foreground" />
+                      <p className="text-sm font-semibold text-foreground">Upcoming Deadlines</p>
+                    </div>
+                    {upcoming.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-8 text-center">
+                        <CheckCircle2 className="h-7 w-7 text-emerald-500/50 mb-2" />
+                        <p className="text-sm text-muted-foreground">No upcoming deadlines</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {upcoming.map((t) => {
+                          const daysLeft = Math.ceil(
+                            (new Date(t.due_date!).getTime() - Date.now()) / 86400000
+                          );
+                          const isOverdue = daysLeft < 0;
+                          return (
+                            <div
+                              key={t.id}
+                              className="flex items-center gap-2.5 p-2 rounded-lg border border-border/60 bg-background/50"
+                            >
+                              <div
+                                className={cn(
+                                  'h-7 w-7 rounded-lg flex items-center justify-center shrink-0 text-[9px] font-bold',
+                                  isOverdue
+                                    ? 'bg-red-500/10 text-red-500'
+                                    : daysLeft <= 1
+                                      ? 'bg-red-500/10 text-red-500'
+                                      : daysLeft <= 3
+                                        ? 'bg-amber-500/10 text-amber-500'
+                                        : 'bg-blue-500/10 text-blue-500'
+                                )}
+                              >
+                                {isOverdue ? `${Math.abs(daysLeft)}d` : `${daysLeft}d`}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-medium text-foreground truncate">
+                                  {t.title}
+                                </p>
+                                <p className="text-[10px] text-muted-foreground mt-0.5">
+                                  {t.assignee || 'Unassigned'}
+                                </p>
+                              </div>
+                              <span
+                                className={cn(
+                                  'text-[10px] font-medium px-1.5 py-0.5 rounded',
+                                  t.status === 'blocked'
+                                    ? 'bg-red-500/10 text-red-600'
+                                    : t.status === 'in_progress'
+                                      ? 'bg-blue-500/10 text-blue-600'
+                                      : 'bg-muted text-muted-foreground'
+                                )}
+                              >
+                                {t.status === 'in_progress'
+                                  ? 'In Progress'
+                                  : t.status === 'blocked'
+                                    ? 'Blocked'
+                                    : 'Backlog'}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
+                </div>
+
+                {/* Assignee Workload */}
+                <div className="rounded-2xl border border-border bg-muted/50 p-5 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-foreground">Assignee Workload</p>
+                    <span className="text-xs text-muted-foreground">
+                      {assigneeWorkload.length} members
+                    </span>
+                  </div>
+                  {assigneeWorkload.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                      <Users className="h-7 w-7 text-muted-foreground/30 mb-2" />
+                      <p className="text-sm text-muted-foreground">No tickets assigned yet</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {assigneeWorkload.map((a, i) => {
+                        const memberTotal = a.open + a.done + a.blocked + a.inProgress;
+                        const memberOpen = a.open + a.inProgress + a.blocked;
+                        return (
+                          <div key={i} className="space-y-1.5">
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-6 w-6">
+                                {a.imageUrl && <AvatarImage src={a.imageUrl} alt={a.name} />}
+                                <AvatarFallback className="text-[10px]">
+                                  {a.name[0]?.toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="text-sm font-medium text-foreground flex-1">
+                                {a.name}
+                              </span>
+                              <div className="flex items-center gap-1.5 text-[10px]">
+                                {a.inProgress > 0 && (
+                                  <span className="text-blue-600 font-medium">
+                                    {a.inProgress} in progress
+                                  </span>
+                                )}
+                                {a.blocked > 0 && (
+                                  <span className="text-red-600 font-medium">
+                                    {a.blocked} blocked
+                                  </span>
+                                )}
+                                {a.open > 0 && (
+                                  <span className="text-muted-foreground">{a.open} backlog</span>
+                                )}
+                                <span className="text-emerald-600 font-medium">{a.done} done</span>
+                              </div>
+                            </div>
+                            <div className="h-2 rounded-full bg-muted overflow-hidden flex">
+                              {a.inProgress > 0 && (
+                                <div
+                                  className="h-full"
+                                  style={{
+                                    width: `${(a.inProgress / memberTotal) * 100}%`,
+                                    background: '#3d7abf',
+                                  }}
+                                />
+                              )}
+                              {a.blocked > 0 && (
+                                <div
+                                  className="h-full"
+                                  style={{
+                                    width: `${(a.blocked / memberTotal) * 100}%`,
+                                    background: '#b84040',
+                                  }}
+                                />
+                              )}
+                              {a.open > 0 && (
+                                <div
+                                  className="h-full"
+                                  style={{
+                                    width: `${(a.open / memberTotal) * 100}%`,
+                                    background: '#8a8a80',
+                                  }}
+                                />
+                              )}
+                              {a.done > 0 && (
+                                <div
+                                  className="h-full"
+                                  style={{
+                                    width: `${(a.done / memberTotal) * 100}%`,
+                                    background: '#3d8a5e',
+                                  }}
+                                />
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Meeting-to-Ticket Pipeline */}
+                <div className="rounded-2xl border border-border bg-muted/50 p-5 space-y-4">
+                  <p className="text-sm font-semibold text-foreground">
+                    Meeting-to-Ticket Pipeline
+                  </p>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="text-center">
+                      <div className="flex items-center justify-center gap-1.5 mb-1">
+                        <Video className="h-3.5 w-3.5 text-muted-foreground" />
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                          Meetings
+                        </p>
+                      </div>
+                      <p className="text-2xl font-playfair font-bold text-foreground">
+                        {projectMeetings.length}
+                      </p>
+                    </div>
+                    <div className="text-center border-x border-border/60">
+                      <div className="flex items-center justify-center gap-1.5 mb-1">
+                        <Ticket className="h-3.5 w-3.5 text-muted-foreground" />
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                          Extracted
+                        </p>
+                      </div>
+                      <p className="text-2xl font-playfair font-bold text-foreground">
+                        {totalSpecs}
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <div className="flex items-center justify-center gap-1.5 mb-1">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground" />
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                          Tracked
+                        </p>
+                      </div>
+                      <p className="text-2xl font-playfair font-bold text-foreground">{total}</p>
+                    </div>
+                  </div>
+                  {projectMeetings.length > 0 && (
+                    <div className="pt-3 border-t border-border/60">
+                      <div className="flex items-center justify-between text-xs mb-1.5">
+                        <span className="text-muted-foreground">Extraction-to-tracking rate</span>
+                        <span className="font-medium text-foreground">
+                          {totalSpecs > 0 ? Math.round((total / totalSpecs) * 100) : 0}%
+                        </span>
+                      </div>
+                      <Progress
+                        value={totalSpecs > 0 ? (total / totalSpecs) * 100 : 0}
+                        className="h-1.5"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -2265,7 +2738,14 @@ export function ProjectsWorkspace({
                                 variant="ghost"
                                 size="icon"
                                 className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                                disabled={removingProjectMemberId === pm.user_id}
+                                disabled={
+                                  removingProjectMemberId === pm.user_id || pm.user_id === user?.id
+                                }
+                                title={
+                                  pm.user_id === user?.id
+                                    ? 'You cannot remove yourself'
+                                    : 'Remove member'
+                                }
                                 onClick={() => handleRemoveProjectMember(pm.user_id)}
                               >
                                 <UserMinus className="h-3.5 w-3.5" />

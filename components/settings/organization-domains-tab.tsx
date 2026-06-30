@@ -259,12 +259,19 @@ export function OrganizationDomainsTab() {
   }
 
   return (
-    <div className="p-6 lg:p-8 max-w-4xl">
-      <div className="mb-6">
-        <h2 className="text-2xl font-semibold text-foreground">Verified Domains</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          Manage email domains for automatic organization membership
-        </p>
+    <div className="p-6 lg:p-10">
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
+            <Shield className="h-5 w-5 text-emerald-500" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-playfair font-bold text-foreground">Verified Domains</h2>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Manage email domains for automatic organization membership
+            </p>
+          </div>
+        </div>
       </div>
 
       <Card className="border-border/60 shadow-none">
@@ -282,7 +289,7 @@ export function OrganizationDomainsTab() {
               </div>
             </div>
             {isAdmin && (
-              <Button size="sm" onClick={handleAddDomainClick}>
+              <Button size="sm" className="rounded-full" onClick={handleAddDomainClick}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Domain
               </Button>
@@ -298,8 +305,10 @@ export function OrganizationDomainsTab() {
           )}
 
           {domains.length === 0 ? (
-            <div className="text-center py-12">
-              <Shield className="h-12 w-12 text-muted-foreground/40 mx-auto mb-3" />
+            <div className="text-center py-16">
+              <div className="h-14 w-14 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-4">
+                <Shield className="h-7 w-7 text-muted-foreground/50" />
+              </div>
               <p className="text-sm font-medium text-foreground mb-1">No verified domains</p>
               <p className="text-xs text-muted-foreground">
                 Add a domain to enable automatic organization membership

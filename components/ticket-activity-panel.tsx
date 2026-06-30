@@ -28,6 +28,14 @@ interface Activity {
   created_at: string;
 }
 
+interface UserInfo {
+  firstName?: string;
+  lastName?: string;
+  username?: string;
+  email?: string;
+  imageUrl?: string;
+}
+
 interface TicketActivityPanelProps {
   ticketId: string;
 }
@@ -97,15 +105,19 @@ function ActivityItem({
   userMap,
 }: {
   activity: Activity;
-  userMap: Map<string, { firstName?: string; lastName?: string; username?: string }>;
+  userMap: Map<string, UserInfo>;
 }) {
   const Icon = ACTION_ICONS[activity.action_type] || Activity;
   const colorClass = ACTION_COLORS[activity.action_type] || 'bg-gray-100 text-gray-700';
   const label = ACTION_LABELS[activity.action_type] || activity.action_type;
-  const user = userMap.get(activity.user_id);
-  const userName = user
-    ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username || 'Unknown'
+  const userInfo = userMap.get(activity.user_id);
+  const userName = userInfo
+    ? `${userInfo.firstName || ''} ${userInfo.lastName || ''}`.trim() ||
+      userInfo.username ||
+      userInfo.email?.split('@')[0] ||
+      'Unknown'
     : 'Unknown';
+  const userAvatar = userInfo?.imageUrl;
 
   const renderMetadata = () => {
     const meta = activity.metadata;
@@ -185,7 +197,11 @@ function ActivityItem({
       <div
         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${colorClass}`}
       >
-        <Icon className="h-4 w-4" />
+        {userAvatar ? (
+          <img src={userAvatar} alt={userName} className="h-8 w-8 rounded-full object-cover" />
+        ) : (
+          <Icon className="h-4 w-4" />
+        )}
       </div>
       <div className="flex-1 space-y-1">
         <p className="text-sm">
@@ -205,9 +221,7 @@ function ActivityItem({
 export function TicketActivityPanel({ ticketId }: TicketActivityPanelProps) {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userMap, setUserMap] = useState<
-    Map<string, { firstName?: string; lastName?: string; username?: string }>
-  >(new Map());
+  const [userMap, setUserMap] = useState<Map<string, UserInfo>>(new Map());
   const { user } = useUser();
 
   const fetchActivities = useCallback(async () => {
@@ -218,25 +232,45 @@ export function TicketActivityPanel({ ticketId }: TicketActivityPanelProps) {
       const data = await res.json();
       setActivities(data);
 
-      // Collect unique user IDs to fetch info
+      // Collect unique user IDs
       const userIds = [...new Set<string>(data.map((a: Activity) => a.user_id))];
-      // For now, just use current user info as fallback
-      // In production, you'd fetch user info from your backend or Clerk API
-      const newUserMap = new Map<
-        string,
-        { firstName?: string; lastName?: string; username?: string }
-      >();
-      userIds.forEach((id) => {
-        if (id === user?.id) {
-          newUserMap.set(id, {
-            firstName: user.firstName || undefined,
-            lastName: user.lastName || undefined,
-            username: user.username || undefined,
-          });
-        } else {
-          newUserMap.set(id, { username: 'Team Member' });
+      const newUserMap = new Map<string, UserInfo>();
+
+      // Add current user info if present
+      if (user) {
+        newUserMap.set(user.id, {
+          firstName: user.firstName || undefined,
+          lastName: user.lastName || undefined,
+          username: user.username || undefined,
+          email: user.primaryEmailAddress?.emailAddress || undefined,
+          imageUrl: user.imageUrl || undefined,
+        });
+      }
+
+      // Fetch other users' info from the users API
+      const otherUserIds = userIds.filter((id) => id !== user?.id);
+      if (otherUserIds.length > 0) {
+        try {
+          const usersRes = await fetch('/api/users');
+          if (usersRes.ok) {
+            const usersData = await usersRes.json();
+            const orgUsers = usersData.users || [];
+            for (const u of orgUsers) {
+              if (otherUserIds.includes(u.id)) {
+                newUserMap.set(u.id, {
+                  firstName: u.name?.split(' ')[0] || undefined,
+                  lastName: u.name?.split(' ').slice(1).join(' ') || undefined,
+                  username: u.username || undefined,
+                  email: u.email || undefined,
+                  imageUrl: u.imageUrl || undefined,
+                });
+              }
+            }
+          }
+        } catch (e) {
+          console.error('Failed to fetch user info:', e);
         }
-      });
+      }
       setUserMap(newUserMap);
     } catch (err) {
       console.error('Error fetching activities:', err);

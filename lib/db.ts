@@ -444,16 +444,16 @@ export async function deleteProject(id: string): Promise<void> {
     await TicketDependenciesEntity.delete({ id: dep.id }).go();
   }
 
-  // Delete all tickets in this project
+  // Unlink tickets from this project (keep them associated with their meeting)
   const tickets = await TicketsEntity.query.byProject({ projectId: id }).go();
   for (const ticket of tickets.data ?? []) {
-    await TicketsEntity.delete({ id: ticket.id }).go();
+    await TicketsEntity.update({ id: ticket.id }).set({ projectId: undefined }).go();
   }
 
   // Unlink meetings
   const meetingsRes = await MeetingsEntity.scan.go();
   for (const meeting of (meetingsRes.data ?? []).filter((m: any) => m.projectId === id)) {
-    await MeetingsEntity.update({ id: meeting.id }).set({ projectId: null }).go();
+    await MeetingsEntity.update({ id: meeting.id }).set({ projectId: undefined }).go();
   }
 
   // Delete project

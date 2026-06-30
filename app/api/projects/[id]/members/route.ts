@@ -77,6 +77,13 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       return NextResponse.json({ error: 'userId is required' }, { status: 400 });
     }
 
+    if (userId === ctx.userId) {
+      return NextResponse.json(
+        { error: 'You cannot remove yourself from the project' },
+        { status: 400 }
+      );
+    }
+
     await removeProjectMember(id, userId);
     return NextResponse.json({ success: true });
   } catch (err) {

@@ -189,7 +189,7 @@ export default function OnboardingPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ code: joinCode }),
+        body: JSON.stringify({ joinCode }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to join');
@@ -199,7 +199,7 @@ export default function OnboardingPage() {
         return;
       }
 
-      if (data.alreadyMember || data.joined) {
+      if (data.success || data.alreadyMember || data.joined) {
         if (data.orgId && setActive) {
           await setActive({ organization: data.orgId });
         }

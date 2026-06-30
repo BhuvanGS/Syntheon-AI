@@ -14,6 +14,7 @@ import {
   Video,
   ShieldCheck,
   LogOut,
+  Plus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -93,9 +94,19 @@ export function Sidebar({
   const isAdmin = membership?.role === 'org:admin';
   const navItems = isAdmin ? ADMIN_NAV : MEMBER_NAV;
 
+  const userEmail =
+    user?.primaryEmailAddress?.emailAddress ?? user?.emailAddresses?.[0]?.emailAddress ?? '';
+  const userName =
+    user?.fullName ||
+    [user?.firstName, user?.lastName].filter(Boolean).join(' ') ||
+    user?.username ||
+    userEmail?.split('@')[0] ||
+    'User';
   const userInitial =
-    user?.firstName?.[0] ?? user?.emailAddresses?.[0]?.emailAddress?.[0]?.toUpperCase() ?? 'S';
-  const userName = user?.fullName ?? user?.emailAddresses?.[0]?.emailAddress ?? 'User';
+    user?.firstName?.[0] ??
+    user?.username?.[0]?.toUpperCase() ??
+    userEmail?.[0]?.toUpperCase() ??
+    'S';
 
   return (
     <aside className="w-[220px] min-w-[220px] h-screen flex flex-col bg-sidebar border-r border-sidebar-border animate-fade-in">
@@ -194,19 +205,36 @@ export function Sidebar({
 
       {/* Projects */}
       <div className="px-2 pt-3 flex-1 min-h-0 flex flex-col overflow-hidden">
-        <div className="flex items-center px-2 mb-2 shrink-0">
+        <div className="flex items-center justify-between px-2 mb-2 shrink-0">
           <span className="text-[10px] font-semibold tracking-[0.1em] uppercase text-muted-foreground">
             Projects
           </span>
+          {isAdmin && projects.length > 0 && (
+            <button
+              onClick={onCreateProject}
+              className="text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md p-0.5 transition-colors"
+              title="Create project"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
 
         <ScrollArea className="flex-1 -mx-1 px-1">
           {projects.length === 0 ? (
-            <div className="mx-1 text-center">
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
-                {isAdmin ? 'No projects yet.' : 'No projects assigned yet.'}
-              </p>
-            </div>
+            isAdmin ? (
+              <div className="mx-1">
+                <button
+                  onClick={onCreateProject}
+                  className="w-full flex items-center justify-center gap-1.5 rounded-full border border-dashed border-border bg-muted/30 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-colors"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Create project
+                </button>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground px-2 py-4 text-center">No projects yet</p>
+            )
           ) : (
             <div className="space-y-0.5 pb-2 stagger-children">
               {projects.slice(0, 8).map((project) => {
@@ -215,7 +243,7 @@ export function Sidebar({
                   <button
                     key={project.id}
                     onClick={() => {
-                      router.push(`/project?projectId=${project.id}&tab=kanban`);
+                      router.push(`/project?projectId=${project.id}&tab=tickets`);
                       onSelectProject?.(project.id);
                     }}
                     className={cn(

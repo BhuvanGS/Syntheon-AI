@@ -19,8 +19,8 @@ interface Ticket {
   start_date?: string | null;
   due_date?: string | null;
   deadline_time?: string | null;
-  createdAt?: string;
-  updatedAt?: string;
+  createdAt?: string | null;
+  updatedAt?: string | null;
 }
 
 interface TicketTimelinePanelProps {

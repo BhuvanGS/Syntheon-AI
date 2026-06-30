@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useUser, useOrganization, useOrganizationList } from '@clerk/nextjs';
+import { extractDomain } from '@/lib/public-domains';
 import {
   Building2,
   Users,
@@ -328,12 +329,19 @@ export function OrganizationsTab() {
   }
 
   return (
-    <div className="p-6 lg:p-8 max-w-4xl">
-      <div className="mb-6">
-        <h2 className="text-2xl font-semibold text-foreground">Organizations</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          Manage your organization settings and memberships
-        </p>
+    <div className="p-6 lg:p-10">
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+            <Building2 className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-playfair font-bold text-foreground">Organizations</h2>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Manage your organization settings and memberships
+            </p>
+          </div>
+        </div>
       </div>
 
       <Tabs defaultValue="my-org" className="space-y-6">
@@ -436,7 +444,11 @@ export function OrganizationsTab() {
                     )}
                   </div>
 
-                  <Button onClick={handleSaveMetadata} disabled={saving} className="w-full">
+                  <Button
+                    onClick={handleSaveMetadata}
+                    disabled={saving}
+                    className="w-full rounded-full"
+                  >
                     {saving ? 'Saving...' : 'Save Changes'}
                   </Button>
                 </>
@@ -470,9 +482,15 @@ export function OrganizationsTab() {
             <Separator />
             <CardContent className="pt-4">
               {memberships.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                  You're not part of any organizations yet.
-                </p>
+                <div className="text-center py-12">
+                  <div className="h-14 w-14 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-4">
+                    <Users className="h-7 w-7 text-muted-foreground/50" />
+                  </div>
+                  <p className="text-sm font-medium text-foreground mb-1">No organizations yet</p>
+                  <p className="text-xs text-muted-foreground">
+                    Create or join an organization to get started
+                  </p>
+                </div>
               ) : (
                 <div className="space-y-2">
                   {memberships.map((m) => {
@@ -514,7 +532,7 @@ export function OrganizationsTab() {
 
               <Button
                 variant="outline"
-                className="w-full"
+                className="w-full rounded-full border-dashed"
                 onClick={() => {
                   setNewOrgForm({
                     name: '',
@@ -633,14 +651,22 @@ export function OrganizationsTab() {
             {/* Invite Users (only when access requests are enabled) */}
             {orgMetadata.allowAccessRequests && (
               <Card className="border-border/60 shadow-none">
-                <CardContent className="p-4">
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Invite Users</p>
-                      <p className="text-xs text-muted-foreground">
-                        Invite team members to your organization
-                      </p>
+                <CardHeader className="pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
+                      <UserPlus className="h-5 w-5 text-blue-500" />
                     </div>
+                    <div>
+                      <CardTitle className="text-sm font-semibold">Invite Users</CardTitle>
+                      <CardDescription className="text-xs mt-0.5">
+                        Invite team members to your organization
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <Separator />
+                <CardContent className="pt-4">
+                  <div className="space-y-3">
                     <div className="flex gap-2">
                       <Input
                         value={inviteEmail}
@@ -650,6 +676,7 @@ export function OrganizationsTab() {
                       />
                       <Button
                         size="sm"
+                        className="rounded-full"
                         onClick={handleSendInviteClick}
                         disabled={inviting || !inviteEmail.trim()}
                       >
@@ -736,9 +763,16 @@ export function OrganizationsTab() {
                         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                       </div>
                     ) : accessRequests.length === 0 ? (
-                      <div className="text-center py-8">
-                        <Clock className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground">No incoming requests yet</p>
+                      <div className="text-center py-10">
+                        <div className="h-12 w-12 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-3">
+                          <Clock className="h-6 w-6 text-muted-foreground/50" />
+                        </div>
+                        <p className="text-sm font-medium text-foreground mb-1">
+                          No incoming requests
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Access requests will appear here
+                        </p>
                       </div>
                     ) : (
                       <div className="space-y-4">
@@ -833,9 +867,14 @@ export function OrganizationsTab() {
                         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                       </div>
                     ) : sentInvites.length === 0 ? (
-                      <div className="text-center py-8">
-                        <UserPlus className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground">No invites sent yet</p>
+                      <div className="text-center py-10">
+                        <div className="h-12 w-12 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-3">
+                          <UserPlus className="h-6 w-6 text-muted-foreground/50" />
+                        </div>
+                        <p className="text-sm font-medium text-foreground mb-1">No invites sent</p>
+                        <p className="text-xs text-muted-foreground">
+                          Invitations you send will appear here
+                        </p>
                       </div>
                     ) : (
                       <div className="space-y-2">
@@ -1000,7 +1039,11 @@ export function OrganizationsTab() {
                   const res = await fetch('/api/organizations', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(newOrgForm),
+                    body: JSON.stringify({
+                      ...newOrgForm,
+                      domain:
+                        extractDomain(user?.primaryEmailAddress?.emailAddress ?? '') ?? undefined,
+                    }),
                   });
                   if (!res.ok) throw new Error('Failed to create organization');
                   const data = await res.json();
