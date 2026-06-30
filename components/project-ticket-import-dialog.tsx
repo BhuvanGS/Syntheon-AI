@@ -80,16 +80,12 @@ export function ProjectTicketImportDialog({
       }
 
       const importedCount = typeof data?.importedCount === 'number' ? data.importedCount : 0;
-      const dependenciesMapped =
-        typeof data?.dependenciesMapped === 'number' ? data.dependenciesMapped : 0;
-      const warning =
-        typeof data?.dependencyInferenceWarning === 'string' ? data.dependencyInferenceWarning : '';
 
       const summary = data?.skipped
         ? data?.message || 'Tickets from this meeting are already in the project.'
-        : `Imported ${importedCount} ticket${importedCount === 1 ? '' : 's'} and auto-mapped ${dependenciesMapped} dependenc${dependenciesMapped === 1 ? 'y' : 'ies'}.`;
+        : `Imported ${importedCount} ticket${importedCount === 1 ? '' : 's'}.`;
 
-      window.alert(warning ? `${summary}\n\n${warning}` : summary);
+      window.alert(summary);
 
       await onCreated?.();
       onOpenChange(false);

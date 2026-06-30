@@ -15,7 +15,7 @@ interface Ticket {
   id: string;
   title: string;
   description: string;
-  status: 'backlog' | 'in_progress' | 'done' | 'blocked';
+  status: string;
   start_date?: string | null;
   due_date?: string | null;
   deadline_time?: string | null;

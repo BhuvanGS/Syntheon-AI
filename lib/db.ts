@@ -257,7 +257,9 @@ export async function saveMeeting(meeting: Meeting): Promise<void> {
 
 export async function getMeetings(userId: string): Promise<Meeting[]> {
   const res = await MeetingsEntity.query.byUser({ userId }).go();
-  return (res.data ?? []).map(entityToMeeting).sort((a: Meeting, b: Meeting) => b.date.localeCompare(a.date));
+  return (res.data ?? [])
+    .map(entityToMeeting)
+    .sort((a: Meeting, b: Meeting) => b.date.localeCompare(a.date));
 }
 
 export async function getMeetingById(id: string): Promise<Meeting | undefined> {
@@ -294,7 +296,9 @@ export async function updateMeetingDeployUrl(id: string, deployUrl: string): Pro
 }
 
 export async function updateMeetingName(id: string, projectName: string): Promise<void> {
-  await MeetingsEntity.update({ id }).set({ projectName, updatedAt: new Date().toISOString() }).go();
+  await MeetingsEntity.update({ id })
+    .set({ projectName, updatedAt: new Date().toISOString() })
+    .go();
 }
 
 export async function updateMeetingSummary(id: string, summary: string): Promise<void> {
@@ -362,7 +366,9 @@ export async function getSpecsByProjectId(projectId: string): Promise<SpecBlock[
 
 export async function getAllSpecs(userId: string): Promise<SpecBlock[]> {
   const res = await SpecsEntity.query.byUser({ userId }).go();
-  return (res.data ?? []).map(entityToSpec).sort((a: SpecBlock, b: SpecBlock) => b.timestamp.localeCompare(a.timestamp));
+  return (res.data ?? [])
+    .map(entityToSpec)
+    .sort((a: SpecBlock, b: SpecBlock) => b.timestamp.localeCompare(a.timestamp));
 }
 
 export async function updateSpecNote(specId: string, note: string): Promise<void> {
@@ -396,7 +402,9 @@ export async function saveProject(project: Project): Promise<void> {
 
 export async function getProjects(userId: string): Promise<Project[]> {
   const res = await ProjectsEntity.query.byUser({ userId }).go();
-  return (res.data ?? []).map(entityToProject).sort((a: Project, b: Project) => b.createdAt.localeCompare(a.createdAt));
+  return (res.data ?? [])
+    .map(entityToProject)
+    .sort((a: Project, b: Project) => b.createdAt.localeCompare(a.createdAt));
 }
 
 export async function getProjectById(id: string): Promise<Project | undefined> {
@@ -516,17 +524,23 @@ export async function getTicketsByMeetingId(
   if (options?.originalOnly) {
     tickets = tickets.filter((t: Ticket) => !t.projectId);
   }
-  return tickets.sort((a: Ticket, b: Ticket) => (a.createdAt ?? '').localeCompare(b.createdAt ?? ''));
+  return tickets.sort((a: Ticket, b: Ticket) =>
+    (a.createdAt ?? '').localeCompare(b.createdAt ?? '')
+  );
 }
 
 export async function getTicketsByProjectId(projectId: string): Promise<Ticket[]> {
   const res = await TicketsEntity.query.byProject({ projectId }).go();
-  return (res.data ?? []).map(entityToTicket).sort((a: Ticket, b: Ticket) => (a.createdAt ?? '').localeCompare(b.createdAt ?? ''));
+  return (res.data ?? [])
+    .map(entityToTicket)
+    .sort((a: Ticket, b: Ticket) => (a.createdAt ?? '').localeCompare(b.createdAt ?? ''));
 }
 
 export async function getAllTickets(userId: string): Promise<Ticket[]> {
   const res = await TicketsEntity.query.byUser({ userId }).go();
-  const tickets = (res.data ?? []).map(entityToTicket).sort((a: Ticket, b: Ticket) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
+  const tickets = (res.data ?? [])
+    .map(entityToTicket)
+    .sort((a: Ticket, b: Ticket) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
 
   const seen = new Set<string>();
   const deduplicated: Ticket[] = [];
@@ -607,12 +621,15 @@ export async function updateTicket(
   if (typeof updates.title !== 'undefined') set.title = updates.title;
   if (typeof updates.description !== 'undefined') set.description = updates.description;
   if (typeof updates.status !== 'undefined') set.status = updates.status;
-  if (typeof updates.assignee !== 'undefined') set.assignee = updates.assignee;
-  if (typeof updates.assignee_user_id !== 'undefined') set.assigneeUserId = updates.assignee_user_id;
-  if (typeof updates.dependency_ticket_id !== 'undefined') set.dependencyTicketId = updates.dependency_ticket_id;
-  if (typeof updates.start_date !== 'undefined') set.startDate = updates.start_date;
-  if (typeof updates.due_date !== 'undefined') set.dueDate = updates.due_date;
-  if (typeof updates.deadline_time !== 'undefined') set.deadlineTime = updates.deadline_time;
+  if (typeof updates.assignee !== 'undefined') set.assignee = updates.assignee ?? undefined;
+  if (typeof updates.assignee_user_id !== 'undefined')
+    set.assigneeUserId = updates.assignee_user_id ?? undefined;
+  if (typeof updates.dependency_ticket_id !== 'undefined')
+    set.dependencyTicketId = updates.dependency_ticket_id ?? undefined;
+  if (typeof updates.start_date !== 'undefined') set.startDate = updates.start_date ?? undefined;
+  if (typeof updates.due_date !== 'undefined') set.dueDate = updates.due_date ?? undefined;
+  if (typeof updates.deadline_time !== 'undefined')
+    set.deadlineTime = updates.deadline_time ?? undefined;
   await TicketsEntity.update({ id }).set(set).go();
 }
 
@@ -737,7 +754,9 @@ export async function createDependency(dep: {
     };
   }
 
-  const existingDeps = await TicketDependenciesEntity.query.byTicket({ ticketId: dep.ticket_id }).go();
+  const existingDeps = await TicketDependenciesEntity.query
+    .byTicket({ ticketId: dep.ticket_id })
+    .go();
   const existing = (existingDeps.data ?? []).find(
     (d: any) => d.dependsOnTicketId === dep.depends_on_ticket_id
   );
@@ -822,25 +841,29 @@ export async function cascadeDepRegressionForParent(parentId: string): Promise<v
   if (toBlock.length === 0) return;
 
   for (const id of toBlock) {
-    await TicketsEntity.update({ id }).set({ status: 'blocked', updatedAt: new Date().toISOString() }).go();
+    await TicketsEntity.update({ id })
+      .set({ status: 'blocked', updatedAt: new Date().toISOString() })
+      .go();
   }
 }
 
 // ─── Attachments ───────────────────────────────────────────────
 export async function getAttachmentsForTicket(ticketId: string): Promise<TicketAttachment[]> {
   const res = await TicketAttachmentsEntity.query.byTicket({ ticketId }).go();
-  return (res.data ?? []).map((row: any) => ({
-    id: row.id,
-    ticket_id: row.ticketId,
-    project_id: row.projectId,
-    user_id: row.userId,
-    filename: row.filename,
-    file_url: row.fileUrl,
-    file_size: row.fileSize,
-    file_type: row.fileType,
-    created_at: row.createdAt,
-    updated_at: row.updatedAt,
-  })).sort((a: any, b: any) => b.created_at.localeCompare(a.created_at));
+  return (res.data ?? [])
+    .map((row: any) => ({
+      id: row.id,
+      ticket_id: row.ticketId,
+      project_id: row.projectId,
+      user_id: row.userId,
+      filename: row.filename,
+      file_url: row.fileUrl,
+      file_size: row.fileSize,
+      file_type: row.fileType,
+      created_at: row.createdAt,
+      updated_at: row.updatedAt,
+    }))
+    .sort((a: any, b: any) => b.created_at.localeCompare(a.created_at));
 }
 
 export async function createAttachment(
@@ -879,15 +902,17 @@ export async function deleteAttachment(id: string): Promise<void> {
 // ─── Comments ────────────────────────────────────────────────────
 export async function getCommentsForTicket(ticketId: string): Promise<TicketComment[]> {
   const res = await TicketCommentsEntity.query.byTicket({ ticketId }).go();
-  return (res.data ?? []).map((row: any) => ({
-    id: row.id,
-    ticket_id: row.ticketId,
-    project_id: row.projectId,
-    user_id: row.userId,
-    content: row.content,
-    created_at: row.createdAt,
-    updated_at: row.updatedAt,
-  })).sort((a: any, b: any) => a.created_at.localeCompare(b.created_at));
+  return (res.data ?? [])
+    .map((row: any) => ({
+      id: row.id,
+      ticket_id: row.ticketId,
+      project_id: row.projectId,
+      user_id: row.userId,
+      content: row.content,
+      created_at: row.createdAt,
+      updated_at: row.updatedAt,
+    }))
+    .sort((a: any, b: any) => a.created_at.localeCompare(b.created_at));
 }
 
 export async function createComment(
@@ -945,14 +970,16 @@ export interface TicketActivity {
 
 export async function getActivitiesForTicket(ticketId: string): Promise<TicketActivity[]> {
   const res = await TicketActivitiesEntity.query.byTicket({ ticketId }).go();
-  return (res.data ?? []).map((row: any) => ({
-    id: row.id,
-    ticket_id: row.ticketId,
-    user_id: row.userId,
-    action_type: row.actionType,
-    metadata: row.metadata ?? {},
-    created_at: row.createdAt,
-  })).sort((a: any, b: any) => b.created_at.localeCompare(a.created_at));
+  return (res.data ?? [])
+    .map((row: any) => ({
+      id: row.id,
+      ticket_id: row.ticketId,
+      user_id: row.userId,
+      action_type: row.actionType,
+      metadata: row.metadata ?? {},
+      created_at: row.createdAt,
+    }))
+    .sort((a: any, b: any) => b.created_at.localeCompare(a.created_at));
 }
 
 export async function createActivity(
@@ -989,7 +1016,9 @@ export function saveDB() {
 // ─── Org-scoped functions ───────────────────────────────────────
 export async function getProjectsByOrg(orgId: string): Promise<Project[]> {
   const res = await ProjectsEntity.query.byOrg({ orgId }).go();
-  return (res.data ?? []).map(entityToProject).sort((a: Project, b: Project) => b.createdAt.localeCompare(a.createdAt));
+  return (res.data ?? [])
+    .map(entityToProject)
+    .sort((a: Project, b: Project) => b.createdAt.localeCompare(a.createdAt));
 }
 
 export async function getTicketsPaginated(
@@ -1035,9 +1064,7 @@ export async function getStaleTickets(
 
   const res = await TicketsEntity.query.byOrg({ orgId }).go();
   let tickets = (res.data ?? []).map(entityToTicket);
-  tickets = tickets.filter(
-    (t: Ticket) => t.status !== 'done' && (t.updatedAt ?? '') < cutoffStr
-  );
+  tickets = tickets.filter((t: Ticket) => t.status !== 'done' && (t.updatedAt ?? '') < cutoffStr);
   if (projectId) tickets = tickets.filter((t: Ticket) => t.projectId === projectId);
   tickets.sort((a: Ticket, b: Ticket) => (a.updatedAt ?? '').localeCompare(b.updatedAt ?? ''));
   return tickets;
@@ -1130,7 +1157,9 @@ export async function removeProjectMember(projectId: string, userId: string): Pr
 
 export async function getProjectMembers(projectId: string): Promise<ProjectMember[]> {
   const res = await ProjectMembersEntity.query.primary({ projectId }).go();
-  return (res.data ?? []).map(entityToProjectMember).sort((a: ProjectMember, b: ProjectMember) => a.created_at.localeCompare(b.created_at));
+  return (res.data ?? [])
+    .map(entityToProjectMember)
+    .sort((a: ProjectMember, b: ProjectMember) => a.created_at.localeCompare(b.created_at));
 }
 
 export async function getProjectsForMember(orgId: string, userId: string): Promise<Project[]> {
@@ -1142,7 +1171,9 @@ export async function getProjectsForMember(orgId: string, userId: string): Promi
   const rows = (projectsRes.data ?? []).filter(
     (p: any) => p.userId === userId || memberProjectIds.includes(p.id)
   );
-  return rows.map(entityToProject).sort((a: Project, b: Project) => b.createdAt.localeCompare(a.createdAt));
+  return rows
+    .map(entityToProject)
+    .sort((a: Project, b: Project) => b.createdAt.localeCompare(a.createdAt));
 }
 
 export async function isProjectMember(projectId: string, userId: string): Promise<boolean> {
@@ -1225,7 +1256,11 @@ export async function markNotificationAsRead(id: string): Promise<void> {
   const allRes = await NotificationsEntity.scan.go();
   const notif = (allRes.data ?? []).find((n: any) => n.id === id);
   if (!notif) return;
-  await NotificationsEntity.update({ userId: notif.userId, orgId: notif.orgId, createdAt: notif.createdAt })
+  await NotificationsEntity.update({
+    userId: notif.userId,
+    orgId: notif.orgId,
+    createdAt: notif.createdAt,
+  })
     .set({ read: true })
     .go();
 }

@@ -12,7 +12,7 @@ function makeEntity(
   indexes: Record<string, any>
 ): any {
   const useLocal = !!process.env.DYNAMODB_ENDPOINT;
-  const actualTable = useLocal ? tableName : (process.env[envVar] || tableName);
+  const actualTable = useLocal ? tableName : process.env[envVar] || tableName;
   return new Entity(
     {
       model: { entity: entityName, service: SERVICE, version: VERSION },
@@ -52,7 +52,10 @@ export const ApiKeysEntity = makeEntity(
     createdAt: { type: 'string', default: () => new Date().toISOString() },
   },
   {
-    primary: { pk: { field: 'pk', composite: ['userId'] }, sk: { field: 'sk', template: 'apiKey' } },
+    primary: {
+      pk: { field: 'pk', composite: ['userId'] },
+      sk: { field: 'sk', template: 'apiKey' },
+    },
     byId: { index: 'gsi1', pk: { field: 'gsi1pk', composite: ['id'] } },
   }
 );
@@ -85,9 +88,21 @@ export const MeetingsEntity = makeEntity(
   },
   {
     primary: { pk: { field: 'pk', composite: ['id'] }, sk: { field: 'sk', template: 'meeting' } },
-    byUser: { index: 'gsi1', pk: { field: 'gsi1pk', composite: ['userId'] }, sk: { field: 'gsi1sk', composite: ['date'] } },
-    byOrg: { index: 'gsi2', pk: { field: 'gsi2pk', composite: ['orgId'] }, sk: { field: 'gsi2sk', composite: ['date'] } },
-    byBot: { index: 'gsi3', pk: { field: 'gsi3pk', composite: ['botId'] } },
+    byUser: {
+      index: 'gsi1',
+      pk: { field: 'gsi1pk', composite: ['userId'] },
+      sk: { field: 'gsi1sk', composite: ['date'] },
+    },
+    byOrg: {
+      index: 'gsi2',
+      pk: { field: 'gsi2pk', composite: ['orgId'] },
+      sk: { field: 'gsi2sk', composite: ['date'] },
+    },
+    byBot: {
+      index: 'gsi3',
+      pk: { field: 'gsi3pk', composite: ['botId'] },
+      sk: { field: 'gsi3sk', composite: ['id'] },
+    },
   }
 );
 
@@ -112,9 +127,21 @@ export const SpecsEntity = makeEntity(
   },
   {
     primary: { pk: { field: 'pk', composite: ['id'] }, sk: { field: 'sk', template: 'spec' } },
-    byMeeting: { index: 'gsi1', pk: { field: 'gsi1pk', composite: ['meetingId'] }, sk: { field: 'gsi1sk', composite: ['timestamp'] } },
-    byProject: { index: 'gsi2', pk: { field: 'gsi2pk', composite: ['projectId'] }, sk: { field: 'gsi2sk', composite: ['timestamp'] } },
-    byUser: { index: 'gsi3', pk: { field: 'gsi3pk', composite: ['userId'] }, sk: { field: 'gsi3sk', composite: ['timestamp'] } },
+    byMeeting: {
+      index: 'gsi1',
+      pk: { field: 'gsi1pk', composite: ['meetingId'] },
+      sk: { field: 'gsi1sk', composite: ['timestamp'] },
+    },
+    byProject: {
+      index: 'gsi2',
+      pk: { field: 'gsi2pk', composite: ['projectId'] },
+      sk: { field: 'gsi2sk', composite: ['timestamp'] },
+    },
+    byUser: {
+      index: 'gsi3',
+      pk: { field: 'gsi3pk', composite: ['userId'] },
+      sk: { field: 'gsi3sk', composite: ['timestamp'] },
+    },
   }
 );
 
@@ -144,11 +171,31 @@ export const TicketsEntity = makeEntity(
   },
   {
     primary: { pk: { field: 'pk', composite: ['id'] }, sk: { field: 'sk', template: 'ticket' } },
-    byMeeting: { index: 'gsi1', pk: { field: 'gsi1pk', composite: ['meetingId'] }, sk: { field: 'gsi1sk', composite: ['createdAt'] } },
-    byProject: { index: 'gsi2', pk: { field: 'gsi2pk', composite: ['projectId'] }, sk: { field: 'gsi2sk', composite: ['createdAt'] } },
-    byOrg: { index: 'gsi3', pk: { field: 'gsi3pk', composite: ['orgId'] }, sk: { field: 'gsi3sk', composite: ['createdAt'] } },
-    byUser: { index: 'gsi4', pk: { field: 'gsi4pk', composite: ['userId'] }, sk: { field: 'gsi4sk', composite: ['createdAt'] } },
-    byAssignee: { index: 'gsi5', pk: { field: 'gsi5pk', composite: ['assigneeUserId'] }, sk: { field: 'gsi5sk', composite: ['dueDate'] } },
+    byMeeting: {
+      index: 'gsi1',
+      pk: { field: 'gsi1pk', composite: ['meetingId'] },
+      sk: { field: 'gsi1sk', composite: ['createdAt'] },
+    },
+    byProject: {
+      index: 'gsi2',
+      pk: { field: 'gsi2pk', composite: ['projectId'] },
+      sk: { field: 'gsi2sk', composite: ['createdAt'] },
+    },
+    byOrg: {
+      index: 'gsi3',
+      pk: { field: 'gsi3pk', composite: ['orgId'] },
+      sk: { field: 'gsi3sk', composite: ['createdAt'] },
+    },
+    byUser: {
+      index: 'gsi4',
+      pk: { field: 'gsi4pk', composite: ['userId'] },
+      sk: { field: 'gsi4sk', composite: ['createdAt'] },
+    },
+    byAssignee: {
+      index: 'gsi5',
+      pk: { field: 'gsi5pk', composite: ['assigneeUserId'] },
+      sk: { field: 'gsi5sk', composite: ['dueDate'] },
+    },
   }
 );
 
@@ -175,8 +222,16 @@ export const ProjectsEntity = makeEntity(
   },
   {
     primary: { pk: { field: 'pk', composite: ['id'] }, sk: { field: 'sk', template: 'project' } },
-    byUser: { index: 'gsi1', pk: { field: 'gsi1pk', composite: ['userId'] }, sk: { field: 'gsi1sk', composite: ['createdAt'] } },
-    byOrg: { index: 'gsi2', pk: { field: 'gsi2pk', composite: ['orgId'] }, sk: { field: 'gsi2sk', composite: ['createdAt'] } },
+    byUser: {
+      index: 'gsi1',
+      pk: { field: 'gsi1pk', composite: ['userId'] },
+      sk: { field: 'gsi1sk', composite: ['createdAt'] },
+    },
+    byOrg: {
+      index: 'gsi2',
+      pk: { field: 'gsi2pk', composite: ['orgId'] },
+      sk: { field: 'gsi2sk', composite: ['createdAt'] },
+    },
   }
 );
 
@@ -199,10 +254,25 @@ export const TicketDependenciesEntity = makeEntity(
     updatedAt: { type: 'string', default: () => new Date().toISOString() },
   },
   {
-    primary: { pk: { field: 'pk', composite: ['id'] }, sk: { field: 'sk', template: 'ticketDependency' } },
-    byTicket: { index: 'gsi1', pk: { field: 'gsi1pk', composite: ['ticketId'] }, sk: { field: 'gsi1sk', composite: ['createdAt'] } },
-    byDependsOn: { index: 'gsi2', pk: { field: 'gsi2pk', composite: ['dependsOnTicketId'] }, sk: { field: 'gsi2sk', composite: ['createdAt'] } },
-    byProject: { index: 'gsi3', pk: { field: 'gsi3pk', composite: ['projectId'] }, sk: { field: 'gsi3sk', composite: ['createdAt'] } },
+    primary: {
+      pk: { field: 'pk', composite: ['id'] },
+      sk: { field: 'sk', template: 'ticketDependency' },
+    },
+    byTicket: {
+      index: 'gsi1',
+      pk: { field: 'gsi1pk', composite: ['ticketId'] },
+      sk: { field: 'gsi1sk', composite: ['createdAt'] },
+    },
+    byDependsOn: {
+      index: 'gsi2',
+      pk: { field: 'gsi2pk', composite: ['dependsOnTicketId'] },
+      sk: { field: 'gsi2sk', composite: ['createdAt'] },
+    },
+    byProject: {
+      index: 'gsi3',
+      pk: { field: 'gsi3pk', composite: ['projectId'] },
+      sk: { field: 'gsi3sk', composite: ['createdAt'] },
+    },
   }
 );
 
@@ -224,8 +294,15 @@ export const TicketAttachmentsEntity = makeEntity(
     updatedAt: { type: 'string', default: () => new Date().toISOString() },
   },
   {
-    primary: { pk: { field: 'pk', composite: ['id'] }, sk: { field: 'sk', template: 'ticketAttachment' } },
-    byTicket: { index: 'gsi1', pk: { field: 'gsi1pk', composite: ['ticketId'] }, sk: { field: 'gsi1sk', composite: ['createdAt'] } },
+    primary: {
+      pk: { field: 'pk', composite: ['id'] },
+      sk: { field: 'sk', template: 'ticketAttachment' },
+    },
+    byTicket: {
+      index: 'gsi1',
+      pk: { field: 'gsi1pk', composite: ['ticketId'] },
+      sk: { field: 'gsi1sk', composite: ['createdAt'] },
+    },
   }
 );
 
@@ -244,8 +321,15 @@ export const TicketCommentsEntity = makeEntity(
     updatedAt: { type: 'string', default: () => new Date().toISOString() },
   },
   {
-    primary: { pk: { field: 'pk', composite: ['id'] }, sk: { field: 'sk', template: 'ticketComment' } },
-    byTicket: { index: 'gsi1', pk: { field: 'gsi1pk', composite: ['ticketId'] }, sk: { field: 'gsi1sk', composite: ['createdAt'] } },
+    primary: {
+      pk: { field: 'pk', composite: ['id'] },
+      sk: { field: 'sk', template: 'ticketComment' },
+    },
+    byTicket: {
+      index: 'gsi1',
+      pk: { field: 'gsi1pk', composite: ['ticketId'] },
+      sk: { field: 'gsi1sk', composite: ['createdAt'] },
+    },
   }
 );
 
@@ -263,8 +347,15 @@ export const TicketActivitiesEntity = makeEntity(
     createdAt: { type: 'string', default: () => new Date().toISOString() },
   },
   {
-    primary: { pk: { field: 'pk', composite: ['id'] }, sk: { field: 'sk', template: 'ticketActivity' } },
-    byTicket: { index: 'gsi1', pk: { field: 'gsi1pk', composite: ['ticketId'] }, sk: { field: 'gsi1sk', composite: ['createdAt'] } },
+    primary: {
+      pk: { field: 'pk', composite: ['id'] },
+      sk: { field: 'sk', template: 'ticketActivity' },
+    },
+    byTicket: {
+      index: 'gsi1',
+      pk: { field: 'gsi1pk', composite: ['ticketId'] },
+      sk: { field: 'gsi1sk', composite: ['createdAt'] },
+    },
   }
 );
 
@@ -287,8 +378,15 @@ export const IntegrationsEntity = makeEntity(
     updatedAt: { type: 'string', default: () => new Date().toISOString() },
   },
   {
-    primary: { pk: { field: 'pk', composite: ['userId'] }, sk: { field: 'sk', template: 'integration' } },
-    byOrg: { index: 'gsi1', pk: { field: 'gsi1pk', composite: ['orgId'] }, sk: { field: 'gsi1sk', composite: ['updatedAt'] } },
+    primary: {
+      pk: { field: 'pk', composite: ['userId'] },
+      sk: { field: 'sk', template: 'integration' },
+    },
+    byOrg: {
+      index: 'gsi1',
+      pk: { field: 'gsi1pk', composite: ['orgId'] },
+      sk: { field: 'gsi1sk', composite: ['updatedAt'] },
+    },
   }
 );
 
@@ -306,8 +404,15 @@ export const ProjectMembersEntity = makeEntity(
     createdAt: { type: 'string', default: () => new Date().toISOString() },
   },
   {
-    primary: { pk: { field: 'pk', composite: ['projectId'] }, sk: { field: 'sk', composite: ['userId'] } },
-    byOrgUser: { index: 'gsi1', pk: { field: 'gsi1pk', composite: ['orgId'] }, sk: { field: 'gsi1sk', composite: ['userId'] } },
+    primary: {
+      pk: { field: 'pk', composite: ['projectId'] },
+      sk: { field: 'sk', composite: ['userId'] },
+    },
+    byOrgUser: {
+      index: 'gsi1',
+      pk: { field: 'gsi1pk', composite: ['orgId'] },
+      sk: { field: 'gsi1sk', composite: ['userId'] },
+    },
   }
 );
 
@@ -329,7 +434,10 @@ export const OrganizationMetadataEntity = makeEntity(
     updatedAt: { type: 'string', default: () => new Date().toISOString() },
   },
   {
-    primary: { pk: { field: 'pk', composite: ['orgId'] }, sk: { field: 'sk', template: 'orgMetadata' } },
+    primary: {
+      pk: { field: 'pk', composite: ['orgId'] },
+      sk: { field: 'sk', template: 'orgMetadata' },
+    },
   }
 );
 
@@ -349,7 +457,10 @@ export const OrganizationInvitesEntity = makeEntity(
     respondedAt: { type: 'string' },
   },
   {
-    primary: { pk: { field: 'pk', composite: ['orgId'] }, sk: { field: 'sk', composite: ['email'] } },
+    primary: {
+      pk: { field: 'pk', composite: ['orgId'] },
+      sk: { field: 'sk', composite: ['email'] },
+    },
     byEmail: { index: 'gsi1', pk: { field: 'gsi1pk', composite: ['email'] } },
     byToken: { index: 'gsi2', pk: { field: 'gsi2pk', composite: ['token'] } },
   }
@@ -372,7 +483,10 @@ export const OrganizationAccessRequestsEntity = makeEntity(
     respondedBy: { type: 'string' },
   },
   {
-    primary: { pk: { field: 'pk', composite: ['orgId'] }, sk: { field: 'sk', composite: ['userId'] } },
+    primary: {
+      pk: { field: 'pk', composite: ['orgId'] },
+      sk: { field: 'sk', composite: ['userId'] },
+    },
     byUser: { index: 'gsi1', pk: { field: 'gsi1pk', composite: ['userId'] } },
   }
 );
@@ -394,6 +508,9 @@ export const NotificationsEntity = makeEntity(
     createdAt: { type: 'string', default: () => new Date().toISOString() },
   },
   {
-    primary: { pk: { field: 'pk', composite: ['userId'] }, sk: { field: 'sk', composite: ['orgId', 'createdAt'] } },
+    primary: {
+      pk: { field: 'pk', composite: ['userId'] },
+      sk: { field: 'sk', composite: ['orgId', 'createdAt'] },
+    },
   }
 );

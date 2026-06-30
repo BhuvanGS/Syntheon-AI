@@ -89,9 +89,9 @@ export async function GET(req: NextRequest) {
 
   // Fallback: check if any other user in DB has the same email domain
   const userScanRes = await UsersEntity.scan.go();
-  const sameDomainUsers = (userScanRes.data ?? []).filter((u: any) =>
-    u.email?.toLowerCase().endsWith(`@${domain}`)
-  ).slice(0, 10);
+  const sameDomainUsers = (userScanRes.data ?? [])
+    .filter((u: any) => u.email?.toLowerCase().endsWith(`@${domain}`))
+    .slice(0, 10);
 
   if (sameDomainUsers.length > 0) {
     const client = await clerkClient();

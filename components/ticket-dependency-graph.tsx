@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, GitBranch, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { Loader2, GitBranch, ZoomIn, ZoomOut, RotateCcw, Network } from 'lucide-react';
+import { useToast } from '@/components/island-toast';
 
 interface GraphTicket {
   id: string;
@@ -135,6 +136,9 @@ export function TicketDependencyGraph({
   const softStroke = isDark ? '#a8a29e' : '#1a1a1a';
   const subtitleFill = isDark ? '#a8a29e' : '#78716c';
 
+  const [mapping, setMapping] = useState(false);
+  const { showToast } = useToast();
+
   const fetchGraph = useCallback(async () => {
     setLoading(true);
     try {
@@ -188,6 +192,34 @@ export function TicketDependencyGraph({
     setPan({ x: 40, y: 40 });
   }
 
+  async function handleMapDependencies() {
+    setMapping(true);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/map-dependencies`, {
+        method: 'POST',
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showToast(data?.error || 'Failed to map dependencies', 'error');
+        return;
+      }
+      const mapped = typeof data?.mapped === 'number' ? data.mapped : 0;
+      if (mapped === 0) {
+        showToast('No new dependencies found to map', 'info');
+      } else {
+        showToast(
+          `Mapped ${mapped} dependenc${mapped === 1 ? 'y' : 'ies'} successfully`,
+          'success'
+        );
+      }
+      await fetchGraph();
+    } catch {
+      showToast('Failed to map dependencies', 'error');
+    } finally {
+      setMapping(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -220,6 +252,19 @@ export function TicketDependencyGraph({
           </Badge>
         </div>
         <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={handleMapDependencies}
+            disabled={mapping || tickets.length < 2}
+            className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-primary hover:bg-primary/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {mapping ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Network className="w-3.5 h-3.5" />
+            )}
+            Map Dependencies
+          </button>
           <button
             type="button"
             onClick={() => setZoom((z) => Math.min(2, z + 0.15))}

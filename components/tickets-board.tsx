@@ -41,13 +41,13 @@ import { MentionEditor } from '@/components/mention-editor';
 import { useSse } from '@/components/sse-provider';
 import { format, parseISO, isToday, isPast, isTomorrow } from 'date-fns';
 
-type TicketStatus = 'backlog' | 'in_progress' | 'done' | 'blocked';
+type TicketStatus = string;
 
 interface Ticket {
   id: string;
   title: string;
   description: string;
-  status: TicketStatus;
+  status: string;
   assignee?: string | null;
   assignee_user_id?: string | null;
   projectId?: string | null;
@@ -594,7 +594,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
     return 'Project-only';
   }
 
-  const columns = [
+  const defaultColumns = [
     {
       key: 'backlog',
       title: 'Backlog',
@@ -623,7 +623,26 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
       color: 'border-green-200 bg-green-50',
       badge: 'bg-green-100 text-green-800',
     },
-  ] as const;
+  ];
+
+  const columns = useMemo(() => {
+    const knownKeys = new Set(defaultColumns.map((c) => c.key));
+    const extraKeys = new Set<string>();
+    for (const t of tickets) {
+      if (t.status && !knownKeys.has(t.status)) {
+        extraKeys.add(t.status);
+      }
+    }
+    if (extraKeys.size === 0) return defaultColumns;
+    const extra = [...extraKeys].map((key) => ({
+      key,
+      title: key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+      icon: <Circle className="w-4 h-4" />,
+      color: 'border-border bg-muted/30',
+      badge: 'bg-muted text-muted-foreground',
+    }));
+    return [...defaultColumns, ...extra];
+  }, [tickets]);
 
   if (loading) {
     return (
@@ -819,7 +838,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                   onValueChange={(value) =>
                     setTicketEditForm((prev) => ({
                       ...prev,
-                      status: value as TicketStatus,
+                      status: value,
                     }))
                   }
                 >
@@ -827,10 +846,11 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="backlog">Backlog</SelectItem>
-                    <SelectItem value="in_progress">In progress</SelectItem>
-                    <SelectItem value="done">Done</SelectItem>
-                    <SelectItem value="blocked">Blocked</SelectItem>
+                    {columns.map((col) => (
+                      <SelectItem key={col.key} value={col.key}>
+                        {col.title}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -1130,18 +1150,27 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
             if (assigneeFilter === 'unassigned') return !ticket.assignee_user_id;
             return true;
           });
-          const statusColors: Record<TicketStatus, { color: string; bg: string }> = {
+          const statusColors: Record<string, { color: string; bg: string }> = {
             backlog: { color: '#8a8a80', bg: '#f3f3f0' },
             in_progress: { color: '#3d7abf', bg: '#eff5ff' },
             done: { color: '#3d8a5e', bg: '#edf7f1' },
             blocked: { color: '#b84040', bg: '#fdf0f0' },
           };
-          const statusLabel: Record<TicketStatus, string> = {
+          const statusLabel: Record<string, string> = {
             backlog: 'Backlog',
             in_progress: 'In Progress',
             done: 'Done',
             blocked: 'Blocked',
           };
+          function getStatusMeta(status: string) {
+            return statusColors[status] ?? { color: '#64748b', bg: '#f1f5f9' };
+          }
+          function getStatusLabel(status: string) {
+            return (
+              statusLabel[status] ??
+              status.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+            );
+          }
           return (
             <div className="rounded-2xl border border-border bg-muted/30 overflow-hidden">
               <div className="grid grid-cols-[minmax(200px,1fr)_120px_160px_100px_80px_40px] items-center px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground border-b border-border/60 bg-muted/40">
@@ -1158,7 +1187,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                 </div>
               ) : (
                 filteredTickets.map((ticket, i) => {
-                  const s = statusColors[ticket.status];
+                  const s = getStatusMeta(ticket.status);
                   return (
                     <div
                       key={ticket.id}
@@ -1187,7 +1216,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                         className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium w-fit"
                         style={{ background: s.bg, color: s.color }}
                       >
-                        {statusLabel[ticket.status]}
+                        {getStatusLabel(ticket.status)}
                       </span>
                       <span className="text-xs text-muted-foreground truncate">
                         {getMeetingName(ticket.meeting_id)}

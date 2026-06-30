@@ -20,7 +20,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ org
   }
 
   // Check for existing invite
-  const existing = await OrganizationInvitesEntity.get({ orgId, email: email.trim().toLowerCase() }).go();
+  const existing = await OrganizationInvitesEntity.get({
+    orgId,
+    email: email.trim().toLowerCase(),
+  }).go();
   if (existing.data) {
     return NextResponse.json({ error: 'Invite already sent' }, { status: 409 });
   }

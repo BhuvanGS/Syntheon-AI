@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   addMonths,
   eachDayOfInterval,
@@ -15,7 +15,7 @@ import {
   subMonths,
   parseISO,
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, Video } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Video, CalendarIcon, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
@@ -27,6 +27,23 @@ interface MeetingCalendarMeeting {
   platform: string;
 }
 
+interface GoogleCalendarEvent {
+  id: string;
+  title: string;
+  start: string | null;
+  end: string | null;
+  hangoutLink: string | null;
+  attendees: { email: string; displayName: string; responseStatus: string }[];
+  location: string | null;
+}
+
+type CalendarItem = MeetingCalendarMeeting & {
+  isGoogleEvent?: boolean;
+  hangoutLink?: string | null;
+  attendees?: { email: string; displayName: string; responseStatus: string }[];
+  location?: string | null;
+};
+
 interface MeetingCalendarProps {
   meetings: MeetingCalendarMeeting[];
   onSelectMeeting: (meetingId: string) => void;
@@ -35,6 +52,44 @@ interface MeetingCalendarProps {
 export function MeetingCalendar({ meetings, onSelectMeeting }: MeetingCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [googleEvents, setGoogleEvents] = useState<GoogleCalendarEvent[]>([]);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [googleConnected, setGoogleConnected] = useState<boolean | null>(null);
+
+  const fetchGoogleEvents = useCallback(async (month: Date) => {
+    setGoogleLoading(true);
+    try {
+      const timeMin = new Date(month.getFullYear(), month.getMonth(), 1).toISOString();
+      const timeMax = new Date(
+        month.getFullYear(),
+        month.getMonth() + 1,
+        0,
+        23,
+        59,
+        59
+      ).toISOString();
+      const res = await fetch(
+        `/api/google/calendar-events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`
+      );
+      if (res.status === 403) {
+        setGoogleConnected(false);
+        setGoogleEvents([]);
+        return;
+      }
+      if (!res.ok) return;
+      setGoogleConnected(true);
+      const data = await res.json();
+      setGoogleEvents(data.events ?? []);
+    } catch {
+      // silently fail — calendar still shows Syntheon meetings
+    } finally {
+      setGoogleLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchGoogleEvents(currentMonth);
+  }, [currentMonth, fetchGoogleEvents]);
 
   const calendarDays = useMemo(() => {
     const start = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 1 });
@@ -42,22 +97,42 @@ export function MeetingCalendar({ meetings, onSelectMeeting }: MeetingCalendarPr
     return eachDayOfInterval({ start, end });
   }, [currentMonth]);
 
-  const meetingsByDate = useMemo(() => {
-    const map = new Map<string, MeetingCalendarMeeting[]>();
+  const itemsByDate = useMemo(() => {
+    const map = new Map<string, CalendarItem[]>();
     for (const meeting of meetings) {
       const d = parseISO(meeting.date);
       const key = format(d, 'yyyy-MM-dd');
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(meeting);
     }
+    for (const evt of googleEvents) {
+      if (!evt.start) continue;
+      const d = parseISO(evt.start);
+      const key = format(d, 'yyyy-MM-dd');
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push({
+        id: `gcal-${evt.id}`,
+        projectName: evt.title,
+        date: evt.start,
+        status: 'not_admitted',
+        platform: 'Google Calendar',
+        isGoogleEvent: true,
+        hangoutLink: evt.hangoutLink,
+        attendees: evt.attendees,
+        location: evt.location,
+      });
+    }
+    for (const items of map.values()) {
+      items.sort((a, b) => a.date.localeCompare(b.date));
+    }
     return map;
-  }, [meetings]);
+  }, [meetings, googleEvents]);
 
-  const selectedMeetings = useMemo(() => {
+  const selectedItems = useMemo(() => {
     if (!selectedDate) return [];
     const key = format(selectedDate, 'yyyy-MM-dd');
-    return meetingsByDate.get(key) ?? [];
-  }, [selectedDate, meetingsByDate]);
+    return itemsByDate.get(key) ?? [];
+  }, [selectedDate, itemsByDate]);
 
   function prevMonth() {
     setCurrentMonth((m) => subMonths(m, 1));
@@ -79,6 +154,14 @@ export function MeetingCalendar({ meetings, onSelectMeeting }: MeetingCalendarPr
           <h3 className="text-lg font-semibold text-foreground min-w-[140px]">
             {format(currentMonth, 'MMMM yyyy')}
           </h3>
+          {googleLoading && (
+            <span className="text-[10px] text-muted-foreground animate-pulse">
+              Syncing Google Calendar…
+            </span>
+          )}
+          {googleConnected === false && !googleLoading && (
+            <span className="text-[10px] text-muted-foreground">Google Calendar not connected</span>
+          )}
           <div className="flex items-center gap-1">
             <button
               onClick={prevMonth}
@@ -116,6 +199,10 @@ export function MeetingCalendar({ meetings, onSelectMeeting }: MeetingCalendarPr
             <span className="h-2 w-2 rounded-full bg-red-500" />
             Failed
           </div>
+          <div className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-blue-500" />
+            Google Calendar
+          </div>
         </div>
       </div>
 
@@ -137,7 +224,7 @@ export function MeetingCalendar({ meetings, onSelectMeeting }: MeetingCalendarPr
         <div className="grid grid-cols-7">
           {calendarDays.map((day) => {
             const key = format(day, 'yyyy-MM-dd');
-            const dayMeetings = meetingsByDate.get(key) ?? [];
+            const dayItems = itemsByDate.get(key) ?? [];
             const isCurrentMonth = isSameMonth(day, currentMonth);
             const isTodayDate = isToday(day);
             const isSelected = selectedDate && isSameDay(day, selectedDate);
@@ -164,51 +251,61 @@ export function MeetingCalendar({ meetings, onSelectMeeting }: MeetingCalendarPr
                   >
                     {format(day, 'd')}
                   </span>
-                  {dayMeetings.length > 0 && (
+                  {dayItems.length > 0 && (
                     <span className="text-[10px] font-semibold text-primary bg-primary/10 rounded-full px-1.5 py-0.5">
-                      {dayMeetings.length}
+                      {dayItems.length}
                     </span>
                   )}
                 </div>
 
-                {/* Meeting dots */}
-                {dayMeetings.length > 0 && (
+                {/* Item dots */}
+                {dayItems.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-1">
-                    {dayMeetings.slice(0, 4).map((m, i) => (
+                    {dayItems.slice(0, 4).map((item, i) => (
                       <span
                         key={i}
                         className={cn(
                           'h-1.5 w-1.5 rounded-full',
-                          m.status === 'completed'
-                            ? 'bg-green-500'
-                            : m.status === 'processing'
-                              ? 'bg-amber-500'
-                              : m.status === 'failed'
-                                ? 'bg-red-500'
-                                : 'bg-primary'
+                          item.isGoogleEvent
+                            ? 'bg-blue-500'
+                            : item.status === 'completed'
+                              ? 'bg-green-500'
+                              : item.status === 'processing'
+                                ? 'bg-amber-500'
+                                : item.status === 'failed'
+                                  ? 'bg-red-500'
+                                  : 'bg-primary'
                         )}
                       />
                     ))}
-                    {dayMeetings.length > 4 && (
+                    {dayItems.length > 4 && (
                       <span className="text-[8px] text-muted-foreground leading-none">+</span>
                     )}
                   </div>
                 )}
 
-                {/* Meeting titles on hover / selected */}
-                {dayMeetings.length > 0 && (
+                {/* Item titles on hover / selected */}
+                {dayItems.length > 0 && (
                   <div className="mt-1 space-y-0.5">
-                    {dayMeetings.slice(0, 2).map((m) => (
+                    {dayItems.slice(0, 2).map((item) => (
                       <p
-                        key={m.id}
-                        className="text-[10px] truncate text-foreground/80 leading-tight"
+                        key={item.id}
+                        className={cn(
+                          'text-[10px] truncate leading-tight',
+                          item.isGoogleEvent
+                            ? 'text-blue-600 dark:text-blue-400'
+                            : 'text-foreground/80'
+                        )}
                       >
-                        {m.projectName}
+                        {item.isGoogleEvent && (
+                          <CalendarIcon className="inline h-2.5 w-2.5 mr-0.5" />
+                        )}
+                        {item.projectName}
                       </p>
                     ))}
-                    {dayMeetings.length > 2 && (
+                    {dayItems.length > 2 && (
                       <p className="text-[10px] text-muted-foreground">
-                        +{dayMeetings.length - 2} more
+                        +{dayItems.length - 2} more
                       </p>
                     )}
                   </div>
@@ -220,51 +317,95 @@ export function MeetingCalendar({ meetings, onSelectMeeting }: MeetingCalendarPr
       </div>
 
       {/* Selected day detail */}
-      {selectedDate && selectedMeetings.length > 0 && (
+      {selectedDate && selectedItems.length > 0 && (
         <div className="rounded-2xl border border-border bg-muted/50 p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h4 className="font-playfair text-lg font-semibold text-foreground">
               {format(selectedDate, 'EEEE, MMMM do')}
             </h4>
             <span className="text-xs text-muted-foreground">
-              {selectedMeetings.length} meeting{selectedMeetings.length > 1 ? 's' : ''}
+              {selectedItems.length} item{selectedItems.length > 1 ? 's' : ''}
             </span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {selectedMeetings.map((meeting) => (
-              <button
-                key={meeting.id}
-                onClick={() => onSelectMeeting(meeting.id)}
-                className="text-left rounded-xl border border-border bg-background p-4 hover:border-primary/30 hover:shadow-sm transition-all"
+            {selectedItems.map((item) => (
+              <div
+                key={item.id}
+                className={cn(
+                  'rounded-xl border border-border bg-background p-4 transition-all',
+                  item.isGoogleEvent
+                    ? 'hover:border-blue-400/50 hover:shadow-sm'
+                    : 'hover:border-primary/30 hover:shadow-sm'
+                )}
               >
-                <div className="flex items-start justify-between gap-3 mb-2">
-                  <p className="font-medium text-sm text-foreground">{meeting.projectName}</p>
-                  <Badge
-                    className={cn(
-                      'text-[10px]',
-                      meeting.status === 'completed'
-                        ? 'bg-green-100 text-green-800'
-                        : meeting.status === 'not_admitted'
-                          ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                          : 'bg-primary/10 text-primary'
-                    )}
+                {item.isGoogleEvent ? (
+                  <a
+                    href={item.hangoutLink || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block"
                   >
-                    {meeting.status === 'not_admitted' ? '!' : meeting.status}
-                  </Badge>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Video className="h-3 w-3" />
-                  <span>{meeting.platform}</span>
-                  <span>•</span>
-                  <span>{format(parseISO(meeting.date), 'h:mm a')}</span>
-                </div>
-              </button>
+                    <div className="flex items-start justify-between gap-3 mb-2">
+                      <p className="font-medium text-sm text-foreground flex items-center gap-1.5">
+                        <CalendarIcon className="h-3.5 w-3.5 text-blue-500" />
+                        {item.projectName}
+                      </p>
+                      <Badge className="text-[10px] bg-blue-100 text-blue-800">
+                        Google Calendar
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      {item.hangoutLink ? (
+                        <Video className="h-3 w-3" />
+                      ) : (
+                        <CalendarIcon className="h-3 w-3" />
+                      )}
+                      <span>{item.hangoutLink ? 'Google Meet' : 'Calendar event'}</span>
+                      <span>•</span>
+                      <span>{format(parseISO(item.date), 'h:mm a')}</span>
+                      {item.hangoutLink && <ExternalLink className="h-3 w-3 ml-auto" />}
+                    </div>
+                    {item.attendees && item.attendees.length > 0 && (
+                      <p className="text-[10px] text-muted-foreground mt-1.5">
+                        {item.attendees.length} attendee{item.attendees.length > 1 ? 's' : ''}
+                      </p>
+                    )}
+                  </a>
+                ) : (
+                  <button
+                    onClick={() => onSelectMeeting(item.id)}
+                    className="block w-full text-left"
+                  >
+                    <div className="flex items-start justify-between gap-3 mb-2">
+                      <p className="font-medium text-sm text-foreground">{item.projectName}</p>
+                      <Badge
+                        className={cn(
+                          'text-[10px]',
+                          item.status === 'completed'
+                            ? 'bg-green-100 text-green-800'
+                            : item.status === 'not_admitted'
+                              ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                              : 'bg-primary/10 text-primary'
+                        )}
+                      >
+                        {item.status === 'not_admitted' ? '!' : item.status}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Video className="h-3 w-3" />
+                      <span>{item.platform}</span>
+                      <span>•</span>
+                      <span>{format(parseISO(item.date), 'h:mm a')}</span>
+                    </div>
+                  </button>
+                )}
+              </div>
             ))}
           </div>
         </div>
       )}
 
-      {selectedDate && selectedMeetings.length === 0 && (
+      {selectedDate && selectedItems.length === 0 && (
         <div className="rounded-2xl border border-dashed border-border bg-muted/50 p-8 text-center">
           <p className="text-sm text-muted-foreground">
             No meetings on {format(selectedDate, 'MMMM do')}.

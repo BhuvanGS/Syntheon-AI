@@ -26,7 +26,9 @@ export async function POST(req: NextRequest) {
     }
 
     const headerBytes = new Uint8Array(await file.slice(0, 8).arrayBuffer());
-    const hex = Array.from(headerBytes).map((b) => b.toString(16).padStart(2, '0')).join('');
+    const hex = Array.from(headerBytes)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
 
     const BLOCKED_MAGIC: Record<string, string> = {
       '3c21444f4354': 'html',
@@ -42,15 +44,34 @@ export async function POST(req: NextRequest) {
     }
 
     const ALLOWED_MAGIC_PREFIXES = [
-      'ffd8ff', '89504e47', '47494638', '52494646', '25504446',
-      '494433', '1a45dfa3', '000000', '66747970', 'fffb', '4f676753',
+      'ffd8ff',
+      '89504e47',
+      '47494638',
+      '52494646',
+      '25504446',
+      '494433',
+      '1a45dfa3',
+      '000000',
+      '66747970',
+      'fffb',
+      '4f676753',
     ];
 
     const ALLOWED_TEXT_TYPES = ['text/plain', 'text/csv', 'text/markdown'];
-    const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif'];
+    const ALLOWED_IMAGE_TYPES = [
+      'image/jpeg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+      'image/avif',
+    ];
     const ALLOWED_BINARY_TYPES = [
-      'application/pdf', 'video/mp4', 'video/webm',
-      'audio/mpeg', 'audio/ogg', 'audio/wav',
+      'application/pdf',
+      'video/mp4',
+      'video/webm',
+      'audio/mpeg',
+      'audio/ogg',
+      'audio/wav',
     ];
 
     const claimedType = file.type.toLowerCase();

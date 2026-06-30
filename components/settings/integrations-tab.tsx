@@ -34,10 +34,10 @@ export function IntegrationsTab() {
 
   async function handleGoogleConnect() {
     try {
-      const res = await fetch('/api/auth/google/initiate', { method: 'POST' });
+      const res = await fetch('/api/oauth/google/initiate', { method: 'POST' });
       if (!res.ok) throw new Error('Failed to initiate Google OAuth');
-      const { url } = await res.json();
-      window.location.href = url;
+      const { authorizationUrl } = await res.json();
+      window.location.href = authorizationUrl;
     } catch (error) {
       showToast('Could not connect to Google Calendar', 'error');
     }

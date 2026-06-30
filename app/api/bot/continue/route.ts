@@ -32,7 +32,8 @@ export async function POST(req: NextRequest) {
 
     const isFollowUpMeeting = (project.meetings?.length ?? 0) > 0;
 
-    const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/bot/webhook`;
+    const webhookBaseUrl = process.env.NGROK_URL || process.env.NEXT_PUBLIC_APP_URL;
+    const webhookUrl = `${webhookBaseUrl}/api/bot/webhook`;
 
     // ⚠️ Bot created first (acceptable for now)
     const bot = await createBot(meetingUrl, webhookUrl);

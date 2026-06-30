@@ -53,7 +53,10 @@ export function createDynamoTables(): DynamoTableMap {
       primaryIndex: { hashKey: 'pk', rangeKey: 'sk' },
       globalIndexes: { ...GLOBAL_INDEXES },
     });
-    const envVar = `DYNAMO_TABLE_${name.replace(/syntheon-/g, '').replace(/-/g, '_').toUpperCase()}`;
+    const envVar = `DYNAMO_TABLE_${name
+      .replace(/syntheon-/g, '')
+      .replace(/-/g, '_')
+      .toUpperCase()}`;
     tables[name] = { resource, envVar };
   }
 

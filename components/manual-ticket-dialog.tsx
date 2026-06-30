@@ -33,6 +33,8 @@ interface ManualTicketDialogProps {
   meetings: MeetingOption[];
   defaultMeetingId?: string | null;
   defaultProjectId?: string | null;
+  defaultStatus?: string;
+  statusOptions?: { value: string; label: string }[];
   projectOnly?: boolean;
   onCreated?: () => void | Promise<void>;
 }
@@ -43,12 +45,14 @@ export function ManualTicketDialog({
   meetings,
   defaultMeetingId,
   defaultProjectId,
+  defaultStatus,
+  statusOptions,
   projectOnly = false,
   onCreated,
 }: ManualTicketDialogProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [status, setStatus] = useState<'backlog' | 'in_progress' | 'done' | 'blocked'>('backlog');
+  const [status, setStatus] = useState<string>(defaultStatus ?? 'backlog');
   const [assignee, setAssignee] = useState<AssigneeValue | null>(null);
   const [meetingId, setMeetingId] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
@@ -63,14 +67,14 @@ export function ManualTicketDialog({
     if (open && !wasOpenRef.current) {
       setTitle('');
       setDescription('');
-      setStatus('backlog');
+      setStatus(defaultStatus ?? 'backlog');
       setAssignee(null);
       setMeetingId(projectOnly ? '' : defaultMeetingId || meetings[0]?.id || '');
       setSubmitting(false);
     }
 
     wasOpenRef.current = open;
-  }, [open, defaultMeetingId, meetings, projectOnly]);
+  }, [open, defaultMeetingId, defaultStatus, meetings, projectOnly]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -193,10 +197,19 @@ export function ManualTicketDialog({
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="backlog">Backlog</SelectItem>
-                  <SelectItem value="in_progress">In progress</SelectItem>
-                  <SelectItem value="done">Done</SelectItem>
-                  <SelectItem value="blocked">Blocked</SelectItem>
+                  {(statusOptions && statusOptions.length > 0
+                    ? statusOptions
+                    : [
+                        { value: 'backlog', label: 'Backlog' },
+                        { value: 'in_progress', label: 'In progress' },
+                        { value: 'done', label: 'Done' },
+                        { value: 'blocked', label: 'Blocked' },
+                      ]
+                  ).map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

@@ -58,9 +58,12 @@ export async function POST(req: NextRequest) {
         });
       }
       if (existingRes.data.status === 'rejected') {
-        return NextResponse.json({
-          error: 'Your previous request was rejected. Contact an administrator.',
-        }, { status: 403 });
+        return NextResponse.json(
+          {
+            error: 'Your previous request was rejected. Contact an administrator.',
+          },
+          { status: 403 }
+        );
       }
       // If approved, they should already be a member
       return NextResponse.json({

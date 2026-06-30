@@ -63,13 +63,16 @@ export async function GET(req: NextRequest) {
       if (meetingId) tickets = tickets.filter((t) => t.meeting_id === meetingId);
       tickets.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
       const sliced = tickets.slice(offset, offset + limit);
-      return NextResponse.json({
-        tickets: sliced,
-        total: tickets.length,
-        limit,
-        offset,
-        hasMore: offset + sliced.length < tickets.length,
-      }, { headers: { 'Cache-Control': 'no-store' } });
+      return NextResponse.json(
+        {
+          tickets: sliced,
+          total: tickets.length,
+          limit,
+          offset,
+          hasMore: offset + sliced.length < tickets.length,
+        },
+        { headers: { 'Cache-Control': 'no-store' } }
+      );
     }
 
     return NextResponse.json(
@@ -118,7 +121,6 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'No changes provided' }, { status: 400 });
     }
 
-    const allowedStatuses = new Set(['backlog', 'in_progress', 'done', 'blocked']);
     const bypassGate = body?.bypassGate === true;
 
     // Validate payload shape before touching the DB
@@ -126,7 +128,7 @@ export async function PATCH(req: NextRequest) {
     for (const change of changes) {
       const ticketId = typeof change?.ticketId === 'string' ? change.ticketId : '';
       const status = typeof change?.status === 'string' ? change.status : '';
-      if (!ticketId || !allowedStatuses.has(status)) {
+      if (!ticketId || !status) {
         return NextResponse.json({ error: 'Invalid ticket update payload' }, { status: 400 });
       }
       changeIds.push(ticketId);

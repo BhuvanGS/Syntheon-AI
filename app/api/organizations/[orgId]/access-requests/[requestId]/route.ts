@@ -32,7 +32,11 @@ export async function POST(
 
   if (action === 'approve') {
     await OrganizationAccessRequestsEntity.update({ orgId, userId: request.userId })
-      .set({ status: 'approved', respondedAt: new Date().toISOString(), respondedBy: session.userId })
+      .set({
+        status: 'approved',
+        respondedAt: new Date().toISOString(),
+        respondedBy: session.userId,
+      })
       .go();
 
     try {
@@ -51,7 +55,11 @@ export async function POST(
 
   if (action === 'reject') {
     await OrganizationAccessRequestsEntity.update({ orgId, userId: request.userId })
-      .set({ status: 'rejected', respondedAt: new Date().toISOString(), respondedBy: session.userId })
+      .set({
+        status: 'rejected',
+        respondedAt: new Date().toISOString(),
+        respondedBy: session.userId,
+      })
       .go();
 
     return NextResponse.json({ success: true });

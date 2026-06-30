@@ -69,7 +69,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'meetingUrl is required' }, { status: 400 });
     }
 
-    const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/bot/webhook`;
+    const webhookBaseUrl = process.env.NGROK_URL || process.env.NEXT_PUBLIC_APP_URL;
+    const webhookUrl = `${webhookBaseUrl}/api/bot/webhook`;
 
     const meetingId = `meet-${Date.now()}`;
 
@@ -113,7 +114,9 @@ export async function POST(req: NextRequest) {
     console.log('Bot created:', bot.id, 'status:', bot.status);
 
     // 🔥 STEP 3: UPDATE BOT ID
-    await MeetingsEntity.update({ id: meetingId }).set({ botId: bot.id, updatedAt: new Date().toISOString() }).go();
+    await MeetingsEntity.update({ id: meetingId })
+      .set({ botId: bot.id, updatedAt: new Date().toISOString() })
+      .go();
 
     return NextResponse.json({
       success: true,

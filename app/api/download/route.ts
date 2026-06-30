@@ -19,9 +19,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const response = await s3Client.send(
-      new GetObjectCommand({ Bucket: S3_BUCKET, Key: path })
-    );
+    const response = await s3Client.send(new GetObjectCommand({ Bucket: S3_BUCKET, Key: path }));
 
     if (!response.Body) {
       return NextResponse.json({ error: 'File not found' }, { status: 404 });
@@ -29,7 +27,10 @@ export async function GET(req: NextRequest) {
 
     const body = await response.Body.transformToByteArray();
 
-    const safeFilename = filename.replace(/[^\x00-\x7F]/g, ' ').replace(/\s+/g, ' ').trim();
+    const safeFilename = filename
+      .replace(/[^\x00-\x7F]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
     const headers = new Headers();
     headers.set('Content-Type', response.ContentType || 'application/octet-stream');
     headers.set('Content-Disposition', `attachment; filename="${safeFilename}"`);

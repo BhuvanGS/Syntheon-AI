@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
+import { randomUUID } from 'crypto';
 import { OrganizationMetadataEntity } from '@/db/entities';
 
 const TRIAL_DAYS = 30;
@@ -13,13 +14,27 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ orgI
   const { orgId } = await params;
   const res = await OrganizationMetadataEntity.get({ orgId }).go();
 
-  if (!res.data) {
-    return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
-  }
+  let trialStartedAt: string | undefined;
 
-  const trialStartedAt = res.data.trialStartedAt;
-  if (!trialStartedAt) {
-    return NextResponse.json({ isTrial: false, daysLeft: null, expired: false });
+  if (!res.data) {
+    trialStartedAt = new Date().toISOString();
+    try {
+      await OrganizationMetadataEntity.create({
+        id: randomUUID(),
+        orgId,
+        trialStartedAt,
+      }).go();
+    } catch {
+      // Another request may have created it concurrently — fall through to read
+    }
+  } else {
+    trialStartedAt = res.data.trialStartedAt;
+    if (!trialStartedAt) {
+      trialStartedAt = new Date().toISOString();
+      await OrganizationMetadataEntity.update({ orgId })
+        .set({ trialStartedAt, updatedAt: trialStartedAt })
+        .go();
+    }
   }
 
   const startDate = new Date(trialStartedAt);

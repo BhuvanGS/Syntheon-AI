@@ -15,8 +15,6 @@ import { broadcastToOrg } from '@/lib/event-bus';
 import { requireAuth } from '@/lib/rbac';
 import { TicketsEntity } from '@/db/entities';
 
-const allowedStatuses = new Set(['backlog', 'in_progress', 'done', 'blocked']);
-
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { userId, orgId } = await auth();
@@ -36,11 +34,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (typeof body?.description !== 'undefined')
       updates.description = String(body.description).trim();
     if (typeof body?.status !== 'undefined') {
-      const status = String(body.status);
-      if (!allowedStatuses.has(status)) {
-        return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
-      }
-      updates.status = status;
+      updates.status = String(body.status);
     }
     if (typeof body?.assignee !== 'undefined') {
       updates.assignee = body.assignee ? String(body.assignee).trim() : null;
@@ -271,7 +265,10 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     }
 
     await deleteTicketById(id);
-    broadcastToOrg(ctx.orgId, { type: 'ticket_deleted', payload: { ticketId: id, projectId: ticket.projectId } });
+    broadcastToOrg(ctx.orgId, {
+      type: 'ticket_deleted',
+      payload: { ticketId: id, projectId: ticket.projectId },
+    });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Failed to delete ticket:', error);

@@ -30,9 +30,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const description = String(body?.description ?? '').trim();
     const meetingIdFromBody = typeof body?.meetingId === 'string' ? body.meetingId.trim() : '';
     const status =
-      body?.status === 'done' || body?.status === 'in_progress' || body?.status === 'blocked'
-        ? body.status
-        : 'backlog';
+      typeof body?.status === 'string' && body.status.trim() ? body.status.trim() : 'backlog';
     const assignee = body?.assignee ? String(body.assignee).trim() : null;
     const assigneeUserId = body?.assigneeUserId ? String(body.assigneeUserId).trim() : null;
     const parentTicketId =
@@ -99,7 +97,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     await addTicketsToProject(projectId, [ticketId]);
 
-    broadcastToOrg(orgId ?? '', { type: 'ticket_created', payload: { ticketId, projectId, meetingId: resolvedMeetingId, title } });
+    broadcastToOrg(orgId ?? '', {
+      type: 'ticket_created',
+      payload: { ticketId, projectId, meetingId: resolvedMeetingId, title },
+    });
 
     // Log activity for ticket creation
     await createActivity({

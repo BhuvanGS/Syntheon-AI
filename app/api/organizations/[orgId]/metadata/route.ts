@@ -38,7 +38,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ or
   if (typeof body.companyName !== 'undefined') set.companyName = body.companyName;
   if (typeof body.managerName !== 'undefined') set.managerName = body.managerName;
   if (typeof body.domain !== 'undefined') set.domain = body.domain;
-  if (typeof body.allowAccessRequests !== 'undefined') set.allowAccessRequests = body.allowAccessRequests;
+  if (typeof body.allowAccessRequests !== 'undefined')
+    set.allowAccessRequests = body.allowAccessRequests;
 
   await OrganizationMetadataEntity.update({ orgId }).set(set).go();
 

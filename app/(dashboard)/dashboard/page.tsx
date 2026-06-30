@@ -210,7 +210,7 @@ function DashboardContent() {
       router.push('/dashboard?view=projects');
       return;
     }
-    router.push(`/project?projectId=${projectId}&tab=kanban`);
+    router.push(`/project?projectId=${projectId}&tab=tickets`);
   }
 
   async function handleDeleteProject(projectId: string) {
@@ -245,7 +245,7 @@ function DashboardContent() {
 
     const data = await res.json();
     await Promise.all([loadProjects(), refreshWorkspace()]);
-    router.push(`/project?projectId=${data.project.id}&tab=kanban`);
+    router.push(`/project?projectId=${data.project.id}&tab=tickets`);
     toast({ title: 'Project created', description: `${data.project.name} is ready.` });
   }
 

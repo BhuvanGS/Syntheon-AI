@@ -14,15 +14,7 @@ import { TrialBanner } from '@/components/trial-banner';
 import { toast } from '@/hooks/use-toast';
 
 type ViewType = 'project' | 'ticket-detail';
-type ProjectTab =
-  | 'meetings'
-  | 'tickets'
-  | 'list'
-  | 'kanban'
-  | 'analytics'
-  | 'dependencies'
-  | 'members'
-  | 'settings';
+type ProjectTab = 'meetings' | 'tickets' | 'analytics' | 'dependencies' | 'members' | 'settings';
 
 interface Project {
   id: string;
@@ -61,8 +53,6 @@ interface Ticket {
 const validProjectTabs: ProjectTab[] = [
   'meetings',
   'tickets',
-  'list',
-  'kanban',
   'analytics',
   'dependencies',
   'members',
@@ -75,7 +65,7 @@ function ProjectContent() {
   const projectId = searchParams.get('projectId');
   const tabParam = searchParams.get('tab') as ProjectTab | null;
   const resolvedTab: ProjectTab =
-    tabParam && validProjectTabs.includes(tabParam) ? tabParam : 'kanban';
+    tabParam && validProjectTabs.includes(tabParam) ? tabParam : 'tickets';
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
@@ -171,7 +161,7 @@ function ProjectContent() {
   }
 
   function handleProjectSelect(id: string) {
-    router.push(`/project?projectId=${id}&tab=kanban`);
+    router.push(`/project?projectId=${id}&tab=tickets`);
   }
 
   function handleMeetingSelect(meetingId: string) {
@@ -221,7 +211,7 @@ function ProjectContent() {
     }
     const data = await res.json();
     await Promise.all([loadProjects(), refreshWorkspace()]);
-    router.push(`/project?projectId=${data.project.id}&tab=kanban`);
+    router.push(`/project?projectId=${data.project.id}&tab=tickets`);
     toast({ title: 'Project created', description: `${data.project.name} is ready.` });
   }
 
@@ -249,7 +239,7 @@ function ProjectContent() {
               onSelectTicket={(id) => {
                 const t = tickets.find((x) => x.id === id);
                 if (t?.projectId) {
-                  router.push(`/project?projectId=${t.projectId}&tab=list`);
+                  router.push(`/project?projectId=${t.projectId}&tab=tickets`);
                 } else {
                   router.push('/dashboard?view=tickets');
                 }

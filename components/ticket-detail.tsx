@@ -49,7 +49,7 @@ interface Ticket {
   id: string;
   title: string;
   description: string;
-  status: 'backlog' | 'in_progress' | 'done' | 'blocked';
+  status: string;
   assignee?: string | null;
   assignee_user_id?: string | null;
   projectId?: string | null;
@@ -627,7 +627,7 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
                   onValueChange={(value) =>
                     setTicketEditForm((prev) => ({
                       ...prev,
-                      status: value as Ticket['status'],
+                      status: value,
                     }))
                   }
                 >
@@ -639,6 +639,19 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
                     <SelectItem value="in_progress">In progress</SelectItem>
                     <SelectItem value="done">Done</SelectItem>
                     <SelectItem value="blocked">Blocked</SelectItem>
+                    {(() => {
+                      const known = new Set(['backlog', 'in_progress', 'done', 'blocked']);
+                      const extra = [
+                        ...new Set(tickets.map((t) => t.status).filter(Boolean)),
+                      ].filter((s) => !known.has(s as string));
+                      return extra.map((s) => (
+                        <SelectItem key={s} value={s as string}>
+                          {(s as string)
+                            .replace(/_/g, ' ')
+                            .replace(/\b\w/g, (c) => c.toUpperCase())}
+                        </SelectItem>
+                      ));
+                    })()}
                   </SelectContent>
                 </Select>
               </div>
