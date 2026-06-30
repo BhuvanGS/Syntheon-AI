@@ -17,6 +17,7 @@ import {
   OrganizationInvitesEntity,
   OrganizationAccessRequestsEntity,
   NotificationsEntity,
+  LabelsEntity,
 } from '@/db/entities';
 
 // ─── Types ─────────────────────────────────────────────────────
@@ -53,6 +54,10 @@ export interface SpecBlock {
   parentSpecId?: string;
 }
 
+export type TicketPriority = 'urgent' | 'high' | 'medium' | 'low' | 'none';
+export type TicketType = 'bug' | 'task' | 'feature' | 'spike';
+export type TicketEstimate = 'quick' | 'standard' | 'deep' | 'epic' | 'none';
+
 export interface Ticket {
   id: string;
   user_id?: string;
@@ -63,6 +68,10 @@ export interface Ticket {
   title: string;
   description: string;
   status: 'backlog' | 'in_progress' | 'done' | 'blocked';
+  priority?: TicketPriority;
+  type?: TicketType;
+  estimate?: TicketEstimate;
+  labels?: string[];
   assignee?: string | null;
   assignee_user_id?: string | null;
   dependency_ticket_id?: string | null;
@@ -147,6 +156,10 @@ function entityToTicket(e: any): Ticket {
     title: e.title,
     description: e.description ?? '',
     status: e.status as Ticket['status'],
+    priority: (e.priority ?? 'none') as TicketPriority,
+    type: (e.type ?? 'task') as TicketType,
+    estimate: (e.estimate ?? 'none') as TicketEstimate,
+    labels: e.labels ?? [],
     assignee: e.assignee ?? null,
     assignee_user_id: e.assigneeUserId ?? null,
     dependency_ticket_id: e.dependencyTicketId ?? null,
@@ -476,7 +489,13 @@ export async function saveTickets(ticketsList: Ticket[]): Promise<void> {
       assignee: ticket.assignee ?? undefined,
       assigneeUserId: ticket.assignee_user_id ?? undefined,
       dependencyTicketId: ticket.dependency_ticket_id ?? undefined,
+      startDate: ticket.start_date ?? undefined,
       dueDate: ticket.due_date ?? undefined,
+      deadlineTime: ticket.deadline_time ?? undefined,
+      priority: ticket.priority ?? 'none',
+      type: ticket.type ?? 'task',
+      estimate: ticket.estimate ?? 'none',
+      labels: ticket.labels ?? [],
     }).go();
   }
 }
@@ -608,6 +627,10 @@ export async function updateTicket(
       | 'title'
       | 'description'
       | 'status'
+      | 'priority'
+      | 'type'
+      | 'estimate'
+      | 'labels'
       | 'assignee'
       | 'assignee_user_id'
       | 'dependency_ticket_id'
@@ -621,6 +644,10 @@ export async function updateTicket(
   if (typeof updates.title !== 'undefined') set.title = updates.title;
   if (typeof updates.description !== 'undefined') set.description = updates.description;
   if (typeof updates.status !== 'undefined') set.status = updates.status;
+  if (typeof updates.priority !== 'undefined') set.priority = updates.priority;
+  if (typeof updates.type !== 'undefined') set.type = updates.type;
+  if (typeof updates.estimate !== 'undefined') set.estimate = updates.estimate;
+  if (typeof updates.labels !== 'undefined') set.labels = updates.labels;
   if (typeof updates.assignee !== 'undefined') set.assignee = updates.assignee ?? undefined;
   if (typeof updates.assignee_user_id !== 'undefined')
     set.assigneeUserId = updates.assignee_user_id ?? undefined;
@@ -1375,4 +1402,52 @@ export function extractMentions(content: string): string[] {
     }
   }
   return [...new Set(mentions)];
+}
+
+// ─── Labels ──────────────────────────────────────────────────────
+export interface Label {
+  id: string;
+  org_id: string;
+  name: string;
+  color: string;
+  created_at: string;
+}
+
+function entityToLabel(e: any): Label {
+  return {
+    id: e.id,
+    org_id: e.orgId,
+    name: e.name,
+    color: e.color ?? '#6b7280',
+    created_at: e.createdAt,
+  };
+}
+
+export async function getLabelsByOrg(orgId: string): Promise<Label[]> {
+  const res = await LabelsEntity.query.byOrg({ orgId }).go();
+  return (res.data ?? []).map(entityToLabel);
+}
+
+export async function createLabel(
+  id: string,
+  orgId: string,
+  name: string,
+  color: string
+): Promise<Label> {
+  await LabelsEntity.create({ id, orgId, name, color }).go();
+  return { id, org_id: orgId, name, color, created_at: new Date().toISOString() };
+}
+
+export async function deleteLabel(id: string): Promise<void> {
+  await LabelsEntity.delete({ id }).go();
+}
+
+export async function updateLabel(
+  id: string,
+  updates: { name?: string; color?: string }
+): Promise<void> {
+  const set: Record<string, any> = {};
+  if (typeof updates.name !== 'undefined') set.name = updates.name;
+  if (typeof updates.color !== 'undefined') set.color = updates.color;
+  await LabelsEntity.update({ id }).set(set).go();
 }

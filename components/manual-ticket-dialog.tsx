@@ -21,6 +21,12 @@ import {
 } from '@/components/ui/select';
 import { CirclePlus, Sparkles } from 'lucide-react';
 import { AssigneePicker, type AssigneeValue } from '@/components/assignee-picker';
+import { TicketMetadataEditor } from '@/components/ticket-metadata-editor';
+import {
+  type TicketPriority,
+  type TicketType,
+  type TicketEstimate,
+} from '@/components/ticket-badges';
 
 interface MeetingOption {
   id: string;
@@ -56,6 +62,13 @@ export function ManualTicketDialog({
   const [assignee, setAssignee] = useState<AssigneeValue | null>(null);
   const [meetingId, setMeetingId] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
+  const [priority, setPriority] = useState<TicketPriority>('none');
+  const [type, setType] = useState<TicketType>('task');
+  const [estimate, setEstimate] = useState<TicketEstimate>('none');
+  const [labels, setLabels] = useState<string[]>([]);
+  const [availableLabels, setAvailableLabels] = useState<
+    { id: string; name: string; color: string }[]
+  >([]);
   const wasOpenRef = useRef(false);
 
   const resolvedMeetingId = useMemo(
@@ -70,11 +83,31 @@ export function ManualTicketDialog({
       setStatus(defaultStatus ?? 'backlog');
       setAssignee(null);
       setMeetingId(projectOnly ? '' : defaultMeetingId || meetings[0]?.id || '');
+      setPriority('none');
+      setType('task');
+      setEstimate('none');
+      setLabels([]);
       setSubmitting(false);
     }
 
     wasOpenRef.current = open;
   }, [open, defaultMeetingId, defaultStatus, meetings, projectOnly]);
+
+  useEffect(() => {
+    if (open) {
+      void (async () => {
+        try {
+          const res = await fetch('/api/labels');
+          if (res.ok) {
+            const data = await res.json();
+            setAvailableLabels(data.labels ?? []);
+          }
+        } catch {
+          // ignore
+        }
+      })();
+    }
+  }, [open]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -89,6 +122,10 @@ export function ManualTicketDialog({
         assignee: assignee?.displayName ?? null,
         assigneeUserId: assignee?.userId ?? null,
         projectId: defaultProjectId ?? null,
+        priority,
+        type,
+        estimate,
+        labels,
       };
 
       const res = resolvedMeetingId
@@ -175,7 +212,7 @@ export function ManualTicketDialog({
                   </SelectTrigger>
                   <SelectContent>
                     {meetings.length === 0 ? (
-                      <SelectItem value="" disabled>
+                      <SelectItem value="__none__" disabled>
                         No meetings available
                       </SelectItem>
                     ) : (
@@ -218,6 +255,21 @@ export function ManualTicketDialog({
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">Assignee</label>
             <AssigneePicker value={assignee} onChange={setAssignee} />
+          </div>
+
+          <div className="border-t border-border/60 pt-3">
+            <p className="text-sm font-medium text-foreground mb-2">Properties</p>
+            <TicketMetadataEditor
+              priority={priority}
+              type={type}
+              estimate={estimate}
+              labels={labels}
+              onPriorityChange={setPriority}
+              onTypeChange={setType}
+              onEstimateChange={setEstimate}
+              onLabelsChange={setLabels}
+              availableLabels={availableLabels}
+            />
           </div>
 
           <DialogFooter className="pt-2">

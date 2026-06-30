@@ -40,6 +40,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const start_date = body?.start_date ? String(body.start_date) : null;
     const due_date = body?.due_date ? String(body.due_date) : null;
     const deadline_time = body?.deadline_time ? String(body.deadline_time) : null;
+    const priority = typeof body?.priority === 'string' ? body.priority : 'none';
+    const type = typeof body?.type === 'string' ? body.type : 'task';
+    const estimate = typeof body?.estimate === 'string' ? body.estimate : 'none';
+    const labels = Array.isArray(body?.labels)
+      ? body.labels.filter((l: unknown) => typeof l === 'string')
+      : [];
 
     if (!title) {
       return NextResponse.json({ error: 'Title is required' }, { status: 400 });
@@ -90,6 +96,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         start_date,
         due_date,
         deadline_time,
+        priority,
+        type,
+        estimate,
+        labels,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },

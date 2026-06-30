@@ -1,14 +1,34 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, X, Ticket, Video, FolderKanban, Sparkles } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import {
+  Search,
+  X,
+  Ticket,
+  Video,
+  FolderKanban,
+  Sparkles,
+  Filter,
+  Plus,
+  ArrowRight,
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { emitCommand } from '@/lib/command-events';
 
 interface SearchResult {
   id: string;
   type: 'ticket' | 'meeting' | 'project';
   title: string;
   subtitle?: string;
+}
+
+interface CommandItem {
+  id: string;
+  label: string;
+  icon: React.ReactNode;
+  group: string;
+  action: () => void;
+  shortcut?: string;
 }
 
 interface DynamicIslandSearchProps {
@@ -65,9 +85,12 @@ export function DynamicIslandSearch({
     };
   }, [open]);
 
-  // Search
+  // Search (only when not in command mode)
+  const isCommandMode = query.trim().startsWith('/');
+  const cmd = isCommandMode ? query.trim().slice(1).toLowerCase() : '';
+
   useEffect(() => {
-    if (!query.trim()) {
+    if (!query.trim() || isCommandMode) {
       setResults([]);
       return;
     }
@@ -139,17 +162,70 @@ export function DynamicIslandSearch({
       }
     }, 200);
     return () => clearTimeout(debounce);
-  }, [query]);
+  }, [query, isCommandMode]);
+
+  // Build command items when in command mode
+  const commands = useMemo((): CommandItem[] => {
+    if (!isCommandMode) return [];
+    const cmds: CommandItem[] = [];
+
+    // /filter command — opens the filter dialog
+    if (!cmd || cmd.startsWith('filter') || cmd.startsWith('f')) {
+      cmds.push({
+        id: 'filter-open-dialog',
+        label: 'Open filter dialog',
+        icon: <Filter className="h-3.5 w-3.5" />,
+        group: 'Filters',
+        action: () => {
+          emitCommand('filter:open-dialog');
+          handleClose();
+        },
+        shortcut: 'F',
+      });
+    }
+
+    // /create command
+    if (!cmd || cmd.startsWith('create') || cmd.startsWith('c')) {
+      cmds.push({
+        id: 'create-ticket',
+        label: 'Create new ticket',
+        icon: <Plus className="h-3.5 w-3.5" />,
+        group: 'Actions',
+        action: () => {
+          emitCommand('create:ticket');
+          handleClose();
+        },
+        shortcut: 'C',
+      });
+    }
+
+    return cmds;
+  }, [isCommandMode, cmd, handleClose]);
+
+  // Flat list for keyboard nav (commands + search results)
+  const flatItems = isCommandMode ? commands : results;
+  const groupedCommands = isCommandMode
+    ? commands.reduce<Record<string, CommandItem[]>>((acc, c) => {
+        if (!acc[c.group]) acc[c.group] = [];
+        acc[c.group].push(c);
+        return acc;
+      }, {})
+    : null;
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setSelectedIndex((i) => Math.min(i + 1, results.length - 1));
+      setSelectedIndex((i) => Math.min(i + 1, flatItems.length - 1));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setSelectedIndex((i) => Math.max(i - 1, 0));
-    } else if (e.key === 'Enter' && results[selectedIndex]) {
-      handleSelect(results[selectedIndex]);
+    } else if (e.key === 'Enter' && flatItems[selectedIndex]) {
+      e.preventDefault();
+      if (isCommandMode) {
+        (flatItems[selectedIndex] as CommandItem).action();
+      } else {
+        handleSelect(flatItems[selectedIndex] as SearchResult);
+      }
     }
   };
 
@@ -184,6 +260,8 @@ export function DynamicIslandSearch({
       setIsMac(/Mac|iPod|iPhone|iPad/.test(navigator.platform));
     }
   }, []);
+
+  let runningIndex = -1;
 
   return (
     <>
@@ -232,14 +310,17 @@ export function DynamicIslandSearch({
             >
               {/* Input row */}
               <div className="flex items-center gap-3 px-4 py-3.5 border-b border-border/60">
-                <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <Sparkles className="h-4 w-4 shrink-0 text-primary" />
                 <input
                   ref={inputRef}
                   value={query}
-                  onChange={(e) => setQuery(e.target.value)}
+                  onChange={(e) => {
+                    setQuery(e.target.value);
+                    setSelectedIndex(0);
+                  }}
                   onKeyDown={handleKeyDown}
-                  placeholder="Search tickets, meetings, projects…"
-                  className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/60 outline-none min-w-0"
+                  placeholder="Search tickets, meetings, projects… or type / for commands"
+                  className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/60 outline-none min-w-0 font-mono"
                 />
                 {query && (
                   <button
@@ -261,66 +342,119 @@ export function DynamicIslandSearch({
 
               {/* Results area */}
               <div className="max-h-[50vh] overflow-y-auto">
-                {loading && (
-                  <div className="px-4 py-6 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                    <Sparkles className="h-3.5 w-3.5 animate-pulse-soft" />
-                    Searching…
-                  </div>
-                )}
-
-                {!loading && query && results.length === 0 && (
-                  <div className="px-4 py-6 text-center text-xs text-muted-foreground">
-                    No results for “{query}”
-                  </div>
-                )}
-
-                {!loading && !query && (
-                  <div className="px-4 py-6 text-center text-xs text-muted-foreground">
-                    Type to search across tickets, meetings & projects
-                  </div>
-                )}
-
-                {!loading && results.length > 0 && (
-                  <motion.div
-                    className="py-1"
-                    initial="hidden"
-                    animate="visible"
-                    variants={{
-                      hidden: {},
-                      visible: {
-                        transition: { staggerChildren: 0.03 },
-                      },
-                    }}
-                  >
-                    {results.map((result, i) => (
-                      <motion.button
-                        key={result.id}
-                        type="button"
-                        onClick={() => handleSelect(result)}
-                        variants={{
-                          hidden: { opacity: 0, y: 6 },
-                          visible: { opacity: 1, y: 0 },
-                        }}
-                        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                        className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
-                          i === selectedIndex ? 'bg-muted' : 'hover:bg-muted/60'
-                        }`}
-                      >
-                        <span className={typeColor(result.type)}>{typeIcon(result.type)}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-foreground truncate">{result.title}</p>
-                          <p className="text-[11px] text-muted-foreground capitalize flex items-center gap-1.5">
-                            {result.subtitle && <span>{result.subtitle}</span>}
-                            <span className="text-muted-foreground/50">·</span>
-                            <span>{typeLabel(result.type)}</span>
-                          </p>
+                {/* Command mode */}
+                {isCommandMode && (
+                  <>
+                    {flatItems.length === 0 && (
+                      <div className="px-4 py-6 text-center text-xs text-muted-foreground">
+                        Unknown command "{query.trim()}". Try /filter, /create
+                      </div>
+                    )}
+                    {groupedCommands &&
+                      Object.entries(groupedCommands).map(([group, items]) => (
+                        <div key={group}>
+                          <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 bg-muted/20">
+                            {group}
+                          </div>
+                          {items.map((cmdItem) => {
+                            runningIndex++;
+                            const idx = runningIndex;
+                            return (
+                              <button
+                                key={cmdItem.id}
+                                onClick={cmdItem.action}
+                                onMouseEnter={() => setSelectedIndex(idx)}
+                                className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
+                                  idx === selectedIndex ? 'bg-muted' : 'hover:bg-muted/60'
+                                }`}
+                              >
+                                <span className="text-primary shrink-0">{cmdItem.icon}</span>
+                                <span className="text-sm text-foreground flex-1 truncate">
+                                  {cmdItem.label}
+                                </span>
+                                {cmdItem.shortcut && (
+                                  <kbd className="font-mono text-[10px] text-muted-foreground bg-muted/60 border border-border rounded px-1.5 py-0.5">
+                                    {cmdItem.shortcut}
+                                  </kbd>
+                                )}
+                                {idx === selectedIndex && (
+                                  <ArrowRight className="h-3 w-3 text-muted-foreground/60" />
+                                )}
+                              </button>
+                            );
+                          })}
                         </div>
-                        {i === selectedIndex && (
-                          <span className="text-[10px] text-muted-foreground/60 font-mono">↵</span>
-                        )}
-                      </motion.button>
-                    ))}
-                  </motion.div>
+                      ))}
+                  </>
+                )}
+
+                {/* Search mode */}
+                {!isCommandMode && (
+                  <>
+                    {loading && (
+                      <div className="px-4 py-6 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                        <Sparkles className="h-3.5 w-3.5 animate-pulse-soft" />
+                        Searching…
+                      </div>
+                    )}
+
+                    {!loading && query && results.length === 0 && (
+                      <div className="px-4 py-6 text-center text-xs text-muted-foreground">
+                        No results for "{query}"
+                      </div>
+                    )}
+
+                    {!loading && !query && (
+                      <div className="px-4 py-6 text-center text-xs text-muted-foreground">
+                        Type to search across tickets, meetings & projects. Type / for commands.
+                      </div>
+                    )}
+
+                    {!loading && results.length > 0 && (
+                      <motion.div
+                        className="py-1"
+                        initial="hidden"
+                        animate="visible"
+                        variants={{
+                          hidden: {},
+                          visible: {
+                            transition: { staggerChildren: 0.03 },
+                          },
+                        }}
+                      >
+                        {results.map((result, i) => (
+                          <motion.button
+                            key={result.id}
+                            type="button"
+                            onClick={() => handleSelect(result)}
+                            variants={{
+                              hidden: { opacity: 0, y: 6 },
+                              visible: { opacity: 1, y: 0 },
+                            }}
+                            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                            className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
+                              i === selectedIndex ? 'bg-muted' : 'hover:bg-muted/60'
+                            }`}
+                          >
+                            <span className={typeColor(result.type)}>{typeIcon(result.type)}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-foreground truncate">{result.title}</p>
+                              <p className="text-[11px] text-muted-foreground capitalize flex items-center gap-1.5">
+                                {result.subtitle && <span>{result.subtitle}</span>}
+                                <span className="text-muted-foreground/50">·</span>
+                                <span>{typeLabel(result.type)}</span>
+                              </p>
+                            </div>
+                            {i === selectedIndex && (
+                              <span className="text-[10px] text-muted-foreground/60 font-mono">
+                                ↵
+                              </span>
+                            )}
+                          </motion.button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </>
                 )}
               </div>
 
@@ -343,6 +477,12 @@ export function DynamicIslandSearch({
                     esc
                   </kbd>{' '}
                   close
+                </span>
+                <span className="text-[10px] text-muted-foreground ml-auto">
+                  <kbd className="font-mono bg-background border border-border rounded px-1 py-0.5">
+                    /
+                  </kbd>{' '}
+                  commands
                 </span>
               </div>
             </motion.div>

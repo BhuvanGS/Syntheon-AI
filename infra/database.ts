@@ -17,6 +17,7 @@ const TABLE_NAMES = [
   'syntheon-org-invites',
   'syntheon-org-access-requests',
   'syntheon-notifications',
+  'syntheon-labels',
 ] as const;
 
 const FIELDS = {

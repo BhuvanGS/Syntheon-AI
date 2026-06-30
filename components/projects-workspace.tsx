@@ -9,7 +9,7 @@ const ORG_QUERY_CONFIG = {
   invitations: { infinite: true, pageSize: 50 },
 };
 import { stripHtml, cn } from '@/lib/utils';
-import { parseISO, isPast, isToday, isTomorrow, format } from 'date-fns';
+import { parseISO, isPast, isToday, isTomorrow, isThisWeek, format } from 'date-fns';
 import { AssigneePicker, type AssigneeValue } from '@/components/assignee-picker';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -62,6 +62,18 @@ import { ProjectTicketImportDialog } from '@/components/project-ticket-import-di
 import { ProjectMeetingDialog } from '@/components/project-meeting-dialog';
 import { MeetingCalendar } from '@/components/meeting-calendar';
 import {
+  TicketBadges,
+  type TicketPriority,
+  type TicketType,
+  type TicketEstimate,
+} from '@/components/ticket-badges';
+import { EMPTY_FILTERS, type TicketFilters } from '@/components/ticket-filter-bar';
+import { FilterDialog } from '@/components/ticket-filter-dialog';
+import { TicketMetadataEditor } from '@/components/ticket-metadata-editor';
+import { BulkActionBar } from '@/components/ticket-bulk-bar';
+import { LabelManager } from '@/components/label-manager';
+import { onCommand } from '@/lib/command-events';
+import {
   FolderKanban,
   Plus,
   Video,
@@ -95,6 +107,9 @@ import {
   CalendarClock,
   Flame,
   Minus,
+  CheckSquare,
+  Square,
+  Tag,
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -136,6 +151,10 @@ interface Ticket {
   title: string;
   description: string;
   status: string;
+  priority?: TicketPriority;
+  type?: TicketType;
+  estimate?: TicketEstimate;
+  labels?: string[];
   assignee?: string | null;
   assignee_user_id?: string | null;
   projectId?: string | null;
@@ -146,6 +165,12 @@ interface Ticket {
   deadline_time?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
+}
+
+interface Label {
+  id: string;
+  name: string;
+  color: string;
 }
 
 type StageConfig = {
@@ -205,6 +230,17 @@ export function ProjectsWorkspace({
   const [projectTab, setProjectTab] = useState<ProjectTab>('tickets');
   const [meetingsViewMode, setMeetingsViewMode] = useState<'list' | 'calendar'>('list');
   const [ticketsViewMode, setTicketsViewMode] = useState<TicketsViewMode>('board');
+  const [filters, setFilters] = useState<TicketFilters>(EMPTY_FILTERS);
+  const [labels, setLabels] = useState<Label[]>([]);
+  const [labelMap, setLabelMap] = useState<Record<string, { name: string; color: string }>>({});
+  const [bulkMode, setBulkMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [labelManagerOpen, setLabelManagerOpen] = useState(false);
+  const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+  const [metaPriority, setMetaPriority] = useState<TicketPriority>('none');
+  const [metaType, setMetaType] = useState<TicketType>('task');
+  const [metaEstimate, setMetaEstimate] = useState<TicketEstimate>('none');
+  const [metaLabels, setMetaLabels] = useState<string[]>([]);
 
   interface ProjectMemberRow {
     id: string;
@@ -354,10 +390,37 @@ export function ProjectsWorkspace({
 
   const rootProjectTickets = useMemo(() => {
     const base = projectTickets.filter((ticket) => !ticket.dependency_ticket_id);
-    if (kanbanAssigneeFilter === 'unassigned') return base.filter((t) => !t.assignee_user_id);
-    if (kanbanAssigneeFilter === 'mine') return base.filter((t) => t.assignee_user_id === user?.id);
-    return base;
-  }, [projectTickets, kanbanAssigneeFilter, user?.id]);
+    let result = base;
+    if (kanbanAssigneeFilter === 'unassigned') result = result.filter((t) => !t.assignee_user_id);
+    else if (kanbanAssigneeFilter === 'mine')
+      result = result.filter((t) => t.assignee_user_id === user?.id);
+
+    // Apply filter bar
+    if (filters.status) result = result.filter((t) => t.status === filters.status);
+    if (filters.priority)
+      result = result.filter((t) => (t.priority ?? 'none') === filters.priority);
+    if (filters.type) result = result.filter((t) => (t.type ?? 'task') === filters.type);
+    if (filters.estimate)
+      result = result.filter((t) => (t.estimate ?? 'none') === filters.estimate);
+    if (filters.labelIds.length > 0) {
+      result = result.filter((t) => {
+        const tLabels = t.labels ?? [];
+        return filters.labelIds.some((id) => tLabels.includes(id));
+      });
+    }
+    if (filters.dueDate !== 'all') {
+      result = result.filter((t) => {
+        if (!t.due_date) return filters.dueDate === 'none';
+        const d = parseISO(t.due_date);
+        if (filters.dueDate === 'overdue') return isPast(d) && !isToday(d);
+        if (filters.dueDate === 'today') return isToday(d);
+        if (filters.dueDate === 'this_week') return isThisWeek(d, { weekStartsOn: 1 });
+        if (filters.dueDate === 'none') return false;
+        return true;
+      });
+    }
+    return result;
+  }, [projectTickets, kanbanAssigneeFilter, user?.id, filters]);
 
   const totalTickets = projectTickets.length;
 
@@ -886,6 +949,10 @@ export function ProjectsWorkspace({
       due_date: ticket.due_date || '',
       deadline_time: ticket.deadline_time || '',
     });
+    setMetaPriority(ticket.priority ?? 'none');
+    setMetaType(ticket.type ?? 'task');
+    setMetaEstimate(ticket.estimate ?? 'none');
+    setMetaLabels(ticket.labels ?? []);
     setNewChildDraft({
       title: '',
     });
@@ -911,6 +978,10 @@ export function ProjectsWorkspace({
       due_date: previous.due_date || '',
       deadline_time: previous.deadline_time || '',
     });
+    setMetaPriority(previous.priority ?? 'none');
+    setMetaType(previous.type ?? 'task');
+    setMetaEstimate(previous.estimate ?? 'none');
+    setMetaLabels(previous.labels ?? []);
     setNewChildDraft({ title: '' });
     setTicketEditTab('details');
     setIsAddingSubtask(false);
@@ -939,6 +1010,10 @@ export function ProjectsWorkspace({
           start_date: ticketEditForm.start_date || null,
           due_date: ticketEditForm.due_date || null,
           deadline_time: ticketEditForm.deadline_time || null,
+          priority: metaPriority,
+          type: metaType,
+          estimate: metaEstimate,
+          labels: metaLabels,
         }),
       });
 
@@ -972,6 +1047,10 @@ export function ProjectsWorkspace({
                   start_date: ticketEditForm.start_date || null,
                   due_date: ticketEditForm.due_date || null,
                   deadline_time: ticketEditForm.deadline_time || null,
+                  priority: metaPriority,
+                  type: metaType,
+                  estimate: metaEstimate,
+                  labels: metaLabels,
                   bypassGate: true,
                 }),
               });
@@ -1045,6 +1124,10 @@ export function ProjectsWorkspace({
                     start_date: ticketEditForm.start_date || null,
                     due_date: ticketEditForm.due_date || null,
                     deadline_time: ticketEditForm.deadline_time || null,
+                    priority: metaPriority,
+                    type: metaType,
+                    estimate: metaEstimate,
+                    labels: metaLabels,
                     bypassGate: true,
                   }),
                 });
@@ -1265,6 +1348,64 @@ export function ProjectsWorkspace({
     if (!preferredTab) return;
     setProjectTab(preferredTab);
   }, [preferredTab]);
+
+  // Fetch labels
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch('/api/labels');
+        if (res.ok) {
+          const data = await res.json();
+          const labelArr: Label[] = data.labels ?? [];
+          setLabels(labelArr);
+          const map: Record<string, { name: string; color: string }> = {};
+          for (const l of labelArr) map[l.id] = { name: l.name, color: l.color };
+          setLabelMap(map);
+        }
+      } catch {
+        // ignore
+      }
+    })();
+  }, []);
+
+  // Keyboard shortcuts: cmd+B for bulk
+  // cmd+K is handled by DynamicIslandSearch globally
+  // Listen for command events from the global search
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'b' && !e.shiftKey) {
+        e.preventDefault();
+        setBulkMode((v) => {
+          if (v) setSelectedIds(new Set());
+          return !v;
+        });
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  // Listen for command events from global search
+  useEffect(() => {
+    const unsubs = [
+      onCommand('filter:open-dialog', () => setFilterDialogOpen(true)),
+      onCommand('filter:priority', (p) =>
+        setFilters((prev) => ({ ...prev, priority: p as TicketPriority }))
+      ),
+      onCommand('filter:type', (t) => setFilters((prev) => ({ ...prev, type: t as TicketType }))),
+      onCommand('filter:status', (s) => setFilters((prev) => ({ ...prev, status: s as string }))),
+      onCommand('filter:assignee', (a) =>
+        setFilters((prev) => ({ ...prev, assignee: a as 'all' | 'mine' | 'unassigned' }))
+      ),
+      onCommand('filter:dueDate', (d) =>
+        setFilters((prev) => ({
+          ...prev,
+          dueDate: d as 'all' | 'overdue' | 'today' | 'this_week' | 'none',
+        }))
+      ),
+    ];
+    return () => unsubs.forEach((u) => u());
+  }, []);
 
   // Real-time refresh via SSE
   useEffect(() => {
@@ -1786,12 +1927,46 @@ export function ProjectsWorkspace({
                 </button>
                 <div className="w-px h-5 bg-border mx-1" />
                 <button
-                  onClick={() => setIsImportDialogOpen(true)}
-                  disabled={meetings.length === 0}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors text-muted-foreground hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
+                  onClick={() => setFilterDialogOpen(true)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    filters.status ||
+                    filters.priority ||
+                    filters.type ||
+                    filters.estimate ||
+                    filters.labelIds.length > 0 ||
+                    filters.assignee !== 'all' ||
+                    filters.dueDate !== 'all'
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                  title="Filter tickets"
                 >
-                  <Download className="h-3.5 w-3.5" />
-                  Import
+                  <SlidersHorizontal className="h-3.5 w-3.5" />
+                  Filter
+                </button>
+                <button
+                  onClick={() => {
+                    setBulkMode((v) => {
+                      if (v) setSelectedIds(new Set());
+                      return !v;
+                    });
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    bulkMode
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                  title="Toggle bulk select (⌘B)"
+                >
+                  <CheckSquare className="h-3.5 w-3.5" />
+                  Bulk
+                </button>
+                <button
+                  onClick={() => setLabelManagerOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors text-muted-foreground hover:text-foreground"
+                >
+                  <Tag className="h-3.5 w-3.5" />
+                  Labels
                 </button>
                 <div className="w-px h-5 bg-border mx-1" />
                 <button
@@ -1806,8 +1981,32 @@ export function ProjectsWorkspace({
                 </button>
               </div>
             </div>
+
+            {/* Bulk action bar */}
+            {bulkMode && (
+              <BulkActionBar
+                selectedIds={[...selectedIds]}
+                totalCount={rootProjectTickets.length}
+                onSelectAll={() => setSelectedIds(new Set(rootProjectTickets.map((t) => t.id)))}
+                onClear={() => setSelectedIds(new Set())}
+                statuses={effectiveStages.map((s) => ({ key: s.status, label: s.label }))}
+                onBulkUpdate={async (updates) => {
+                  const ids = [...selectedIds];
+                  if (ids.length === 0) return;
+                  await fetch('/api/tickets/bulk', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ticketIds: ids, ...updates }),
+                  });
+                  setSelectedIds(new Set());
+                  await onRefresh?.();
+                }}
+                labels={labels}
+              />
+            )}
+
             <div className="mt-2">
-              {rootProjectTickets.length === 0 ? (
+              {projectTickets.filter((t) => !t.dependency_ticket_id).length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-border bg-muted/50 p-12 text-center">
                   <p className="font-medium text-foreground mb-2">No tickets yet</p>
                   <p className="text-sm text-muted-foreground mb-5">
@@ -1848,11 +2047,32 @@ export function ProjectsWorkspace({
                     return (
                       <div
                         key={ticket.id}
-                        className={`grid grid-cols-[1fr_120px_120px_40px] items-center px-4 py-3 gap-2 hover:bg-muted/40 transition-colors ${i < rootProjectTickets.length - 1 ? 'border-b border-border/40' : ''}`}
+                        onClick={() => {
+                          if (bulkMode) {
+                            setSelectedIds((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(ticket.id)) next.delete(ticket.id);
+                              else next.add(ticket.id);
+                              return next;
+                            });
+                          }
+                        }}
+                        className={`grid grid-cols-[1fr_120px_120px_40px] items-center px-4 py-3 gap-2 hover:bg-muted/40 transition-colors ${i < rootProjectTickets.length - 1 ? 'border-b border-border/40' : ''} ${bulkMode ? 'cursor-pointer' : ''} ${selectedIds.has(ticket.id) ? 'bg-primary/5' : ''}`}
                       >
-                        <span className="font-medium text-sm text-foreground truncate">
-                          {ticket.title}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          {bulkMode && (
+                            <span className="shrink-0">
+                              {selectedIds.has(ticket.id) ? (
+                                <CheckSquare className="h-4 w-4 text-primary" />
+                              ) : (
+                                <Square className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </span>
+                          )}
+                          <span className="font-medium text-sm text-foreground truncate">
+                            {ticket.title}
+                          </span>
+                        </div>
                         <span
                           className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium w-fit"
                           style={{ background: s.bg, color: s.color }}
@@ -1865,8 +2085,12 @@ export function ProjectsWorkspace({
                         </span>
                         <button
                           type="button"
-                          onClick={() => openTicketEditor(ticket)}
-                          className="text-xs text-primary hover:underline justify-self-end"
+                          onClick={(e) => {
+                            if (bulkMode) return;
+                            e.stopPropagation();
+                            openTicketEditor(ticket);
+                          }}
+                          className={`text-xs text-primary hover:underline justify-self-end ${bulkMode ? 'pointer-events-none opacity-0' : ''}`}
                         >
                           Open
                         </button>
@@ -1951,8 +2175,17 @@ export function ProjectsWorkspace({
                             <button
                               key={ticket.id}
                               type="button"
-                              draggable
+                              draggable={!bulkMode}
                               onClick={() => {
+                                if (bulkMode) {
+                                  setSelectedIds((prev) => {
+                                    const next = new Set(prev);
+                                    if (next.has(ticket.id)) next.delete(ticket.id);
+                                    else next.add(ticket.id);
+                                    return next;
+                                  });
+                                  return;
+                                }
                                 const hasSubtasks =
                                   (childrenByParentId[ticket.id] ?? []).length > 0;
                                 if (hasSubtasks) {
@@ -1962,6 +2195,10 @@ export function ProjectsWorkspace({
                                 }
                               }}
                               onDragStart={(e) => {
+                                if (bulkMode) {
+                                  e.preventDefault();
+                                  return;
+                                }
                                 e.stopPropagation();
                                 setDraggedTicketId(ticket.id);
                                 setDraggedStageId(null);
@@ -1970,10 +2207,32 @@ export function ProjectsWorkspace({
                                 e.stopPropagation();
                                 setDraggedTicketId(null);
                               }}
-                              className={`rounded-xl border border-border bg-muted/40 p-3 cursor-grab active:cursor-grabbing shadow-sm hover:shadow-md transition-shadow text-left hover:bg-muted/60 ${
-                                draggedTicketId === ticket.id ? 'opacity-50' : ''
+                              className={`rounded-xl border bg-muted/40 p-3 shadow-sm hover:shadow-md transition-shadow text-left hover:bg-muted/60 ${
+                                bulkMode ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'
+                              } ${draggedTicketId === ticket.id ? 'opacity-50' : ''} ${
+                                selectedIds.has(ticket.id)
+                                  ? 'border-primary/50 bg-primary/5'
+                                  : 'border-border'
                               }`}
                             >
+                              <div className="flex items-center gap-1.5 mb-1">
+                                {bulkMode && (
+                                  <span className="shrink-0">
+                                    {selectedIds.has(ticket.id) ? (
+                                      <CheckSquare className="h-4 w-4 text-primary" />
+                                    ) : (
+                                      <Square className="h-4 w-4 text-muted-foreground" />
+                                    )}
+                                  </span>
+                                )}
+                                <TicketBadges
+                                  priority={ticket.priority ?? 'none'}
+                                  type={ticket.type ?? 'task'}
+                                  estimate={ticket.estimate ?? 'none'}
+                                  labels={ticket.labels ?? []}
+                                  labelMap={labelMap}
+                                />
+                              </div>
                               <p className="text-sm font-medium text-foreground line-clamp-2">
                                 {ticket.title}
                               </p>
@@ -3334,6 +3593,22 @@ export function ProjectsWorkspace({
                   </label>
                 </div>
 
+                <div className="border-t border-border/60 pt-3">
+                  <p className="text-sm font-medium text-foreground mb-2">Properties</p>
+                  <TicketMetadataEditor
+                    priority={metaPriority}
+                    type={metaType}
+                    estimate={metaEstimate}
+                    labels={metaLabels}
+                    onPriorityChange={setMetaPriority}
+                    onTypeChange={setMetaType}
+                    onEstimateChange={setMetaEstimate}
+                    onLabelsChange={setMetaLabels}
+                    availableLabels={labels}
+                    onManageLabels={() => setLabelManagerOpen(true)}
+                  />
+                </div>
+
                 {ticketToEdit && (
                   <div className="rounded-lg border border-border bg-muted/50">
                     <div className="flex items-center justify-between">
@@ -3789,6 +4064,50 @@ export function ProjectsWorkspace({
           isHardBlock={blockerModalData.isHardBlock}
         />
       )}
+
+      {/* Filter Dialog */}
+      <FilterDialog
+        open={filterDialogOpen}
+        onOpenChange={setFilterDialogOpen}
+        filters={filters}
+        onChange={setFilters}
+        labels={labels}
+        statuses={effectiveStages.map((s) => ({ key: s.status, label: s.label }))}
+        tickets={projectTickets
+          .filter((t) => !t.dependency_ticket_id)
+          .map((t) => ({
+            id: t.id,
+            title: t.title,
+            description: t.description,
+            status: t.status,
+            priority: t.priority,
+            type: t.type,
+            estimate: t.estimate,
+            labels: t.labels,
+            assignee: t.assignee,
+            due_date: t.due_date,
+          }))}
+      />
+
+      {/* Label Manager */}
+      <LabelManager
+        open={labelManagerOpen}
+        onClose={() => setLabelManagerOpen(false)}
+        labels={labels}
+        onRefresh={() => {
+          void (async () => {
+            const res = await fetch('/api/labels');
+            if (res.ok) {
+              const data = await res.json();
+              const labelArr: Label[] = data.labels ?? [];
+              setLabels(labelArr);
+              const map: Record<string, { name: string; color: string }> = {};
+              for (const l of labelArr) map[l.id] = { name: l.name, color: l.color };
+              setLabelMap(map);
+            }
+          })();
+        }}
+      />
     </div>
   );
 }

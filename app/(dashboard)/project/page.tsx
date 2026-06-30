@@ -12,6 +12,7 @@ import { DynamicIslandSearch } from '@/components/dynamic-island-search';
 import { NotificationBell } from '@/components/notification-bell';
 import { TrialBanner } from '@/components/trial-banner';
 import { toast } from '@/hooks/use-toast';
+import { onCommand } from '@/lib/command-events';
 
 type ViewType = 'project' | 'ticket-detail';
 type ProjectTab = 'meetings' | 'tickets' | 'analytics' | 'dependencies' | 'members' | 'settings';
@@ -76,6 +77,14 @@ function ProjectContent() {
   const [isProjectCreateOpen, setIsProjectCreateOpen] = useState(false);
   const [isMeetingTicketOpen, setIsMeetingTicketOpen] = useState(false);
   const [meetingTicketMeetingId, setMeetingTicketMeetingId] = useState<string | null>(null);
+
+  // Listen for create:ticket command from global search (works on any view)
+  useEffect(() => {
+    return onCommand('create:ticket', () => {
+      setMeetingTicketMeetingId(null);
+      setIsMeetingTicketOpen(true);
+    });
+  }, []);
 
   const loadProjects = useCallback(async () => {
     try {

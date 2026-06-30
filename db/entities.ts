@@ -160,6 +160,10 @@ export const TicketsEntity = makeEntity(
     title: { type: 'string', required: true },
     description: { type: 'string', default: '' },
     status: { type: 'string', default: 'backlog' },
+    priority: { type: 'string', default: 'none' },
+    type: { type: 'string', default: 'task' },
+    estimate: { type: 'string', default: 'none' },
+    labels: { type: 'list', items: { type: 'string' }, default: () => [] },
     assignee: { type: 'string' },
     assigneeUserId: { type: 'string' },
     dependencyTicketId: { type: 'string' },
@@ -511,6 +515,28 @@ export const NotificationsEntity = makeEntity(
     primary: {
       pk: { field: 'pk', composite: ['userId'] },
       sk: { field: 'sk', composite: ['orgId', 'createdAt'] },
+    },
+  }
+);
+
+// ─── Labels ──────────────────────────────────────────────────────
+export const LabelsEntity = makeEntity(
+  'syntheon-labels',
+  'DYNAMO_TABLE_LABELS',
+  'label',
+  {
+    id: { type: 'string', required: true },
+    orgId: { type: 'string', required: true },
+    name: { type: 'string', required: true },
+    color: { type: 'string', default: '#6b7280' },
+    createdAt: { type: 'string', default: () => new Date().toISOString() },
+  },
+  {
+    primary: { pk: { field: 'pk', composite: ['id'] }, sk: { field: 'sk', template: 'label' } },
+    byOrg: {
+      index: 'gsi1',
+      pk: { field: 'gsi1pk', composite: ['orgId'] },
+      sk: { field: 'gsi1sk', composite: ['name'] },
     },
   }
 );

@@ -32,6 +32,10 @@ import {
   LayoutGrid,
   List,
   AlertTriangle,
+  CheckSquare,
+  Square,
+  Tag,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { AssigneePicker, type AssigneeValue } from '@/components/assignee-picker';
 import { TicketDependencyPanel } from '@/components/ticket-dependency-panel';
@@ -39,7 +43,19 @@ import { DependencyBlockerModal } from '@/components/dependency-blocker-modal';
 import { DateRangePicker } from '@/components/date-range-picker';
 import { MentionEditor } from '@/components/mention-editor';
 import { useSse } from '@/components/sse-provider';
-import { format, parseISO, isToday, isPast, isTomorrow } from 'date-fns';
+import { format, parseISO, isToday, isPast, isTomorrow, isThisWeek } from 'date-fns';
+import {
+  TicketBadges,
+  type TicketPriority,
+  type TicketType,
+  type TicketEstimate,
+} from '@/components/ticket-badges';
+import { EMPTY_FILTERS, type TicketFilters } from '@/components/ticket-filter-bar';
+import { FilterDialog } from '@/components/ticket-filter-dialog';
+import { TicketMetadataEditor } from '@/components/ticket-metadata-editor';
+import { BulkActionBar } from '@/components/ticket-bulk-bar';
+import { LabelManager } from '@/components/label-manager';
+import { onCommand } from '@/lib/command-events';
 
 type TicketStatus = string;
 
@@ -48,6 +64,10 @@ interface Ticket {
   title: string;
   description: string;
   status: string;
+  priority?: TicketPriority;
+  type?: TicketType;
+  estimate?: TicketEstimate;
+  labels?: string[];
   assignee?: string | null;
   assignee_user_id?: string | null;
   projectId?: string | null;
@@ -57,6 +77,12 @@ interface Ticket {
   deadline_time?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
+}
+
+interface Label {
+  id: string;
+  name: string;
+  color: string;
 }
 
 interface Meeting {
@@ -75,6 +101,17 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
   const { memberships } = useOrganization({ memberships: true });
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
   const [assigneeFilter, setAssigneeFilter] = useState<'all' | 'mine' | 'unassigned'>('all');
+  const [filters, setFilters] = useState<TicketFilters>(EMPTY_FILTERS);
+  const [labels, setLabels] = useState<Label[]>([]);
+  const [labelMap, setLabelMap] = useState<Record<string, { name: string; color: string }>>({});
+  const [bulkMode, setBulkMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [labelManagerOpen, setLabelManagerOpen] = useState(false);
+  const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+  const [metaPriority, setMetaPriority] = useState<TicketPriority>('none');
+  const [metaType, setMetaType] = useState<TicketType>('task');
+  const [metaEstimate, setMetaEstimate] = useState<TicketEstimate>('none');
+  const [metaLabels, setMetaLabels] = useState<string[]>([]);
 
   // Stale ticket detection (7 days without update, not done)
   const isTicketStale = (ticket: (typeof tickets)[number]) => {
@@ -138,6 +175,96 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
     setLoading(true);
     void fetchAll();
   }, [ticketPage]);
+
+  // Fetch labels
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch('/api/labels');
+        if (res.ok) {
+          const data = await res.json();
+          const labelArr: Label[] = data.labels ?? [];
+          setLabels(labelArr);
+          const map: Record<string, { name: string; color: string }> = {};
+          for (const l of labelArr) map[l.id] = { name: l.name, color: l.color };
+          setLabelMap(map);
+        }
+      } catch {
+        // ignore
+      }
+    })();
+  }, []);
+
+  // Keyboard shortcuts: cmd+B for bulk mode
+  // cmd+K is handled by DynamicIslandSearch globally
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'b' && !e.shiftKey) {
+        e.preventDefault();
+        setBulkMode((v) => {
+          if (v) setSelectedIds(new Set());
+          return !v;
+        });
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  // Listen for command events from global search
+  useEffect(() => {
+    const unsubs = [
+      onCommand('filter:open-dialog', () => setFilterDialogOpen(true)),
+      onCommand('filter:priority', (p) =>
+        setFilters((prev) => ({ ...prev, priority: p as TicketPriority }))
+      ),
+      onCommand('filter:type', (t) => setFilters((prev) => ({ ...prev, type: t as TicketType }))),
+      onCommand('filter:status', (s) => setFilters((prev) => ({ ...prev, status: s as string }))),
+      onCommand('filter:assignee', (a) =>
+        setFilters((prev) => ({ ...prev, assignee: a as 'all' | 'mine' | 'unassigned' }))
+      ),
+      onCommand('filter:dueDate', (d) =>
+        setFilters((prev) => ({
+          ...prev,
+          dueDate: d as 'all' | 'overdue' | 'today' | 'this_week' | 'none',
+        }))
+      ),
+    ];
+    return () => unsubs.forEach((u) => u());
+  }, []);
+
+  // Sync assignee filter with the filter bar
+  useEffect(() => {
+    setFilters((prev) => ({ ...prev, assignee: assigneeFilter }));
+  }, [assigneeFilter]);
+
+  // Filtered tickets based on all filter criteria
+  const filteredTickets = useMemo(() => {
+    return tickets.filter((ticket) => {
+      if (filters.status && ticket.status !== filters.status) return false;
+      if (filters.priority && (ticket.priority ?? 'none') !== filters.priority) return false;
+      if (filters.type && (ticket.type ?? 'task') !== filters.type) return false;
+      if (filters.estimate && (ticket.estimate ?? 'none') !== filters.estimate) return false;
+      if (filters.labelIds.length > 0) {
+        const ticketLabels = ticket.labels ?? [];
+        if (!filters.labelIds.some((id) => ticketLabels.includes(id))) return false;
+      }
+      if (filters.assignee === 'mine' && ticket.assignee_user_id !== user?.id) return false;
+      if (filters.assignee === 'unassigned' && ticket.assignee_user_id) return false;
+      if (filters.dueDate !== 'all') {
+        if (!ticket.due_date) {
+          if (filters.dueDate !== 'none') return false;
+        } else {
+          const d = parseISO(ticket.due_date);
+          if (filters.dueDate === 'overdue' && !(isPast(d) && !isToday(d))) return false;
+          if (filters.dueDate === 'today' && !isToday(d)) return false;
+          if (filters.dueDate === 'this_week' && !isThisWeek(d, { weekStartsOn: 1 })) return false;
+          if (filters.dueDate === 'none') return false;
+        }
+      }
+      return true;
+    });
+  }, [tickets, filters, user?.id]);
 
   async function fetchAll() {
     try {
@@ -215,6 +342,10 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
       due_date: ticket.due_date || '',
       deadline_time: ticket.deadline_time || '',
     });
+    setMetaPriority(ticket.priority ?? 'none');
+    setMetaType(ticket.type ?? 'task');
+    setMetaEstimate(ticket.estimate ?? 'none');
+    setMetaLabels(ticket.labels ?? []);
   }
 
   async function handleSaveTicketEdit() {
@@ -234,6 +365,10 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
           start_date: ticketEditForm.start_date || null,
           due_date: ticketEditForm.due_date || null,
           deadline_time: ticketEditForm.deadline_time || null,
+          priority: metaPriority,
+          type: metaType,
+          estimate: metaEstimate,
+          labels: metaLabels,
         }),
       });
 
@@ -267,6 +402,10 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                   start_date: ticketEditForm.start_date || null,
                   due_date: ticketEditForm.due_date || null,
                   deadline_time: ticketEditForm.deadline_time || null,
+                  priority: metaPriority,
+                  type: metaType,
+                  estimate: metaEstimate,
+                  labels: metaLabels,
                   bypassGate: true,
                 }),
               });
@@ -335,6 +474,10 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                 start_date: ticketEditForm.start_date || null,
                 due_date: ticketEditForm.due_date || null,
                 deadline_time: ticketEditForm.deadline_time || null,
+                priority: metaPriority,
+                type: metaType,
+                estimate: metaEstimate,
+                labels: metaLabels,
               }
             : ticket
         )
@@ -664,7 +807,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1 rounded-lg border border-border p-0.5 bg-muted/40">
             {(
@@ -711,6 +854,48 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
               Kanban
             </button>
           </div>
+          <button
+            onClick={() => {
+              setBulkMode((v) => {
+                if (v) setSelectedIds(new Set());
+                return !v;
+              });
+            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${
+              bulkMode
+                ? 'bg-primary/10 text-primary border-primary/20'
+                : 'text-muted-foreground hover:text-foreground border-border bg-muted/40'
+            }`}
+            title="Toggle bulk select (⌘B)"
+          >
+            <CheckSquare className="h-3.5 w-3.5" />
+            Bulk
+          </button>
+          <button
+            onClick={() => setFilterDialogOpen(true)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${
+              filters.status ||
+              filters.priority ||
+              filters.type ||
+              filters.estimate ||
+              filters.labelIds.length > 0 ||
+              filters.assignee !== 'all' ||
+              filters.dueDate !== 'all'
+                ? 'bg-primary/10 text-primary border-primary/20'
+                : 'text-muted-foreground hover:text-foreground border-border bg-muted/40'
+            }`}
+            title="Filter tickets"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            Filter
+          </button>
+          <button
+            onClick={() => setLabelManagerOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors text-muted-foreground hover:text-foreground border border-border bg-muted/40"
+          >
+            <Tag className="h-3.5 w-3.5" />
+            Labels
+          </button>
         </div>
         {hasPendingChanges && (
           <div className="flex items-center gap-2">
@@ -730,6 +915,54 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
           </div>
         )}
       </div>
+
+      {/* Filter dialog */}
+      <FilterDialog
+        open={filterDialogOpen}
+        onOpenChange={setFilterDialogOpen}
+        filters={filters}
+        onChange={setFilters}
+        labels={labels}
+        statuses={columns.map((c) => ({ key: c.key, label: c.title }))}
+        tickets={tickets.map((t) => ({
+          id: t.id,
+          title: t.title,
+          description: t.description,
+          status: t.status,
+          priority: t.priority,
+          type: t.type,
+          estimate: t.estimate,
+          labels: t.labels,
+          assignee: t.assignee,
+          due_date: t.due_date,
+        }))}
+      />
+
+      {/* Bulk action bar */}
+      {bulkMode && (
+        <BulkActionBar
+          selectedIds={[...selectedIds]}
+          totalCount={filteredTickets.length}
+          onSelectAll={() => setSelectedIds(new Set(filteredTickets.map((t) => t.id)))}
+          onClear={() => setSelectedIds(new Set())}
+          statuses={columns.map((c) => ({ key: c.key, label: c.title }))}
+          onBulkUpdate={async (updates) => {
+            const ids = [...selectedIds];
+            if (ids.length === 0) return;
+            await fetch('/api/tickets/bulk', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ticketIds: ids, ...updates }),
+            });
+            setTickets((prev) =>
+              prev.map((t) => (selectedIds.has(t.id) ? { ...t, ...(updates as any) } : t))
+            );
+            setSelectedIds(new Set());
+            await onSaved?.();
+          }}
+          labels={labels}
+        />
+      )}
 
       <Dialog open={isDiscardConfirmOpen} onOpenChange={setIsDiscardConfirmOpen}>
         <DialogContent className="sm:max-w-lg border-border bg-background shadow-2xl">
@@ -875,6 +1108,22 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
               />
             </div>
 
+            <div className="border-t border-border/60 pt-3">
+              <p className="text-sm font-medium text-foreground mb-2">Properties</p>
+              <TicketMetadataEditor
+                priority={metaPriority}
+                type={metaType}
+                estimate={metaEstimate}
+                labels={metaLabels}
+                onPriorityChange={setMetaPriority}
+                onTypeChange={setMetaType}
+                onEstimateChange={setMetaEstimate}
+                onLabelsChange={setMetaLabels}
+                availableLabels={labels}
+                onManageLabels={() => setLabelManagerOpen(true)}
+              />
+            </div>
+
             {ticketToEdit && (
               <div className="border-t border-border/60 pt-4">
                 <TicketDependencyPanel
@@ -996,11 +1245,6 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
       {viewMode === 'kanban' && (
         <div className="flex gap-4 overflow-x-auto pb-4 items-start">
           {columns.map((column) => {
-            const filteredTickets = tickets.filter((ticket) => {
-              if (assigneeFilter === 'mine') return ticket.assignee_user_id === user?.id;
-              if (assigneeFilter === 'unassigned') return !ticket.assignee_user_id;
-              return true;
-            });
             const columnTickets = filteredTickets.filter((ticket) => ticket.status === column.key);
 
             return (
@@ -1057,8 +1301,12 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                   {columnTickets.map((ticket) => (
                     <div
                       key={ticket.id}
-                      draggable
+                      draggable={!bulkMode}
                       onDragStart={(e) => {
+                        if (bulkMode) {
+                          e.preventDefault();
+                          return;
+                        }
                         setDraggedTicketId(ticket.id);
                         e.dataTransfer.setData('text/plain', ticket.id);
                         e.dataTransfer.effectAllowed = 'move';
@@ -1067,34 +1315,71 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                         setDraggedTicketId(null);
                         setDragOverColumn(null);
                       }}
-                      className={`rounded-xl border border-border bg-muted/40 p-3 cursor-grab active:cursor-grabbing shadow-sm hover-lift text-left hover:bg-muted/60 transition-colors ${
-                        draggedTicketId === ticket.id ? 'opacity-40 scale-[0.98]' : ''
+                      className={`rounded-xl border bg-muted/40 p-3 shadow-sm hover-lift text-left hover:bg-muted/60 transition-colors ${
+                        bulkMode ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'
+                      } ${draggedTicketId === ticket.id ? 'opacity-40 scale-[0.98]' : ''} ${
+                        selectedIds.has(ticket.id)
+                          ? 'border-primary/50 bg-primary/5'
+                          : 'border-border'
                       }`}
-                      onClick={() => openTicketSource(ticket)}
+                      onClick={() => {
+                        if (bulkMode) {
+                          setSelectedIds((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(ticket.id)) next.delete(ticket.id);
+                            else next.add(ticket.id);
+                            return next;
+                          });
+                        } else {
+                          openTicketSource(ticket);
+                        }
+                      }}
                     >
                       <div className="flex items-start justify-between gap-2 mb-1">
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-foreground line-clamp-2">
-                            {ticket.title}
-                          </p>
-                          {isTicketStale(ticket) && (
-                            <div className="flex items-center gap-1 mt-1 text-[10px] text-amber-600">
-                              <AlertTriangle className="w-3 h-3" />
-                              <span>Stale (7+ days)</span>
-                            </div>
+                        <div className="flex items-start gap-2 flex-1">
+                          {bulkMode && (
+                            <span className="mt-0.5 shrink-0">
+                              {selectedIds.has(ticket.id) ? (
+                                <CheckSquare className="h-4 w-4 text-primary" />
+                              ) : (
+                                <Square className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </span>
                           )}
+                          <div className="flex-1">
+                            <div className="flex items-center gap-1.5 mb-0.5">
+                              <TicketBadges
+                                priority={ticket.priority ?? 'none'}
+                                type={ticket.type ?? 'task'}
+                                estimate={ticket.estimate ?? 'none'}
+                                labels={ticket.labels ?? []}
+                                labelMap={labelMap}
+                              />
+                            </div>
+                            <p className="text-sm font-medium text-foreground line-clamp-2">
+                              {ticket.title}
+                            </p>
+                            {isTicketStale(ticket) && (
+                              <div className="flex items-center gap-1 mt-1 text-[10px] text-amber-600">
+                                <AlertTriangle className="w-3 h-3" />
+                                <span>Stale (7+ days)</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openTicketEditor(ticket);
-                          }}
-                          className="shrink-0 rounded-full border border-primary/20 bg-primary/5 p-1 text-primary hover:bg-primary/10"
-                          aria-label="Update ticket"
-                        >
-                          <Pencil className="w-3 h-3" />
-                        </button>
+                        {!bulkMode && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openTicketEditor(ticket);
+                            }}
+                            className="shrink-0 rounded-full border border-primary/20 bg-primary/5 p-1 text-primary hover:bg-primary/10"
+                            aria-label="Update ticket"
+                          >
+                            <Pencil className="w-3 h-3" />
+                          </button>
+                        )}
                       </div>
                       {ticket.description && (
                         <p className="text-xs text-muted-foreground line-clamp-1">
@@ -1145,11 +1430,6 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
 
       {viewMode === 'list' &&
         (() => {
-          const filteredTickets = tickets.filter((ticket) => {
-            if (assigneeFilter === 'mine') return ticket.assignee_user_id === user?.id;
-            if (assigneeFilter === 'unassigned') return !ticket.assignee_user_id;
-            return true;
-          });
           const statusColors: Record<string, { color: string; bg: string }> = {
             backlog: { color: '#8a8a80', bg: '#f3f3f0' },
             in_progress: { color: '#3d7abf', bg: '#eff5ff' },
@@ -1171,12 +1451,18 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
               status.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
             );
           }
+          const gridCols = bulkMode
+            ? 'grid-cols-[28px_minmax(200px,1fr)_120px_100px_100px_80px_40px]'
+            : 'grid-cols-[minmax(200px,1fr)_120px_100px_100px_80px_40px]';
           return (
             <div className="rounded-2xl border border-border bg-muted/30 overflow-hidden">
-              <div className="grid grid-cols-[minmax(200px,1fr)_120px_160px_100px_80px_40px] items-center px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground border-b border-border/60 bg-muted/40">
+              <div
+                className={`grid ${gridCols} items-center px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground border-b border-border/60 bg-muted/40`}
+              >
+                {bulkMode && <span />}
                 <span>Title</span>
                 <span>Status</span>
-                <span>Source</span>
+                <span>Props</span>
                 <span>Due</span>
                 <span>Assignee</span>
                 <span />
@@ -1191,14 +1477,44 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                   return (
                     <div
                       key={ticket.id}
-                      className={`grid grid-cols-[minmax(200px,1fr)_120px_160px_100px_80px_40px] items-center px-4 py-3 gap-2 hover:bg-muted/40 transition-colors ${
+                      className={`grid ${gridCols} items-center px-4 py-3 gap-2 hover:bg-muted/40 transition-colors ${
                         i < filteredTickets.length - 1 ? 'border-b border-border/40' : ''
-                      }`}
+                      } ${selectedIds.has(ticket.id) ? 'bg-primary/5' : ''}`}
+                      onClick={() => {
+                        if (bulkMode) {
+                          setSelectedIds((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(ticket.id)) next.delete(ticket.id);
+                            else next.add(ticket.id);
+                            return next;
+                          });
+                        }
+                      }}
                     >
+                      {bulkMode && (
+                        <span className="shrink-0">
+                          {selectedIds.has(ticket.id) ? (
+                            <CheckSquare className="h-4 w-4 text-primary" />
+                          ) : (
+                            <Square className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </span>
+                      )}
                       <div className="flex items-center gap-2 min-w-0">
+                        <TicketBadges
+                          priority={ticket.priority ?? 'none'}
+                          type={ticket.type ?? 'task'}
+                          estimate={ticket.estimate ?? 'none'}
+                          labels={ticket.labels ?? []}
+                          labelMap={labelMap}
+                        />
                         <span
                           className="font-medium text-sm text-foreground truncate cursor-pointer hover:text-primary transition-colors"
-                          onClick={() => openTicketSource(ticket)}
+                          onClick={(e) => {
+                            if (bulkMode) return;
+                            e.stopPropagation();
+                            openTicketSource(ticket);
+                          }}
                         >
                           {ticket.title}
                         </span>
@@ -1239,14 +1555,19 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                       <span className="text-xs text-muted-foreground truncate">
                         {ticket.assignee ? `@${ticket.assignee}` : '—'}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => openTicketEditor(ticket)}
-                        className="rounded-full border border-primary/20 bg-primary/5 p-1 text-primary hover:bg-primary/10 justify-self-end"
-                        aria-label="Edit ticket"
-                      >
-                        <Pencil className="w-3 h-3" />
-                      </button>
+                      {!bulkMode && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openTicketEditor(ticket);
+                          }}
+                          className="rounded-full border border-primary/20 bg-primary/5 p-1 text-primary hover:bg-primary/10 justify-self-end"
+                          aria-label="Edit ticket"
+                        >
+                          <Pencil className="w-3 h-3" />
+                        </button>
+                      )}
                     </div>
                   );
                 })
@@ -1272,6 +1593,26 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
           isHardBlock={blockerModalData.isHardBlock}
         />
       )}
+
+      {/* Label Manager */}
+      <LabelManager
+        open={labelManagerOpen}
+        onClose={() => setLabelManagerOpen(false)}
+        labels={labels}
+        onRefresh={() => {
+          void (async () => {
+            const res = await fetch('/api/labels');
+            if (res.ok) {
+              const data = await res.json();
+              const labelArr: Label[] = data.labels ?? [];
+              setLabels(labelArr);
+              const map: Record<string, { name: string; color: string }> = {};
+              for (const l of labelArr) map[l.id] = { name: l.name, color: l.color };
+              setLabelMap(map);
+            }
+          })();
+        }}
+      />
     </div>
   );
 }

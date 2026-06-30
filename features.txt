@@ -1,0 +1,41 @@
+Feature	Jira	Linear	Syntheon
+Priorities	Urgent/High/Medium/Low	Urgent/High/Medium/Low/No priority	Missing
+Labels/Tags	Structured, filterable, color-coded	Workspace + team labels with groups	Missing (only #text tags)
+Story Points/Estimates	Numeric or story points	T-shirt sizes or numeric	Missing
+Issue Types	Bug, Story, Task, Epic	Bug, Issue, Feature, etc.	Missing (all tickets are same type)
+Bulk Operations	Multi-select → assign, label, move, priority	Multi-select → move, label, assign, status	Partial (bulk status only on kanban)
+Saved Views/Filters	Custom filters, saved views	Custom views with filters, sort, group	Missing (only assignee filter)
+Keyboard Shortcuts	Extensive (J/K, C, ., etc.)	Full keyboard navigation	Missing
+
+Tier 2: Planning & Organization (Linear's Core Differentiators)
+Feature	Jira	Linear	Syntheon
+Sprints/Cycles	Sprints with velocity tracking	Auto-repeating cycles (1-8 weeks)	Missing
+Milestones	Versions/fix versions	Project milestones with progress %	Missing
+Epics/Initiatives	Epics grouping stories	Initiatives grouping projects	Missing (projects are the only grouping)
+Project Status/Health	Custom statuses	On Track / At Risk / Off Track / Paused	Missing
+Project Lead	Assignee on project	Single lead per project	Missing (has admins but no lead)
+Roadmap/Timeline	Advanced roadmap	Visual timeline planning	Partial (calendar/Gantt exists but no strategic roadmap)
+Backlog Ranking	Drag-to-rank in backlog	Priority ordering in backlog	Missing
+
+Tier 3: Reporting & Insights
+Feature	Jira	Linear	Syntheon
+Burndown Charts	Sprint + epic burndown	Scope/velocity graph with completion prediction	Missing
+Velocity Reports	Per-sprint velocity	Cycle velocity tracking	Missing
+Cycle Time Reports	Time in status, lead time	Cycle time analytics	Missing
+Custom Dashboards	Configurable dashboards	Insights with custom dimensions	Partial (fixed admin dashboard)
+
+Tier 4: Workflow & Automation
+Feature	Jira	Linear	Syntheon
+Automations/Rules	When X → do Y (status, assignee, etc.)	Auto-move on PR merge, cycle auto-add	Missing
+Custom Workflows	Configurable status transitions	Custom workflow states per team	Partial (custom stages exist but no transition rules)
+Templates	Project + issue templates	—	Missing
+Time Tracking	Log work, remaining estimate	—	Missing
+Slack Integration	Bi-directional sync	Comment threads synced to Slack	Missing
+
+Tier 5: Nice-to-Haves
+Feature	Jira	Linear	Syntheon
+Swimlanes	Group kanban by epic/assignee/priority	—	Missing
+Versions/Releases	Group work into releases	—	Missing
+Custom Fields	Any field type	—	Missing
+Mobile App	Native	Native	Missing (web only)
+Project Documents	Confluence-linked	Inline docs with collaborative editing	Missing (context field only)

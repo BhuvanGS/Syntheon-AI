@@ -40,6 +40,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { toast } from '@/hooks/use-toast';
 import { useUser, useOrganization } from '@clerk/nextjs';
+import { onCommand, emitCommand } from '@/lib/command-events';
 
 type ViewType =
   | 'dashboard'
@@ -123,6 +124,24 @@ function DashboardContent() {
   const [meetingTicketMeetingId, setMeetingTicketMeetingId] = useState<string | null>(null);
 
   const orgId = organization?.id;
+
+  // Listen for create:ticket command from global search (works on any view)
+  useEffect(() => {
+    return onCommand('create:ticket', () => {
+      setMeetingTicketMeetingId(null);
+      setIsMeetingTicketOpen(true);
+    });
+  }, []);
+
+  // Listen for filter:open-dialog — switch to tickets view, then re-emit so the mounted component catches it
+  useEffect(() => {
+    return onCommand('filter:open-dialog', () => {
+      if (currentView !== 'tickets' && currentView !== 'projects') {
+        handleViewChange('tickets');
+        setTimeout(() => emitCommand('filter:open-dialog'), 200);
+      }
+    });
+  }, [currentView]);
 
   const loadProjects = useCallback(async () => {
     try {

@@ -56,6 +56,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (typeof body?.deadline_time !== 'undefined') {
       updates.deadline_time = body.deadline_time ? String(body.deadline_time) : null;
     }
+    if (typeof body?.priority !== 'undefined') {
+      updates.priority = String(body.priority);
+    }
+    if (typeof body?.type !== 'undefined') {
+      updates.type = String(body.type);
+    }
+    if (typeof body?.estimate !== 'undefined') {
+      updates.estimate = String(body.estimate);
+    }
+    if (typeof body?.labels !== 'undefined') {
+      updates.labels = Array.isArray(body.labels) ? body.labels : [];
+    }
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ error: 'No valid updates provided' }, { status: 400 });
@@ -225,6 +237,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       due_date: 'due date',
       deadline_time: 'deadline time',
       dependency_ticket_id: 'dependency',
+      priority: 'priority',
+      type: 'type',
+      estimate: 'estimate',
+      labels: 'labels',
     };
     const changedKeys = Object.keys(updates).filter((k) => !ignoredKeys.includes(k));
     for (const key of changedKeys) {
