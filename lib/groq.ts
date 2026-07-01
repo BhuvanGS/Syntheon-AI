@@ -96,6 +96,16 @@ function normalizeTicketStatus(status: string | undefined): TicketBlock['status'
   return 'backlog';
 }
 
+function isMeaningfulTicketTitle(title: string): boolean {
+  const trimmed = title.trim();
+  if (trimmed.length < 3) return false;
+  if (/^\d+\.?$/.test(trimmed)) return false;
+  if (/^(test|foo|bar|baz|asdf|qwerty|lorem|ipsum)$/i.test(trimmed)) return false;
+  const wordCount = trimmed.split(/\s+/).filter((w) => w.length > 0).length;
+  if (wordCount === 1 && trimmed.length < 5) return false;
+  return true;
+}
+
 export async function extractSpecBlocks(
   transcript: string,
   meetingId: string
@@ -170,17 +180,19 @@ Return JSON: {"title": "Meeting Title", "tickets": [{"id": "${meetingId}-ticket-
   try {
     const parsed = JSON.parse(clean);
     if (!Array.isArray(parsed.tickets)) throw new Error('tickets must be an array');
-    const rawTickets = parsed.tickets.map((ticket: any) => ({
-      id: randomUUID(),
-      title: ticket.title,
-      description: ticket.description ?? '',
-      status: normalizeTicketStatus(ticket.status),
-      assignee: ticket.assignee ?? null,
-      assignee_user_id: ticket.assignee_user_id ?? null,
-      project_id: ticket.project_id ?? null,
-      meeting_id: ticket.meeting_id ?? meetingId,
-      dependency_ticket_id: ticket.dependency_ticket_id ?? null,
-    })) as TicketBlock[];
+    const rawTickets = parsed.tickets
+      .map((ticket: any) => ({
+        id: randomUUID(),
+        title: ticket.title,
+        description: ticket.description ?? '',
+        status: normalizeTicketStatus(ticket.status),
+        assignee: ticket.assignee ?? null,
+        assignee_user_id: ticket.assignee_user_id ?? null,
+        project_id: ticket.project_id ?? null,
+        meeting_id: ticket.meeting_id ?? meetingId,
+        dependency_ticket_id: ticket.dependency_ticket_id ?? null,
+      }))
+      .filter((ticket: TicketBlock) => isMeaningfulTicketTitle(ticket.title)) as TicketBlock[];
 
     const ticketsWithDueDates = await mergeDueDates(transcript, rawTickets);
 
@@ -273,6 +285,9 @@ export async function inferProjectTicketDependencies(
 ): Promise<TicketDependencySuggestion[]> {
   if (tickets.length < 2) return [];
 
+  const meaningfulTickets = tickets.filter((t) => isMeaningfulTicketTitle(t.title));
+  if (meaningfulTickets.length < 2) return [];
+
   const response = await groq.chat.completions.create({
     model: 'llama-3.3-70b-versatile',
     messages: [
@@ -301,7 +316,7 @@ Output format:
       },
       {
         role: 'user',
-        content: `Infer dependencies for this project ticket list:\n\n${JSON.stringify(tickets, null, 2)}`,
+        content: `Infer dependencies for this project ticket list:\n\n${JSON.stringify(meaningfulTickets, null, 2)}`,
       },
     ],
     temperature: 0.2,
@@ -314,7 +329,7 @@ Output format:
   try {
     const parsed = JSON.parse(clean);
     const deps = Array.isArray(parsed?.dependencies) ? parsed.dependencies : [];
-    const validTicketIds = new Set(tickets.map((t) => t.id));
+    const validTicketIds = new Set(meaningfulTickets.map((t) => t.id));
     const unique = new Set<string>();
 
     const normalized: TicketDependencySuggestion[] = [];

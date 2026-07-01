@@ -71,6 +71,8 @@ import { EMPTY_FILTERS, type TicketFilters } from '@/components/ticket-filter-ba
 import { FilterDialog } from '@/components/ticket-filter-dialog';
 import { TicketMetadataEditor } from '@/components/ticket-metadata-editor';
 import { BulkActionBar } from '@/components/ticket-bulk-bar';
+import { BacklogView } from '@/components/backlog-view';
+import { RoadmapView } from '@/components/roadmap-view';
 import { LabelManager } from '@/components/label-manager';
 import { onCommand } from '@/lib/command-events';
 import {
@@ -86,7 +88,12 @@ import {
   Calendar,
   LayoutList,
   KanbanSquare,
+  ListOrdered,
   BarChart3,
+  Sparkles,
+  Layers,
+  Milestone,
+  Zap,
   CheckCircle2,
   Circle,
   Clock,
@@ -115,11 +122,34 @@ import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import type { ChartConfig } from '@/components/ui/chart';
-import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid } from 'recharts';
+import {
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  LineChart,
+  Line,
+  Legend,
+  ReferenceLine,
+} from 'recharts';
 
-type ProjectTab = 'meetings' | 'tickets' | 'analytics' | 'dependencies' | 'members' | 'settings';
+type ProjectTab =
+  | 'meetings'
+  | 'tickets'
+  | 'analytics'
+  | 'dependencies'
+  | 'members'
+  | 'settings'
+  | 'roadmap'
+  | 'sprint-stones';
 
-type TicketsViewMode = 'board' | 'list';
+type SprintStonesView = 'sprints' | 'milestones' | 'analytics';
+
+type TicketsViewMode = 'board' | 'list' | 'backlog' | 'groups';
 
 interface Project {
   id: string;
@@ -132,6 +162,8 @@ interface Project {
   ticketIds: string[];
   files: string[];
   context: string;
+  leadUserId?: string | null;
+  status?: string;
   updatedAt?: string;
 }
 
@@ -163,6 +195,10 @@ interface Ticket {
   start_date?: string | null;
   due_date?: string | null;
   deadline_time?: string | null;
+  rank?: number | null;
+  milestoneId?: string | null;
+  isGroup?: boolean;
+  sprintId?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
 }
@@ -241,12 +277,44 @@ export function ProjectsWorkspace({
   const [metaType, setMetaType] = useState<TicketType>('task');
   const [metaEstimate, setMetaEstimate] = useState<TicketEstimate>('none');
   const [metaLabels, setMetaLabels] = useState<string[]>([]);
+  const [metaMilestoneId, setMetaMilestoneId] = useState<string | null>(null);
+  const [metaSprintId, setMetaSprintId] = useState<string | null>(null);
+  const [metaIsGroup, setMetaIsGroup] = useState(false);
+  const [editingMilestoneId, setEditingMilestoneId] = useState<string | null>(null);
+  const [milestoneEditForm, setMilestoneEditForm] = useState({
+    name: '',
+    description: '',
+    dueDate: '',
+  });
+  const [editingSprintId, setEditingSprintId] = useState<string | null>(null);
+  const [sprintEditForm, setSprintEditForm] = useState({
+    name: '',
+    goal: '',
+    startDate: '',
+    endDate: '',
+  });
+  const [sprintStonesView, setSprintStonesView] = useState<SprintStonesView>('analytics');
+  const [showCreateSprintForm, setShowCreateSprintForm] = useState(false);
+  const [showCreateMilestoneForm, setShowCreateMilestoneForm] = useState(false);
+  const [showCreateGroupDialog, setShowCreateGroupDialog] = useState(false);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [groupSelectedIds, setGroupSelectedIds] = useState<Set<string>>(new Set());
+  const [creatingGroup, setCreatingGroup] = useState(false);
+  const [aiGroupSuggestions, setAiGroupSuggestions] = useState<
+    { name: string; ticketIds: string[]; reason: string }[]
+  >([]);
+  const [aiGroupLoading, setAiGroupLoading] = useState(false);
+  const [showAiGroupDialog, setShowAiGroupDialog] = useState(false);
+  const [aiGroupAccepted, setAiGroupAccepted] = useState<Set<number>>(new Set());
+  const [aiGroupRemovedTickets, setAiGroupRemovedTickets] = useState<Record<number, Set<string>>>(
+    {}
+  );
 
   interface ProjectMemberRow {
     id: string;
     project_id: string;
     user_id: string;
-    role: 'admin' | 'member';
+    role: 'admin' | 'manager' | 'member';
   }
   const [projectMembers, setProjectMembers] = useState<ProjectMemberRow[]>([]);
   const [projectMembersLoading, setProjectMembersLoading] = useState(false);
@@ -263,6 +331,20 @@ export function ProjectsWorkspace({
     }
   }, []);
 
+  const fetchMilestones = useCallback(async (projectId: string) => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}/milestones`);
+      if (res.ok) setMilestones(await res.json());
+    } catch {}
+  }, []);
+
+  const fetchSprints = useCallback(async (projectId: string) => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}/sprints`);
+      if (res.ok) setSprints(await res.json());
+    } catch {}
+  }, []);
+
   const [draggedTicketId, setDraggedTicketId] = useState<string | null>(null);
   const [draggedStageId, setDraggedStageId] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
@@ -274,6 +356,58 @@ export function ProjectsWorkspace({
   const [projectNameDraft, setProjectNameDraft] = useState('');
   const [projectContextDraft, setProjectContextDraft] = useState('');
   const [savingProjectSettings, setSavingProjectSettings] = useState(false);
+  const [healthLoading, setHealthLoading] = useState(false);
+  const [aiHealthSuggestion, setAiHealthSuggestion] = useState<{
+    status: string;
+    reason: string;
+  } | null>(null);
+  const [milestones, setMilestones] = useState<
+    Array<{
+      id: string;
+      name: string;
+      description: string;
+      due_date?: string | null;
+      status: string;
+      created_at: string;
+    }>
+  >([]);
+  const [milestoneForm, setMilestoneForm] = useState<{
+    name: string;
+    description: string;
+    dueDate: string;
+  }>({
+    name: '',
+    description: '',
+    dueDate: '',
+  });
+  const [savingMilestone, setSavingMilestone] = useState(false);
+  const [sprints, setSprints] = useState<
+    Array<{
+      id: string;
+      name: string;
+      goal: string;
+      start_date: string;
+      end_date: string;
+      status: string;
+      review?: string | null;
+      created_at: string;
+    }>
+  >([]);
+  const [sprintForm, setSprintForm] = useState<{
+    name: string;
+    goal: string;
+    startDate: string;
+    endDate: string;
+  }>({
+    name: '',
+    goal: '',
+    startDate: '',
+    endDate: '',
+  });
+  const [savingSprint, setSavingSprint] = useState(false);
+  const [activeSprintId, setActiveSprintId] = useState<string | null>(null);
+  const [sprintPulse, setSprintPulse] = useState<string | null>(null);
+  const [sprintPulseLoading, setSprintPulseLoading] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [projectDeleteConfirm, setProjectDeleteConfirm] = useState('');
   const [ticketToDelete, setTicketToDelete] = useState<Ticket | null>(null);
@@ -953,6 +1087,9 @@ export function ProjectsWorkspace({
     setMetaType(ticket.type ?? 'task');
     setMetaEstimate(ticket.estimate ?? 'none');
     setMetaLabels(ticket.labels ?? []);
+    setMetaMilestoneId(ticket.milestoneId ?? null);
+    setMetaSprintId(ticket.sprintId ?? null);
+    setMetaIsGroup(ticket.isGroup ?? false);
     setNewChildDraft({
       title: '',
     });
@@ -982,6 +1119,9 @@ export function ProjectsWorkspace({
     setMetaType(previous.type ?? 'task');
     setMetaEstimate(previous.estimate ?? 'none');
     setMetaLabels(previous.labels ?? []);
+    setMetaMilestoneId(previous.milestoneId ?? null);
+    setMetaSprintId(previous.sprintId ?? null);
+    setMetaIsGroup(previous.isGroup ?? false);
     setNewChildDraft({ title: '' });
     setTicketEditTab('details');
     setIsAddingSubtask(false);
@@ -1014,6 +1154,8 @@ export function ProjectsWorkspace({
           type: metaType,
           estimate: metaEstimate,
           labels: metaLabels,
+          milestoneId: metaMilestoneId,
+          sprintId: metaSprintId,
         }),
       });
 
@@ -1051,6 +1193,8 @@ export function ProjectsWorkspace({
                   type: metaType,
                   estimate: metaEstimate,
                   labels: metaLabels,
+                  milestoneId: metaMilestoneId,
+                  sprintId: metaSprintId,
                   bypassGate: true,
                 }),
               });
@@ -1128,6 +1272,8 @@ export function ProjectsWorkspace({
                     type: metaType,
                     estimate: metaEstimate,
                     labels: metaLabels,
+                    milestoneId: metaMilestoneId,
+                    sprintId: metaSprintId,
                     bypassGate: true,
                   }),
                 });
@@ -1343,6 +1489,16 @@ export function ProjectsWorkspace({
     if (selectedProjectId) fetchProjectMembers(selectedProjectId);
     else setProjectMembers([]);
   }, [selectedProjectId, fetchProjectMembers]);
+
+  useEffect(() => {
+    if (selectedProjectId) fetchMilestones(selectedProjectId);
+    else setMilestones([]);
+  }, [selectedProjectId, fetchMilestones]);
+
+  useEffect(() => {
+    if (selectedProjectId) fetchSprints(selectedProjectId);
+    else setSprints([]);
+  }, [selectedProjectId, fetchSprints]);
 
   useEffect(() => {
     if (!preferredTab) return;
@@ -1563,6 +1719,8 @@ export function ProjectsWorkspace({
       icon: <BarChart3 className="h-4 w-4" />,
     },
     { id: 'dependencies', label: 'Dependencies', icon: <GitBranch className="h-4 w-4" /> },
+    { id: 'roadmap', label: 'Future Viz', icon: <Milestone className="h-4 w-4" /> },
+    { id: 'sprint-stones', label: 'Sprint-stones', icon: <Zap className="h-4 w-4" /> },
     { id: 'members', label: 'Members', icon: <Users className="h-4 w-4" />, adminOnly: true },
   ];
   const tabs = allTabs.filter((t) => !t.adminOnly || isAdmin);
@@ -1694,9 +1852,63 @@ export function ProjectsWorkspace({
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10">
                 <FolderKanban className="h-4 w-4 text-primary" />
               </div>
+              {(() => {
+                const statusColors: Record<string, string> = {
+                  on_track: 'bg-green-500',
+                  at_risk: 'bg-yellow-500',
+                  off_track: 'bg-red-500',
+                  paused: 'bg-gray-400',
+                };
+                const statusLabels: Record<string, string> = {
+                  on_track: 'On Track',
+                  at_risk: 'At Risk',
+                  off_track: 'Off Track',
+                  paused: 'Paused',
+                };
+                const s = selectedProject.status ?? 'on_track';
+                return (
+                  <span
+                    className={`h-2.5 w-2.5 rounded-full ${statusColors[s] ?? statusColors.on_track}`}
+                    title={statusLabels[s] ?? 'On Track'}
+                  />
+                );
+              })()}
               <h1 className="font-playfair text-xl font-bold text-foreground">
                 {selectedProject.name}
               </h1>
+              {selectedProject.leadUserId &&
+                (() => {
+                  const leadMember = projectMembers.find(
+                    (pm) => pm.user_id === selectedProject.leadUserId
+                  );
+                  const orgM = (memberships?.data ?? []).find(
+                    (m) => m.publicUserData?.userId === selectedProject.leadUserId
+                  );
+                  const leadName = orgM
+                    ? [orgM.publicUserData?.firstName, orgM.publicUserData?.lastName]
+                        .filter(Boolean)
+                        .join(' ') ||
+                      orgM.publicUserData?.identifier ||
+                      'Lead'
+                    : (leadMember?.user_id ?? 'Lead');
+                  const leadImg = orgM?.publicUserData?.imageUrl;
+                  return (
+                    <div className="flex items-center gap-1.5 ml-1">
+                      {leadImg ? (
+                        <img
+                          src={leadImg}
+                          alt={leadName}
+                          className="h-5 w-5 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="h-5 w-5 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-semibold text-primary">
+                          {leadName[0]?.toUpperCase()}
+                        </div>
+                      )}
+                      <span className="text-xs text-muted-foreground">{leadName}</span>
+                    </div>
+                  );
+                })()}
             </div>
           </div>
         </div>
@@ -1925,6 +2137,28 @@ export function ProjectsWorkspace({
                   <LayoutList className="h-3.5 w-3.5" />
                   List
                 </button>
+                <button
+                  onClick={() => setTicketsViewMode('backlog')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    ticketsViewMode === 'backlog'
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <ListOrdered className="h-3.5 w-3.5" />
+                  Backlog
+                </button>
+                <button
+                  onClick={() => setTicketsViewMode('groups')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    ticketsViewMode === 'groups'
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Layers className="h-3.5 w-3.5" />
+                  Groups
+                </button>
                 <div className="w-px h-5 bg-border mx-1" />
                 <button
                   onClick={() => setFilterDialogOpen(true)}
@@ -2109,6 +2343,291 @@ export function ProjectsWorkspace({
                     Add ticket
                   </button>
                 </div>
+              ) : ticketsViewMode === 'backlog' ? (
+                <BacklogView
+                  tickets={rootProjectTickets}
+                  labelMap={labelMap}
+                  onReorder={async (rankUpdates) => {
+                    await fetch('/api/tickets/ranks', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ rankUpdates }),
+                    });
+                    await onRefresh?.();
+                  }}
+                  onTicketClick={(ticket) => {
+                    const t = ticket as unknown as Ticket;
+                    const hasSubtasks = (childrenByParentId[t.id] ?? []).length > 0;
+                    if (hasSubtasks) {
+                      setSubtasksPopupTicket(t);
+                    } else {
+                      openTicketEditor(t);
+                    }
+                  }}
+                  onAddTicket={() => {
+                    setNewTicketStatus('backlog');
+                    setIsTicketDialogOpen(true);
+                  }}
+                />
+              ) : ticketsViewMode === 'groups' ? (
+                (() => {
+                  const groupTickets = rootProjectTickets.filter(
+                    (t) => t.isGroup || (childrenByParentId[t.id] ?? []).length > 0
+                  );
+                  const ungrouped = rootProjectTickets.filter(
+                    (t) =>
+                      !t.isGroup &&
+                      (childrenByParentId[t.id] ?? []).length === 0 &&
+                      !t.dependency_ticket_id
+                  );
+                  return (
+                    <div className="space-y-4">
+                      {/* Toolbar */}
+                      <div className="flex items-center justify-between">
+                        <h2 className="font-playfair text-2xl font-bold text-foreground">Groups</h2>
+                        <div className="flex items-center rounded-lg border border-border bg-muted/40 p-0.5">
+                          <button
+                            onClick={() => {
+                              setNewGroupName('');
+                              setGroupSelectedIds(new Set());
+                              setShowCreateGroupDialog(true);
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors text-muted-foreground hover:text-foreground"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                            Create Group
+                          </button>
+                          <button
+                            disabled={aiGroupLoading || ungrouped.length < 3}
+                            onClick={async () => {
+                              if (!selectedProjectId) return;
+                              setAiGroupLoading(true);
+                              setAiGroupSuggestions([]);
+                              setAiGroupAccepted(new Set());
+                              setAiGroupRemovedTickets({});
+                              try {
+                                const res = await fetch(
+                                  `/api/projects/${selectedProjectId}/suggest-groups`,
+                                  {
+                                    method: 'POST',
+                                  }
+                                );
+                                if (res.ok) {
+                                  const data = await res.json();
+                                  if (data.groups?.length > 0) {
+                                    setAiGroupSuggestions(data.groups);
+                                    setShowAiGroupDialog(true);
+                                  } else {
+                                    showToast(
+                                      data.message ||
+                                        'No group suggestions could be generated. Try adding more descriptive ticket titles.',
+                                      'error'
+                                    );
+                                  }
+                                } else {
+                                  showToast(
+                                    'Failed to get AI suggestions. Please try again.',
+                                    'error'
+                                  );
+                                }
+                              } catch {
+                                showToast(
+                                  'Failed to get AI suggestions. Please try again.',
+                                  'error'
+                                );
+                              } finally {
+                                setAiGroupLoading(false);
+                              }
+                            }}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                              aiGroupLoading
+                                ? 'text-muted-foreground opacity-60'
+                                : 'text-muted-foreground hover:text-foreground'
+                            } ${ungrouped.length < 3 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          >
+                            {aiGroupLoading ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Sparkles className="h-3.5 w-3.5" />
+                            )}
+                            AI Suggest
+                          </button>
+                        </div>
+                      </div>
+
+                      {ungrouped.length < 3 && (
+                        <p className="text-xs text-muted-foreground">
+                          Need at least 3 ungrouped tickets for AI suggestions ({ungrouped.length}{' '}
+                          currently ungrouped)
+                        </p>
+                      )}
+
+                      {groupTickets.length === 0 && (
+                        <div className="flex flex-col items-center justify-center py-20 text-center">
+                          <Layers className="h-10 w-10 text-muted-foreground/40 mb-3" />
+                          <p className="text-sm text-muted-foreground mb-1">
+                            No ticket groups yet.
+                          </p>
+                          <p className="text-xs text-muted-foreground/70">
+                            Create a group and add tickets, or let AI suggest groupings.
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Group cards */}
+                      {groupTickets.map((parent) => {
+                        const children = childrenByParentId[parent.id] ?? [];
+                        const done = children.filter((c) => c.status === 'done').length;
+                        const total = children.length;
+                        const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+                        return (
+                          <div
+                            key={parent.id}
+                            className="rounded-xl border border-border bg-muted/40 overflow-hidden"
+                          >
+                            <div className="flex items-center justify-between p-4 bg-background">
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <Layers className="h-4 w-4 text-primary shrink-0" />
+                                <span
+                                  className="text-sm font-medium text-foreground truncate cursor-pointer hover:text-primary"
+                                  onClick={() => {
+                                    if (children.length > 0) {
+                                      setSubtasksPopupTicket(parent);
+                                    } else {
+                                      openTicketEditor(parent);
+                                    }
+                                  }}
+                                >
+                                  {parent.title}
+                                </span>
+                                {parent.isGroup && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium shrink-0">
+                                    Group
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                {/* Sprint assignment */}
+                                <select
+                                  value={parent.sprintId ?? ''}
+                                  onChange={async (e) => {
+                                    const newSprintId = e.target.value || null;
+                                    await fetch(`/api/tickets/${parent.id}`, {
+                                      method: 'PATCH',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ sprintId: newSprintId }),
+                                    });
+                                    if (newSprintId) {
+                                      for (const child of children) {
+                                        await fetch(`/api/tickets/${child.id}`, {
+                                          method: 'PATCH',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({ sprintId: newSprintId }),
+                                        });
+                                      }
+                                    }
+                                    await onRefresh?.();
+                                  }}
+                                  className="text-xs rounded-md border border-border bg-background px-2 py-1.5 text-foreground cursor-pointer"
+                                >
+                                  <option value="">No sprint</option>
+                                  {sprints.map((sp) => (
+                                    <option key={sp.id} value={sp.id}>
+                                      {sp.name}
+                                    </option>
+                                  ))}
+                                </select>
+                                {/* Milestone assignment */}
+                                <select
+                                  value={parent.milestoneId ?? ''}
+                                  onChange={async (e) => {
+                                    const newMilestoneId = e.target.value || null;
+                                    await fetch(`/api/tickets/${parent.id}`, {
+                                      method: 'PATCH',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ milestoneId: newMilestoneId }),
+                                    });
+                                    if (newMilestoneId) {
+                                      for (const child of children) {
+                                        await fetch(`/api/tickets/${child.id}`, {
+                                          method: 'PATCH',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({ milestoneId: newMilestoneId }),
+                                        });
+                                      }
+                                    }
+                                    await onRefresh?.();
+                                  }}
+                                  className="text-xs rounded-md border border-border bg-background px-2 py-1.5 text-foreground cursor-pointer"
+                                >
+                                  <option value="">No milestone</option>
+                                  {milestones.map((ms) => (
+                                    <option key={ms.id} value={ms.id}>
+                                      {ms.name}
+                                    </option>
+                                  ))}
+                                </select>
+                                {total > 0 && (
+                                  <span className="text-xs text-muted-foreground">
+                                    {done}/{total} done
+                                  </span>
+                                )}
+                                <button
+                                  onClick={async () => {
+                                    await fetch(`/api/tickets/${parent.id}`, {
+                                      method: 'PATCH',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ isGroup: false }),
+                                    });
+                                    for (const child of children) {
+                                      await fetch(`/api/tickets/${child.id}`, {
+                                        method: 'PATCH',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ dependencyTicketId: null }),
+                                      });
+                                    }
+                                    await onRefresh?.();
+                                    showToast('Group ungrouped', 'success');
+                                  }}
+                                  className="text-xs px-3 py-1.5 rounded-md font-medium bg-muted text-muted-foreground hover:bg-muted/80 transition-colors"
+                                >
+                                  Ungroup
+                                </button>
+                              </div>
+                            </div>
+                            {total > 0 && (
+                              <div className="px-4 pb-3 pt-1">
+                                <Progress value={pct} className="h-1.5" />
+                                <div className="mt-2 space-y-1">
+                                  {children.map((child) => (
+                                    <div
+                                      key={child.id}
+                                      className="flex items-center gap-2 text-xs py-1 cursor-pointer hover:bg-muted/40 rounded px-2"
+                                      onClick={() => openTicketEditor(child)}
+                                    >
+                                      {child.status === 'done' ? (
+                                        <CheckCircle2 className="h-3 w-3 text-green-500 shrink-0" />
+                                      ) : child.status === 'blocked' ? (
+                                        <AlertCircle className="h-3 w-3 text-red-500 shrink-0" />
+                                      ) : (
+                                        <Circle className="h-3 w-3 text-muted-foreground shrink-0" />
+                                      )}
+                                      <span
+                                        className={`truncate ${child.status === 'done' ? 'text-muted-foreground line-through' : 'text-foreground'}`}
+                                      >
+                                        {child.title}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()
               ) : (
                 <div className="flex gap-4 overflow-x-auto pb-4 items-start">
                   {effectiveStages.map((stage) => {
@@ -2458,7 +2977,97 @@ export function ProjectsWorkspace({
                       {selectedProject?.name} — health, throughput, and workload
                     </p>
                   </div>
+                  <div className="flex items-center gap-3">
+                    {(() => {
+                      const statusColors: Record<string, string> = {
+                        on_track: 'bg-green-500',
+                        at_risk: 'bg-yellow-500',
+                        off_track: 'bg-red-500',
+                        paused: 'bg-gray-400',
+                      };
+                      const currentStatus = selectedProject?.status ?? 'on_track';
+                      return (
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={`h-2 w-2 rounded-full ${statusColors[currentStatus] ?? statusColors.on_track}`}
+                          />
+                          <span className="text-xs font-medium text-muted-foreground capitalize">
+                            {currentStatus.replace('_', ' ')}
+                          </span>
+                        </div>
+                      );
+                    })()}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={healthLoading}
+                      onClick={async () => {
+                        if (!selectedProjectId) return;
+                        setHealthLoading(true);
+                        setAiHealthSuggestion(null);
+                        try {
+                          const res = await fetch(`/api/projects/${selectedProjectId}/health`, {
+                            method: 'POST',
+                          });
+                          if (res.ok) {
+                            const data = await res.json();
+                            setAiHealthSuggestion(data);
+                          }
+                        } finally {
+                          setHealthLoading(false);
+                        }
+                      }}
+                      className="rounded-full gap-1.5 text-xs"
+                    >
+                      {healthLoading ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-3.5 w-3.5" />
+                      )}
+                      AI Suggest
+                    </Button>
+                  </div>
                 </div>
+
+                {aiHealthSuggestion && (
+                  <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-medium text-foreground">
+                          AI suggests: {aiHealthSuggestion.status.replace('_', ' ')}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="rounded-full text-xs h-7"
+                          onClick={() => setAiHealthSuggestion(null)}
+                        >
+                          Dismiss
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="rounded-full text-xs h-7"
+                          onClick={async () => {
+                            if (!selectedProjectId) return;
+                            await fetch(`/api/projects/${selectedProjectId}/status`, {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ status: aiHealthSuggestion.status }),
+                            });
+                            setAiHealthSuggestion(null);
+                            await onRefresh?.();
+                          }}
+                        >
+                          Accept
+                        </Button>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{aiHealthSuggestion.reason}</p>
+                  </div>
+                )}
 
                 {/* KPI Row */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -2892,7 +3501,1151 @@ export function ProjectsWorkspace({
             );
           })()}
 
-        {/* ── MEMBERS tab ── */}
+        {/* ── ROADMAP (Future Viz) tab ── */}
+        {projectTab === 'roadmap' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-playfair text-2xl font-bold text-foreground">Future Viz</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Visual timeline of milestones and ticket groups
+                </p>
+              </div>
+            </div>
+            <div className="min-h-[600px]">
+              <RoadmapView
+                tickets={rootProjectTickets as any}
+                milestones={milestones as any}
+                onTicketClick={(t) => {
+                  const ticket = projectTickets.find((pt) => pt.id === t.id);
+                  if (ticket) {
+                    const hasSubtasks = (childrenByParentId[ticket.id] ?? []).length > 0;
+                    if (hasSubtasks) {
+                      setSubtasksPopupTicket(ticket);
+                    } else {
+                      openTicketEditor(ticket);
+                    }
+                  }
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* ── SPRINT-STONES tab ── */}
+        {projectTab === 'sprint-stones' && (
+          <div className="space-y-6">
+            {/* Segmented toolbar */}
+            <div className="flex items-center justify-between">
+              <h2 className="font-playfair text-2xl font-bold text-foreground">Sprint-stones</h2>
+              <div className="flex items-center rounded-lg border border-border bg-muted/40 p-0.5">
+                <button
+                  onClick={() => setSprintStonesView('analytics')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    sprintStonesView === 'analytics'
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <BarChart3 className="h-3.5 w-3.5" />
+                  Analytics
+                </button>
+                <button
+                  onClick={() => setSprintStonesView('milestones')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    sprintStonesView === 'milestones'
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Milestone className="h-3.5 w-3.5" />
+                  Milestones
+                </button>
+                <button
+                  onClick={() => setSprintStonesView('sprints')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    sprintStonesView === 'sprints'
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Zap className="h-3.5 w-3.5" />
+                  Sprint
+                </button>
+                <div className="w-px h-5 bg-border mx-1" />
+                <button
+                  onClick={() => {
+                    if (sprintStonesView === 'milestones') {
+                      setShowCreateMilestoneForm((v) => !v);
+                    } else {
+                      setShowCreateSprintForm((v) => !v);
+                    }
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors text-primary hover:bg-primary/10"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Create {sprintStonesView === 'milestones' ? 'Milestone' : 'Sprint'}
+                </button>
+              </div>
+            </div>
+
+            {/* ── SPRINTS sub-view ── */}
+            {sprintStonesView === 'sprints' && (
+              <div className="space-y-4">
+                {/* Create sprint form (collapsible) */}
+                {showCreateSprintForm && (
+                  <div className="rounded-xl border border-border bg-muted/40 p-4 space-y-3">
+                    <h3 className="text-sm font-semibold text-foreground">Create Sprint</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <input
+                        type="text"
+                        placeholder="Sprint name (e.g. Sprint 1)"
+                        value={sprintForm.name}
+                        onChange={(e) => setSprintForm((p) => ({ ...p, name: e.target.value }))}
+                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Sprint goal (optional)"
+                        value={sprintForm.goal}
+                        onChange={(e) => setSprintForm((p) => ({ ...p, goal: e.target.value }))}
+                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
+                      />
+                      <input
+                        type="date"
+                        value={sprintForm.startDate}
+                        onChange={(e) =>
+                          setSprintForm((p) => ({ ...p, startDate: e.target.value }))
+                        }
+                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                      />
+                      <input
+                        type="date"
+                        value={sprintForm.endDate}
+                        onChange={(e) => setSprintForm((p) => ({ ...p, endDate: e.target.value }))}
+                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        disabled={
+                          !sprintForm.name ||
+                          !sprintForm.startDate ||
+                          !sprintForm.endDate ||
+                          savingSprint
+                        }
+                        onClick={async () => {
+                          if (!selectedProjectId) return;
+                          setSavingSprint(true);
+                          try {
+                            await fetch(`/api/projects/${selectedProjectId}/sprints`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                name: sprintForm.name,
+                                goal: sprintForm.goal,
+                                startDate: sprintForm.startDate,
+                                endDate: sprintForm.endDate,
+                              }),
+                            });
+                            setSprintForm({ name: '', goal: '', startDate: '', endDate: '' });
+                            setShowCreateSprintForm(false);
+                            await fetchSprints(selectedProjectId);
+                          } finally {
+                            setSavingSprint(false);
+                          }
+                        }}
+                        className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50 hover:bg-primary/90 transition-colors"
+                      >
+                        {savingSprint ? 'Creating...' : 'Create Sprint'}
+                      </button>
+                      <button
+                        onClick={() => setShowCreateSprintForm(false)}
+                        className="rounded-md border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Sprint cards */}
+                {sprints.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-20 text-center">
+                    <Zap className="h-10 w-10 text-muted-foreground/40 mb-3" />
+                    <p className="text-sm text-muted-foreground mb-1">No sprints yet.</p>
+                    <p className="text-xs text-muted-foreground/70">
+                      Click "Create Sprint" to start planning.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {sprints.map((sprint) => {
+                      const sprintTickets = projectTickets.filter((t) => t.sprintId === sprint.id);
+                      const done = sprintTickets.filter((t) => t.status === 'done').length;
+                      const total = sprintTickets.length;
+                      const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+                      const isActive = activeSprintId === sprint.id;
+                      const now = new Date();
+                      const start = new Date(sprint.start_date);
+                      const end = new Date(sprint.end_date);
+                      const daysRemaining = Math.max(
+                        0,
+                        Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+                      );
+                      const daysElapsed = Math.max(
+                        0,
+                        Math.ceil((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+                      );
+                      const isCompleted = sprint.status === 'completed';
+                      const statusColor =
+                        sprint.status === 'active'
+                          ? 'bg-green-500'
+                          : sprint.status === 'completed'
+                            ? 'bg-blue-500'
+                            : 'bg-gray-400';
+
+                      return (
+                        <div
+                          key={sprint.id}
+                          className={`rounded-xl border overflow-hidden transition-all ${isActive ? 'border-primary shadow-md' : 'border-border'}`}
+                        >
+                          {/* Sprint edit form */}
+                          {editingSprintId === sprint.id && (
+                            <div className="p-4 space-y-3 bg-muted/30 border-b border-border">
+                              <input
+                                type="text"
+                                value={sprintEditForm.name}
+                                onChange={(e) =>
+                                  setSprintEditForm((prev) => ({ ...prev, name: e.target.value }))
+                                }
+                                placeholder="Sprint name"
+                                className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground"
+                              />
+                              <input
+                                type="text"
+                                value={sprintEditForm.goal}
+                                onChange={(e) =>
+                                  setSprintEditForm((prev) => ({ ...prev, goal: e.target.value }))
+                                }
+                                placeholder="Sprint goal (optional)"
+                                className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground"
+                              />
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                  <label className="text-xs text-muted-foreground">
+                                    Start date
+                                  </label>
+                                  <input
+                                    type="date"
+                                    value={sprintEditForm.startDate}
+                                    onChange={(e) =>
+                                      setSprintEditForm((prev) => ({
+                                        ...prev,
+                                        startDate: e.target.value,
+                                      }))
+                                    }
+                                    className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-xs text-muted-foreground">End date</label>
+                                  <input
+                                    type="date"
+                                    value={sprintEditForm.endDate}
+                                    onChange={(e) =>
+                                      setSprintEditForm((prev) => ({
+                                        ...prev,
+                                        endDate: e.target.value,
+                                      }))
+                                    }
+                                    className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground"
+                                  />
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  size="sm"
+                                  disabled={
+                                    !sprintEditForm.name.trim() ||
+                                    !sprintEditForm.startDate ||
+                                    !sprintEditForm.endDate
+                                  }
+                                  onClick={async () => {
+                                    if (!selectedProjectId) return;
+                                    await fetch(
+                                      `/api/projects/${selectedProjectId}/sprints/${sprint.id}`,
+                                      {
+                                        method: 'PATCH',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                          name: sprintEditForm.name.trim(),
+                                          goal: sprintEditForm.goal.trim(),
+                                          startDate: sprintEditForm.startDate,
+                                          endDate: sprintEditForm.endDate,
+                                        }),
+                                      }
+                                    );
+                                    setEditingSprintId(null);
+                                    await fetchSprints(selectedProjectId);
+                                  }}
+                                  className="rounded-full text-xs h-7"
+                                >
+                                  Save
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => setEditingSprintId(null)}
+                                  className="rounded-full text-xs h-7"
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                          {/* Sprint header */}
+                          <div
+                            className="flex items-center justify-between p-4 bg-background cursor-pointer hover:bg-muted/30"
+                            onClick={() => {
+                              if (editingSprintId === sprint.id) return;
+                              setActiveSprintId(isActive ? null : sprint.id);
+                              setSprintPulse(null);
+                            }}
+                          >
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${statusColor}`} />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-semibold text-foreground truncate">
+                                    {sprint.name}
+                                  </span>
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium capitalize shrink-0">
+                                    {sprint.status}
+                                  </span>
+                                </div>
+                                {sprint.goal && (
+                                  <p className="text-xs text-muted-foreground truncate mt-0.5">
+                                    {sprint.goal}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 shrink-0">
+                              <span className="text-xs text-muted-foreground hidden sm:inline">
+                                {sprint.start_date} → {sprint.end_date}
+                              </span>
+                              {total > 0 && (
+                                <span className="text-xs text-muted-foreground">
+                                  {done}/{total} done
+                                </span>
+                              )}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingSprintId(sprint.id);
+                                  setSprintEditForm({
+                                    name: sprint.name,
+                                    goal: sprint.goal ?? '',
+                                    startDate: sprint.start_date ?? '',
+                                    endDate: sprint.end_date ?? '',
+                                  });
+                                }}
+                                className="text-muted-foreground hover:text-foreground transition-colors"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!selectedProjectId) return;
+                                  fetch(`/api/projects/${selectedProjectId}/sprints/${sprint.id}`, {
+                                    method: 'DELETE',
+                                  }).then(() => fetchSprints(selectedProjectId!));
+                                }}
+                                className="text-muted-foreground hover:text-destructive transition-colors"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Sprint progress bar */}
+                          {total > 0 && (
+                            <div className="px-4 py-2 bg-muted/20">
+                              <div className="flex items-center gap-2">
+                                <Progress value={pct} className="h-1.5 flex-1" />
+                                <span className="text-xs text-muted-foreground tabular-nums shrink-0">
+                                  {pct}%
+                                </span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Expanded sprint body */}
+                          {isActive && (
+                            <div className="border-t border-border p-4 space-y-4 bg-muted/10">
+                              {/* Sprint controls */}
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {sprint.status === 'planning' && (
+                                  <button
+                                    onClick={async () => {
+                                      if (!selectedProjectId) return;
+                                      await fetch(
+                                        `/api/projects/${selectedProjectId}/sprints/${sprint.id}`,
+                                        {
+                                          method: 'PATCH',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({ status: 'active' }),
+                                        }
+                                      );
+                                      await fetchSprints(selectedProjectId);
+                                    }}
+                                    className="rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 transition-colors"
+                                  >
+                                    Start Sprint
+                                  </button>
+                                )}
+                                {sprint.status === 'active' && (
+                                  <button
+                                    onClick={async () => {
+                                      if (!selectedProjectId) return;
+                                      await fetch(
+                                        `/api/projects/${selectedProjectId}/sprints/${sprint.id}`,
+                                        {
+                                          method: 'PATCH',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({ status: 'completed' }),
+                                        }
+                                      );
+                                      await fetchSprints(selectedProjectId);
+                                    }}
+                                    className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 transition-colors"
+                                  >
+                                    Complete Sprint
+                                  </button>
+                                )}
+                                {/* AI Pulse */}
+                                {sprint.status === 'active' && (
+                                  <button
+                                    disabled={sprintPulseLoading}
+                                    onClick={async () => {
+                                      if (!selectedProjectId) return;
+                                      setSprintPulseLoading(true);
+                                      setSprintPulse(null);
+                                      try {
+                                        const res = await fetch(
+                                          `/api/projects/${selectedProjectId}/sprints/${sprint.id}/pulse`,
+                                          {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({
+                                              sprintName: sprint.name,
+                                              sprintGoal: sprint.goal,
+                                              startDate: sprint.start_date,
+                                              endDate: sprint.end_date,
+                                              totalTickets: total,
+                                              completedTickets: done,
+                                              inProgressTickets: sprintTickets.filter(
+                                                (t) => t.status === 'in_progress'
+                                              ).length,
+                                              blockedTickets: sprintTickets.filter(
+                                                (t) => t.status === 'blocked'
+                                              ).length,
+                                              backlogTickets: sprintTickets.filter(
+                                                (t) => t.status === 'backlog'
+                                              ).length,
+                                              daysRemaining,
+                                              daysElapsed,
+                                            }),
+                                          }
+                                        );
+                                        if (res.ok) {
+                                          const data = await res.json();
+                                          setSprintPulse(data.pulse);
+                                        }
+                                      } finally {
+                                        setSprintPulseLoading(false);
+                                      }
+                                    }}
+                                    className="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors flex items-center gap-1.5"
+                                  >
+                                    <Sparkles className="h-3 w-3 text-primary" />
+                                    {sprintPulseLoading ? 'Analyzing...' : 'Sprint Pulse'}
+                                  </button>
+                                )}
+                              </div>
+
+                              {/* AI Pulse output */}
+                              {sprintPulse && (
+                                <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
+                                  <div className="flex items-start gap-2">
+                                    <Sparkles className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                                    <p className="text-sm text-foreground">{sprintPulse}</p>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Sprint tickets list */}
+                              <div>
+                                <h4 className="text-xs font-semibold tracking-wide uppercase text-muted-foreground mb-2">
+                                  Tickets in Sprint ({total})
+                                </h4>
+                                {total === 0 ? (
+                                  <p className="text-xs text-muted-foreground py-4 text-center border border-dashed border-border rounded-lg">
+                                    No tickets in this sprint yet. Add tickets from the Backlog view
+                                    using the sprint dropdown.
+                                  </p>
+                                ) : (
+                                  <div className="space-y-1">
+                                    {sprintTickets.map((t) => (
+                                      <div
+                                        key={t.id}
+                                        className="flex items-center gap-2 rounded-md border border-border/60 bg-background px-3 py-2 cursor-pointer hover:bg-muted/40"
+                                        onClick={() => openTicketEditor(t)}
+                                      >
+                                        {t.status === 'done' ? (
+                                          <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                                        ) : t.status === 'blocked' ? (
+                                          <AlertCircle className="h-3.5 w-3.5 text-red-500 shrink-0" />
+                                        ) : t.status === 'in_progress' ? (
+                                          <Clock className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                                        ) : (
+                                          <Circle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                        )}
+                                        <span
+                                          className={`text-sm flex-1 truncate ${t.status === 'done' ? 'text-muted-foreground line-through' : 'text-foreground'}`}
+                                        >
+                                          {t.title}
+                                        </span>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (!selectedProjectId) return;
+                                            fetch(`/api/tickets/${t.id}`, {
+                                              method: 'PATCH',
+                                              headers: { 'Content-Type': 'application/json' },
+                                              body: JSON.stringify({ sprintId: null }),
+                                            }).then(() => onRefresh?.());
+                                          }}
+                                          className="text-[10px] text-muted-foreground hover:text-foreground shrink-0"
+                                        >
+                                          Remove
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Backlog tickets to add */}
+                              <div>
+                                <h4 className="text-xs font-semibold tracking-wide uppercase text-muted-foreground mb-2">
+                                  Backlog — Add to Sprint
+                                </h4>
+                                {(() => {
+                                  const backlogTickets = projectTickets.filter(
+                                    (t) => !t.sprintId && t.status === 'backlog'
+                                  );
+                                  if (backlogTickets.length === 0) {
+                                    return (
+                                      <p className="text-xs text-muted-foreground py-3 text-center border border-dashed border-border rounded-lg">
+                                        No backlog tickets available.
+                                      </p>
+                                    );
+                                  }
+                                  return (
+                                    <div className="space-y-1 max-h-48 overflow-y-auto">
+                                      {backlogTickets.slice(0, 20).map((t) => (
+                                        <div
+                                          key={t.id}
+                                          className="flex items-center gap-2 rounded-md border border-border/40 bg-muted/20 px-3 py-2"
+                                        >
+                                          <Circle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                          <span className="text-sm text-foreground flex-1 truncate">
+                                            {t.title}
+                                          </span>
+                                          <button
+                                            onClick={async () => {
+                                              if (!selectedProjectId) return;
+                                              await fetch(`/api/tickets/${t.id}`, {
+                                                method: 'PATCH',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ sprintId: sprint.id }),
+                                              });
+                                              await onRefresh?.();
+                                            }}
+                                            className="text-[10px] rounded-md bg-primary/10 text-primary px-2 py-0.5 font-medium hover:bg-primary/20 transition-colors shrink-0"
+                                          >
+                                            Add
+                                          </button>
+                                        </div>
+                                      ))}
+                                      {backlogTickets.length > 20 && (
+                                        <p className="text-[10px] text-muted-foreground text-center py-1">
+                                          +{backlogTickets.length - 20} more in backlog
+                                        </p>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+
+                              {/* Sprint review (completed) */}
+                              {isCompleted && (
+                                <div className="rounded-lg border border-border bg-background p-3 space-y-2">
+                                  <h4 className="text-xs font-semibold tracking-wide uppercase text-muted-foreground">
+                                    Sprint Review
+                                  </h4>
+                                  {sprint.review ? (
+                                    <p className="text-sm text-foreground whitespace-pre-wrap">
+                                      {sprint.review}
+                                    </p>
+                                  ) : (
+                                    <p className="text-xs text-muted-foreground">
+                                      Completed: {done}/{total} tickets. Incomplete tickets can be
+                                      moved back to backlog or added to the next sprint.
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── MILESTONES sub-view ── */}
+            {sprintStonesView === 'milestones' && (
+              <div className="space-y-4">
+                {showCreateMilestoneForm && (
+                  <div className="rounded-xl border border-border bg-muted/40 p-4 space-y-3">
+                    <h3 className="text-sm font-semibold text-foreground">Create Milestone</h3>
+                    <input
+                      type="text"
+                      placeholder="Milestone name (e.g. MVP Launch)"
+                      value={milestoneForm.name}
+                      onChange={(e) => setMilestoneForm((p) => ({ ...p, name: e.target.value }))}
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                    />
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="date"
+                        value={milestoneForm.dueDate}
+                        onChange={(e) =>
+                          setMilestoneForm((p) => ({ ...p, dueDate: e.target.value }))
+                        }
+                        className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground"
+                      />
+                      <button
+                        disabled={!milestoneForm.name.trim() || savingMilestone}
+                        onClick={async () => {
+                          if (!selectedProjectId) return;
+                          setSavingMilestone(true);
+                          try {
+                            await fetch(`/api/projects/${selectedProjectId}/milestones`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                name: milestoneForm.name.trim(),
+                                dueDate: milestoneForm.dueDate || undefined,
+                              }),
+                            });
+                            setMilestoneForm({ name: '', description: '', dueDate: '' });
+                            setShowCreateMilestoneForm(false);
+                            await fetchMilestones(selectedProjectId);
+                          } finally {
+                            setSavingMilestone(false);
+                          }
+                        }}
+                        className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50 hover:bg-primary/90 transition-colors"
+                      >
+                        {savingMilestone ? 'Creating...' : 'Add'}
+                      </button>
+                      <button
+                        onClick={() => setShowCreateMilestoneForm(false)}
+                        className="rounded-md border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {milestones.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-20 text-center">
+                    <Milestone className="h-10 w-10 text-muted-foreground/40 mb-3" />
+                    <p className="text-sm text-muted-foreground mb-1">No milestones yet.</p>
+                    <p className="text-xs text-muted-foreground/70">
+                      Click "Create Milestone" to track progress.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {milestones.map((ms) => {
+                      const msTickets = projectTickets.filter((t) => t.milestoneId === ms.id);
+                      const msDone = msTickets.filter((t) => t.status === 'done').length;
+                      const msTotal = msTickets.length;
+                      const msPct = msTotal > 0 ? Math.round((msDone / msTotal) * 100) : 0;
+                      const isOverdue =
+                        ms.due_date &&
+                        new Date(ms.due_date) < new Date() &&
+                        ms.status !== 'completed';
+                      const statusColors: Record<string, string> = {
+                        planned: 'bg-gray-400',
+                        in_progress: 'bg-blue-500',
+                        completed: 'bg-green-500',
+                      };
+                      return (
+                        <div
+                          key={ms.id}
+                          className="rounded-xl border border-border/60 bg-background p-4 space-y-3"
+                        >
+                          {editingMilestoneId === ms.id ? (
+                            <div className="space-y-3">
+                              <input
+                                type="text"
+                                value={milestoneEditForm.name}
+                                onChange={(e) =>
+                                  setMilestoneEditForm((p) => ({ ...p, name: e.target.value }))
+                                }
+                                placeholder="Milestone name"
+                                className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground"
+                              />
+                              <textarea
+                                value={milestoneEditForm.description}
+                                onChange={(e) =>
+                                  setMilestoneEditForm((p) => ({
+                                    ...p,
+                                    description: e.target.value,
+                                  }))
+                                }
+                                placeholder="Description (optional)"
+                                rows={2}
+                                className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground"
+                              />
+                              <input
+                                type="date"
+                                value={milestoneEditForm.dueDate}
+                                onChange={(e) =>
+                                  setMilestoneEditForm((p) => ({ ...p, dueDate: e.target.value }))
+                                }
+                                className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground"
+                              />
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  size="sm"
+                                  disabled={!milestoneEditForm.name.trim()}
+                                  onClick={async () => {
+                                    if (!selectedProjectId) return;
+                                    await fetch(
+                                      `/api/projects/${selectedProjectId}/milestones/${ms.id}`,
+                                      {
+                                        method: 'PATCH',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                          name: milestoneEditForm.name.trim(),
+                                          description: milestoneEditForm.description.trim(),
+                                          dueDate: milestoneEditForm.dueDate || null,
+                                        }),
+                                      }
+                                    );
+                                    setEditingMilestoneId(null);
+                                    await fetchMilestones(selectedProjectId);
+                                  }}
+                                  className="rounded-full text-xs h-7"
+                                >
+                                  Save
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => setEditingMilestoneId(null)}
+                                  className="rounded-full text-xs h-7"
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className={`h-2 w-2 rounded-full ${statusColors[ms.status] ?? statusColors.planned}`}
+                                  />
+                                  <span className="text-sm font-medium text-foreground">
+                                    {ms.name}
+                                  </span>
+                                  {ms.due_date && (
+                                    <span
+                                      className={`text-xs ${isOverdue ? 'text-red-500' : 'text-muted-foreground'}`}
+                                    >
+                                      {new Date(ms.due_date).toLocaleDateString()}
+                                      {isOverdue && ' (overdue)'}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <select
+                                    value={ms.status}
+                                    onChange={async (e) => {
+                                      if (!selectedProjectId) return;
+                                      await fetch(
+                                        `/api/projects/${selectedProjectId}/milestones/${ms.id}`,
+                                        {
+                                          method: 'PATCH',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({ status: e.target.value }),
+                                        }
+                                      );
+                                      await fetchMilestones(selectedProjectId);
+                                    }}
+                                    className="text-xs rounded-md border border-border bg-background px-2 py-1 text-foreground cursor-pointer"
+                                  >
+                                    <option value="planned">Planned</option>
+                                    <option value="in_progress">In Progress</option>
+                                    <option value="completed">Completed</option>
+                                  </select>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                                    onClick={() => {
+                                      setEditingMilestoneId(ms.id);
+                                      setMilestoneEditForm({
+                                        name: ms.name,
+                                        description: ms.description ?? '',
+                                        dueDate: ms.due_date ?? '',
+                                      });
+                                    }}
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                                    onClick={async () => {
+                                      if (!selectedProjectId) return;
+                                      await fetch(
+                                        `/api/projects/${selectedProjectId}/milestones/${ms.id}`,
+                                        { method: 'DELETE' }
+                                      );
+                                      await fetchMilestones(selectedProjectId);
+                                    }}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                              </div>
+                              {msTotal > 0 && (
+                                <div className="space-y-1">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="text-muted-foreground">
+                                      {msDone}/{msTotal} tickets done
+                                    </span>
+                                    <span className="font-medium text-foreground">{msPct}%</span>
+                                  </div>
+                                  <Progress value={msPct} className="h-1.5" />
+                                </div>
+                              )}
+                              {msTotal === 0 && (
+                                <p className="text-xs text-muted-foreground">
+                                  No tickets assigned to this milestone yet.
+                                </p>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── ANALYTICS sub-view ── */}
+            {sprintStonesView === 'analytics' && (
+              <div className="space-y-6">
+                {/* Milestone Progress */}
+                <div className="rounded-2xl border border-border bg-muted/50 p-5 space-y-3">
+                  <p className="text-sm font-semibold text-foreground">Milestone Progress</p>
+                  {(() => {
+                    if (milestones.length === 0)
+                      return (
+                        <div className="flex flex-col items-center py-12">
+                          <Milestone className="h-8 w-8 text-muted-foreground/30 mb-2" />
+                          <p className="text-sm text-muted-foreground">No milestones yet.</p>
+                        </div>
+                      );
+                    const md = milestones.map((ms) => {
+                      const mt = projectTickets.filter((t) => t.milestoneId === ms.id);
+                      const done = mt.filter((t) => t.status === 'done').length;
+                      return {
+                        name: ms.name,
+                        done,
+                        total: mt.length,
+                        pct: mt.length > 0 ? Math.round((done / mt.length) * 100) : 0,
+                      };
+                    });
+                    return (
+                      <ChartContainer
+                        config={{ done: { label: 'Done' }, total: { label: 'Total' } }}
+                        className="h-[200px] w-full"
+                      >
+                        <BarChart data={md} barCategoryGap={8}>
+                          <CartesianGrid
+                            vertical={false}
+                            strokeDasharray="3 3"
+                            stroke="hsl(var(--border))"
+                          />
+                          <XAxis
+                            dataKey="name"
+                            tickLine={false}
+                            axisLine={false}
+                            tick={{ fontSize: 10 }}
+                          />
+                          <YAxis
+                            tickLine={false}
+                            axisLine={false}
+                            tick={{ fontSize: 10 }}
+                            allowDecimals={false}
+                          />
+                          <ChartTooltip content={<ChartTooltipContent />} />
+                          <Legend wrapperStyle={{ fontSize: 11 }} />
+                          <Bar dataKey="total" fill="#8a8a80" radius={[4, 4, 0, 0]} name="Total" />
+                          <Bar dataKey="done" fill="#3d8a5e" radius={[4, 4, 0, 0]} name="Done" />
+                        </BarChart>
+                      </ChartContainer>
+                    );
+                  })()}
+                </div>
+                {/* Velocity */}
+                <div className="rounded-2xl border border-border bg-muted/50 p-5 space-y-3">
+                  <p className="text-sm font-semibold text-foreground">Velocity Report</p>
+                  {(() => {
+                    const vd = sprints
+                      .filter((s) => s.status === 'completed' || s.status === 'active')
+                      .map((s) => {
+                        const st = projectTickets.filter((t) => t.sprintId === s.id);
+                        return {
+                          name: s.name,
+                          completed: st.filter((t) => t.status === 'done').length,
+                          total: st.length,
+                        };
+                      })
+                      .filter((d) => d.total > 0);
+                    if (vd.length === 0)
+                      return (
+                        <div className="flex flex-col items-center py-12">
+                          <BarChart3 className="h-8 w-8 text-muted-foreground/30 mb-2" />
+                          <p className="text-sm text-muted-foreground">No sprint data yet.</p>
+                        </div>
+                      );
+                    const avg = Math.round(vd.reduce((s, d) => s + d.completed, 0) / vd.length);
+                    return (
+                      <>
+                        <p className="text-xs text-muted-foreground">
+                          Avg: <b className="text-foreground">{avg}</b> tickets/sprint
+                        </p>
+                        <ChartContainer
+                          config={{ completed: { label: 'Completed' } }}
+                          className="h-[200px] w-full"
+                        >
+                          <BarChart data={vd} barCategoryGap={8}>
+                            <CartesianGrid
+                              vertical={false}
+                              strokeDasharray="3 3"
+                              stroke="hsl(var(--border))"
+                            />
+                            <XAxis
+                              dataKey="name"
+                              tickLine={false}
+                              axisLine={false}
+                              tick={{ fontSize: 10 }}
+                            />
+                            <YAxis
+                              tickLine={false}
+                              axisLine={false}
+                              tick={{ fontSize: 10 }}
+                              allowDecimals={false}
+                            />
+                            <ChartTooltip content={<ChartTooltipContent />} />
+                            <ReferenceLine y={avg} stroke="#3d7abf" strokeDasharray="5 5" />
+                            <Bar dataKey="completed" fill="#3d8a5e" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ChartContainer>
+                      </>
+                    );
+                  })()}
+                </div>
+                {/* Burndown */}
+                <div className="rounded-2xl border border-border bg-muted/50 p-5 space-y-3">
+                  <p className="text-sm font-semibold text-foreground">Sprint Burndown</p>
+                  {(() => {
+                    const as = sprints.find((s) => s.status === 'active');
+                    if (!as)
+                      return (
+                        <div className="flex flex-col items-center py-12">
+                          <TrendingDown className="h-8 w-8 text-muted-foreground/30 mb-2" />
+                          <p className="text-sm text-muted-foreground">No active sprint.</p>
+                        </div>
+                      );
+                    const st = projectTickets.filter((t) => t.sprintId === as.id);
+                    if (st.length === 0)
+                      return (
+                        <div className="flex flex-col items-center py-12">
+                          <TrendingDown className="h-8 w-8 text-muted-foreground/30 mb-2" />
+                          <p className="text-sm text-muted-foreground">
+                            No tickets in active sprint.
+                          </p>
+                        </div>
+                      );
+                    const start = new Date(as.start_date),
+                      end = new Date(as.end_date);
+                    const days = Math.max(
+                      1,
+                      Math.ceil((end.getTime() - start.getTime()) / 86400000)
+                    );
+                    const bd: { day: string; ideal: number; actual: number }[] = [];
+                    for (let i = 0; i <= days; i++) {
+                      const d = new Date(start);
+                      d.setDate(d.getDate() + i);
+                      d.setHours(0, 0, 0, 0);
+                      const next = new Date(d);
+                      next.setDate(d.getDate() + 1);
+                      const ideal = Math.max(0, Math.round(st.length * (1 - i / days)));
+                      const done = st.filter(
+                        (t) => t.updatedAt && t.status === 'done' && new Date(t.updatedAt) <= next
+                      ).length;
+                      bd.push({
+                        day: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                        ideal,
+                        actual: Math.max(0, st.length - done),
+                      });
+                    }
+                    return (
+                      <ChartContainer
+                        config={{ ideal: { label: 'Ideal' }, actual: { label: 'Actual' } }}
+                        className="h-[250px] w-full"
+                      >
+                        <LineChart data={bd}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                          <XAxis
+                            dataKey="day"
+                            tickLine={false}
+                            axisLine={false}
+                            tick={{ fontSize: 9 }}
+                            interval={Math.max(1, Math.floor(days / 7))}
+                          />
+                          <YAxis
+                            tickLine={false}
+                            axisLine={false}
+                            tick={{ fontSize: 10 }}
+                            allowDecimals={false}
+                          />
+                          <ChartTooltip content={<ChartTooltipContent />} />
+                          <Legend wrapperStyle={{ fontSize: 11 }} />
+                          <Line
+                            type="monotone"
+                            dataKey="ideal"
+                            stroke="#8a8a80"
+                            strokeDasharray="5 5"
+                            dot={false}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="actual"
+                            stroke="#3d7abf"
+                            strokeWidth={2}
+                            dot={{ r: 3 }}
+                          />
+                        </LineChart>
+                      </ChartContainer>
+                    );
+                  })()}
+                </div>
+                {/* Cycle Time */}
+                <div className="rounded-2xl border border-border bg-muted/50 p-5 space-y-3">
+                  <p className="text-sm font-semibold text-foreground">Cycle Time</p>
+                  {(() => {
+                    const dt = projectTickets.filter((t) => t.status === 'done' && t.updatedAt);
+                    if (dt.length === 0)
+                      return (
+                        <div className="flex flex-col items-center py-12">
+                          <Clock className="h-8 w-8 text-muted-foreground/30 mb-2" />
+                          <p className="text-sm text-muted-foreground">No completed tickets yet.</p>
+                        </div>
+                      );
+                    const ct = dt.map((t) =>
+                      Math.max(
+                        0,
+                        Math.ceil(
+                          (new Date(t.updatedAt!).getTime() -
+                            (t.createdAt
+                              ? new Date(t.createdAt).getTime()
+                              : new Date(t.updatedAt!).getTime())) /
+                            86400000
+                        )
+                      )
+                    );
+                    const avg = (ct.reduce((s, d) => s + d, 0) / ct.length).toFixed(1);
+                    const sorted = [...ct].sort((a, b) => a - b);
+                    const med = sorted[Math.floor(sorted.length / 2)];
+                    const bins = [0, 1, 3, 7, 14, 30, Infinity],
+                      labels = ['0d', '1d', '2-3d', '4-7d', '8-14d', '15-30d', '30d+'];
+                    const hd = bins
+                      .slice(0, -1)
+                      .map((_, i) => ({
+                        range: labels[i],
+                        count: ct.filter((c) => c >= bins[i] && c < bins[i + 1]).length,
+                      }));
+                    return (
+                      <>
+                        <p className="text-xs text-muted-foreground">
+                          Avg: <b className="text-foreground">{avg}d</b> · Median:{' '}
+                          <b className="text-foreground">{med}d</b> · Completed:{' '}
+                          <b className="text-foreground">{dt.length}</b>
+                        </p>
+                        <ChartContainer
+                          config={{ count: { label: 'Tickets' } }}
+                          className="h-[180px] w-full"
+                        >
+                          <BarChart data={hd} barCategoryGap={8}>
+                            <CartesianGrid
+                              vertical={false}
+                              strokeDasharray="3 3"
+                              stroke="hsl(var(--border))"
+                            />
+                            <XAxis
+                              dataKey="range"
+                              tickLine={false}
+                              axisLine={false}
+                              tick={{ fontSize: 10 }}
+                            />
+                            <YAxis
+                              tickLine={false}
+                              axisLine={false}
+                              tick={{ fontSize: 10 }}
+                              allowDecimals={false}
+                            />
+                            <ChartTooltip content={<ChartTooltipContent />} />
+                            <Bar dataKey="count" fill="#3d7abf" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ChartContainer>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {projectTab === 'members' &&
           (() => {
             const orgMemberList = memberships?.data ?? [];
@@ -2983,15 +4736,45 @@ export function ProjectsWorkspace({
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span
-                              className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${
-                                pm.role === 'admin'
-                                  ? 'bg-primary/10 text-primary'
-                                  : 'bg-muted text-muted-foreground'
-                              }`}
-                            >
-                              {pm.role === 'admin' ? 'Admin' : 'Member'}
-                            </span>
+                            {isAdmin ? (
+                              <select
+                                value={pm.role}
+                                onChange={async (e) => {
+                                  const newRole = e.target.value as 'admin' | 'manager' | 'member';
+                                  if (!selectedProjectId) return;
+                                  await fetch(`/api/projects/${selectedProjectId}/members/role`, {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                      memberUserId: pm.user_id,
+                                      role: newRole,
+                                    }),
+                                  });
+                                  await fetchProjectMembers(selectedProjectId);
+                                }}
+                                className="text-[11px] px-2 py-0.5 rounded-full font-medium bg-muted text-foreground border border-border/40 cursor-pointer hover:bg-muted/80"
+                              >
+                                <option value="admin">Admin</option>
+                                <option value="manager">Manager</option>
+                                <option value="member">Member</option>
+                              </select>
+                            ) : (
+                              <span
+                                className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${
+                                  pm.role === 'admin'
+                                    ? 'bg-primary/10 text-primary'
+                                    : pm.role === 'manager'
+                                      ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                                      : 'bg-muted text-muted-foreground'
+                                }`}
+                              >
+                                {pm.role === 'admin'
+                                  ? 'Admin'
+                                  : pm.role === 'manager'
+                                    ? 'Manager'
+                                    : 'Member'}
+                              </span>
+                            )}
                             {isAdmin && (
                               <Button
                                 variant="ghost"
@@ -3156,6 +4939,176 @@ export function ProjectsWorkspace({
                   placeholder="Project goals, tech stack, constraints..."
                   className="min-h-24"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Project Lead</label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  The lead is responsible for this project's direction. Shown next to the project
+                  name.
+                </p>
+                <select
+                  value={selectedProject.leadUserId ?? ''}
+                  onChange={async (e) => {
+                    const leadUserId = e.target.value || null;
+                    if (!selectedProjectId) return;
+                    await fetch(`/api/projects/${selectedProjectId}/lead`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ leadUserId }),
+                    });
+                    await onRefresh?.();
+                  }}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground cursor-pointer hover:bg-muted/50"
+                >
+                  <option value="">No lead assigned</option>
+                  {projectMembers.map((pm) => {
+                    const orgM = (memberships?.data ?? []).find(
+                      (m) => m.publicUserData?.userId === pm.user_id
+                    );
+                    const name = orgM
+                      ? [orgM.publicUserData?.firstName, orgM.publicUserData?.lastName]
+                          .filter(Boolean)
+                          .join(' ') ||
+                        orgM.publicUserData?.identifier ||
+                        pm.user_id
+                      : pm.user_id;
+                    return (
+                      <option key={pm.user_id} value={pm.user_id}>
+                        {name} ({pm.role})
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Project Status</label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Health indicator shown next to the project name. Use AI to get a suggestion or set
+                  manually.
+                </p>
+                <div className="flex items-center gap-3">
+                  {(() => {
+                    const statusColors: Record<string, string> = {
+                      on_track: 'bg-green-500',
+                      at_risk: 'bg-yellow-500',
+                      off_track: 'bg-red-500',
+                      paused: 'bg-gray-400',
+                    };
+                    const statusOptions = [
+                      { value: 'on_track', label: 'On Track' },
+                      { value: 'at_risk', label: 'At Risk' },
+                      { value: 'off_track', label: 'Off Track' },
+                      { value: 'paused', label: 'Paused' },
+                    ];
+                    const currentStatus = selectedProject.status ?? 'on_track';
+                    return (
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`h-2.5 w-2.5 rounded-full ${statusColors[currentStatus] ?? statusColors.on_track}`}
+                        />
+                        <select
+                          value={currentStatus}
+                          onChange={async (e) => {
+                            if (!selectedProjectId) return;
+                            await fetch(`/api/projects/${selectedProjectId}/status`, {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ status: e.target.value }),
+                            });
+                            await onRefresh?.();
+                          }}
+                          className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground cursor-pointer hover:bg-muted/50"
+                        >
+                          {statusOptions.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    );
+                  })()}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={healthLoading}
+                    onClick={async () => {
+                      if (!selectedProjectId) return;
+                      setHealthLoading(true);
+                      setAiHealthSuggestion(null);
+                      try {
+                        const res = await fetch(`/api/projects/${selectedProjectId}/health`, {
+                          method: 'POST',
+                        });
+                        if (res.ok) {
+                          const data = await res.json();
+                          setAiHealthSuggestion(data);
+                        }
+                      } finally {
+                        setHealthLoading(false);
+                      }
+                    }}
+                    className="rounded-full gap-1.5 text-xs"
+                  >
+                    {healthLoading ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-3.5 w-3.5" />
+                    )}
+                    AI Suggest
+                  </Button>
+                </div>
+                {aiHealthSuggestion && (
+                  <div className="mt-2 rounded-lg border border-border bg-muted/40 p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`h-2 w-2 rounded-full ${
+                            aiHealthSuggestion.status === 'on_track'
+                              ? 'bg-green-500'
+                              : aiHealthSuggestion.status === 'at_risk'
+                                ? 'bg-yellow-500'
+                                : aiHealthSuggestion.status === 'off_track'
+                                  ? 'bg-red-500'
+                                  : 'bg-gray-400'
+                          }`}
+                        />
+                        <span className="text-sm font-medium text-foreground">
+                          AI suggests: {aiHealthSuggestion.status.replace('_', ' ')}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="rounded-full text-xs h-7"
+                          onClick={() => setAiHealthSuggestion(null)}
+                        >
+                          Dismiss
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="rounded-full text-xs h-7"
+                          onClick={async () => {
+                            if (!selectedProjectId) return;
+                            await fetch(`/api/projects/${selectedProjectId}/status`, {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ status: aiHealthSuggestion.status }),
+                            });
+                            setAiHealthSuggestion(null);
+                            await onRefresh?.();
+                          }}
+                        >
+                          Accept
+                        </Button>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{aiHealthSuggestion.reason}</p>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-2">
@@ -3607,6 +5560,38 @@ export function ProjectsWorkspace({
                     availableLabels={labels}
                     onManageLabels={() => setLabelManagerOpen(true)}
                   />
+                  <div className="grid grid-cols-2 gap-3 mt-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">Milestone</label>
+                      <select
+                        value={metaMilestoneId ?? ''}
+                        onChange={(e) => setMetaMilestoneId(e.target.value || null)}
+                        className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm text-foreground"
+                      >
+                        <option value="">None</option>
+                        {milestones.map((ms) => (
+                          <option key={ms.id} value={ms.id}>
+                            {ms.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">Sprint</label>
+                      <select
+                        value={metaSprintId ?? ''}
+                        onChange={(e) => setMetaSprintId(e.target.value || null)}
+                        className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm text-foreground"
+                      >
+                        <option value="">None</option>
+                        {sprints.map((sp) => (
+                          <option key={sp.id} value={sp.id}>
+                            {sp.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
                 </div>
 
                 {ticketToEdit && (
@@ -4108,6 +6093,275 @@ export function ProjectsWorkspace({
           })();
         }}
       />
+
+      {/* Create Group Dialog */}
+      <Dialog open={showCreateGroupDialog} onOpenChange={setShowCreateGroupDialog}>
+        <DialogContent className="sm:max-w-lg border-border bg-background shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-playfair text-xl text-foreground">
+              Create Ticket Group
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Select tickets to group together under a parent epic.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2 max-h-[60vh] overflow-y-auto">
+            <input
+              type="text"
+              value={newGroupName}
+              onChange={(e) => setNewGroupName(e.target.value)}
+              placeholder="Group name (e.g., 'Auth System')"
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+            />
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">
+                Select tickets ({groupSelectedIds.size} selected):
+              </p>
+              {rootProjectTickets
+                .filter((t) => !t.isGroup && !t.dependency_ticket_id)
+                .map((t) => (
+                  <label
+                    key={t.id}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-muted/50 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={groupSelectedIds.has(t.id)}
+                      onChange={(e) => {
+                        setGroupSelectedIds((prev) => {
+                          const next = new Set(prev);
+                          if (e.target.checked) next.add(t.id);
+                          else next.delete(t.id);
+                          return next;
+                        });
+                      }}
+                      className="rounded border-border"
+                    />
+                    <span className="text-sm text-foreground truncate">{t.title}</span>
+                  </label>
+                ))}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowCreateGroupDialog(false)}
+              className="rounded-full"
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={
+                !newGroupName.trim() ||
+                groupSelectedIds.size < 2 ||
+                creatingGroup ||
+                !selectedProjectId
+              }
+              onClick={async () => {
+                if (!selectedProjectId) return;
+                setCreatingGroup(true);
+                try {
+                  const res = await fetch(`/api/projects/${selectedProjectId}/tickets`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      title: newGroupName.trim(),
+                      description: '',
+                      status: 'backlog',
+                      isGroup: true,
+                    }),
+                  });
+                  if (res.ok) {
+                    const parentTicket = await res.json();
+                    const parentId = parentTicket.ticketId;
+                    if (parentId) {
+                      for (const ticketId of groupSelectedIds) {
+                        await fetch(`/api/tickets/${ticketId}`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ dependencyTicketId: parentId }),
+                        });
+                      }
+                    }
+                    setShowCreateGroupDialog(false);
+                    await onRefresh?.();
+                  }
+                } finally {
+                  setCreatingGroup(false);
+                }
+              }}
+              className="rounded-full"
+            >
+              {creatingGroup ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Create Group'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* AI Group Suggestions Dialog */}
+      <Dialog open={showAiGroupDialog} onOpenChange={setShowAiGroupDialog}>
+        <DialogContent className="sm:max-w-2xl border-border bg-background shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-playfair text-xl text-foreground flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              AI Suggested Groups
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Review the suggested groupings. Toggle tickets on/off, then create the groups you
+              want.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto">
+            {aiGroupSuggestions.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                No suggestions could be generated. Try adding more descriptive ticket titles.
+              </p>
+            ) : (
+              aiGroupSuggestions.map((suggestion, idx) => {
+                const isAccepted = aiGroupAccepted.has(idx);
+                const removed = aiGroupRemovedTickets[idx] ?? new Set();
+                const visibleTickets = suggestion.ticketIds.filter((id) => !removed.has(id));
+                return (
+                  <div
+                    key={idx}
+                    className={`rounded-xl border p-4 space-y-3 transition-colors ${
+                      isAccepted ? 'border-primary/40 bg-primary/5' : 'border-border bg-muted/30'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={isAccepted}
+                            onChange={(e) => {
+                              setAiGroupAccepted((prev) => {
+                                const next = new Set(prev);
+                                if (e.target.checked) next.add(idx);
+                                else next.delete(idx);
+                                return next;
+                              });
+                            }}
+                            className="rounded border-border"
+                          />
+                          <span className="text-sm font-medium text-foreground">
+                            {suggestion.name}
+                          </span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
+                            {visibleTickets.length} tickets
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1 ml-6">
+                          {suggestion.reason}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="space-y-1 ml-6">
+                      {suggestion.ticketIds.map((ticketId) => {
+                        const ticket = projectTickets.find((t) => t.id === ticketId);
+                        if (!ticket) return null;
+                        const isRemoved = removed.has(ticketId);
+                        return (
+                          <label
+                            key={ticketId}
+                            className="flex items-center gap-2 px-2 py-1 rounded hover:bg-muted/50 cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={!isRemoved}
+                              onChange={(e) => {
+                                setAiGroupRemovedTickets((prev) => {
+                                  const next = { ...prev };
+                                  const set = new Set(next[idx] ?? []);
+                                  if (e.target.checked) set.delete(ticketId);
+                                  else set.add(ticketId);
+                                  next[idx] = set;
+                                  return next;
+                                });
+                              }}
+                              className="rounded border-border"
+                            />
+                            <span
+                              className={`text-xs truncate ${isRemoved ? 'text-muted-foreground line-through' : 'text-foreground'}`}
+                            >
+                              {ticket.title}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowAiGroupDialog(false)}
+              className="rounded-full"
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={aiGroupAccepted.size === 0 || creatingGroup || !selectedProjectId}
+              onClick={async () => {
+                if (!selectedProjectId) return;
+                setCreatingGroup(true);
+                try {
+                  for (const idx of aiGroupAccepted) {
+                    const suggestion = aiGroupSuggestions[idx];
+                    const removed = aiGroupRemovedTickets[idx] ?? new Set();
+                    const ticketIds = suggestion.ticketIds.filter((id) => !removed.has(id));
+                    if (ticketIds.length < 2) continue;
+
+                    const res = await fetch(`/api/projects/${selectedProjectId}/tickets`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        title: suggestion.name,
+                        description: suggestion.reason,
+                        status: 'backlog',
+                        isGroup: true,
+                      }),
+                    });
+                    if (res.ok) {
+                      const parentTicket = await res.json();
+                      const parentId = parentTicket.ticketId;
+                      if (parentId) {
+                        for (const ticketId of ticketIds) {
+                          await fetch(`/api/tickets/${ticketId}`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ dependencyTicketId: parentId }),
+                          });
+                        }
+                      }
+                    }
+                  }
+                  setShowAiGroupDialog(false);
+                  setAiGroupAccepted(new Set());
+                  setAiGroupRemovedTickets({});
+                  await onRefresh?.();
+                } finally {
+                  setCreatingGroup(false);
+                }
+              }}
+              className="rounded-full"
+            >
+              {creatingGroup ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                `Create ${aiGroupAccepted.size} Group${aiGroupAccepted.size === 1 ? '' : 's'}`
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

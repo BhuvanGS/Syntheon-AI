@@ -51,7 +51,7 @@ const ADMIN_NAV = [
   },
   {
     id: 'calendar',
-    label: 'Calendar',
+    label: 'Future Viz',
     icon: CalendarDays,
     href: '/dashboard?view=calendar',
     view: 'calendar',

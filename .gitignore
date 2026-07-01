@@ -17,7 +17,8 @@ sql/
 *.bak
 scripts/
 .agents
-AWS.txt
+DB-changes.txt
+
 
 
 # sst

@@ -68,6 +68,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (typeof body?.labels !== 'undefined') {
       updates.labels = Array.isArray(body.labels) ? body.labels : [];
     }
+    if (typeof body?.isGroup !== 'undefined') {
+      updates.isGroup = Boolean(body.isGroup);
+    }
+    if (typeof body?.milestoneId !== 'undefined') {
+      updates.milestoneId = body.milestoneId ? String(body.milestoneId) : null;
+    }
+    if (typeof body?.sprintId !== 'undefined') {
+      updates.sprintId = body.sprintId ? String(body.sprintId) : null;
+    }
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ error: 'No valid updates provided' }, { status: 400 });

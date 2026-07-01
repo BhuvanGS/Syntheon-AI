@@ -18,6 +18,8 @@ import {
   OrganizationAccessRequestsEntity,
   NotificationsEntity,
   LabelsEntity,
+  MilestonesEntity,
+  SprintsEntity,
 } from '@/db/entities';
 
 // ─── Types ─────────────────────────────────────────────────────
@@ -78,6 +80,10 @@ export interface Ticket {
   start_date?: string | null;
   due_date?: string | null;
   deadline_time?: string | null;
+  rank?: number | null;
+  milestoneId?: string | null;
+  isGroup?: boolean;
+  sprintId?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -95,6 +101,8 @@ export interface Project {
   ticketIds: string[];
   files: string[];
   context: string;
+  leadUserId?: string | null;
+  status?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -166,6 +174,10 @@ function entityToTicket(e: any): Ticket {
     start_date: e.startDate ?? null,
     due_date: e.dueDate ?? null,
     deadline_time: e.deadlineTime ?? null,
+    rank: e.rank ?? null,
+    milestoneId: e.milestoneId ?? null,
+    isGroup: e.isGroup ?? false,
+    sprintId: e.sprintId ?? null,
     createdAt: e.createdAt,
     updatedAt: e.updatedAt,
   };
@@ -200,6 +212,8 @@ function entityToProject(e: any): Project {
     ticketIds: e.ticketIds ?? [],
     files: e.files ?? [],
     context: e.context ?? '',
+    leadUserId: e.leadUserId ?? null,
+    status: e.status ?? 'on_track',
     createdAt: e.createdAt,
     updatedAt: e.updatedAt,
   };
@@ -241,7 +255,7 @@ function entityToProjectMember(e: any): ProjectMember {
     project_id: e.projectId,
     org_id: e.orgId,
     user_id: e.userId,
-    role: e.role as 'admin' | 'member',
+    role: e.role as 'admin' | 'manager' | 'member',
     created_at: e.createdAt,
   };
 }
@@ -440,7 +454,19 @@ export async function updateProject(id: string, updates: Partial<Project>): Prom
   if (updates.files) set.files = updates.files;
   if (updates.ticketIds) set.ticketIds = updates.ticketIds;
   if (updates.meetings) set.meetings = updates.meetings;
+  if (updates.leadUserId !== undefined) set.leadUserId = updates.leadUserId ?? undefined;
+  if (updates.status) set.status = updates.status;
   await ProjectsEntity.update({ id }).set(set).go();
+}
+
+export async function updateProjectLead(id: string, leadUserId: string | null): Promise<void> {
+  await ProjectsEntity.update({ id })
+    .set({ leadUserId: leadUserId ?? undefined, updatedAt: new Date().toISOString() })
+    .go();
+}
+
+export async function updateProjectStatus(id: string, status: string): Promise<void> {
+  await ProjectsEntity.update({ id }).set({ status, updatedAt: new Date().toISOString() }).go();
 }
 
 export async function addMeetingToProject(projectId: string, meetingId: string): Promise<void> {
@@ -496,6 +522,10 @@ export async function saveTickets(ticketsList: Ticket[]): Promise<void> {
       type: ticket.type ?? 'task',
       estimate: ticket.estimate ?? 'none',
       labels: ticket.labels ?? [],
+      rank: ticket.rank ?? undefined,
+      milestoneId: ticket.milestoneId ?? undefined,
+      isGroup: ticket.isGroup ?? false,
+      sprintId: ticket.sprintId ?? undefined,
     }).go();
   }
 }
@@ -637,10 +667,15 @@ export async function updateTicket(
       | 'start_date'
       | 'due_date'
       | 'deadline_time'
+      | 'rank'
+      | 'milestoneId'
+      | 'isGroup'
+      | 'sprintId'
     >
   >
 ): Promise<void> {
   const set: Record<string, any> = { updatedAt: new Date().toISOString() };
+  const remove: string[] = [];
   if (typeof updates.title !== 'undefined') set.title = updates.title;
   if (typeof updates.description !== 'undefined') set.description = updates.description;
   if (typeof updates.status !== 'undefined') set.status = updates.status;
@@ -648,20 +683,55 @@ export async function updateTicket(
   if (typeof updates.type !== 'undefined') set.type = updates.type;
   if (typeof updates.estimate !== 'undefined') set.estimate = updates.estimate;
   if (typeof updates.labels !== 'undefined') set.labels = updates.labels;
-  if (typeof updates.assignee !== 'undefined') set.assignee = updates.assignee ?? undefined;
-  if (typeof updates.assignee_user_id !== 'undefined')
-    set.assigneeUserId = updates.assignee_user_id ?? undefined;
-  if (typeof updates.dependency_ticket_id !== 'undefined')
-    set.dependencyTicketId = updates.dependency_ticket_id ?? undefined;
-  if (typeof updates.start_date !== 'undefined') set.startDate = updates.start_date ?? undefined;
-  if (typeof updates.due_date !== 'undefined') set.dueDate = updates.due_date ?? undefined;
-  if (typeof updates.deadline_time !== 'undefined')
-    set.deadlineTime = updates.deadline_time ?? undefined;
-  await TicketsEntity.update({ id }).set(set).go();
+  if (typeof updates.assignee !== 'undefined') {
+    if (updates.assignee === null) remove.push('assignee');
+    else set.assignee = updates.assignee;
+  }
+  if (typeof updates.assignee_user_id !== 'undefined') {
+    if (updates.assignee_user_id === null) remove.push('assigneeUserId');
+    else set.assigneeUserId = updates.assignee_user_id;
+  }
+  if (typeof updates.dependency_ticket_id !== 'undefined') {
+    if (updates.dependency_ticket_id === null) remove.push('dependencyTicketId');
+    else set.dependencyTicketId = updates.dependency_ticket_id;
+  }
+  if (typeof updates.start_date !== 'undefined') {
+    if (updates.start_date === null) remove.push('startDate');
+    else set.startDate = updates.start_date;
+  }
+  if (typeof updates.due_date !== 'undefined') {
+    if (updates.due_date === null) remove.push('dueDate');
+    else set.dueDate = updates.due_date;
+  }
+  if (typeof updates.deadline_time !== 'undefined') {
+    if (updates.deadline_time === null) remove.push('deadlineTime');
+    else set.deadlineTime = updates.deadline_time;
+  }
+  if (typeof updates.rank !== 'undefined') set.rank = updates.rank;
+  if (typeof updates.milestoneId !== 'undefined') {
+    if (updates.milestoneId === null) remove.push('milestoneId');
+    else set.milestoneId = updates.milestoneId;
+  }
+  if (typeof updates.isGroup !== 'undefined') set.isGroup = updates.isGroup;
+  if (typeof updates.sprintId !== 'undefined') {
+    if (updates.sprintId === null) remove.push('sprintId');
+    else set.sprintId = updates.sprintId;
+  }
+  const op = TicketsEntity.update({ id }).set(set);
+  if (remove.length > 0) op.remove(remove);
+  await op.go();
 }
 
 export async function deleteTicketById(id: string): Promise<void> {
   await TicketsEntity.delete({ id }).go();
+}
+
+export async function updateTicketRanks(
+  rankUpdates: { id: string; rank: number }[]
+): Promise<void> {
+  for (const { id, rank } of rankUpdates) {
+    await TicketsEntity.update({ id }).set({ rank, updatedAt: new Date().toISOString() }).go();
+  }
 }
 
 export async function deleteTicketsByMeetingId(meetingId: string): Promise<void> {
@@ -1154,7 +1224,7 @@ export interface ProjectMember {
   project_id: string;
   org_id: string;
   user_id: string;
-  role: 'admin' | 'member';
+  role: 'admin' | 'manager' | 'member';
   created_at: string;
 }
 
@@ -1162,7 +1232,7 @@ export async function addProjectMember(
   projectId: string,
   orgId: string,
   userId: string,
-  role: 'admin' | 'member' = 'member'
+  role: 'admin' | 'manager' | 'member' = 'member'
 ): Promise<void> {
   const existing = await ProjectMembersEntity.get({ projectId, userId }).go();
   if (existing.data) {
@@ -1180,6 +1250,14 @@ export async function addProjectMember(
 
 export async function removeProjectMember(projectId: string, userId: string): Promise<void> {
   await ProjectMembersEntity.delete({ projectId, userId }).go();
+}
+
+export async function updateProjectMemberRole(
+  projectId: string,
+  userId: string,
+  role: 'admin' | 'manager' | 'member'
+): Promise<void> {
+  await ProjectMembersEntity.update({ projectId, userId }).set({ role }).go();
 }
 
 export async function getProjectMembers(projectId: string): Promise<ProjectMember[]> {
@@ -1450,4 +1528,179 @@ export async function updateLabel(
   if (typeof updates.name !== 'undefined') set.name = updates.name;
   if (typeof updates.color !== 'undefined') set.color = updates.color;
   await LabelsEntity.update({ id }).set(set).go();
+}
+
+// ─── Milestones ──────────────────────────────────────────────────
+export interface Milestone {
+  id: string;
+  org_id: string;
+  project_id: string;
+  name: string;
+  description: string;
+  due_date?: string | null;
+  status: 'planned' | 'in_progress' | 'completed';
+  created_at: string;
+  updated_at: string;
+}
+
+function entityToMilestone(e: any): Milestone {
+  return {
+    id: e.id,
+    org_id: e.orgId,
+    project_id: e.projectId,
+    name: e.name,
+    description: e.description ?? '',
+    due_date: e.dueDate ?? null,
+    status: (e.status ?? 'planned') as 'planned' | 'in_progress' | 'completed',
+    created_at: e.createdAt,
+    updated_at: e.updatedAt,
+  };
+}
+
+export async function getMilestonesByProject(projectId: string): Promise<Milestone[]> {
+  const res = await MilestonesEntity.query.byProject({ projectId }).go();
+  return (res.data ?? []).map(entityToMilestone);
+}
+
+export async function createMilestone(
+  id: string,
+  orgId: string,
+  projectId: string,
+  name: string,
+  description?: string,
+  dueDate?: string
+): Promise<Milestone> {
+  await MilestonesEntity.create({
+    id,
+    orgId,
+    projectId,
+    name,
+    description: description ?? '',
+    dueDate: dueDate ?? undefined,
+    status: 'planned',
+  }).go();
+  return {
+    id,
+    org_id: orgId,
+    project_id: projectId,
+    name,
+    description: description ?? '',
+    due_date: dueDate ?? null,
+    status: 'planned',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+}
+
+export async function updateMilestone(
+  id: string,
+  updates: { name?: string; description?: string; dueDate?: string | null; status?: string }
+): Promise<void> {
+  const set: Record<string, any> = { updatedAt: new Date().toISOString() };
+  if (typeof updates.name !== 'undefined') set.name = updates.name;
+  if (typeof updates.description !== 'undefined') set.description = updates.description;
+  if (typeof updates.dueDate !== 'undefined') set.dueDate = updates.dueDate ?? undefined;
+  if (typeof updates.status !== 'undefined') set.status = updates.status;
+  await MilestonesEntity.update({ id }).set(set).go();
+}
+
+export async function deleteMilestone(id: string): Promise<void> {
+  await MilestonesEntity.delete({ id }).go();
+}
+
+// ─── Sprints ──────────────────────────────────────────────────────
+
+export interface Sprint {
+  id: string;
+  org_id: string;
+  project_id: string;
+  name: string;
+  goal: string;
+  start_date: string;
+  end_date: string;
+  status: 'planning' | 'active' | 'completed';
+  review?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+function entityToSprint(e: any): Sprint {
+  return {
+    id: e.id,
+    org_id: e.orgId,
+    project_id: e.projectId,
+    name: e.name,
+    goal: e.goal ?? '',
+    start_date: e.startDate,
+    end_date: e.endDate,
+    status: e.status ?? 'planning',
+    review: e.review ?? null,
+    created_at: e.createdAt,
+    updated_at: e.updatedAt,
+  };
+}
+
+export async function getSprintsByProject(projectId: string): Promise<Sprint[]> {
+  const result = await SprintsEntity.query.byProject({ projectId }).go();
+  if (!result.data) return [];
+  return result.data.map(entityToSprint);
+}
+
+export async function createSprint(
+  id: string,
+  orgId: string,
+  projectId: string,
+  name: string,
+  startDate: string,
+  endDate: string,
+  goal?: string
+): Promise<Sprint> {
+  await SprintsEntity.create({
+    id,
+    orgId,
+    projectId,
+    name,
+    goal: goal ?? '',
+    startDate,
+    endDate,
+    status: 'planning',
+  }).go();
+  return {
+    id,
+    org_id: orgId,
+    project_id: projectId,
+    name,
+    goal: goal ?? '',
+    start_date: startDate,
+    end_date: endDate,
+    status: 'planning',
+    review: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+}
+
+export async function updateSprint(
+  id: string,
+  updates: {
+    name?: string;
+    goal?: string;
+    startDate?: string;
+    endDate?: string;
+    status?: string;
+    review?: string;
+  }
+): Promise<void> {
+  const set: Record<string, any> = { updatedAt: new Date().toISOString() };
+  if (typeof updates.name !== 'undefined') set.name = updates.name;
+  if (typeof updates.goal !== 'undefined') set.goal = updates.goal;
+  if (typeof updates.startDate !== 'undefined') set.startDate = updates.startDate;
+  if (typeof updates.endDate !== 'undefined') set.endDate = updates.endDate;
+  if (typeof updates.status !== 'undefined') set.status = updates.status;
+  if (typeof updates.review !== 'undefined') set.review = updates.review;
+  await SprintsEntity.update({ id }).set(set).go();
+}
+
+export async function deleteSprint(id: string): Promise<void> {
+  await SprintsEntity.delete({ id }).go();
 }

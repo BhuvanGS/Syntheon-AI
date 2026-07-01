@@ -170,6 +170,10 @@ export const TicketsEntity = makeEntity(
     startDate: { type: 'string' },
     dueDate: { type: 'string' },
     deadlineTime: { type: 'string' },
+    rank: { type: 'number' },
+    milestoneId: { type: 'string' },
+    isGroup: { type: 'boolean', default: false },
+    sprintId: { type: 'string' },
     createdAt: { type: 'string', default: () => new Date().toISOString() },
     updatedAt: { type: 'string', default: () => new Date().toISOString() },
   },
@@ -221,6 +225,8 @@ export const ProjectsEntity = makeEntity(
     ticketIds: { type: 'list', items: { type: 'string' }, default: () => [] },
     files: { type: 'list', items: { type: 'string' }, default: () => [] },
     context: { type: 'string', default: '' },
+    leadUserId: { type: 'string' },
+    status: { type: 'string', default: 'on_track' },
     createdAt: { type: 'string', default: () => new Date().toISOString() },
     updatedAt: { type: 'string', default: () => new Date().toISOString() },
   },
@@ -537,6 +543,70 @@ export const LabelsEntity = makeEntity(
       index: 'gsi1',
       pk: { field: 'gsi1pk', composite: ['orgId'] },
       sk: { field: 'gsi1sk', composite: ['name'] },
+    },
+  }
+);
+
+// ─── Milestones ──────────────────────────────────────────────────
+export const MilestonesEntity = makeEntity(
+  'syntheon-milestones',
+  'DYNAMO_TABLE_MILESTONES',
+  'milestone',
+  {
+    id: { type: 'string', required: true },
+    orgId: { type: 'string', required: true },
+    projectId: { type: 'string', required: true },
+    name: { type: 'string', required: true },
+    description: { type: 'string', default: '' },
+    dueDate: { type: 'string' },
+    status: { type: 'string', default: 'planned' },
+    createdAt: { type: 'string', default: () => new Date().toISOString() },
+    updatedAt: { type: 'string', default: () => new Date().toISOString() },
+  },
+  {
+    primary: { pk: { field: 'pk', composite: ['id'] }, sk: { field: 'sk', template: 'milestone' } },
+    byProject: {
+      index: 'gsi1',
+      pk: { field: 'gsi1pk', composite: ['projectId'] },
+      sk: { field: 'gsi1sk', composite: ['createdAt'] },
+    },
+    byOrg: {
+      index: 'gsi2',
+      pk: { field: 'gsi2pk', composite: ['orgId'] },
+      sk: { field: 'gsi2sk', composite: ['createdAt'] },
+    },
+  }
+);
+
+// ─── Sprints ──────────────────────────────────────────────────────
+export const SprintsEntity = makeEntity(
+  'syntheon-sprints',
+  'DYNAMO_TABLE_SPRINTS',
+  'sprint',
+  {
+    id: { type: 'string', required: true },
+    orgId: { type: 'string', required: true },
+    projectId: { type: 'string', required: true },
+    name: { type: 'string', required: true },
+    goal: { type: 'string', default: '' },
+    startDate: { type: 'string', required: true },
+    endDate: { type: 'string', required: true },
+    status: { type: 'string', default: 'planning' },
+    review: { type: 'string' },
+    createdAt: { type: 'string', default: () => new Date().toISOString() },
+    updatedAt: { type: 'string', default: () => new Date().toISOString() },
+  },
+  {
+    primary: { pk: { field: 'pk', composite: ['id'] }, sk: { field: 'sk', template: 'sprint' } },
+    byProject: {
+      index: 'gsi1',
+      pk: { field: 'gsi1pk', composite: ['projectId'] },
+      sk: { field: 'gsi1sk', composite: ['createdAt'] },
+    },
+    byOrg: {
+      index: 'gsi2',
+      pk: { field: 'gsi2pk', composite: ['orgId'] },
+      sk: { field: 'gsi2sk', composite: ['createdAt'] },
     },
   }
 );

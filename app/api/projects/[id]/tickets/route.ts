@@ -43,6 +43,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const priority = typeof body?.priority === 'string' ? body.priority : 'none';
     const type = typeof body?.type === 'string' ? body.type : 'task';
     const estimate = typeof body?.estimate === 'string' ? body.estimate : 'none';
+    const isGroup = Boolean(body?.isGroup);
     const labels = Array.isArray(body?.labels)
       ? body.labels.filter((l: unknown) => typeof l === 'string')
       : [];
@@ -100,6 +101,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         type,
         estimate,
         labels,
+        isGroup,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },

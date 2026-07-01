@@ -15,7 +15,15 @@ import { toast } from '@/hooks/use-toast';
 import { onCommand } from '@/lib/command-events';
 
 type ViewType = 'project' | 'ticket-detail';
-type ProjectTab = 'meetings' | 'tickets' | 'analytics' | 'dependencies' | 'members' | 'settings';
+type ProjectTab =
+  | 'meetings'
+  | 'tickets'
+  | 'analytics'
+  | 'dependencies'
+  | 'members'
+  | 'settings'
+  | 'roadmap'
+  | 'sprint-stones';
 
 interface Project {
   id: string;
@@ -57,6 +65,8 @@ const validProjectTabs: ProjectTab[] = [
   'analytics',
   'dependencies',
   'members',
+  'roadmap',
+  'sprint-stones',
 ];
 
 function ProjectContent() {

@@ -31,5 +31,11 @@ export async function canManageProject(ctx: AuthContext, projectId: string): Pro
 export async function canAdminProject(ctx: AuthContext, projectId: string): Promise<boolean> {
   if (isOrgAdmin(ctx)) return true;
   const res = await ProjectMembersEntity.get({ projectId, userId: ctx.userId }).go();
-  return res.data?.role === 'admin';
+  return res.data?.role === 'admin' || res.data?.role === 'manager';
+}
+
+export async function isProjectManager(ctx: AuthContext, projectId: string): Promise<boolean> {
+  if (isOrgAdmin(ctx)) return true;
+  const res = await ProjectMembersEntity.get({ projectId, userId: ctx.userId }).go();
+  return res.data?.role === 'admin' || res.data?.role === 'manager';
 }

@@ -346,7 +346,7 @@ function DashboardContent() {
             {currentView === 'projects' && 'Projects'}
             {currentView === 'tickets' && 'All Tickets'}
             {currentView === 'members' && 'Members'}
-            {currentView === 'calendar' && 'Calendar'}
+            {currentView === 'calendar' && 'Future Viz'}
             {currentView === 'ticket-detail' && 'Meeting Tickets'}
           </h1>
           <div className="flex items-center gap-3">
@@ -898,9 +898,9 @@ function DashboardContent() {
           {currentView === 'calendar' && (
             <div className="p-6 h-full flex flex-col">
               <div className="mb-5 shrink-0">
-                <h2 className="text-xl font-semibold text-foreground">Timeline</h2>
+                <h2 className="text-xl font-semibold text-foreground">Future Viz</h2>
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  Gantt view of every ticket across your projects
+                  Visual timeline of every ticket across your projects
                 </p>
               </div>
               <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[1fr_240px] gap-4">
