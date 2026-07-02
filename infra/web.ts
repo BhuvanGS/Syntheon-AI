@@ -17,7 +17,7 @@ export function createSite(args: {
     tableEnvVars[envVar] = resource.name;
   }
 
-  return new sst.aws.Nextjs('Site', {
+  const site = new sst.aws.Nextjs('Site', {
     path: '.',
     link: [
       uploads,
@@ -59,7 +59,6 @@ export function createSite(args: {
       GOOGLE_OAUTH_CLIENT_SECRET: s.googleOauthClientSecret.value,
       GOOGLE_OAUTH_REDIRECT_URI: `${appUrl}/api/oauth/google/callback`,
       TOKEN_ENCRYPTION_KEY: s.tokenEncryptionKey.value,
-      NGROK_URL: process.env.NGROK_URL!,
       NEXT_PUBLIC_CLERK_SIGN_IN_URL: process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL!,
       NEXT_PUBLIC_CLERK_SIGN_UP_URL: process.env.NEXT_PUBLIC_CLERK_SIGN_UP_URL!,
       NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL: process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL!,
@@ -68,4 +67,6 @@ export function createSite(args: {
       CLERK_TELEMETRY_DISABLED: process.env.CLERK_TELEMETRY_DISABLED!,
     },
   });
+
+  return site;
 }

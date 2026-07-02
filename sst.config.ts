@@ -18,17 +18,15 @@ export default $config({
     const { createSecrets } = await import('./infra/secrets');
     const { createSite } = await import('./infra/web');
 
-    const appUrl =
-      $app.stage === 'production'
-        ? 'https://www.syntheonhq.dev'
-        : 'https://d108zk3a0mfnct.cloudfront.net';
-
     const dynamoTables = createDynamoTables();
     const uploads = createUploadsBucket();
     const secrets = createSecrets();
 
     const site = createSite({
-      appUrl,
+      appUrl:
+        $app.stage === 'production'
+          ? 'https://www.syntheonhq.dev'
+          : 'https://d2e5q6e4vnqp7s.cloudfront.net',
       uploads,
       dynamoTables,
       secrets,

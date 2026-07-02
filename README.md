@@ -1,314 +1,323 @@
 # Syntheon AI
 
-An intelligent meeting management platform that transforms conversations into software through automated transcription, specification extraction, and code generation.
+An AI-powered project management platform that turns meeting conversations into actionable tickets, sprints, and milestones — automatically.
 
-## 🚀 Features
+## What Syntheon Does
 
-### Web Application
+1. **Bot joins your Google Meet** via Skribby, transcribes the conversation
+2. **Webhook fires** → Groq AI extracts tickets from the transcript
+3. **Tickets appear** in your project board with priorities, labels, and estimates
+4. **AI infers dependencies** between tickets automatically
+5. **Generate sprints & milestones** from your ticket backlog with AI
+6. **Track velocity, burndown, and cycle time** across sprints
 
-- **Dashboard**: Central hub for managing meetings, projects, and extracted specifications
-- **Meeting Management**: View and organize meetings with detailed transcripts and metadata
-- **Spec Blocks**: Automatically extracted specifications, features, and action items from meetings
-- **Project Management**: Link meetings to projects for comprehensive development tracking
-- **Code Generation**: AI-powered code generation with GitHub integration
-- **Deployment**: Automatic deployment to GitHub Pages with live previews
-- **Meeting Context Transfer (MCT)**: Follow-up meetings build on existing project context
+## Features
 
-### Browser Extension
+### Meeting → Tickets
 
-- **Multi-Platform Support**: Works with Google Meet, Zoom, and Microsoft Teams
-- **Bot Integration**: Sends AI bot to meetings for automatic recording
-- **Real-time Transcription**: Captures and transcribes meeting audio
-- **Seamless Sync**: Automatically syncs with web application via webhooks
+- **Skribby integration** — Bot joins Google Meet, records, transcribes
+- **AI ticket extraction** — Groq parses transcripts into structured tickets
+- **Auto-refresh** — Meeting view polls every 5s + SSE for real-time updates
+- **Meeting summaries** — AI-generated summaries on demand
+- **Google Calendar** — Create meetings with Google Meet links directly
 
-## 🛠 Tech Stack
+### Ticket System (Jira/Linear parity)
+
+- **Kanban + List views** with drag-and-drop
+- **Priorities** — Urgent, High, Medium, Low, None (colored dots)
+- **Types** — Bug, Task, Feature, Spike
+- **Estimates** — T-shirt sizing: Quick, Standard, Deep, Epic
+- **Labels** — Org-scoped, custom colors, CRUD management
+- **Bulk operations** — Multi-select status/priority/assignee updates (Cmd+B)
+- **Command palette** — Global search + `/filter`, `/create` commands (Cmd+K)
+- **Filter dialog** — Two-pane filter with live ticket preview
+- **Time tracking** — Time estimate, time spent, remaining
+- **Due dates** with calendar picker
+- **Comments & activity log** on every ticket
+- **Attachments** via S3 presigned uploads
+
+### Dependencies
+
+- **Hard & soft dependencies** with automatic escalation (soft → hard after 3 ignores)
+- **Status gating** — Hard blockers prevent status transitions; soft blockers warn
+- **Cascading regressions** — Reopening a parent auto-reopens done dependents
+- **Dependency graph** — SVG visualization with zoom/pan, BFS layered layout
+- **AI dependency inference** — Groq suggests dependencies on ticket import
+
+### Sprints & Milestones
+
+- **Sprint creation** — Manual or AI-generated from project context
+- **Sprint pulse** — AI-powered health analysis
+- **Milestones** — Group sprints with progress tracking
+- **Burndown charts** — Track remaining work over time
+- **Velocity tracking** — Historical sprint velocity
+- **Cycle time** — Ticket lifecycle analytics
+
+### Projects
+
+- **Project workspace** with tickets, meetings, sprints, milestones, dependencies, and members tabs
+- **Member roles** — Lead, Member, Viewer with RBAC
+- **Project health** — AI-generated health suggestions
+- **Ticket grouping** — AI suggests ticket groups for sprint planning
+
+### Authentication & Organizations
+
+- **Clerk** — Email/password, Google OAuth, GitHub OAuth
+- **Organizations** — Personal orgs for public domain users (auto-created via webhook)
+- **Onboarding** — Public domain users get auto workspace; private domain users create/join orgs
+- **Join codes** — Invite users via shareable codes
+- **Trial system** — Free trial with usage limits (coming soon)
+
+### Integrations
+
+- **Google Calendar** — Create meetings with Meet links, view calendar events
+- **GitHub** — OAuth integration for code operations
+
+## Tech Stack
 
 ### Frontend
 
-- **Next.js 16.1.6** - React framework with App Router
-- **React 19.2.4** - UI library with hooks
-- **TypeScript 5.7.3** - Type-safe development
-- **TailwindCSS 4.2.0** - Utility-first CSS framework
-- **Radix UI** - Accessible component primitives
-- **Lucide React** - Icon library
-- **D3.js** - Data visualization for pipeline graphics
+- **Next.js 16.1.6** — App Router, Turbopack
+- **React 19.2.4**
+- **TypeScript 5.7.3**
+- **TailwindCSS 4.2.0** + Radix UI primitives
+- **Lucide React** — Icons
+- **Recharts** — Charts (burndown, velocity, cycle time)
+- **TipTap** — Rich text editor for comments
+- **Motion + GSAP** — Animations
+- **Three.js / OGL** — Landing page graphics
 
-### Backend & Services
+### Backend
 
-- **Skribby SDK** - Meeting bot and transcription service
-- **Groq SDK** - AI model integration for spec extraction
-- **Supabase** - Database and authentication
-- **Clerk** - User authentication and management
-- **GitHub API** - Code repository integration
-- **Linear API** - Project management integration
+- **AWS DynamoDB** — Primary database (via ElectroDB ORM)
+- **AWS S3** — File attachments
+- **AWS Lambda + CloudFront** — Hosting via SST
+- **Clerk** — Authentication, organizations, user management
+- **Groq** — AI inference (ticket extraction, sprint generation, dependency inference, summaries, health)
+- **Skribby** — Meeting bot, transcription
+- **Deepgram** — Speech-to-text (legacy)
 
-### Browser Extension
+### Infrastructure
 
-- **Manifest V3** - Modern Chrome extension API
-- **Content Scripts** - Injects functionality into meeting platforms
-- **Background Service Worker** - Handles background tasks and communication
+- **SST 4.17.0** — Infrastructure as code
+- **Pulumi** — Underlying IaC engine
+- **AWS** — Lambda, CloudFront, DynamoDB, S3, SQS
+- **ElectroDB** — DynamoDB entity modeling
 
-## 📋 Pages & Routes
-
-### Main Pages
-
-- **Landing Page** (`/`) - Marketing and feature overview
-- **Dashboard** (`/dashboard`) - Main application interface
-- **Pricing** (`/pricing`) - Subscription plans and billing
-- **How It Works** (`/how-it-works`) - Feature documentation
-- **Legal** (`/legal`) - Privacy policy, terms, DPA, refund policy
-
-### API Routes
-
-- **Bot Webhook** (`/api/bot/webhook`) - Receives meeting status updates
-- **Ship Plan** (`/api/ship/plan`) - Generates development plans
-- **Ship Execute** (`/api/ship/execute`) - Executes code generation
-- **Authentication** - Sign-in, sign-up, and user management
-
-## 🚀 Installation
+## Getting Started
 
 ### Prerequisites
 
 - Node.js 18+
-- npm or pnpm
-- Google Chrome (for browser extension)
-- GitHub account (for code integration)
-- Linear account (for project management)
+- pnpm
+- AWS account (for deployment)
+- Clerk account
+- Groq API key
+- Skribby API key
 
-### Web Application Setup
+### Local Development
 
-1. **Clone the repository**
+1. **Clone and install**
 
    ```bash
    git clone https://github.com/your-username/Syntheon-AI.git
    cd Syntheon-AI
-   ```
-
-2. **Install dependencies**
-
-   ```bash
-   npm install
-   # or
    pnpm install
    ```
 
-3. **Set up environment variables**
+2. **Set up environment variables**
 
    ```bash
    cp .env.local.example .env.local
    ```
 
-   Add your API keys:
+   Key variables (see `.env.local` for full list):
 
    ```env
-   # AI Services
-   GROQ_API_KEY=your_groq_api_key_here
-   SKRIBBY_API_KEY=your_skribby_api_key_here
+   # AI
+   GROQ_API_KEY=your_groq_key
+   GROQ_API_KEY_T2=your_groq_tier2_key
 
-   # Authentication
-   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
-   CLERK_SECRET_KEY=your_clerk_secret_key
+   # Meeting Bot
+   SKRIBBY_API_KEY=your_skribby_key
+   SKRIBBY_WEBHOOK_SECRET=your_webhook_secret
+   WEBHOOK_ACCESS_TOKEN=your_token
 
-   # Database
-   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   # Auth
+   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_pub_key
+   CLERK_SECRET_KEY=your_clerk_secret
+   CLERK_WEBHOOK_SECRET=your_clerk_webhook_secret
 
-   # Analytics
-   NEXT_PUBLIC_VERCEL_ANALYTICS_ID=your_vercel_analytics_id
+   # Google OAuth
+   GOOGLE_OAUTH_CLIENT_ID=your_google_client_id
+   GOOGLE_OAUTH_CLIENT_SECRET=your_google_client_secret
+
+   # GitHub OAuth
+   GITHUB_OAUTH_CLIENT_ID=your_github_client_id
+   GITHUB_OAUTH_CLIENT_SECRET=your_github_client_secret
+
+   # Encryption
+   TOKEN_ENCRYPTION_KEY=your_32_byte_hex_key
+
+   # Local dev (optional)
+   NGROK_URL=https://your-ngrok-url.ngrok-free.dev
    ```
 
-4. **Run the development server**
+3. **Start local DynamoDB**
 
    ```bash
-   npm run dev
-   # or
-   pnpm dev
+   pnpm run db:local
    ```
 
-5. **Open your browser**
-   Navigate to [http://localhost:3000](http://localhost:3000)
+4. **Run the dev server**
 
-### Browser Extension Setup
+   ```bash
+   pnpm run dev:local
+   ```
 
-1. **Open Chrome Extensions**
-   - Go to `chrome://extensions/`
-   - Enable "Developer mode" in the top right
+   For webhook testing with ngrok:
 
-2. **Load the extension**
-   - Click "Load unpacked"
-   - Select the `syntheon-extension` directory
+   ```bash
+   pnpm run dev:ngrok
+   ```
 
-3. **Configure extension**
-   - Click the extension icon in your browser toolbar
-   - Enter your API keys and backend URL
-   - Save configuration
+5. **Open** [http://localhost:3000](http://localhost:3000)
 
-## 📖 Usage
+### Deployment
 
-### Recording a Meeting
+```bash
+# Deploy to AWS via SST
+AWS_PROFILE=your_profile npx sst deploy
 
-1. **Join a meeting** on Google Meet, Zoom, or Teams
-2. **Start the extension** by clicking the Syntheon AI icon
-3. **Send bot to meeting** - The AI bot will join as a participant
-4. **Meeting runs normally** - Bot records and transcribes automatically
-5. **View results** in the web application dashboard
+# Deploy to production stage
+AWS_PROFILE=your_profile npx sst deploy --stage production
 
-### Managing Projects
+# Remove deployment
+AWS_PROFILE=your_profile npx sst remove
+```
 
-1. **Create projects** in the dashboard to organize related meetings
-2. **Link meetings** to projects for context tracking
-3. **Review spec blocks** extracted from each meeting
-4. **Approve specifications** you want to implement
-5. **Generate code** with AI assistance
-6. **Deploy automatically** to GitHub Pages
-
-### Using Meeting Context Transfer (MCT)
-
-1. **Complete initial meeting** and generate code
-2. **Schedule follow-up meeting** for additional features
-3. **Bot joins with full context** of previous work
-4. **Generate only delta changes** - no full rewrites
-5. **Maintain project continuity** across multiple sessions
-
-## 🔧 Configuration
-
-### Environment Variables
-
-| Variable                            | Description                      | Required |
-| ----------------------------------- | -------------------------------- | -------- |
-| `GROQ_API_KEY`                      | Groq API key for AI processing   | Yes      |
-| `SKRIBBY_API_KEY`                   | Skribby API key for meeting bots | Yes      |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk public key for auth        | Yes      |
-| `CLERK_SECRET_KEY`                  | Clerk secret key for auth        | Yes      |
-| `NEXT_PUBLIC_SUPABASE_URL`          | Supabase database URL            | Yes      |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY`     | Supabase anonymous key           | Yes      |
-| `NEXT_PUBLIC_VERCEL_ANALYTICS_ID`   | Vercel analytics ID              | Optional |
-
-### Service Setup
-
-#### Skribby Setup
-
-1. Sign up at [Skribby](https://platform.skribby.io)
-2. Create a new project
-3. Generate an API key
-4. Add webhook URL: `https://your-domain.com/api/bot/webhook`
-
-#### Groq Setup
-
-1. Sign up at [Groq](https://groq.com)
-2. Create an API key
-3. Add key to your `.env.local` file
-
-#### GitHub Integration
-
-1. Create a GitHub App or Personal Access Token
-2. Configure repository permissions
-3. Add webhook for deployment notifications
-
-#### Linear Integration
-
-1. Create a Linear API token
-2. Configure workspace access
-3. Set up project templates
-
-## 📁 Project Structure
+## Project Structure
 
 ```
 Syntheon-AI/
-├── app/                    # Next.js app router pages
-│   ├── dashboard/           # Main dashboard interface
-│   ├── api/               # API routes
-│   │   ├── bot/          # Bot webhook handlers
-│   │   └── ship/         # Code generation routes
-│   ├── page.tsx           # Landing page
-│   ├── pricing.tsx         # Pricing page
-│   ├── how-it-works/     # Documentation
-│   ├── legal/             # Legal documents
-│   └── layout.tsx         # Root layout
-├── components/             # React components
-│   ├── ui/               # Reusable UI components
-│   ├── sidebar.tsx        # Navigation sidebar
-│   ├── meeting-cards.tsx  # Meeting display cards
-│   └── spec-blocks/      # Specification components
-├── lib/                   # Utility libraries
-│   ├── groq.ts           # AI processing
-│   ├── skribby.ts        # Bot integration
-│   ├── supabase.ts        # Database client
-│   ├── db.ts              # Database utilities
-│   └── shipai/           # Code generation logic
-├── syntheon-extension/    # Browser extension
-│   ├── manifest.json      # Extension configuration
-│   ├── content.js         # Meeting platform integration
-│   ├── background.js      # Background service worker
-│   ├── popup/            # Extension popup UI
-│   └── icons/            # Extension icons
-├── public/                # Static assets
-│   ├── logo.png          # Application logo
-│   ├── icon.svg          # Favicon
-│   └── apple-icon.png    # Apple touch icon
-├── hooks/                 # Custom React hooks
-├── styles/                # Global styles
-└── db.json               # Local database file
+├── app/                        # Next.js App Router
+│   ├── (dashboard)/            # Authenticated routes
+│   │   ├── dashboard/          # Main dashboard
+│   │   ├── project/            # Project workspace
+│   │   └── settings/           # User settings
+│   ├── api/                    # API routes
+│   │   ├── bot/                # Skribby bot (create, continue, webhook)
+│   │   ├── meetings/           # Meeting CRUD + tickets + summaries
+│   │   ├── projects/           # Project CRUD + sprints + milestones + dependencies
+│   │   ├── tickets/            # Ticket CRUD + dependencies + comments + activities
+│   │   ├── labels/             # Label CRUD
+│   │   ├── organizations/      # Org management + join codes
+│   │   ├── oauth/              # Google + GitHub OAuth callbacks
+│   │   ├── webhooks/           # Clerk webhook handler
+│   │   └── events/             # SSE endpoint for real-time updates
+│   ├── onboarding/             # Post-signup org creation flow
+│   ├── sign-in/                # Clerk sign-in
+│   └── sign-up/                # Clerk sign-up
+├── components/                 # React components
+│   ├── ui/                     # Radix-based UI primitives
+│   ├── ticket-*.tsx            # Ticket components (badges, filter, bulk, editor, etc.)
+│   ├── ticket-dependency-*.tsx # Dependency panel + graph
+│   ├── projects-workspace.tsx  # Project workspace with tabs
+│   ├── tickets-board.tsx       # Kanban + List board
+│   ├── ticket-detail.tsx       # Meeting ticket detail view
+│   ├── manual-ticket-dialog.tsx
+│   ├── dynamic-island-search.tsx # Cmd+K global search
+│   ├── sidebar.tsx
+│   └── settings/               # Settings tabs
+├── db/                         # Database layer
+│   ├── entities.ts             # ElectroDB entity definitions
+│   └── client.ts               # DynamoDB client config
+├── infra/                      # SST infrastructure
+│   ├── web.ts                  # Next.js site construct + env vars
+│   ├── database.ts             # DynamoDB table definitions
+│   ├── secrets.ts              # SST secret definitions
+│   └── storage.ts              # S3 bucket definitions
+├── lib/                        # Business logic
+│   ├── db.ts                   # All DB operations (tickets, meetings, projects, etc.)
+│   ├── groq.ts                 # Groq AI (extraction, sprints, dependencies, summaries)
+│   ├── skribby.ts              # Skribby bot API client
+│   ├── rate-limit.ts           # In-memory rate limiting
+│   ├── rbac.ts                 # Role-based access control
+│   ├── org-utils.ts            # Org name generation, public domain detection
+│   ├── clerk-webhook.ts        # Clerk user.created handler
+│   ├── crypto.ts               # Token encryption
+│   ├── s3.ts                   # S3 client
+│   └── command-events.ts       # Global event emitter for UI commands
+├── hooks/                      # Custom React hooks
+├── public/                     # Static assets
+├── styles/                     # Global CSS
+├── syntheon-extension/         # Chrome extension (legacy)
+├── scripts/                    # Utility scripts (local table creation)
+├── proxy.ts                    # Middleware for route protection
+├── sst.config.ts               # SST app config
+└── package.json
 ```
 
-## 🔄 Data Flow
+## API Rate Limiting
 
-1. **Bot joins meeting** via extension command
-2. **Audio capture** and real-time transcription by Skribby
-3. **Webhook notification** sent to `/api/bot/webhook`
-4. **Transcript processing** by Groq for spec extraction
-5. **Database storage** of meetings, specs, and projects
-6. **AI code generation** based on approved specifications
-7. **GitHub integration** for branch creation and PR management
-8. **Linear integration** for ticket creation and project tracking
-9. **Automatic deployment** to GitHub Pages with live preview
+- **General API**: 60 requests/minute per user
+- **AI endpoints**: 10 requests/minute per user (sprint generation, dependency mapping, health, pulse, summaries)
+- **Webhooks**: 100 requests/minute per IP
 
-## 🤝 Contributing
+## Data Flow
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request with detailed description
+```
+Google Meet → Skribby bot joins → Transcribes → Webhook fires
+    ↓
+/api/bot/webhook → Fetches transcript from Skribby
+    ↓
+Groq AI extracts tickets → Saves to DynamoDB
+    ↓
+SSE event → Frontend auto-refreshes → Tickets appear in meeting view
+    ↓
+User imports tickets to project → AI infers dependencies
+    ↓
+User generates sprints from backlog → AI groups tickets
+    ↓
+Sprint board tracks velocity, burndown, cycle time
+```
 
-## 🐛 Troubleshooting
+## Keyboard Shortcuts
 
-### Common Issues
+- **Cmd/Ctrl + K** — Global search + commands (`/filter`, `/create`)
+- **Cmd/Ctrl + B** — Toggle bulk selection mode
 
-**Extension not loading**
+## Environment Variables
 
-- Ensure Developer mode is enabled in Chrome
-- Check that extension path is correct
-- Verify manifest.json syntax and permissions
+| Variable | Description | Required |
+| --- | --- | --- |
+| `GROQ_API_KEY` | Groq API key (free or dev tier) | Yes |
+| `GROQ_API_KEY_T2` | Groq API key tier 2 (for heavy inference) | Yes |
+| `SKRIBBY_API_KEY` | Skribby bot API key | Yes |
+| `SKRIBBY_WEBHOOK_SECRET` | Skribby webhook HMAC secret | Yes |
+| `WEBHOOK_ACCESS_TOKEN` | Token for webhook URL auth | Yes |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk publishable key | Yes |
+| `CLERK_SECRET_KEY` | Clerk secret key | Yes |
+| `CLERK_WEBHOOK_SECRET` | Clerk webhook signing secret | Yes |
+| `GOOGLE_OAUTH_CLIENT_ID` | Google OAuth client ID | Yes |
+| `GOOGLE_OAUTH_CLIENT_SECRET` | Google OAuth client secret | Yes |
+| `GITHUB_OAUTH_CLIENT_ID` | GitHub OAuth client ID | Optional |
+| `GITHUB_OAUTH_CLIENT_SECRET` | GitHub OAuth client secret | Optional |
+| `TOKEN_ENCRYPTION_KEY` | 32-byte hex key for token encryption | Yes |
+| `NGROK_URL` | Ngrok URL for local webhook testing | Local only |
+| `NEXT_PUBLIC_APP_URL` | App URL (set by SST) | Auto |
+| `DYNAMODB_ENDPOINT` | Local DynamoDB endpoint | Local only |
 
-**Bot not joining meetings**
+## License
 
-- Verify Skribby API key is valid
-- Check webhook URL configuration
-- Ensure meeting platform is supported
+MIT — See [LICENSE](LICENSE) for details.
 
-**Code generation failing**
+## Acknowledgments
 
-- Check Groq API quota and usage limits
-- Verify GitHub repository permissions
-- Ensure Linear workspace is properly configured
-
-**Deployment issues**
-
-- Check GitHub Pages settings
-- Verify build process completes successfully
-- Ensure environment variables are correctly set
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- [Skribby](https://platform.skribby.io) for meeting bot and transcription services
-- [Groq](https://groq.com) for AI model services
-- [Supabase](https://supabase.com) for database and authentication
-- [Clerk](https://clerk.com) for user management
-- [Radix UI](https://radix-ui.com) for accessible components
-- [TailwindCSS](https://tailwindcss.com) for styling utilities
-- [Vercel](https://vercel.com) for hosting and analytics
+- [Skribby](https://platform.skribby.io) — Meeting bot & transcription
+- [Groq](https://groq.com) — AI inference
+- [Clerk](https://clerk.com) — Authentication & organizations
+- [AWS](https://aws.amazon.com) — Hosting via SST
+- [Radix UI](https://radix-ui.com) — Accessible components
+- [TailwindCSS](https://tailwindcss.com) — Styling
+- [ElectroDB](https://github.com/nordfjord/electrodb) — DynamoDB modeling

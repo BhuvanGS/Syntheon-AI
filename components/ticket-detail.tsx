@@ -126,6 +126,27 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
     if (meetingData?.projectId) fetchProject(meetingData.projectId);
   }, [meetingData?.projectId]);
 
+  useEffect(() => {
+    const handleMeetingUpdate = () => {
+      fetchTickets();
+      fetchMeetingData();
+    };
+    on('meeting_ready', handleMeetingUpdate);
+    on('meeting_status_changed', handleMeetingUpdate);
+    return () => {
+      off('meeting_ready', handleMeetingUpdate);
+      off('meeting_status_changed', handleMeetingUpdate);
+    };
+  }, [on, off, meetingId]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchTickets();
+      fetchMeetingData();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [meetingId]);
+
   async function fetchTickets() {
     try {
       setLoading(true);
