@@ -14,6 +14,7 @@ import {
 } from '@/lib/db';
 import { verifyWebhookSignature } from '@/lib/webhook';
 import { broadcast } from '@/lib/event-bus';
+import { buildSpeakerMap, extractSpeakerNames } from '@/lib/speaker-match';
 import crypto from 'crypto';
 
 // Strict alphanumeric+hyphen/underscore only — prevents SSRF and command injection via bot_id
@@ -143,7 +144,13 @@ export async function POST(req: NextRequest) {
 
     const rawTranscript = botData.transcript;
     const transcript = Array.isArray(rawTranscript)
-      ? rawTranscript.map((t: any) => t.transcript).join(' ')
+      ? rawTranscript
+          .map((t: any) => {
+            const speaker = t.speaker_name || t.speaker || 'Unknown';
+            const text = t.transcript || '';
+            return `${speaker}: ${text}`;
+          })
+          .join('\n')
       : typeof rawTranscript === 'string'
         ? rawTranscript
         : '';
@@ -182,13 +189,74 @@ export async function POST(req: NextRequest) {
       console.log('[bot/webhook] First ticket:', JSON.stringify(tickets[0], null, 2).slice(0, 300));
     }
 
-    const ticketsWithUser = tickets.map((ticket: any) => ({
-      ...ticket,
-      user_id: meeting.user_id,
-      org_id: meeting.org_id ?? null,
-      projectId: meeting.projectId ?? null,
-      project_id: meeting.projectId ?? null,
-    }));
+    let speakerMap = new Map<
+      string,
+      { matchedName: string | null; matchedUserId: string | null }
+    >();
+    if (meeting.projectId && Array.isArray(rawTranscript)) {
+      const spokenNames = extractSpeakerNames(rawTranscript);
+      if (spokenNames.length > 0) {
+        speakerMap = await buildSpeakerMap(meeting.projectId, spokenNames);
+        console.log(
+          '[bot/webhook] Speaker map:',
+          Object.fromEntries(
+            [...speakerMap.entries()].map(([k, v]) => [
+              k,
+              { name: v.matchedName, userId: v.matchedUserId },
+            ])
+          )
+        );
+      }
+    }
+
+    const ticketsWithUser = tickets.map((ticket: any) => {
+      let assignee = ticket.assignee ?? null;
+      let assignee_user_id = ticket.assignee_user_id ?? null;
+
+      if (assignee && !assignee_user_id) {
+        const match = speakerMap.get(assignee);
+        if (match?.matchedUserId) {
+          assignee = match.matchedName;
+          assignee_user_id = match.matchedUserId;
+          console.log(
+            '[bot/webhook] Matched assignee:',
+            ticket.assignee,
+            '→',
+            match.matchedName,
+            '(' + match.matchedUserId + ')'
+          );
+        } else {
+          for (const [spokenName, matchInfo] of speakerMap.entries()) {
+            if (matchInfo.matchedUserId) {
+              const spokenNorm = spokenName.toLowerCase();
+              const assigneeNorm = assignee.toLowerCase();
+              if (spokenNorm.includes(assigneeNorm) || assigneeNorm.includes(spokenNorm)) {
+                assignee = matchInfo.matchedName;
+                assignee_user_id = matchInfo.matchedUserId;
+                console.log(
+                  '[bot/webhook] Fuzzy matched assignee:',
+                  ticket.assignee,
+                  '→',
+                  matchInfo.matchedName,
+                  '(' + matchInfo.matchedUserId + ')'
+                );
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      return {
+        ...ticket,
+        user_id: meeting.user_id,
+        org_id: meeting.org_id ?? null,
+        projectId: meeting.projectId ?? null,
+        project_id: meeting.projectId ?? null,
+        assignee,
+        assignee_user_id,
+      };
+    });
 
     const insertedTickets = await saveExtractedTickets(ticketsWithUser);
     console.log('[bot/webhook] Saved', insertedTickets.length, 'tickets to DB');

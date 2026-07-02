@@ -18,6 +18,8 @@ const TABLE_NAMES = [
   'syntheon-org-access-requests',
   'syntheon-notifications',
   'syntheon-labels',
+  'syntheon-sprints',
+  'syntheon-milestones',
 ] as const;
 
 const FIELDS = {

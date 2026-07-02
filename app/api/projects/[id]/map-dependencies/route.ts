@@ -9,11 +9,15 @@ import {
   deleteDependency,
 } from '@/lib/db';
 import { inferProjectTicketDependencies } from '@/lib/groq';
+import { aiRateLimit } from '@/lib/rate-limit';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { userId, orgId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const limited = await aiRateLimit(req, userId);
+    if (limited) return limited;
 
     const { id } = await params;
     const project = await getProjectById(id);

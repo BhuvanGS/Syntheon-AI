@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useUser } from '@clerk/nextjs';
-import { Calendar, Loader2, Plug, Github, Slack } from 'lucide-react';
+import { Calendar, Loader2, Plug } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -135,49 +135,6 @@ export function IntegrationsTab() {
               </div>
             )}
           </CardContent>
-        </Card>
-
-        {/* Coming Soon Integrations */}
-        <Card className="border-border/40 shadow-none opacity-60">
-          <CardHeader className="pb-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-muted/50 flex items-center justify-center shrink-0">
-                <Github className="h-5 w-5 text-muted-foreground" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <CardTitle className="text-sm font-semibold">GitHub</CardTitle>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-                    Coming soon
-                  </span>
-                </div>
-                <CardDescription className="text-xs mt-0.5">
-                  Sync tickets with GitHub Issues
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-        </Card>
-
-        <Card className="border-border/40 shadow-none opacity-60">
-          <CardHeader className="pb-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-muted/50 flex items-center justify-center shrink-0">
-                <Slack className="h-5 w-5 text-muted-foreground" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <CardTitle className="text-sm font-semibold">Slack</CardTitle>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-                    Coming soon
-                  </span>
-                </div>
-                <CardDescription className="text-xs mt-0.5">
-                  Get notifications in Slack channels
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
         </Card>
       </div>
     </div>

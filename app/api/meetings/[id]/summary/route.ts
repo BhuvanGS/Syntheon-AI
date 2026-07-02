@@ -3,11 +3,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getMeetingById, updateMeetingSummary } from '@/lib/db';
 import { generateMeetingSummary } from '@/lib/groq';
+import { aiRateLimit } from '@/lib/rate-limit';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { userId, orgId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const limited = await aiRateLimit(req, userId);
+    if (limited) return limited;
 
     const { id } = await params;
     const meeting = await getMeetingById(id);

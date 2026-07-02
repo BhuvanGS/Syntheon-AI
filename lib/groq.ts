@@ -48,6 +48,7 @@ function extractJson(text: string): string {
 }
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY! });
+const groqT2 = new Groq({ apiKey: process.env.GROQ_API_KEY_T2 || process.env.GROQ_API_KEY! });
 
 export interface SpecBlock {
   id: string;
@@ -142,21 +143,40 @@ export async function extractTickets(
         role: 'system',
         content: `Extract implementation-ready tickets from meeting transcripts.
 
-TITLE: Start with verb (Implement/Fix/Add/Update), include component, <80 chars
+The transcript is formatted as "SpeakerName: their text". Use speaker context to determine assignees and status.
 
-DESCRIPTION (3+ sentences):
-1. WHAT: Exact change with specific file names, routes, tables mentioned
-2. WHY: Business/technical reason
-3. ACCEPTANCE: Bullet points with behavior, errors, edge cases
-Include technical details verbatim. ASSIGNEE always null.
+TITLE: Start with verb (Implement/Fix/Add/Update/Set Up/Write/Build/Configure/Complete), include component, <80 chars
 
-DUE_DATE: Convert relative dates to "YYYY-MM-DD" (e.g., "by Friday" → "2026-06-27") or null if not mentioned.
+DESCRIPTION:
+- For done tasks: 1 sentence summarizing what was completed
+- For active/new tasks: 2-3 sentences with WHAT (specific changes), WHY (reason), and key acceptance criteria
+Keep descriptions concise — avoid verbose padding.
 
-STATUS: done (completed/merged), in_progress (actively working), blocked (waiting/dependency), backlog (default)
+ASSIGNEE: Extract from speaker context. If "Sarah: I'll handle the API" → assignee: "Sarah". If someone says "John, can you take the frontend?" → assignee: "John". Use the speaker's name as it appears in the transcript. Set null only if no one claims ownership.
 
-GRANULARITY: Separate tickets for distinct tasks. Break large features into multiple tickets.
+DUE_DATE: Today is ${new Date().toISOString().split('T')[0]}. Convert relative dates to absolute "YYYY-MM-DD" based on today's date (e.g., if today is 2026-07-02 and someone says "by Friday" → "2026-07-04"). Use null if not mentioned.
 
-FORBIDDEN: "Discuss", "Consider", "Look into", meeting summaries, vague phrases
+STATUS RULES:
+- done: speaker says they completed/finished/merged/shipped/deployed/pushed it. ALWAYS create tickets for completed work — these track what got done this sprint.
+- in_progress: speaker says they're actively working on it, started it, or will handle it with a near-term deadline (e.g., "I'll handle X by Friday" = in_progress, not backlog)
+- blocked: the speaker's OWN task is waiting on something/someone else (e.g., "I'm blocked on X", "I'm waiting on Y", "can't start until Z is done")
+- backlog: no progress mentioned and no near-term commitment (default)
+IMPORTANT: If "I'm blocked on X" — X is a dependency, NOT blocked. X should be backlog or in_progress. Only the speaker's task gets "blocked" status. If Mike says "I'm blocked on the schema, waiting on John" — Mike's task = blocked, schema task = backlog/in_progress.
+
+COMPLETENESS: Extract EVERY actionable task mentioned. Include:
+- Completed work (status: done) — track what was accomplished
+- In-progress work (status: in_progress)
+- Blocked work (status: blocked)
+- Planned work (status: backlog)
+- Infrastructure/DevOps tasks (CI/CD, Docker, monitoring, backups)
+- Documentation tasks (guides, specs, changelogs)
+- Business tasks (strategy, analysis, partnerships)
+- Design tasks (wireframes, icons, brand guidelines)
+Do NOT skip tasks just because they're done or seem minor. Every distinct piece of work = one ticket.
+
+GRANULARITY: Separate tickets for distinct tasks. Break large features into multiple tickets. If someone mentions 3 things they completed, that's 3 done tickets.
+
+FORBIDDEN: "Discuss", "Consider", "Look into", meeting summaries, vague phrases, hypotheticals ("wouldn't it be nice if...")
 
 Generate short meeting title (max 5 words). Return ONLY valid JSON, no markdown.`,
       },
@@ -170,7 +190,7 @@ Return JSON: {"title": "Meeting Title", "tickets": [{"id": "${meetingId}-ticket-
       },
     ],
     temperature: 0.1,
-    max_tokens: 3000,
+    max_tokens: 8000,
     response_format: { type: 'json_object' },
   });
 
@@ -217,8 +237,9 @@ async function mergeDueDates(transcript: string, tickets: TicketBlock[]): Promis
         {
           role: 'system',
           content: `You extract deadlines from meeting transcripts. Return ONLY valid JSON.
+Today is ${new Date().toISOString().split('T')[0]}.
 Given a transcript and a list of task titles, identify which tasks have explicit deadlines and output them as ISO dates (YYYY-MM-DD).
-If a deadline is relative (e.g., "by Friday", "next week"), infer the actual calendar date from context in the transcript.
+If a deadline is relative (e.g., "by Friday", "next week"), calculate the actual calendar date based on today's date.
 Use null when no deadline is mentioned for a task.`,
         },
         {
@@ -372,5 +393,77 @@ Output format:
       raw?.slice(0, 100)
     );
     throw new Error('Groq returned invalid dependency JSON');
+  }
+}
+
+export interface SprintSuggestion {
+  name: string;
+  goal: string;
+  start_date: string;
+  end_date: string;
+  ticket_indices: number[];
+}
+
+export async function generateSprints(
+  tickets: { title: string; status: string; assignee: string | null; due_date: string | null }[]
+): Promise<SprintSuggestion[]> {
+  const today = new Date().toISOString().split('T')[0];
+
+  const ticketList = tickets.map((t, i) => ({
+    index: i,
+    title: t.title,
+    status: t.status,
+    assignee: t.assignee,
+    due_date: t.due_date,
+  }));
+
+  const response = await groqT2.chat.completions.create({
+    model: 'llama-3.3-70b-versatile',
+    messages: [
+      {
+        role: 'system',
+        content: `You are a sprint planning assistant. Group meeting tickets into logical sprints.
+
+Today is ${today}. Sprint cycles are typically 1-2 weeks.
+
+RULES:
+- Group related tickets together (e.g., backend tasks in one sprint, frontend in another, or by theme)
+- Each sprint needs a name (max 4 words), a goal (1 sentence), start_date and end_date (YYYY-MM-DD)
+- Sprints should be sequential, not overlapping
+- Done tickets should be assigned to a "completed" sprint or the first sprint
+- Blocked tickets go in the sprint where their blocker is expected to be resolved
+- Every ticket must be assigned to exactly one sprint
+- Create 2-4 sprints depending on ticket count and themes
+- First sprint starts today
+
+Return ONLY valid JSON: {"sprints": [{"name": "...", "goal": "...", "start_date": "YYYY-MM-DD", "end_date": "YYYY-MM-DD", "ticket_indices": [0, 1, 2]}]}`,
+      },
+      {
+        role: 'user',
+        content: `Tickets to group:\n${JSON.stringify(ticketList, null, 2)}`,
+      },
+    ],
+    temperature: 0.2,
+    max_tokens: 2000,
+    response_format: { type: 'json_object' },
+  });
+
+  const raw = response.choices[0].message.content ?? '';
+  const clean = extractJson(raw);
+
+  try {
+    const parsed = JSON.parse(clean);
+    if (!Array.isArray(parsed.sprints)) throw new Error('sprints must be an array');
+    return parsed.sprints.map((s: any) => ({
+      name: String(s.name ?? ''),
+      goal: String(s.goal ?? ''),
+      start_date: String(s.start_date ?? today),
+      end_date: String(s.end_date ?? today),
+      ticket_indices: Array.isArray(s.ticket_indices)
+        ? s.ticket_indices.map((i: any) => Number(i))
+        : [],
+    }));
+  } catch {
+    return [];
   }
 }

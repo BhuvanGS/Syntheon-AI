@@ -174,6 +174,8 @@ export const TicketsEntity = makeEntity(
     milestoneId: { type: 'string' },
     isGroup: { type: 'boolean', default: false },
     sprintId: { type: 'string' },
+    timeEstimate: { type: 'number' },
+    timeSpent: { type: 'number' },
     createdAt: { type: 'string', default: () => new Date().toISOString() },
     updatedAt: { type: 'string', default: () => new Date().toISOString() },
   },

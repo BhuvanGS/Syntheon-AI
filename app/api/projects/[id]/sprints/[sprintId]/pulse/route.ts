@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { sprintPulse } from '@/lib/groq-ai';
 import { getSprintsByProject } from '@/lib/db';
+import { aiRateLimit } from '@/lib/rate-limit';
 
 export async function POST(
   req: NextRequest,
@@ -10,6 +11,9 @@ export async function POST(
   try {
     const { userId, orgId } = await auth();
     if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const limited = await aiRateLimit(req, userId);
+    if (limited) return limited;
 
     const { id: projectId, sprintId } = await params;
     const body = await req.json();

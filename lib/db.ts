@@ -84,6 +84,8 @@ export interface Ticket {
   milestoneId?: string | null;
   isGroup?: boolean;
   sprintId?: string | null;
+  timeEstimate?: number | null;
+  timeSpent?: number | null;
   createdAt?: string;
   updatedAt?: string;
 }

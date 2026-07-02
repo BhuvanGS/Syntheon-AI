@@ -77,6 +77,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (typeof body?.sprintId !== 'undefined') {
       updates.sprintId = body.sprintId ? String(body.sprintId) : null;
     }
+    if (typeof body?.timeEstimate !== 'undefined') {
+      updates.timeEstimate = body.timeEstimate ? Number(body.timeEstimate) : null;
+    }
+    if (typeof body?.timeSpent !== 'undefined') {
+      updates.timeSpent = body.timeSpent ? Number(body.timeSpent) : null;
+    }
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ error: 'No valid updates provided' }, { status: 400 });

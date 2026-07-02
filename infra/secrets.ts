@@ -3,6 +3,10 @@
 export function createSecrets() {
   return {
     groqApiKey: new sst.Secret('GroqApiKey', process.env.GROQ_API_KEY),
+    groqApiKeyT2: new sst.Secret(
+      'GroqApiKeyT2',
+      process.env.GROQ_API_KEY_T2 || process.env.GROQ_API_KEY
+    ),
     skribbyApiKey: new sst.Secret('SkribbyApiKey', process.env.SKRIBBY_API_KEY),
     clerkSecretKey: new sst.Secret('ClerkSecretKey', process.env.CLERK_SECRET_KEY),
     clerkWebhookSecret: new sst.Secret('ClerkWebhookSecret', process.env.CLERK_WEBHOOK_SECRET),

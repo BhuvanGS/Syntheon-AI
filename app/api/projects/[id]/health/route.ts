@@ -2,11 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getProjectById, getTicketsByProjectId, getDependenciesForProject } from '@/lib/db';
 import { suggestProjectHealth } from '@/lib/groq-ai';
+import { aiRateLimit } from '@/lib/rate-limit';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { userId, orgId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const limited = await aiRateLimit(req, userId);
+    if (limited) return limited;
 
     const { id: projectId } = await params;
     const project = await getProjectById(projectId);

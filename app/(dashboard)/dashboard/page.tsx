@@ -41,6 +41,7 @@ import { Progress } from '@/components/ui/progress';
 import { toast } from '@/hooks/use-toast';
 import { useUser, useOrganization } from '@clerk/nextjs';
 import { onCommand, emitCommand } from '@/lib/command-events';
+import { useSse } from '@/components/sse-provider';
 
 type ViewType =
   | 'dashboard'
@@ -185,8 +186,6 @@ function DashboardContent() {
   useEffect(() => {
     // Wait until Clerk has resolved membership (undefined = still loading)
     if (membership === undefined) return;
-    // Skip re-fetch on tab resume (fetched within last 5s)
-    if (Date.now() - lastFetchRef.current < 5000) return;
 
     async function loadWorkspace() {
       lastFetchRef.current = Date.now();
@@ -194,7 +193,7 @@ function DashboardContent() {
     }
 
     void loadWorkspace();
-  }, [membership === undefined, orgId, loadWorkspaceData]);
+  }, [membership === undefined, orgId, loadWorkspaceData, currentView]);
 
   function handleViewChange(view: ViewType) {
     if (view === 'dashboard') {
@@ -257,6 +256,38 @@ function DashboardContent() {
   const refreshWorkspace = useCallback(async () => {
     await loadWorkspaceData();
   }, [loadWorkspaceData]);
+
+  const { on: sseOn, off: sseOff } = useSse();
+
+  useEffect(() => {
+    const handleRefresh = () => {
+      void loadWorkspaceData();
+      void loadProjects();
+    };
+    const handleTicketEvent = () => {
+      void loadWorkspaceData();
+    };
+
+    sseOn('ticket_updated', handleTicketEvent);
+    sseOn('ticket_created', handleTicketEvent);
+    sseOn('ticket_deleted', handleTicketEvent);
+    sseOn('project_created', handleRefresh);
+    sseOn('project_updated', handleRefresh);
+    sseOn('project_deleted', handleRefresh);
+    sseOn('meeting_status_changed', handleTicketEvent);
+    sseOn('meeting_ready', handleTicketEvent);
+
+    return () => {
+      sseOff('ticket_updated', handleTicketEvent);
+      sseOff('ticket_created', handleTicketEvent);
+      sseOff('ticket_deleted', handleTicketEvent);
+      sseOff('project_created', handleRefresh);
+      sseOff('project_updated', handleRefresh);
+      sseOff('project_deleted', handleRefresh);
+      sseOff('meeting_status_changed', handleTicketEvent);
+      sseOff('meeting_ready', handleTicketEvent);
+    };
+  }, [sseOn, sseOff, loadWorkspaceData, loadProjects]);
 
   async function handleCreateProject(payload: { name: string; context: string }) {
     const res = await fetch('/api/projects', {

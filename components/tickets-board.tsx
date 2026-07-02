@@ -77,6 +77,8 @@ interface Ticket {
   deadline_time?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
+  timeEstimate?: number | null;
+  timeSpent?: number | null;
 }
 
 interface Label {
@@ -111,6 +113,8 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
   const [metaPriority, setMetaPriority] = useState<TicketPriority>('none');
   const [metaType, setMetaType] = useState<TicketType>('task');
   const [metaEstimate, setMetaEstimate] = useState<TicketEstimate>('none');
+  const [metaTimeEstimate, setMetaTimeEstimate] = useState<number | null>(null);
+  const [metaTimeSpent, setMetaTimeSpent] = useState<number | null>(null);
   const [metaLabels, setMetaLabels] = useState<string[]>([]);
 
   // Stale ticket detection (7 days without update, not done)
@@ -345,6 +349,8 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
     setMetaPriority(ticket.priority ?? 'none');
     setMetaType(ticket.type ?? 'task');
     setMetaEstimate(ticket.estimate ?? 'none');
+    setMetaTimeEstimate(ticket.timeEstimate ?? null);
+    setMetaTimeSpent(ticket.timeSpent ?? null);
     setMetaLabels(ticket.labels ?? []);
   }
 
@@ -369,6 +375,8 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
           type: metaType,
           estimate: metaEstimate,
           labels: metaLabels,
+          timeEstimate: metaTimeEstimate,
+          timeSpent: metaTimeSpent,
         }),
       });
 
@@ -406,6 +414,8 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                   type: metaType,
                   estimate: metaEstimate,
                   labels: metaLabels,
+                  timeEstimate: metaTimeEstimate,
+                  timeSpent: metaTimeSpent,
                   bypassGate: true,
                 }),
               });
@@ -478,6 +488,8 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                 type: metaType,
                 estimate: metaEstimate,
                 labels: metaLabels,
+                timeEstimate: metaTimeEstimate,
+                timeSpent: metaTimeSpent,
               }
             : ticket
         )
@@ -961,6 +973,14 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
             await onSaved?.();
           }}
           labels={labels}
+          onBulkDelete={async () => {
+            const ids = [...selectedIds];
+            if (ids.length === 0) return;
+            await Promise.all(ids.map((id) => fetch(`/api/tickets/${id}`, { method: 'DELETE' })));
+            setTickets((prev) => prev.filter((t) => !selectedIds.has(t.id)));
+            setSelectedIds(new Set());
+            await onSaved?.();
+          }}
         />
       )}
 
@@ -1115,10 +1135,14 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                 type={metaType}
                 estimate={metaEstimate}
                 labels={metaLabels}
+                timeEstimate={metaTimeEstimate}
+                timeSpent={metaTimeSpent}
                 onPriorityChange={setMetaPriority}
                 onTypeChange={setMetaType}
                 onEstimateChange={setMetaEstimate}
                 onLabelsChange={setMetaLabels}
+                onTimeEstimateChange={setMetaTimeEstimate}
+                onTimeSpentChange={setMetaTimeSpent}
                 availableLabels={labels}
                 onManageLabels={() => setLabelManagerOpen(true)}
               />

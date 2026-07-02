@@ -22,10 +22,14 @@ interface TicketMetadataEditorProps {
   type: TicketType;
   estimate: TicketEstimate;
   labels: string[];
+  timeEstimate?: number | null;
+  timeSpent?: number | null;
   onPriorityChange: (p: TicketPriority) => void;
   onTypeChange: (t: TicketType) => void;
   onEstimateChange: (e: TicketEstimate) => void;
   onLabelsChange: (labels: string[]) => void;
+  onTimeEstimateChange?: (h: number | null) => void;
+  onTimeSpentChange?: (h: number | null) => void;
   availableLabels: Label[];
   onManageLabels?: () => void;
 }
@@ -77,10 +81,14 @@ export function TicketMetadataEditor({
   type,
   estimate,
   labels,
+  timeEstimate,
+  timeSpent,
   onPriorityChange,
   onTypeChange,
   onEstimateChange,
   onLabelsChange,
+  onTimeEstimateChange,
+  onTimeSpentChange,
   availableLabels,
   onManageLabels,
 }: TicketMetadataEditorProps) {
@@ -212,6 +220,60 @@ export function TicketMetadataEditor({
           )}
         </FieldDropdown>
       </div>
+
+      {/* Time tracking */}
+      {onTimeEstimateChange && onTimeSpentChange && (
+        <div className="grid grid-cols-3 gap-3">
+          <div className="relative">
+            <div className="flex items-center justify-between px-3 py-2 rounded-lg border border-border bg-muted/30">
+              <span className="text-muted-foreground text-xs">Estimate (h)</span>
+              <input
+                type="number"
+                min={0}
+                step={0.5}
+                value={timeEstimate ?? ''}
+                onChange={(e) =>
+                  onTimeEstimateChange(e.target.value ? Number(e.target.value) : null)
+                }
+                className="w-16 text-right bg-transparent text-foreground text-xs font-medium outline-none"
+                placeholder="0"
+              />
+            </div>
+          </div>
+          <div className="relative">
+            <div className="flex items-center justify-between px-3 py-2 rounded-lg border border-border bg-muted/30">
+              <span className="text-muted-foreground text-xs">Spent (h)</span>
+              <input
+                type="number"
+                min={0}
+                step={0.5}
+                value={timeSpent ?? ''}
+                onChange={(e) => onTimeSpentChange(e.target.value ? Number(e.target.value) : null)}
+                className="w-16 text-right bg-transparent text-foreground text-xs font-medium outline-none"
+                placeholder="0"
+              />
+            </div>
+          </div>
+          <div className="flex items-center justify-between px-3 py-2 rounded-lg border border-border bg-muted/30">
+            <span className="text-muted-foreground text-xs">Remaining</span>
+            <span
+              className={`text-xs font-medium ${
+                (timeEstimate ?? 0) - (timeSpent ?? 0) < 0
+                  ? 'text-red-500'
+                  : (timeEstimate ?? 0) - (timeSpent ?? 0) === 0 && timeEstimate
+                    ? 'text-green-500'
+                    : 'text-foreground'
+              }`}
+            >
+              {timeEstimate != null && timeSpent != null
+                ? `${Math.max(0, timeEstimate - timeSpent)}h`
+                : timeEstimate != null
+                  ? `${timeEstimate}h`
+                  : '—'}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Labels */}
       <div ref={labelRef} className="relative">

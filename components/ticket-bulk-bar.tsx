@@ -26,6 +26,7 @@ interface BulkActionBarProps {
   onSelectAll: () => void;
   onClear: () => void;
   onBulkUpdate: (updates: Record<string, unknown>) => Promise<void>;
+  onBulkDelete: () => Promise<void>;
   labels: { id: string; name: string; color: string }[];
   statuses: { key: string; label: string }[];
 }
@@ -73,10 +74,12 @@ export function BulkActionBar({
   onSelectAll,
   onClear,
   onBulkUpdate,
+  onBulkDelete,
   labels,
   statuses,
 }: BulkActionBarProps) {
   const [applying, setApplying] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   if (selectedIds.length === 0) return null;
 
@@ -229,12 +232,49 @@ export function BulkActionBar({
 
       <div className="ml-auto flex items-center gap-2">
         {applying && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+        {confirmingDelete ? (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-destructive font-medium">
+              Delete {selectedIds.length} tickets?
+            </span>
+            <button
+              onClick={async () => {
+                setApplying(true);
+                try {
+                  await onBulkDelete();
+                  setConfirmingDelete(false);
+                } finally {
+                  setApplying(false);
+                }
+              }}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium text-white bg-destructive hover:bg-destructive/90 transition-colors"
+            >
+              <Trash2 className="h-3 w-3" />
+              Confirm
+            </button>
+            <button
+              onClick={() => setConfirmingDelete(false)}
+              className="px-2.5 py-1 rounded-md text-xs font-medium text-muted-foreground hover:bg-muted/60 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirmingDelete(true)}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Delete
+          </button>
+        )}
+        <div className="w-px h-5 bg-border" />
         <button
           onClick={onClear}
           className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
           <X className="h-3.5 w-3.5" />
-          Clear selection
+          Clear
         </button>
       </div>
     </div>

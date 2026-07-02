@@ -60,7 +60,9 @@ export async function POST(req: NextRequest) {
     const clerkUser = await currentUser();
     if (clerkUser) {
       const email = clerkUser.emailAddresses?.[0]?.emailAddress ?? '';
-      await ensureUser(userId, email);
+      const fullName =
+        `${clerkUser.firstName ?? ''} ${clerkUser.lastName ?? ''}`.trim() || undefined;
+      await ensureUser(userId, email, fullName);
     }
 
     const body = await req.json();

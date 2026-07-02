@@ -13,7 +13,11 @@ import {
   Clock,
   ArrowLeft,
 } from 'lucide-react';
-import { isPublicDomainEmail, generateOrgNameFromDomain } from '@/lib/org-utils';
+import {
+  isPublicDomainEmail,
+  generateOrgNameFromDomain,
+  generatePersonalOrgName,
+} from '@/lib/org-utils';
 import { extractDomain } from '@/lib/public-domains';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -107,7 +111,7 @@ export default function OnboardingPage() {
         if (memberships.length === 0) {
           setStep('error');
         }
-      }, 15000);
+      }, 5000);
       return () => clearTimeout(timeout);
     }
 
@@ -283,23 +287,62 @@ export default function OnboardingPage() {
         >
           <div className="flex justify-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/50 text-muted-foreground">
-              <Clock className="h-7 w-7" />
+              <Building2 className="h-7 w-7" />
             </div>
           </div>
           <h1 className="font-playfair text-2xl font-bold text-foreground">
-            Taking a moment to set up
+            Set up your workspace
           </h1>
           <p className="text-sm text-muted-foreground">
-            Your workspace is still being created. This usually takes a few seconds. If it&apos;s
-            taking too long, try again.
+            Let&apos;s create your personal workspace to get started.
           </p>
-          <Button onClick={handleRetry} className="w-full rounded-full gap-2" disabled={loading}>
+          {error && <p className="text-xs text-red-500">{error}</p>}
+          <Button
+            onClick={async () => {
+              setLoading(true);
+              setError('');
+              try {
+                const res = await fetch('/api/organizations', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                  body: JSON.stringify({
+                    name: generatePersonalOrgName(
+                      userEmail,
+                      user?.fullName || user?.firstName || undefined
+                    ),
+                    domain: null,
+                  }),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Failed to create workspace');
+                if (data.id && setActive) {
+                  await setActive({ organization: data.id });
+                }
+                window.location.assign('/dashboard');
+              } catch (err: any) {
+                setError(err?.message || 'Failed to create workspace');
+                setLoading(false);
+              }
+            }}
+            className="w-full rounded-full gap-2"
+            disabled={loading}
+          >
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <Sparkles className="h-4 w-4" />
+              <Building2 className="h-4 w-4" />
             )}
-            {loading ? 'Retrying...' : 'Retry'}
+            {loading ? 'Creating...' : 'Create Workspace'}
+          </Button>
+          <Button
+            onClick={handleRetry}
+            variant="ghost"
+            className="w-full rounded-full gap-2"
+            disabled={loading}
+          >
+            <Sparkles className="h-4 w-4" />
+            Retry
           </Button>
         </motion.div>
       </div>

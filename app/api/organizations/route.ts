@@ -24,8 +24,10 @@ export async function POST(req: NextRequest) {
     // Ensure creator exists in DB for same-domain fallback detection
     const clerkUser = await client.users.getUser(session.userId);
     const creatorEmail = clerkUser.emailAddresses[0]?.emailAddress ?? '';
+    const creatorName =
+      `${clerkUser.firstName ?? ''} ${clerkUser.lastName ?? ''}`.trim() || undefined;
     if (creatorEmail) {
-      await ensureUser(session.userId, creatorEmail);
+      await ensureUser(session.userId, creatorEmail, creatorName);
     }
 
     // Check if user already has an org (e.g. Clerk org was created but metadata failed)

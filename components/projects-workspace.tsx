@@ -199,6 +199,8 @@ interface Ticket {
   milestoneId?: string | null;
   isGroup?: boolean;
   sprintId?: string | null;
+  timeEstimate?: number | null;
+  timeSpent?: number | null;
   createdAt?: string | null;
   updatedAt?: string | null;
 }
@@ -276,6 +278,8 @@ export function ProjectsWorkspace({
   const [metaPriority, setMetaPriority] = useState<TicketPriority>('none');
   const [metaType, setMetaType] = useState<TicketType>('task');
   const [metaEstimate, setMetaEstimate] = useState<TicketEstimate>('none');
+  const [metaTimeEstimate, setMetaTimeEstimate] = useState<number | null>(null);
+  const [metaTimeSpent, setMetaTimeSpent] = useState<number | null>(null);
   const [metaLabels, setMetaLabels] = useState<string[]>([]);
   const [metaMilestoneId, setMetaMilestoneId] = useState<string | null>(null);
   const [metaSprintId, setMetaSprintId] = useState<string | null>(null);
@@ -295,6 +299,7 @@ export function ProjectsWorkspace({
   });
   const [sprintStonesView, setSprintStonesView] = useState<SprintStonesView>('analytics');
   const [showCreateSprintForm, setShowCreateSprintForm] = useState(false);
+  const [generatingSprints, setGeneratingSprints] = useState(false);
   const [showCreateMilestoneForm, setShowCreateMilestoneForm] = useState(false);
   const [showCreateGroupDialog, setShowCreateGroupDialog] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
@@ -1086,6 +1091,8 @@ export function ProjectsWorkspace({
     setMetaPriority(ticket.priority ?? 'none');
     setMetaType(ticket.type ?? 'task');
     setMetaEstimate(ticket.estimate ?? 'none');
+    setMetaTimeEstimate(ticket.timeEstimate ?? null);
+    setMetaTimeSpent(ticket.timeSpent ?? null);
     setMetaLabels(ticket.labels ?? []);
     setMetaMilestoneId(ticket.milestoneId ?? null);
     setMetaSprintId(ticket.sprintId ?? null);
@@ -1118,6 +1125,8 @@ export function ProjectsWorkspace({
     setMetaPriority(previous.priority ?? 'none');
     setMetaType(previous.type ?? 'task');
     setMetaEstimate(previous.estimate ?? 'none');
+    setMetaTimeEstimate(previous.timeEstimate ?? null);
+    setMetaTimeSpent(previous.timeSpent ?? null);
     setMetaLabels(previous.labels ?? []);
     setMetaMilestoneId(previous.milestoneId ?? null);
     setMetaSprintId(previous.sprintId ?? null);
@@ -1156,6 +1165,8 @@ export function ProjectsWorkspace({
           labels: metaLabels,
           milestoneId: metaMilestoneId,
           sprintId: metaSprintId,
+          timeEstimate: metaTimeEstimate,
+          timeSpent: metaTimeSpent,
         }),
       });
 
@@ -1590,18 +1601,30 @@ export function ProjectsWorkspace({
       const eventProjectId = data.projectId as string | null | undefined;
       if (!eventProjectId || eventProjectId === selectedProjectId) {
         void onRefresh();
+        if (selectedProjectId) {
+          void fetchSprints(selectedProjectId);
+          void fetchMilestones(selectedProjectId);
+        }
       }
     };
     const handleTicketCreated = (data: Record<string, unknown>) => {
       const eventProjectId = data.projectId as string | null | undefined;
       if (!eventProjectId || eventProjectId === selectedProjectId) {
         void onRefresh();
+        if (selectedProjectId) {
+          void fetchSprints(selectedProjectId);
+          void fetchMilestones(selectedProjectId);
+        }
       }
     };
     const handleTicketDeleted = (data: Record<string, unknown>) => {
       const eventProjectId = data.projectId as string | null | undefined;
       if (!eventProjectId || eventProjectId === selectedProjectId) {
         void onRefresh();
+        if (selectedProjectId) {
+          void fetchSprints(selectedProjectId);
+          void fetchMilestones(selectedProjectId);
+        }
       }
     };
 
@@ -2236,6 +2259,21 @@ export function ProjectsWorkspace({
                   await onRefresh?.();
                 }}
                 labels={labels}
+                onBulkDelete={async () => {
+                  const ids = [...selectedIds];
+                  if (ids.length === 0) return;
+                  await Promise.all(
+                    ids.map((id) => fetch(`/api/tickets/${id}`, { method: 'DELETE' }))
+                  );
+                  setSelectedIds(new Set());
+                  await onRefresh?.();
+                  if (selectedProjectId) {
+                    await Promise.all([
+                      fetchSprints(selectedProjectId),
+                      fetchMilestones(selectedProjectId),
+                    ]);
+                  }
+                }}
               />
             )}
 
@@ -3574,6 +3612,48 @@ export function ProjectsWorkspace({
                 </button>
                 <div className="w-px h-5 bg-border mx-1" />
                 <button
+                  onClick={async () => {
+                    if (!selectedProjectId) return;
+                    setGeneratingSprints(true);
+                    try {
+                      const res = await fetch(
+                        `/api/projects/${selectedProjectId}/generate-sprints`,
+                        {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ orgId: membership?.organization?.id ?? '' }),
+                        }
+                      );
+                      const data = await res.json();
+                      if (res.ok) {
+                        showToast(
+                          `Generated ${data.sprints?.length ?? 0} sprints from ${tickets.length} tickets`,
+                          'success'
+                        );
+                        await fetchSprints(selectedProjectId);
+                        await onRefresh();
+                      } else {
+                        showToast(data?.error || 'Failed to generate sprints', 'error');
+                      }
+                    } catch {
+                      showToast('Failed to generate sprints', 'error');
+                    } finally {
+                      setGeneratingSprints(false);
+                    }
+                  }}
+                  disabled={generatingSprints || tickets.length < 5}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors text-primary hover:bg-primary/10 disabled:opacity-50"
+                  title={
+                    tickets.length < 5
+                      ? 'Need at least 5 tickets'
+                      : 'AI-generate sprints from project tickets'
+                  }
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  {generatingSprints ? 'Generating...' : 'Generate Sprints'}
+                </button>
+                <div className="w-px h-5 bg-border mx-1" />
+                <button
                   onClick={() => {
                     if (sprintStonesView === 'milestones') {
                       setShowCreateMilestoneForm((v) => !v);
@@ -4598,12 +4678,10 @@ export function ProjectsWorkspace({
                     const med = sorted[Math.floor(sorted.length / 2)];
                     const bins = [0, 1, 3, 7, 14, 30, Infinity],
                       labels = ['0d', '1d', '2-3d', '4-7d', '8-14d', '15-30d', '30d+'];
-                    const hd = bins
-                      .slice(0, -1)
-                      .map((_, i) => ({
-                        range: labels[i],
-                        count: ct.filter((c) => c >= bins[i] && c < bins[i + 1]).length,
-                      }));
+                    const hd = bins.slice(0, -1).map((_, i) => ({
+                      range: labels[i],
+                      count: ct.filter((c) => c >= bins[i] && c < bins[i + 1]).length,
+                    }));
                     return (
                       <>
                         <p className="text-xs text-muted-foreground">
@@ -5553,10 +5631,14 @@ export function ProjectsWorkspace({
                     type={metaType}
                     estimate={metaEstimate}
                     labels={metaLabels}
+                    timeEstimate={metaTimeEstimate}
+                    timeSpent={metaTimeSpent}
                     onPriorityChange={setMetaPriority}
                     onTypeChange={setMetaType}
                     onEstimateChange={setMetaEstimate}
                     onLabelsChange={setMetaLabels}
+                    onTimeEstimateChange={setMetaTimeEstimate}
+                    onTimeSpentChange={setMetaTimeSpent}
                     availableLabels={labels}
                     onManageLabels={() => setLabelManagerOpen(true)}
                   />
