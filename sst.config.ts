@@ -25,7 +25,7 @@ export default $config({
     const site = createSite({
       appUrl:
         $app.stage === 'production'
-          ? 'https://www.syntheonhq.dev'
+          ? 'https://syntheonhub.com'
           : 'https://d2e5q6e4vnqp7s.cloudfront.net',
       uploads,
       dynamoTables,

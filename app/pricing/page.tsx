@@ -1,8 +1,14 @@
 'use client';
 
 import Link from 'next/link';
+import { useState, useEffect } from 'react';
+
+const APP_URL = 'https://app.syntheonhub.com';
 
 export default function PricingPage() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   const plans = [
     {
       name: 'Starter',
@@ -10,11 +16,10 @@ export default function PricingPage() {
       desc: 'Perfect for solo founders and small teams getting started.',
       features: [
         '5 meetings per month',
-        '3 code generations per month',
-        '1 GitHub repository',
-        '1 Linear workspace',
-        'GitHub Pages deployment',
-        'Spec blocks + MCT',
+        'AI ticket extraction',
+        'Kanban board with priorities & labels',
+        'Dependency graph',
+        '1 project',
         'Email support',
       ],
       cta: 'Start free trial',
@@ -26,11 +31,11 @@ export default function PricingPage() {
       desc: 'For growing teams shipping features every week.',
       features: [
         '25 meetings per month',
-        '15 code generations per month',
-        '5 GitHub repositories',
-        '3 Linear workspaces',
-        'GitHub Pages deployment',
-        'Spec blocks + MCT',
+        'AI ticket extraction',
+        'Kanban board with priorities & labels',
+        'Dependency graph',
+        '5 projects',
+        'Sprint tracking & burndown charts',
         'Priority email support',
         'Usage analytics',
       ],
@@ -43,11 +48,11 @@ export default function PricingPage() {
       desc: 'Unlimited everything for serious engineering teams.',
       features: [
         'Unlimited meetings',
-        'Unlimited code generations',
-        'Unlimited repositories',
-        'Unlimited Linear workspaces',
-        'GitHub Pages deployment',
-        'Spec blocks + MCT',
+        'AI ticket extraction',
+        'Kanban board with priorities & labels',
+        'Dependency graph',
+        'Unlimited projects',
+        'Sprint tracking & burndown charts',
         'Dedicated support',
         'Usage analytics',
         'Custom bot name',
@@ -58,50 +63,48 @@ export default function PricingPage() {
     },
   ];
 
-  const faqs = [
-    {
-      q: 'What counts as a meeting?',
-      a: 'A meeting is any call where the Syntheon bot joins and transcribes. Whether it is 5 minutes or 2 hours, it counts as one meeting against your monthly limit.',
-    },
-    {
-      q: 'What is a code generation?',
-      a: 'A code generation is one "Approve and Ship" action — where Syntheon generates code, opens a GitHub PR, and creates Linear tickets. Follow-up generations using MCT also count.',
-    },
-    {
-      q: 'Do I need to provide my own GitHub and Linear accounts?',
-      a: 'Yes. You connect your own GitHub and Linear accounts via OAuth. Syntheon acts on your behalf — your code goes to your repos, your tickets go to your workspace.',
-    },
-    {
-      q: 'What happens if I exceed my meeting limit?',
-      a: 'We will notify you when you reach 80% of your limit. Once exceeded, the bot feature pauses until your next billing cycle. You can upgrade anytime to continue.',
-    },
-    {
-      q: 'Is there a free trial?',
-      a: 'Yes. Every plan starts with a 7-day free trial. No credit card required to start. If you are not satisfied within 7 days and have processed fewer than 2 meetings, we offer a full refund.',
-    },
-    {
-      q: 'Can I change plans anytime?',
-      a: 'Yes. Upgrades take effect immediately (pro-rated). Downgrades take effect at the next billing cycle.',
-    },
-    {
-      q: 'Do you offer annual pricing?',
-      a: 'Annual plans with a 20% discount are coming soon. Contact us at support@syntheon.ai to discuss early access.',
-    },
-    {
-      q: 'What payment methods do you accept?',
-      a: 'We accept all major credit/debit cards, UPI, net banking, and wallets via Razorpay. All prices are in INR inclusive of GST.',
-    },
-  ];
-
   return (
     <div
       style={{
         minHeight: '100vh',
-        background: '#000000',
-        color: '#fafafa',
-        fontFamily: "'DM Sans', sans-serif",
+        background: '#000',
+        color: '#fff',
+        fontFamily: "'Inter', system-ui, sans-serif",
+        overflowX: 'hidden',
       }}
     >
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+        html {
+          scroll-behavior: smooth;
+          color-scheme: dark;
+        }
+        * {
+          -webkit-tap-highlight-color: transparent;
+        }
+        .pricing-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 1.5rem;
+        }
+        @media (max-width: 768px) {
+          .pricing-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+        body::before {
+          content: '';
+          position: fixed;
+          inset: 0;
+          background-image:
+            linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+          background-size: 48px 48px;
+          pointer-events: none;
+          z-index: 0;
+        }
+      `}</style>
+
       {/* Nav */}
       <nav
         style={{
@@ -110,11 +113,11 @@ export default function PricingPage() {
           left: 0,
           right: 0,
           zIndex: 50,
-          borderBottom: '1px solid #1f1f1f',
-          background: 'rgba(0,0,0,0.95)',
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          background: 'rgba(0,0,0,0.8)',
           backdropFilter: 'blur(12px)',
-          padding: '0 2rem',
-          height: '60px',
+          padding: '0 5vw',
+          height: '64px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -122,115 +125,120 @@ export default function PricingPage() {
       >
         <Link
           href="/"
-          style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}
+          style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', textDecoration: 'none' }}
         >
           <img
-            src="/logo.png"
+            src="/syntheon-logo.png"
             alt="Syntheon"
-            style={{ width: '32px', height: '32px', objectFit: 'contain' }}
+            width={28}
+            height={28}
+            style={{ borderRadius: '6px', objectFit: 'cover' }}
           />
           <span
             style={{
-              fontFamily: "'DM Serif Display', serif",
+              fontFamily: "'Space Grotesk', sans-serif",
               fontSize: '18px',
-              color: '#d4d4d4',
+              fontWeight: 700,
+              color: '#fff',
+              letterSpacing: '-0.02em',
             }}
           >
             Syntheon
           </span>
         </Link>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-          <Link
-            href="/how-it-works"
-            style={{
-              fontSize: '14px',
-              color: '#a3a3a3',
-              textDecoration: 'none',
-            }}
-          >
-            How it works
-          </Link>
-          <Link
-            href="/legal"
-            style={{
-              fontSize: '14px',
-              color: '#a3a3a3',
-              textDecoration: 'none',
-            }}
-          >
-            Legal
-          </Link>
-          <Link
-            href="/dashboard"
-            style={{
-              background: '#000000',
-              color: '#f5f5f5',
-              padding: '8px 18px',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: '500',
-              textDecoration: 'none',
-            }}
-          >
-            Open App
-          </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+          {mounted ? (
+            <>
+              <Link
+                href="/how-it-works"
+                style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)', textDecoration: 'none' }}
+              >
+                How it works
+              </Link>
+              <Link
+                href="/legal"
+                style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)', textDecoration: 'none' }}
+              >
+                Legal
+              </Link>
+              <Link
+                href={`${APP_URL}/sign-up`}
+                style={{
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  color: '#000',
+                  background: '#fff',
+                  textDecoration: 'none',
+                  padding: '0.5rem 1rem',
+                  borderRadius: '6px',
+                }}
+              >
+                Start Free
+              </Link>
+            </>
+          ) : null}
         </div>
       </nav>
 
       {/* Hero */}
-      <section
-        style={{
-          paddingTop: '120px',
-          paddingBottom: '60px',
-          textAlign: 'center',
-          padding: '120px 2rem 60px',
-        }}
-      >
-        <h1
+      <section style={{ paddingTop: '140px', textAlign: 'center', padding: '140px 5vw 60px' }}>
+        <p
           style={{
-            fontFamily: "'DM Serif Display', serif",
-            fontSize: 'clamp(2rem, 5vw, 3.5rem)',
-            fontWeight: '400',
-            marginBottom: '1rem',
-            color: '#f5f5f5',
+            fontSize: '12px',
+            letterSpacing: '0.25em',
+            textTransform: 'uppercase',
+            color: 'rgba(255,255,255,0.35)',
+            marginBottom: '1.5rem',
+            fontWeight: 500,
           }}
         >
-          Simple, honest pricing
+          Pricing
+        </p>
+        <h1
+          style={{
+            fontFamily: "'Space Grotesk', sans-serif",
+            fontSize: 'clamp(2.5rem, 6vw, 5rem)',
+            fontWeight: 700,
+            color: '#fff',
+            lineHeight: 1,
+            letterSpacing: '-0.04em',
+            textWrap: 'balance',
+            marginBottom: '1.5rem',
+          }}
+        >
+          Simple, honest pricing.
         </h1>
         <p
           style={{
-            fontSize: '1.1rem',
-            color: '#737373',
-            fontWeight: '300',
+            fontSize: 'clamp(1rem, 2vw, 1.25rem)',
+            color: 'rgba(255,255,255,0.45)',
             maxWidth: '500px',
             margin: '0 auto 0.75rem',
           }}
         >
           All prices in INR. GST applicable. 7-day free trial on all plans.
         </p>
-        <p style={{ fontSize: '13px', color: '#525252' }}>No credit card required to start.</p>
+        <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.3)' }}>
+          No credit card required to start.
+        </p>
       </section>
 
       {/* Plans */}
-      <section style={{ maxWidth: '1000px', margin: '0 auto', padding: '0 2rem 80px' }}>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            gap: '1.5rem',
-            alignItems: 'start',
-          }}
-        >
+      <section style={{ maxWidth: '1100px', margin: '0 auto', padding: '20px 5vw 80px' }}>
+        <div className="pricing-grid" style={{ alignItems: 'stretch' }}>
           {plans.map((plan, i) => (
             <div
               key={i}
               style={{
-                background: '#0a0a0a',
-                border: plan.popular ? '2px solid #525252' : '1px solid #1f1f1f',
+                background: 'rgba(255,255,255,0.02)',
+                border: plan.popular
+                  ? '1px solid rgba(255,255,255,0.2)'
+                  : '1px solid rgba(255,255,255,0.08)',
                 borderRadius: '16px',
                 padding: '2rem',
                 position: 'relative',
-                transform: plan.popular ? 'translateY(-8px)' : 'none',
+                display: 'flex',
+                flexDirection: 'column',
               }}
             >
               {plan.popular && (
@@ -240,10 +248,10 @@ export default function PricingPage() {
                     top: '-14px',
                     left: '50%',
                     transform: 'translateX(-50%)',
-                    background: '#525252',
-                    color: '#f5f5f5',
+                    background: '#fff',
+                    color: '#000',
                     fontSize: '12px',
-                    fontWeight: '600',
+                    fontWeight: 600,
                     padding: '4px 16px',
                     borderRadius: '20px',
                     whiteSpace: 'nowrap',
@@ -253,12 +261,11 @@ export default function PricingPage() {
                   Most popular
                 </div>
               )}
-
               <p
                 style={{
                   fontSize: '13px',
-                  fontWeight: '600',
-                  color: '#525252',
+                  fontWeight: 600,
+                  color: 'rgba(255,255,255,0.4)',
                   letterSpacing: '0.08em',
                   textTransform: 'uppercase',
                   marginBottom: '0.5rem',
@@ -274,55 +281,53 @@ export default function PricingPage() {
                   marginBottom: '0.5rem',
                 }}
               >
-                <span style={{ fontSize: '14px', color: '#737373' }}>₹</span>
+                <span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)' }}>₹</span>
                 <span
                   style={{
-                    fontFamily: "'DM Serif Display', serif",
+                    fontFamily: "'Space Grotesk', sans-serif",
                     fontSize: '3rem',
-                    fontWeight: '400',
-                    color: '#f5f5f5',
-                    lineHeight: '1',
+                    fontWeight: 700,
+                    color: '#fff',
+                    lineHeight: 1,
                   }}
                 >
                   {plan.price}
                 </span>
-                <span style={{ fontSize: '14px', color: '#737373' }}>/month</span>
+                <span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)' }}>/month</span>
               </div>
               <p
                 style={{
                   fontSize: '14px',
-                  color: '#737373',
-                  fontWeight: '300',
+                  color: 'rgba(255,255,255,0.5)',
                   marginBottom: '1.5rem',
-                  lineHeight: '1.6',
+                  lineHeight: 1.6,
                 }}
               >
                 {plan.desc}
               </p>
-
               <Link
-                href="/dashboard"
+                href={`${APP_URL}/sign-up`}
                 style={{
                   display: 'block',
                   textAlign: 'center',
-                  background: plan.popular ? '#000000' : 'none',
-                  color: plan.popular ? '#f5f5f5' : '#a3a3a3',
-                  border: plan.popular ? 'none' : '1.5px solid #333333',
+                  background: plan.popular ? '#fff' : 'transparent',
+                  color: plan.popular ? '#000' : 'rgba(255,255,255,0.7)',
+                  border: plan.popular ? 'none' : '1px solid rgba(255,255,255,0.15)',
                   padding: '12px',
                   borderRadius: '8px',
                   fontSize: '15px',
-                  fontWeight: '600',
+                  fontWeight: 600,
                   textDecoration: 'none',
                   marginBottom: '1.5rem',
                 }}
               >
                 {plan.cta}
               </Link>
-
               <div
                 style={{
-                  borderTop: '1px solid #1f1f1f',
+                  borderTop: '1px solid rgba(255,255,255,0.08)',
                   paddingTop: '1.5rem',
+                  flex: 1,
                 }}
               >
                 {plan.features.map((f, j) => (
@@ -335,16 +340,12 @@ export default function PricingPage() {
                       marginBottom: '0.75rem',
                     }}
                   >
-                    <span style={{ color: '#525252', fontSize: '16px', flexShrink: 0 }}>✓</span>
                     <span
-                      style={{
-                        fontSize: '14px',
-                        color: '#a3a3a3',
-                        fontWeight: '300',
-                      }}
+                      style={{ color: 'rgba(255,255,255,0.3)', fontSize: '14px', flexShrink: 0 }}
                     >
-                      {f}
+                      ✓
                     </span>
+                    <span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)' }}>{f}</span>
                   </div>
                 ))}
               </div>
@@ -354,24 +355,24 @@ export default function PricingPage() {
       </section>
 
       {/* Enterprise */}
-      <section
-        style={{ maxWidth: '700px', margin: '0 auto', padding: '0 2rem 80px', textAlign: 'center' }}
-      >
+      <section style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 5vw 80px' }}>
         <div
           style={{
-            background: '#0a0a0a',
-            border: '1px solid #1f1f1f',
+            background: 'rgba(255,255,255,0.02)',
+            border: '1px solid rgba(255,255,255,0.08)',
             borderRadius: '16px',
             padding: '2.5rem',
+            textAlign: 'center',
           }}
         >
           <h2
             style={{
-              fontFamily: "'DM Serif Display', serif",
+              fontFamily: "'Space Grotesk', sans-serif",
               fontSize: '1.8rem',
-              fontWeight: '400',
+              fontWeight: 700,
               marginBottom: '0.75rem',
-              color: '#f5f5f5',
+              color: '#fff',
+              letterSpacing: '-0.02em',
             }}
           >
             Enterprise
@@ -379,25 +380,27 @@ export default function PricingPage() {
           <p
             style={{
               fontSize: '15px',
-              color: '#737373',
-              fontWeight: '300',
+              color: 'rgba(255,255,255,0.5)',
               marginBottom: '1.5rem',
-              lineHeight: '1.7',
+              lineHeight: 1.7,
+              maxWidth: '500px',
+              margin: '0 auto 1.5rem',
             }}
           >
             Custom deployment, SSO, dedicated support, SLA guarantees, and volume pricing for large
             engineering teams.
           </p>
           <a
-            href="mailto:sales@syntheon.ai"
+            href="mailto:sales@syntheonhub.com"
             style={{
               display: 'inline-block',
-              background: '#000000',
-              color: '#f5f5f5',
+              background: 'transparent',
+              color: 'rgba(255,255,255,0.7)',
+              border: '1px solid rgba(255,255,255,0.15)',
               padding: '12px 28px',
               borderRadius: '8px',
               fontSize: '15px',
-              fontWeight: '600',
+              fontWeight: 600,
               textDecoration: 'none',
             }}
           >
@@ -406,116 +409,92 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* FAQ */}
-      <section style={{ maxWidth: '700px', margin: '0 auto', padding: '0 2rem 100px' }}>
-        <h2
+      {/* FAQ link */}
+      <section
+        style={{ maxWidth: '700px', margin: '0 auto', padding: '0 5vw 100px', textAlign: 'center' }}
+      >
+        <p style={{ fontSize: '16px', color: 'rgba(255,255,255,0.5)', marginBottom: '1rem' }}>
+          Have questions?
+        </p>
+        <Link
+          href="/faq"
           style={{
-            fontFamily: "'DM Serif Display', serif",
-            fontSize: '2rem',
-            fontWeight: '400',
-            textAlign: 'center',
-            marginBottom: '3rem',
-            color: '#f5f5f5',
+            fontSize: '16px',
+            fontWeight: 600,
+            color: '#fff',
+            textDecoration: 'none',
+            borderBottom: '1px solid rgba(255,255,255,0.3)',
+            paddingBottom: '2px',
           }}
         >
-          Frequently asked questions
-        </h2>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {faqs.map((faq, i) => (
-            <div
-              key={i}
-              style={{
-                background: '#0a0a0a',
-                border: '1px solid #1f1f1f',
-                borderRadius: '10px',
-                padding: '1.25rem 1.5rem',
-              }}
-            >
-              <p
-                style={{
-                  fontSize: '15px',
-                  fontWeight: '500',
-                  color: '#d4d4d4',
-                  marginBottom: '0.5rem',
-                }}
-              >
-                {faq.q}
-              </p>
-              <p
-                style={{
-                  fontSize: '14px',
-                  color: '#737373',
-                  fontWeight: '300',
-                  lineHeight: '1.7',
-                }}
-              >
-                {faq.a}
-              </p>
-            </div>
-          ))}
-        </div>
+          Read the FAQ →
+        </Link>
       </section>
 
       {/* Footer */}
       <footer
         style={{
-          borderTop: '1px solid #1f1f1f',
-          padding: '2rem',
-          textAlign: 'center',
-          background: '#000000',
+          borderTop: '1px solid rgba(255,255,255,0.08)',
+          padding: '3rem 5vw',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '1rem',
         }}
       >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'center',
-            gap: '2rem',
-            flexWrap: 'wrap',
-            marginBottom: '1rem',
-          }}
-        >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
+          <img
+            src="/syntheon-logo.png"
+            alt="Syntheon"
+            width={24}
+            height={24}
+            style={{ borderRadius: '4px' }}
+          />
+          <span
+            style={{
+              fontFamily: "'Space Grotesk', sans-serif",
+              fontSize: '14px',
+              fontWeight: 700,
+              color: '#fff',
+            }}
+          >
+            Syntheon
+          </span>
+        </div>
+        <div style={{ display: 'flex', gap: '2rem' }}>
           <Link
             href="/"
-            style={{
-              fontSize: '14px',
-              color: '#525252',
-              textDecoration: 'none',
-            }}
+            style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}
           >
             Home
           </Link>
           <Link
             href="/how-it-works"
-            style={{
-              fontSize: '14px',
-              color: '#525252',
-              textDecoration: 'none',
-            }}
+            style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}
           >
             How it works
           </Link>
           <Link
+            href="/docs"
+            style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}
+          >
+            Docs
+          </Link>
+          <Link
+            href="/faq"
+            style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}
+          >
+            FAQ
+          </Link>
+          <Link
             href="/legal"
-            style={{
-              fontSize: '14px',
-              color: '#525252',
-              textDecoration: 'none',
-            }}
+            style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}
           >
             Legal
           </Link>
-          <Link
-            href="/dashboard"
-            style={{
-              fontSize: '14px',
-              color: '#525252',
-              textDecoration: 'none',
-            }}
-          >
-            Dashboard
-          </Link>
         </div>
-        <p style={{ fontSize: '12px', color: '#404040' }}>2026 Syntheon AI. Bengaluru, India.</p>
+        <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.25)' }}>2026 Syntheonhub.</p>
       </footer>
     </div>
   );

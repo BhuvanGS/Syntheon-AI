@@ -1,4 +1,4 @@
-# Syntheon AI
+# Syntheonhub
 
 An AI-powered project management platform that turns meeting conversations into actionable tickets, sprints, and milestones — automatically.
 
@@ -289,24 +289,24 @@ Sprint board tracks velocity, burndown, cycle time
 
 ## Environment Variables
 
-| Variable | Description | Required |
-| --- | --- | --- |
-| `GROQ_API_KEY` | Groq API key (free or dev tier) | Yes |
-| `GROQ_API_KEY_T2` | Groq API key tier 2 (for heavy inference) | Yes |
-| `SKRIBBY_API_KEY` | Skribby bot API key | Yes |
-| `SKRIBBY_WEBHOOK_SECRET` | Skribby webhook HMAC secret | Yes |
-| `WEBHOOK_ACCESS_TOKEN` | Token for webhook URL auth | Yes |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk publishable key | Yes |
-| `CLERK_SECRET_KEY` | Clerk secret key | Yes |
-| `CLERK_WEBHOOK_SECRET` | Clerk webhook signing secret | Yes |
-| `GOOGLE_OAUTH_CLIENT_ID` | Google OAuth client ID | Yes |
-| `GOOGLE_OAUTH_CLIENT_SECRET` | Google OAuth client secret | Yes |
-| `GITHUB_OAUTH_CLIENT_ID` | GitHub OAuth client ID | Optional |
-| `GITHUB_OAUTH_CLIENT_SECRET` | GitHub OAuth client secret | Optional |
-| `TOKEN_ENCRYPTION_KEY` | 32-byte hex key for token encryption | Yes |
-| `NGROK_URL` | Ngrok URL for local webhook testing | Local only |
-| `NEXT_PUBLIC_APP_URL` | App URL (set by SST) | Auto |
-| `DYNAMODB_ENDPOINT` | Local DynamoDB endpoint | Local only |
+| Variable                            | Description                               | Required   |
+| ----------------------------------- | ----------------------------------------- | ---------- |
+| `GROQ_API_KEY`                      | Groq API key (free or dev tier)           | Yes        |
+| `GROQ_API_KEY_T2`                   | Groq API key tier 2 (for heavy inference) | Yes        |
+| `SKRIBBY_API_KEY`                   | Skribby bot API key                       | Yes        |
+| `SKRIBBY_WEBHOOK_SECRET`            | Skribby webhook HMAC secret               | Yes        |
+| `WEBHOOK_ACCESS_TOKEN`              | Token for webhook URL auth                | Yes        |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk publishable key                     | Yes        |
+| `CLERK_SECRET_KEY`                  | Clerk secret key                          | Yes        |
+| `CLERK_WEBHOOK_SECRET`              | Clerk webhook signing secret              | Yes        |
+| `GOOGLE_OAUTH_CLIENT_ID`            | Google OAuth client ID                    | Yes        |
+| `GOOGLE_OAUTH_CLIENT_SECRET`        | Google OAuth client secret                | Yes        |
+| `GITHUB_OAUTH_CLIENT_ID`            | GitHub OAuth client ID                    | Optional   |
+| `GITHUB_OAUTH_CLIENT_SECRET`        | GitHub OAuth client secret                | Optional   |
+| `TOKEN_ENCRYPTION_KEY`              | 32-byte hex key for token encryption      | Yes        |
+| `NGROK_URL`                         | Ngrok URL for local webhook testing       | Local only |
+| `NEXT_PUBLIC_APP_URL`               | App URL (set by SST)                      | Auto       |
+| `DYNAMODB_ENDPOINT`                 | Local DynamoDB endpoint                   | Local only |
 
 ## License
 

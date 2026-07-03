@@ -17,8 +17,16 @@ export function createSite(args: {
     tableEnvVars[envVar] = resource.name;
   }
 
+  const isProduction = appUrl.includes('syntheonhub.com');
+
   const site = new sst.aws.Nextjs('Site', {
     path: '.',
+    domain: isProduction
+      ? {
+          name: 'syntheonhub.com',
+          aliases: ['www.syntheonhub.com', 'app.syntheonhub.com'],
+        }
+      : undefined,
     link: [
       uploads,
       ...tableResources,

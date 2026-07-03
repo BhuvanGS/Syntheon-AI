@@ -43,11 +43,10 @@ export const metadata: Metadata = {
     'Syntheon joins your meetings, extracts spec blocks, generates code, opens PRs, creates Linear tickets, and deploys a live preview — automatically.',
   icons: {
     icon: [
-      { url: '/icon-light-32x32.png', media: '(prefers-color-scheme: light)' },
-      { url: '/icon-dark-32x32.png', media: '(prefers-color-scheme: dark)' },
-      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/syntheon-logo.png', media: '(prefers-color-scheme: light)' },
+      { url: '/syntheon-logo.png', media: '(prefers-color-scheme: dark)' },
     ],
-    apple: '/apple-icon.png',
+    apple: '/syntheon-logo.png',
   },
 };
 

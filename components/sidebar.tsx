@@ -117,9 +117,9 @@ export function Sidebar({
           className="flex items-center gap-2.5 flex-1 min-w-0 group rounded-md -ml-1 pl-1 py-1 hover:bg-accent/40"
         >
           <img
-            src="/logo.png"
+            src="/syntheon-logo.png"
             alt="Syntheon"
-            className="w-6 h-6 object-contain shrink-0 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3"
+            className="w-[30px] h-[30px] object-contain shrink-0 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3"
             onError={(e) => {
               (e.target as HTMLImageElement).style.display = 'none';
             }}

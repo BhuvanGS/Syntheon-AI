@@ -169,7 +169,7 @@ export function MeetingCards({ onSelectMeeting, onCreateTicket }: MeetingCardsPr
                 }`}
                 title={
                   meeting.status === 'not_admitted'
-                    ? 'Syntheon AI not admitted to meeting'
+                    ? 'Syntheonhub not admitted to meeting'
                     : undefined
                 }
               >

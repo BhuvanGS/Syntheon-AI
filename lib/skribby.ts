@@ -23,7 +23,7 @@ export async function createBot(meetingUrl: string, webhookUrl: string) {
     body: JSON.stringify({
       meeting_url: meetingUrl,
       service: detectService(meetingUrl),
-      bot_name: 'Syntheon AI',
+      bot_name: 'Syntheonhub',
       transcription_model: 'whisper',
       video: false,
       webhook_url: signedWebhookUrl,
