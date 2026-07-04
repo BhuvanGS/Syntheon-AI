@@ -2,13 +2,12 @@ import Link from 'next/link';
 
 const APP_URL = 'https://app.syntheonhub.com';
 
-export default function DocsIndexPage() {
+export default function GettingStartedPage() {
   return (
     <>
       <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)', marginBottom: '1rem' }}>
-        Last updated: July 2026
+        Getting Started
       </p>
-
       <h1
         style={{
           fontFamily: "'Space Grotesk', sans-serif",
@@ -19,18 +18,14 @@ export default function DocsIndexPage() {
           letterSpacing: '-0.03em',
         }}
       >
-        Syntheonhub Docs
+        Overview
       </h1>
       <p style={{ fontSize: '16px', color: 'rgba(255,255,255,0.5)', marginBottom: '2.5rem' }}>
-        Everything from your sidebar to your tickets — every component, A to Z.
-      </p>
-
-      <h2>Getting Started</h2>
-      <p>
         Syntheonhub turns your meetings into organized work. The bot joins your call, transcribes
         it, and AI extracts structured tickets with priorities, labels, dependencies, and estimates
         — all automatically.
       </p>
+
       <div className="doc-card">
         <p className="doc-card-title">1. Create an account</p>
         <p className="doc-card-text">
@@ -64,10 +59,6 @@ export default function DocsIndexPage() {
           real-time.
         </p>
       </div>
-
-      <p style={{ marginTop: '2.5rem', fontSize: '14px', color: 'rgba(255,255,255,0.4)' }}>
-        Browse the sidebar to explore each component in detail.
-      </p>
     </>
   );
 }
