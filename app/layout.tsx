@@ -40,11 +40,11 @@ const _dmSerif = DM_Serif_Display({
 export const metadata: Metadata = {
   metadataBase: new URL('https://syntheonhub.com'),
   title: {
-    default: 'Syntheon — Turn meetings into tickets, automatically',
-    template: '%s | Syntheon',
+    default: 'Syntheon Hub — Turn meetings into tickets, automatically',
+    template: '%s | Syntheon Hub',
   },
   description:
-    'Syntheon joins your meetings, extracts action items, and creates organized tickets automatically. AI-powered project management that works while you talk.',
+    'Syntheon Hub joins your meetings, extracts action items, and creates organized tickets automatically. AI-powered project management that works while you talk.',
   keywords: [
     'meeting notes',
     'ticket management',
@@ -62,9 +62,9 @@ export const metadata: Metadata = {
     locale: 'en_US',
     url: 'https://syntheonhub.com',
     siteName: 'Syntheon',
-    title: 'Syntheon — Turn meetings into tickets, automatically',
+    title: 'Syntheon Hub — Turn meetings into tickets, automatically',
     description:
-      'Syntheon joins your meetings, extracts action items, and creates organized tickets automatically. AI-powered project management that works while you talk.',
+      'Syntheon Hub joins your meetings, extracts action items, and creates organized tickets automatically. AI-powered project management that works while you talk.',
     images: [
       {
         url: '/syntheon-logo.png',
@@ -76,7 +76,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Syntheon — Turn meetings into tickets, automatically',
+    title: 'Syntheon Hub — Turn meetings into tickets, automatically',
     description:
       'AI-powered project management that joins your meetings and creates tickets automatically.',
     images: ['/syntheon-logo.png'],

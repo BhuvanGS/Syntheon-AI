@@ -4,7 +4,7 @@ const BASE_URL = 'https://syntheonhub.com';
 
 const marketingRoutes = [
   { path: '', priority: 1.0, changeFrequency: 'weekly' as const },
-  { path: '/pricing', priority: 0.9, changeFrequency: 'monthly' as const },
+  // { path: '/pricing', priority: 0.9, changeFrequency: 'monthly' as const },
   { path: '/how-it-works', priority: 0.8, changeFrequency: 'monthly' as const },
   { path: '/faq', priority: 0.7, changeFrequency: 'monthly' as const },
   { path: '/docs', priority: 0.8, changeFrequency: 'weekly' as const },
