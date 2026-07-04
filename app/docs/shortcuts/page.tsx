@@ -17,7 +17,7 @@ export default function ShortcutsPage() {
         Keyboard Shortcuts
       </h1>
       <p style={{ fontSize: '16px', color: 'rgba(255,255,255,0.5)', marginBottom: '2.5rem' }}>
-        Syntheonhub supports the following keyboard shortcuts:
+        Syntheon Hub supports the following keyboard shortcuts:
       </p>
 
       <div className="doc-card">

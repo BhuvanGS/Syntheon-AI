@@ -25,7 +25,7 @@ export default function DomainsPage() {
       <div className="doc-card">
         <p className="doc-card-title">How it works</p>
         <p className="doc-card-text">
-          Add a DNS TXT record provided by Syntheonhub to your domain. Once verified, any user
+          Add a DNS TXT record provided by Syntheon Hub to your domain. Once verified, any user
           signing up with an email on that domain is automatically joined to your organization.
         </p>
       </div>

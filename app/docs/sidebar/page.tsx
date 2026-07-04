@@ -19,7 +19,7 @@ export default function SidebarPage() {
         Sidebar Navigation
       </h1>
       <p style={{ fontSize: '16px', color: 'rgba(255,255,255,0.5)', marginBottom: '2.5rem' }}>
-        The left sidebar is your main navigation. It shows the Syntheonhub logo, your organization
+        The left sidebar is your main navigation. It shows the Syntheon Hub logo, your organization
         name, and your role badge (Admin or Member).
       </p>
 

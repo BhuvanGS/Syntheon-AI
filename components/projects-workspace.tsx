@@ -2115,129 +2115,134 @@ export function ProjectsWorkspace({
         {/* ── TICKETS tab (unified board + list) ── */}
         {projectTab === 'tickets' && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="font-playfair text-2xl font-bold text-foreground">Tickets</h2>
-              <div className="flex items-center rounded-lg border border-border bg-muted/40 p-0.5">
-                {(
-                  [
-                    { key: 'all', label: 'All' },
-                    { key: 'mine', label: 'Mine' },
-                    { key: 'unassigned', label: 'Unassigned' },
-                  ] as const
-                ).map(({ key, label }) => (
+            <details className="group" open>
+              <summary className="flex items-center gap-2 cursor-pointer select-none list-none">
+                <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-90" />
+                <h2 className="font-playfair text-2xl font-bold text-foreground">Tickets</h2>
+              </summary>
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center rounded-lg border border-border bg-muted/40 p-0.5">
+                  {(
+                    [
+                      { key: 'all', label: 'All' },
+                      { key: 'mine', label: 'Mine' },
+                      { key: 'unassigned', label: 'Unassigned' },
+                    ] as const
+                  ).map(({ key, label }) => (
+                    <button
+                      key={key}
+                      onClick={() => setKanbanAssigneeFilter(key)}
+                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                        kanbanAssigneeFilter === key
+                          ? 'bg-background text-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                  <div className="w-px h-5 bg-border mx-1" />
                   <button
-                    key={key}
-                    onClick={() => setKanbanAssigneeFilter(key)}
-                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                      kanbanAssigneeFilter === key
+                    onClick={() => setTicketsViewMode('board')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                      ticketsViewMode === 'board'
                         ? 'bg-background text-foreground shadow-sm'
                         : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
-                    {label}
+                    <KanbanSquare className="h-3.5 w-3.5" />
+                    Board
                   </button>
-                ))}
-                <div className="w-px h-5 bg-border mx-1" />
-                <button
-                  onClick={() => setTicketsViewMode('board')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                    ticketsViewMode === 'board'
-                      ? 'bg-background text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <KanbanSquare className="h-3.5 w-3.5" />
-                  Board
-                </button>
-                <button
-                  onClick={() => setTicketsViewMode('list')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                    ticketsViewMode === 'list'
-                      ? 'bg-background text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <LayoutList className="h-3.5 w-3.5" />
-                  List
-                </button>
-                <button
-                  onClick={() => setTicketsViewMode('backlog')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                    ticketsViewMode === 'backlog'
-                      ? 'bg-background text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <ListOrdered className="h-3.5 w-3.5" />
-                  Backlog
-                </button>
-                <button
-                  onClick={() => setTicketsViewMode('groups')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                    ticketsViewMode === 'groups'
-                      ? 'bg-background text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <Layers className="h-3.5 w-3.5" />
-                  Groups
-                </button>
-                <div className="w-px h-5 bg-border mx-1" />
-                <button
-                  onClick={() => setFilterDialogOpen(true)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                    filters.status ||
-                    filters.priority ||
-                    filters.type ||
-                    filters.estimate ||
-                    filters.labelIds.length > 0 ||
-                    filters.assignee !== 'all' ||
-                    filters.dueDate !== 'all'
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                  title="Filter tickets"
-                >
-                  <SlidersHorizontal className="h-3.5 w-3.5" />
-                  Filter
-                </button>
-                <button
-                  onClick={() => {
-                    setBulkMode((v) => {
-                      if (v) setSelectedIds(new Set());
-                      return !v;
-                    });
-                  }}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                    bulkMode
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                  title="Toggle bulk select (⌘B)"
-                >
-                  <CheckSquare className="h-3.5 w-3.5" />
-                  Bulk
-                </button>
-                <button
-                  onClick={() => setLabelManagerOpen(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors text-muted-foreground hover:text-foreground"
-                >
-                  <Tag className="h-3.5 w-3.5" />
-                  Labels
-                </button>
-                <div className="w-px h-5 bg-border mx-1" />
-                <button
-                  onClick={() => {
-                    setNewTicketStatus(undefined);
-                    setIsTicketDialogOpen(true);
-                  }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors text-primary hover:bg-primary/10"
-                >
-                  <PlusCircle className="h-3.5 w-3.5" />
-                  New ticket
-                </button>
+                  <button
+                    onClick={() => setTicketsViewMode('list')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                      ticketsViewMode === 'list'
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <LayoutList className="h-3.5 w-3.5" />
+                    List
+                  </button>
+                  <button
+                    onClick={() => setTicketsViewMode('backlog')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                      ticketsViewMode === 'backlog'
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <ListOrdered className="h-3.5 w-3.5" />
+                    Backlog
+                  </button>
+                  <button
+                    onClick={() => setTicketsViewMode('groups')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                      ticketsViewMode === 'groups'
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <Layers className="h-3.5 w-3.5" />
+                    Groups
+                  </button>
+                  <div className="w-px h-5 bg-border mx-1" />
+                  <button
+                    onClick={() => setFilterDialogOpen(true)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                      filters.status ||
+                      filters.priority ||
+                      filters.type ||
+                      filters.estimate ||
+                      filters.labelIds.length > 0 ||
+                      filters.assignee !== 'all' ||
+                      filters.dueDate !== 'all'
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                    title="Filter tickets"
+                  >
+                    <SlidersHorizontal className="h-3.5 w-3.5" />
+                    Filter
+                  </button>
+                  <button
+                    onClick={() => {
+                      setBulkMode((v) => {
+                        if (v) setSelectedIds(new Set());
+                        return !v;
+                      });
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                      bulkMode
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                    title="Toggle bulk select (⌘B)"
+                  >
+                    <CheckSquare className="h-3.5 w-3.5" />
+                    Bulk
+                  </button>
+                  <button
+                    onClick={() => setLabelManagerOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors text-muted-foreground hover:text-foreground"
+                  >
+                    <Tag className="h-3.5 w-3.5" />
+                    Labels
+                  </button>
+                  <div className="w-px h-5 bg-border mx-1" />
+                  <button
+                    onClick={() => {
+                      setNewTicketStatus(undefined);
+                      setIsTicketDialogOpen(true);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors text-primary hover:bg-primary/10"
+                  >
+                    <PlusCircle className="h-3.5 w-3.5" />
+                    New ticket
+                  </button>
+                </div>
               </div>
-            </div>
+            </details>
 
             {/* Bulk action bar */}
             {bulkMode && (
@@ -5625,61 +5630,73 @@ export function ProjectsWorkspace({
                 </div>
 
                 <div className="border-t border-border/60 pt-3">
-                  <p className="text-sm font-medium text-foreground mb-2">Properties</p>
-                  <TicketMetadataEditor
-                    priority={metaPriority}
-                    type={metaType}
-                    estimate={metaEstimate}
-                    labels={metaLabels}
-                    timeEstimate={metaTimeEstimate}
-                    timeSpent={metaTimeSpent}
-                    onPriorityChange={setMetaPriority}
-                    onTypeChange={setMetaType}
-                    onEstimateChange={setMetaEstimate}
-                    onLabelsChange={setMetaLabels}
-                    onTimeEstimateChange={setMetaTimeEstimate}
-                    onTimeSpentChange={setMetaTimeSpent}
-                    availableLabels={labels}
-                    onManageLabels={() => setLabelManagerOpen(true)}
-                  />
-                  <div className="grid grid-cols-2 gap-3 mt-3">
-                    <div className="space-y-1">
-                      <label className="text-xs font-medium text-muted-foreground">Milestone</label>
-                      <select
-                        value={metaMilestoneId ?? ''}
-                        onChange={(e) => setMetaMilestoneId(e.target.value || null)}
-                        className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm text-foreground"
-                      >
-                        <option value="">None</option>
-                        {milestones.map((ms) => (
-                          <option key={ms.id} value={ms.id}>
-                            {ms.name}
-                          </option>
-                        ))}
-                      </select>
+                  <details className="group">
+                    <summary className="flex items-center gap-2 cursor-pointer select-none list-none">
+                      <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-90" />
+                      <p className="text-sm font-medium text-foreground">Properties</p>
+                    </summary>
+                    <div className="mt-3">
+                      <TicketMetadataEditor
+                        priority={metaPriority}
+                        type={metaType}
+                        estimate={metaEstimate}
+                        labels={metaLabels}
+                        timeEstimate={metaTimeEstimate}
+                        timeSpent={metaTimeSpent}
+                        onPriorityChange={setMetaPriority}
+                        onTypeChange={setMetaType}
+                        onEstimateChange={setMetaEstimate}
+                        onLabelsChange={setMetaLabels}
+                        onTimeEstimateChange={setMetaTimeEstimate}
+                        onTimeSpentChange={setMetaTimeSpent}
+                        availableLabels={labels}
+                        onManageLabels={() => setLabelManagerOpen(true)}
+                      />
+                      <div className="grid grid-cols-2 gap-3 mt-3">
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium text-muted-foreground">
+                            Milestone
+                          </label>
+                          <select
+                            value={metaMilestoneId ?? ''}
+                            onChange={(e) => setMetaMilestoneId(e.target.value || null)}
+                            className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm text-foreground"
+                          >
+                            <option value="">None</option>
+                            {milestones.map((ms) => (
+                              <option key={ms.id} value={ms.id}>
+                                {ms.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium text-muted-foreground">
+                            Sprint
+                          </label>
+                          <select
+                            value={metaSprintId ?? ''}
+                            onChange={(e) => setMetaSprintId(e.target.value || null)}
+                            className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm text-foreground"
+                          >
+                            <option value="">None</option>
+                            {sprints.map((sp) => (
+                              <option key={sp.id} value={sp.id}>
+                                {sp.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-xs font-medium text-muted-foreground">Sprint</label>
-                      <select
-                        value={metaSprintId ?? ''}
-                        onChange={(e) => setMetaSprintId(e.target.value || null)}
-                        className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm text-foreground"
-                      >
-                        <option value="">None</option>
-                        {sprints.map((sp) => (
-                          <option key={sp.id} value={sp.id}>
-                            {sp.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
+                  </details>
                 </div>
 
                 {ticketToEdit && (
                   <div className="rounded-lg border border-border bg-muted/50">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 px-3 py-2.5">
+                    <details className="group" open>
+                      <summary className="flex items-center gap-2 px-3 py-2.5 cursor-pointer select-none list-none">
+                        <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-90" />
                         <h3 className="text-sm font-semibold text-foreground">Subtasks</h3>
                         <span className="rounded-md border border-border bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
                           {
@@ -5689,62 +5706,62 @@ export function ProjectsWorkspace({
                           }
                           /{(childrenByParentId[ticketToEdit.id] ?? []).length}
                         </span>
+                      </summary>
+
+                      <div>
+                        {(childrenByParentId[ticketToEdit.id] ?? []).length === 0 ? (
+                          <p className="border-t border-border/60 px-3 py-2 text-xs text-muted-foreground">
+                            No subtasks yet.
+                          </p>
+                        ) : (
+                          (childrenByParentId[ticketToEdit.id] ?? []).map((child) =>
+                            renderChildTicketTree(child, 0)
+                          )
+                        )}
                       </div>
-                    </div>
 
-                    <div>
-                      {(childrenByParentId[ticketToEdit.id] ?? []).length === 0 ? (
-                        <p className="border-t border-border/60 px-3 py-2 text-xs text-muted-foreground">
-                          No subtasks yet.
-                        </p>
-                      ) : (
-                        (childrenByParentId[ticketToEdit.id] ?? []).map((child) =>
-                          renderChildTicketTree(child, 0)
-                        )
-                      )}
-                    </div>
-
-                    {isAddingSubtask && (
-                      <div className="border-t border-border/60 bg-primary/5 px-2 py-2">
-                        <div className="flex items-center gap-2">
-                          <Circle className="h-4 w-4 text-muted-foreground" />
-                          <Input
-                            value={newChildDraft.title}
-                            onChange={(e) =>
-                              setNewChildDraft((prev) => ({
-                                ...prev,
-                                title: e.target.value,
-                              }))
-                            }
-                            className="flex-1 h-8"
-                            placeholder="Subtask name"
-                            autoFocus
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                void handleCreateChildTicket();
+                      {isAddingSubtask && (
+                        <div className="border-t border-border/60 bg-primary/5 px-2 py-2">
+                          <div className="flex items-center gap-2">
+                            <Circle className="h-4 w-4 text-muted-foreground" />
+                            <Input
+                              value={newChildDraft.title}
+                              onChange={(e) =>
+                                setNewChildDraft((prev) => ({
+                                  ...prev,
+                                  title: e.target.value,
+                                }))
                               }
-                            }}
-                          />
-                          <Button
-                            type="button"
-                            size="icon"
-                            onClick={handleCreateChildTicket}
-                            disabled={!newChildDraft.title.trim() || Boolean(savingTicketId)}
-                          >
-                            <Plus className="h-4 w-4" />
-                          </Button>
+                              className="flex-1 h-8"
+                              placeholder="Subtask name"
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  void handleCreateChildTicket();
+                                }
+                              }}
+                            />
+                            <Button
+                              type="button"
+                              size="icon"
+                              onClick={handleCreateChildTicket}
+                              disabled={!newChildDraft.title.trim() || Boolean(savingTicketId)}
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
-                    <button
-                      type="button"
-                      onClick={() => setIsAddingSubtask(true)}
-                      className="w-full border-t border-border/60 px-3 py-2 text-left text-sm font-medium text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                    >
-                      Add subtask
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsAddingSubtask(true)}
+                        className="w-full border-t border-border/60 px-3 py-2 text-left text-sm font-medium text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                      >
+                        Add subtask
+                      </button>
+                    </details>
                   </div>
                 )}
 
@@ -5795,7 +5812,7 @@ export function ProjectsWorkspace({
               }}
               disabled={Boolean(savingTicketId)}
             >
-              Delete ticket
+              {ticketToEdit?.dependency_ticket_id ? 'Delete subtask' : 'Delete ticket'}
             </Button>
             <Button
               type="button"
@@ -5829,7 +5846,11 @@ export function ProjectsWorkspace({
         <DialogContent className="sm:max-w-xl border-border bg-background shadow-2xl">
           <DialogHeader>
             <DialogTitle className="font-playfair text-2xl text-foreground">
-              {deleteMode === 'reassign' ? 'Move subtasks before deleting' : 'Delete this ticket?'}
+              {deleteMode === 'reassign'
+                ? 'Move subtasks before deleting'
+                : ticketToDelete?.dependency_ticket_id
+                  ? 'Delete this subtask?'
+                  : 'Delete this ticket?'}
             </DialogTitle>
             <DialogDescription className="text-muted-foreground">
               {deleteMode === 'reassign'
@@ -5954,7 +5975,7 @@ export function ProjectsWorkspace({
                 disabled={Boolean(savingTicketId)}
               >
                 {savingTicketId ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                Delete ticket
+                {ticketToDelete?.dependency_ticket_id ? 'Delete subtask' : 'Delete ticket'}
               </Button>
             )}
           </DialogFooter>

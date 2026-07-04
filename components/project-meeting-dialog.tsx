@@ -156,8 +156,8 @@ export function ProjectMeetingDialog({
           </DialogTitle>
           <DialogDescription className="text-muted-foreground">
             {mode === 'create'
-              ? 'Create a Google Meet instantly and Syntheon will join automatically.'
-              : 'Paste an existing meeting URL and Syntheon will attach the recorded session.'}
+              ? 'Create a Google Meet instantly and Syntheon Hub will join automatically.'
+              : 'Paste an existing meeting URL and Syntheon Hub will attach the recorded session.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -246,7 +246,8 @@ export function ProjectMeetingDialog({
                   </div>
                   <p className="font-medium text-foreground">Google Calendar not connected</p>
                   <p className="text-sm text-muted-foreground">
-                    Connect Google Calendar in Settings to create Meet links directly from Syntheon.
+                    Connect Google Calendar in Settings to create Meet links directly from Syntheon
+                    Hub.
                   </p>
                   <Button
                     type="button"

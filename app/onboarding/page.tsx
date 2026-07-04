@@ -228,7 +228,7 @@ export default function OnboardingPage() {
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
             <Sparkles className="h-5 w-5" />
           </div>
-          <span className="font-playfair text-xl font-bold text-foreground">Syntheon</span>
+          <span className="font-playfair text-xl font-bold text-foreground">Syntheon Hub</span>
         </motion.div>
         <motion.div
           initial={{ opacity: 0 }}
@@ -255,7 +255,7 @@ export default function OnboardingPage() {
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
             <Sparkles className="h-5 w-5" />
           </div>
-          <span className="font-playfair text-xl font-bold text-foreground">Syntheon</span>
+          <span className="font-playfair text-xl font-bold text-foreground">Syntheon Hub</span>
         </motion.div>
         <motion.div
           initial={{ opacity: 0 }}
@@ -277,7 +277,7 @@ export default function OnboardingPage() {
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
             <Sparkles className="h-5 w-5" />
           </div>
-          <span className="font-playfair text-xl font-bold text-foreground">Syntheon</span>
+          <span className="font-playfair text-xl font-bold text-foreground">Syntheon Hub</span>
         </div>
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -355,7 +355,7 @@ export default function OnboardingPage() {
         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
           <Sparkles className="h-5 w-5" />
         </div>
-        <span className="font-playfair text-xl font-bold text-foreground">Syntheon</span>
+        <span className="font-playfair text-xl font-bold text-foreground">Syntheon Hub</span>
       </div>
 
       <div className="w-full max-w-md">
@@ -469,7 +469,7 @@ export default function OnboardingPage() {
                   Create your organization
                 </h1>
                 <p className="text-sm text-muted-foreground">
-                  This will be your team's shared workspace in Syntheon.
+                  This will be your team's shared workspace in Syntheon Hub.
                 </p>
               </div>
 

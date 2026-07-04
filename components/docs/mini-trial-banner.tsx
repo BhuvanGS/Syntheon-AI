@@ -89,7 +89,7 @@ export default function MiniTrialBanner() {
 
         {isExpired && (
           <p style={{ fontSize: '11px', color: 'rgba(239,68,68,0.7)', margin: '0.5rem 0 0' }}>
-            Features are paused. Subscribe to continue using Syntheonhub.
+            Features are paused. Subscribe to continue using Syntheon Hub.
           </p>
         )}
         {!isExpired && (

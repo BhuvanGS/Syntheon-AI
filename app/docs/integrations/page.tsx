@@ -17,7 +17,7 @@ export default function IntegrationsPage() {
         Integrations
       </h1>
       <p style={{ fontSize: '16px', color: 'rgba(255,255,255,0.5)', marginBottom: '2.5rem' }}>
-        The Integrations tab in Settings shows connected services. Syntheonhub uses the following
+        The Integrations tab in Settings shows connected services. Syntheon Hub uses the following
         services under the hood:
       </p>
 

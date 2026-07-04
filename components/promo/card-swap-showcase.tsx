@@ -43,7 +43,7 @@ export function CardSwapShowcase() {
               lineHeight: 1.6,
             }}
           >
-            Watch the cards swap to explore every part of Syntheon. Hover to pause.
+            Watch the cards swap to explore every part of Syntheon Hub. Hover to pause.
           </p>
         </div>
 

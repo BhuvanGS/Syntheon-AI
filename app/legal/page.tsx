@@ -63,7 +63,7 @@ export default function LegalPage() {
 
       <h2 style={s().h1}>Privacy Policy</h2>
       <p style={s().p}>
-        Syntheonhub operates syntheonhub.com. This policy explains how we collect, use, and protect
+        Syntheon Hub operates syntheonhub.com. This policy explains how we collect, use, and protect
         your personal data in accordance with the Digital Personal Data Protection Act 2023 (DPDP
         Act) and the Information Technology Act 2000.
       </p>
@@ -133,7 +133,7 @@ export default function LegalPage() {
 
       <h2 style={s().h1}>Terms of Service</h2>
       <p style={s().p}>
-        By using Syntheon you agree to these Terms. If you do not agree, do not use the service.
+        By using Syntheon Hub you agree to these Terms. If you do not agree, do not use the service.
       </p>
 
       <h2 style={s().h2}>Eligibility</h2>
@@ -150,7 +150,7 @@ export default function LegalPage() {
 
       <h2 style={s().h2}>Acceptable use</h2>
       <p style={s().p}>
-        You may use Syntheon to record and process your own business meetings, extract tickets
+        You may use Syntheon Hub to record and process your own business meetings, extract tickets
         automatically, and organize projects in workspaces you own.
       </p>
       <p style={s().p}>
@@ -161,28 +161,28 @@ export default function LegalPage() {
       <h2 style={s().h2}>Meeting recording consent</h2>
       <p style={s().p}>
         You are solely responsible for obtaining consent from all meeting participants before using
-        the Syntheon bot. Recording laws vary by jurisdiction. By using Syntheon, you represent and
-        warrant that you have obtained all necessary consents from meeting participants. Syntheon is
-        not liable for your failure to obtain proper consent.
+        the Syntheon Hub bot. Recording laws vary by jurisdiction. By using Syntheon Hub, you
+        represent and warrant that you have obtained all necessary consents from meeting
+        participants. Syntheon Hub is not liable for your failure to obtain proper consent.
       </p>
 
       <h2 style={s().h2}>AI-generated content disclaimer</h2>
       <p style={s().p}>
         AI-extracted tickets may contain inaccuracies. You are solely responsible for reviewing all
-        extracted tickets before acting on them. Syntheon does not guarantee the accuracy or fitness
-        of AI-generated content.
+        extracted tickets before acting on them. Syntheon Hub does not guarantee the accuracy or
+        fitness of AI-generated content.
       </p>
 
       <h2 style={s().h2}>Intellectual property</h2>
       <p style={s().p}>
         You retain full ownership of your meeting transcripts, tickets, and all project data.
-        Syntheon claims no ownership over content you create using the platform.
+        Syntheon Hub claims no ownership over content you create using the platform.
       </p>
 
       <h2 style={s().h2}>Limitation of liability</h2>
       <p style={s().p}>
-        Syntheon's total liability shall not exceed the amount paid in the 3 months preceding the
-        claim. We are not liable for indirect, incidental, or consequential damages.
+        Syntheon Hub's total liability shall not exceed the amount paid in the 3 months preceding
+        the claim. We are not liable for indirect, incidental, or consequential damages.
       </p>
 
       <h2 style={s().h2}>Governing law</h2>
@@ -208,7 +208,7 @@ export default function LegalPage() {
 
       <h2 style={s().h1}>Data Processing Agreement</h2>
       <p style={s().p}>
-        This DPA governs the processing of personal data by Syntheonhub ("Data Fiduciary") in
+        This DPA governs the processing of personal data by Syntheon Hub ("Data Fiduciary") in
         accordance with the Digital Personal Data Protection Act 2023 and applicable Indian law.
       </p>
 
@@ -217,8 +217,8 @@ export default function LegalPage() {
         {[
           'Personal Data — any information relating to an identified or identifiable individual',
           'Data Principal — the individual whose personal data is processed (meeting participants)',
-          'Data Fiduciary — Syntheonhub, which determines the purpose and means of processing personal data',
-          'Sub-processor — third-party services engaged by Syntheon to process data on its behalf',
+          'Data Fiduciary — Syntheon Hub, which determines the purpose and means of processing personal data',
+          'Sub-processor — third-party services engaged by Syntheon Hub to process data on its behalf',
         ].map((d, i) => (
           <li key={i} style={s().li}>
             {d}
@@ -293,8 +293,8 @@ export default function LegalPage() {
 
       <h2 style={s().h2}>Data breach notification</h2>
       <p style={s().p}>
-        In the event of a personal data breach, Syntheon will notify affected users within 72 hours
-        and report to the Data Protection Board of India as required.
+        In the event of a personal data breach, Syntheon Hub will notify affected users within 72
+        hours and report to the Data Protection Board of India as required.
       </p>
 
       <h2 style={s().h2}>Contact</h2>
@@ -314,7 +314,7 @@ export default function LegalPage() {
       </p>
 
       <h2 style={s().h1}>Refund Policy</h2>
-      <p style={s().p}>We want you to be completely satisfied with Syntheon.</p>
+      <p style={s().p}>We want you to be completely satisfied with Syntheon Hub.</p>
 
       <h2 style={s().h2}>7-day money back guarantee</h2>
       <p style={s().p}>
@@ -324,8 +324,8 @@ export default function LegalPage() {
 
       <h2 style={s().h2}>Service outage refund</h2>
       <p style={s().p}>
-        If Syntheon is unavailable for more than 24 continuous hours due to our infrastructure (not
-        third-party services), you are eligible for a pro-rated refund for those days.
+        If Syntheon Hub is unavailable for more than 24 continuous hours due to our infrastructure
+        (not third-party services), you are eligible for a pro-rated refund for those days.
       </p>
 
       <h2 style={s().h2}>Non-refundable situations</h2>
@@ -424,7 +424,7 @@ export default function LegalPage() {
         >
           <img
             src="/syntheon-logo.png"
-            alt="Syntheon"
+            alt="Syntheon Hub"
             width={28}
             height={28}
             style={{ borderRadius: '6px', objectFit: 'cover' }}
@@ -438,7 +438,7 @@ export default function LegalPage() {
               letterSpacing: '-0.02em',
             }}
           >
-            Syntheon
+            Syntheon Hub
           </span>
         </Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
@@ -558,7 +558,7 @@ export default function LegalPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
           <img
             src="/syntheon-logo.png"
-            alt="Syntheon"
+            alt="Syntheon Hub"
             width={24}
             height={24}
             style={{ borderRadius: '4px' }}
@@ -571,7 +571,7 @@ export default function LegalPage() {
               color: '#fff',
             }}
           >
-            Syntheon
+            Syntheon Hub
           </span>
         </div>
         <div style={{ display: 'flex', gap: '2rem' }}>
@@ -607,7 +607,7 @@ export default function LegalPage() {
           </Link>
         </div>
         <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.25)' }}>
-          2026 Syntheonhub. Governed by Indian law.
+          2026 Syntheon Hub. Governed by Indian law.
         </p>
       </footer>
     </div>

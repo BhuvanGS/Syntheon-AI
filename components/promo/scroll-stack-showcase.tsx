@@ -8,13 +8,13 @@ export function ScrollStackShowcase() {
     <section className="py-20 px-4 md:px-8 lg:px-16">
       <div className="max-w-5xl mx-auto text-center mb-12">
         <p className="text-xs font-medium uppercase tracking-[0.25em] text-white/40 mb-4">
-          How Syntheon Works
+          How Syntheon Hub Works
         </p>
         <h2 className="font-['Space_Grotesk'] text-4xl md:text-5xl lg:text-6xl font-bold text-white tracking-tight">
           From meeting to shipped work.
         </h2>
         <p className="mt-4 text-lg text-white/40 max-w-2xl mx-auto">
-          Scroll through the stack to see every step Syntheon handles automatically.
+          Scroll through the stack to see every step Syntheon Hub handles automatically.
         </p>
       </div>
 
@@ -36,8 +36,8 @@ export function ScrollStackShowcase() {
             </div>
             <h2>Join the meeting</h2>
             <p>
-              Syntheon joins your Google Meet, Zoom, or Teams call as a participant and records the
-              conversation.
+              Syntheon Hub joins your Google Meet, Zoom, or Teams call as a participant and records
+              the conversation.
             </p>
           </ScrollStackItem>
 
@@ -80,8 +80,8 @@ export function ScrollStackShowcase() {
             </div>
             <h2>Auto-organize</h2>
             <p>
-              Syntheon moves tickets to the right columns, sets dependencies, and keeps your board
-              in sync — no manual updates needed.
+              Syntheon Hub moves tickets to the right columns, sets dependencies, and keeps your
+              board in sync — no manual updates needed.
             </p>
           </ScrollStackItem>
 

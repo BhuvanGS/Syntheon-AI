@@ -106,12 +106,18 @@ export function LabelManager({ open, onClose, labels, onRefresh }: LabelManagerP
             >
               {editingId === label.id ? (
                 <>
-                  <input
-                    type="color"
-                    value={editColor}
-                    onChange={(e) => setEditColor(e.target.value)}
-                    className="h-6 w-6 rounded cursor-pointer border border-border"
-                  />
+                  <div className="flex items-center gap-1.5">
+                    {PRESET_COLORS.map((c) => (
+                      <button
+                        key={c}
+                        onClick={() => setEditColor(c)}
+                        className={`w-5 h-5 rounded-full transition-transform ${
+                          editColor === c ? 'ring-2 ring-offset-1 ring-foreground scale-110' : ''
+                        }`}
+                        style={{ backgroundColor: c }}
+                      />
+                    ))}
+                  </div>
                   <Input
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
@@ -164,12 +170,18 @@ export function LabelManager({ open, onClose, labels, onRefresh }: LabelManagerP
 
           {creating && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-primary/30 bg-primary/5">
-              <input
-                type="color"
-                value={newColor}
-                onChange={(e) => setNewColor(e.target.value)}
-                className="h-6 w-6 rounded cursor-pointer border border-border"
-              />
+              <div className="flex items-center gap-1.5">
+                {PRESET_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setNewColor(c)}
+                    className={`w-5 h-5 rounded-full transition-transform ${
+                      newColor === c ? 'ring-2 ring-offset-1 ring-foreground scale-110' : ''
+                    }`}
+                    style={{ backgroundColor: c }}
+                  />
+                ))}
+              </div>
               <Input
                 ref={newNameRef}
                 value={newName}
@@ -198,22 +210,6 @@ export function LabelManager({ open, onClose, labels, onRefresh }: LabelManagerP
               >
                 <X className="h-3.5 w-3.5" />
               </button>
-            </div>
-          )}
-
-          {/* Color presets when creating */}
-          {creating && (
-            <div className="flex items-center gap-1.5 flex-wrap px-3">
-              {PRESET_COLORS.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setNewColor(c)}
-                  className={`w-5 h-5 rounded-full transition-transform ${
-                    newColor === c ? 'ring-2 ring-offset-1 ring-foreground scale-110' : ''
-                  }`}
-                  style={{ backgroundColor: c }}
-                />
-              ))}
             </div>
           )}
         </div>

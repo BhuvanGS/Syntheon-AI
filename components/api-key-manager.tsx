@@ -102,7 +102,7 @@ export function ApiKeyManager() {
             <Key className="h-5 w-5 text-foreground" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-foreground">Syntheon Extension API</p>
+            <p className="text-sm font-semibold text-foreground">Syntheon Hub Extension API</p>
             <p className="text-xs text-muted-foreground mt-0.5">
               Generate API keys for the browser extension
             </p>
@@ -214,7 +214,7 @@ export function ApiKeyManager() {
               <div>
                 <p className="text-sm font-medium text-foreground">No API Key Found</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Generate a key to use the Syntheon browser extension.
+                  Generate a key to use the Syntheon Hub browser extension.
                 </p>
               </div>
             </div>
@@ -233,10 +233,10 @@ export function ApiKeyManager() {
         </p>
         <ul className="space-y-1.5">
           {[
-            'Authenticate the Syntheon browser extension',
+            'Authenticate the Syntheon Hub browser extension',
             'Access your meeting data and tickets',
             'Create and manage project tickets',
-            'Sync with your Syntheon workspace',
+            'Sync with your Syntheon Hub workspace',
           ].map((item, i) => (
             <li key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
               <span className="h-1 w-1 rounded-full bg-muted-foreground/50 shrink-0" />

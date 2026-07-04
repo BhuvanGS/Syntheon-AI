@@ -1,5 +1,13 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono, Playfair_Display, DM_Sans, DM_Serif_Display } from 'next/font/google';
+import {
+  Geist,
+  Geist_Mono,
+  Playfair_Display,
+  DM_Sans,
+  DM_Serif_Display,
+  Space_Grotesk,
+  Inter,
+} from 'next/font/google';
 import { Analytics } from '@vercel/analytics/next';
 import { ClerkProvider } from '@clerk/nextjs';
 import { shadcn } from '@clerk/ui/themes';
@@ -36,6 +44,18 @@ const _dmSerif = DM_Serif_Display({
   display: 'swap',
   preload: false,
 });
+const _spaceGrotesk = Space_Grotesk({
+  subsets: ['latin'],
+  variable: '--font-space-grotesk',
+  display: 'swap',
+  preload: false,
+});
+const _inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+  preload: true,
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://syntheonhub.com'),
@@ -55,13 +75,13 @@ export const metadata: Metadata = {
     'kanban board',
     'team productivity',
   ],
-  authors: [{ name: 'Syntheon' }],
-  creator: 'Syntheon',
+  authors: [{ name: 'Syntheon Hub' }],
+  creator: 'Syntheon Hub',
   openGraph: {
     type: 'website',
     locale: 'en_US',
     url: 'https://syntheonhub.com',
-    siteName: 'Syntheon',
+    siteName: 'Syntheon Hub',
     title: 'Syntheon Hub — Turn meetings into tickets, automatically',
     description:
       'Syntheon Hub joins your meetings, extracts action items, and creates organized tickets automatically. AI-powered project management that works while you talk.',
@@ -70,7 +90,7 @@ export const metadata: Metadata = {
         url: '/syntheon-logo.png',
         width: 1200,
         height: 630,
-        alt: 'Syntheon',
+        alt: 'Syntheon Hub',
       },
     ],
   },
@@ -110,7 +130,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${_playfair.variable} ${_dmSans.variable} ${_dmSerif.variable}`}
+      className={`${_inter.variable} ${_spaceGrotesk.variable} ${_playfair.variable} ${_dmSans.variable} ${_dmSerif.variable}`}
     >
       <head>
         {/* Preconnect to critical third-party domains */}

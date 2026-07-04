@@ -129,7 +129,7 @@ export default function PricingPage() {
         >
           <img
             src="/syntheon-logo.png"
-            alt="Syntheon"
+            alt="Syntheon Hub"
             width={28}
             height={28}
             style={{ borderRadius: '6px', objectFit: 'cover' }}
@@ -143,7 +143,7 @@ export default function PricingPage() {
               letterSpacing: '-0.02em',
             }}
           >
-            Syntheon
+            Syntheon Hub
           </span>
         </Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
@@ -446,7 +446,7 @@ export default function PricingPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
           <img
             src="/syntheon-logo.png"
-            alt="Syntheon"
+            alt="Syntheon Hub"
             width={24}
             height={24}
             style={{ borderRadius: '4px' }}
@@ -459,7 +459,7 @@ export default function PricingPage() {
               color: '#fff',
             }}
           >
-            Syntheon
+            Syntheon Hub
           </span>
         </div>
         <div style={{ display: 'flex', gap: '2rem' }}>
@@ -494,7 +494,7 @@ export default function PricingPage() {
             Legal
           </Link>
         </div>
-        <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.25)' }}>2026 Syntheonhub.</p>
+        <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.25)' }}>2026 Syntheon Hub.</p>
       </footer>
     </div>
   );

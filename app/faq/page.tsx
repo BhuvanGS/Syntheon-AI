@@ -13,24 +13,24 @@ export default function FAQPage() {
 
   const faqs = [
     {
-      q: 'What is Syntheon?',
-      a: 'Syntheon is an AI project manager that joins your meetings, transcribes them, and automatically extracts structured tickets with titles, descriptions, priorities, and labels. It organizes everything onto a Kanban board and maps dependencies — so your team never has to write tickets manually.',
+      q: 'What is Syntheon Hub?',
+      a: 'Syntheon Hub is an AI project manager that joins your meetings, transcribes them, and automatically extracts structured tickets with titles, descriptions, priorities, and labels. It organizes everything onto a Kanban board and maps dependencies — so your team never has to write tickets manually.',
     },
     {
-      q: 'What platforms does Syntheon support?',
-      a: 'Syntheon works with Google Meet, Zoom, and Microsoft Teams. The bot joins as a participant, records the meeting, and leaves automatically when it ends. No browser extension or installation required.',
+      q: 'What platforms does Syntheon Hub support?',
+      a: 'Syntheon Hub works with Google Meet, Zoom, and Microsoft Teams. The bot joins as a participant, records the meeting, and leaves automatically when it ends. No browser extension or installation required.',
     },
     {
       q: 'What counts as a meeting?',
-      a: 'A meeting is any call where the Syntheon bot joins and transcribes. Whether it is 5 minutes or 2 hours, it counts as one meeting against your monthly limit.',
+      a: 'A meeting is any call where the Syntheon Hub bot joins and transcribes. Whether it is 5 minutes or 2 hours, it counts as one meeting against your monthly limit.',
     },
     {
       q: 'How does AI ticket extraction work?',
-      a: 'After each meeting, Syntheon analyzes the transcript using AI to identify action items, decisions, insights, and blockers. Each becomes a structured ticket with a title, description, priority, type, and estimate. Dependencies between tickets are also mapped automatically.',
+      a: 'After each meeting, Syntheon Hub analyzes the transcript using AI to identify action items, decisions, insights, and blockers. Each becomes a structured ticket with a title, description, priority, type, and estimate. Dependencies between tickets are also mapped automatically.',
     },
     {
       q: 'Do I need any extensions or integrations?',
-      a: 'No. Syntheon works entirely in the browser. Just sign up, start a meeting, and the bot joins your call automatically. No Chrome extension, no GitHub connection, no Linear setup — everything is self-contained.',
+      a: 'No. Syntheon Hub works entirely in the browser. Just sign up, start a meeting, and the bot joins your call automatically. No Chrome extension, no GitHub connection, no Linear setup — everything is self-contained.',
     },
     {
       q: 'Can I edit the tickets after extraction?',
@@ -38,7 +38,7 @@ export default function FAQPage() {
     },
     {
       q: 'What is the dependency graph?',
-      a: 'The dependency graph visualizes hard and soft blockers between tickets. Syntheon automatically infers dependencies from meeting context, so you know what must ship first before work gets stuck.',
+      a: 'The dependency graph visualizes hard and soft blockers between tickets. Syntheon Hub automatically infers dependencies from meeting context, so you know what must ship first before work gets stuck.',
     },
     {
       q: 'What happens if I exceed my meeting limit?',
@@ -66,10 +66,10 @@ export default function FAQPage() {
     },
     {
       q: 'Do I need consent from meeting participants?',
-      a: 'Yes. You are solely responsible for obtaining consent from all meeting participants before using the Syntheon bot. Recording laws vary by jurisdiction. The bot appears as "Syntheonhub" in the call, making it clear to everyone that the meeting is being recorded.',
+      a: 'Yes. You are solely responsible for obtaining consent from all meeting participants before using the Syntheon Hub bot. Recording laws vary by jurisdiction. The bot appears as "Syntheon Hub" in the call, making it clear to everyone that the meeting is being recorded.',
     },
     {
-      q: 'Can I use Syntheon for multiple projects?',
+      q: 'Can I use Syntheon Hub for multiple projects?',
       a: 'Yes. Depending on your plan, you can have 1, 5, or unlimited projects. Each project has its own Kanban board, tickets, dependencies, and sprint tracking.',
     },
     {
@@ -134,7 +134,7 @@ export default function FAQPage() {
         >
           <img
             src="/syntheon-logo.png"
-            alt="Syntheon"
+            alt="Syntheon Hub"
             width={28}
             height={28}
             style={{ borderRadius: '6px', objectFit: 'cover' }}
@@ -148,7 +148,7 @@ export default function FAQPage() {
               letterSpacing: '-0.02em',
             }}
           >
-            Syntheon
+            Syntheon Hub
           </span>
         </Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
@@ -221,7 +221,7 @@ export default function FAQPage() {
             margin: '0 auto',
           }}
         >
-          Everything you need to know about Syntheon.
+          Everything you need to know about Syntheon Hub.
         </p>
       </section>
 
@@ -340,7 +340,7 @@ export default function FAQPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
           <img
             src="/syntheon-logo.png"
-            alt="Syntheon"
+            alt="Syntheon Hub"
             width={24}
             height={24}
             style={{ borderRadius: '4px' }}
@@ -353,7 +353,7 @@ export default function FAQPage() {
               color: '#fff',
             }}
           >
-            Syntheon
+            Syntheon Hub
           </span>
         </div>
         <div style={{ display: 'flex', gap: '2rem' }}>
@@ -388,7 +388,7 @@ export default function FAQPage() {
             Legal
           </Link>
         </div>
-        <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.25)' }}>2026 Syntheonhub.</p>
+        <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.25)' }}>2026 Syntheon Hub.</p>
       </footer>
     </div>
   );

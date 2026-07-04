@@ -21,7 +21,7 @@ export default function GettingStartedPage() {
         Overview
       </h1>
       <p style={{ fontSize: '16px', color: 'rgba(255,255,255,0.5)', marginBottom: '2.5rem' }}>
-        Syntheonhub turns your meetings into organized work. The bot joins your call, transcribes
+        Syntheon Hub turns your meetings into organized work. The bot joins your call, transcribes
         it, and AI extracts structured tickets with priorities, labels, dependencies, and estimates
         — all automatically.
       </p>
@@ -40,7 +40,7 @@ export default function GettingStartedPage() {
         <p className="doc-card-title">2. Start a meeting</p>
         <p className="doc-card-text">
           From your dashboard, click <code>New Meeting</code> and paste a Google Meet, Zoom, or
-          Microsoft Teams link. The bot joins as a participant named &quot;Syntheonhub&quot;.
+          Microsoft Teams link. The bot joins as a participant named &quot;Syntheon Hub&quot;.
         </p>
       </div>
       <div className="doc-card">

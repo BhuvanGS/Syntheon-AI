@@ -3,16 +3,15 @@
 import { useState } from 'react';
 import { useUser, useOrganization } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
-import { Building2, Sliders, ArrowLeft, Shield, Plug } from 'lucide-react';
+import { Building2, Sliders, ArrowLeft, Plug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { IntegrationsTab } from '@/components/settings/integrations-tab';
 import { OrganizationsTab } from '@/components/settings/organizations-tab';
-import { OrganizationDomainsTab } from '@/components/settings/organization-domains-tab';
 import { PreferencesTab } from '@/components/settings/preferences-tab';
 
-type SettingsTab = 'integrations' | 'organizations' | 'domains' | 'preferences';
+type SettingsTab = 'integrations' | 'organizations' | 'preferences';
 
 const tabs: Array<{ id: SettingsTab; label: string; icon: typeof Plug; description: string }> = [
   {
@@ -27,7 +26,6 @@ const tabs: Array<{ id: SettingsTab; label: string; icon: typeof Plug; descripti
     icon: Building2,
     description: 'Manage your workspace',
   },
-  { id: 'domains', label: 'Verified Domains', icon: Shield, description: 'Domain-based access' },
   { id: 'preferences', label: 'Preferences', icon: Sliders, description: 'Appearance & theme' },
 ];
 
@@ -129,7 +127,6 @@ export default function SettingsPage() {
         <div className="max-w-5xl mx-auto">
           {activeTab === 'integrations' && <IntegrationsTab />}
           {activeTab === 'organizations' && <OrganizationsTab />}
-          {activeTab === 'domains' && <OrganizationDomainsTab />}
           {activeTab === 'preferences' && <PreferencesTab />}
         </div>
       </main>

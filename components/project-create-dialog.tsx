@@ -54,7 +54,7 @@ export function ProjectCreateDialog({ open, onOpenChange, onCreate }: ProjectCre
         <DialogHeader>
           <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary w-fit mb-2">
             <Sparkles className="h-3.5 w-3.5" />
-            Syntheon Projects
+            Syntheon Hub Projects
           </div>
           <DialogTitle className="font-playfair text-2xl text-foreground">
             Create a new project

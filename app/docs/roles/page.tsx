@@ -19,7 +19,7 @@ export default function RolesPage() {
         Roles & Permissions
       </h1>
       <p style={{ fontSize: '16px', color: 'rgba(255,255,255,0.5)', marginBottom: '2.5rem' }}>
-        Syntheonhub has two roles with different access levels:
+        Syntheon Hub has two roles with different access levels:
       </p>
 
       <div className="doc-card">

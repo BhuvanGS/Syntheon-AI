@@ -17,7 +17,7 @@ export default function DependenciesPage() {
         Dependencies
       </h1>
       <p style={{ fontSize: '16px', color: 'rgba(255,255,255,0.5)', marginBottom: '2.5rem' }}>
-        Syntheonhub automatically infers dependencies between tickets from meeting context. There
+        Syntheon Hub automatically infers dependencies between tickets from meeting context. There
         are two types:
       </p>
 

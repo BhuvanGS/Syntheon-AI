@@ -66,7 +66,7 @@ const MEETING_LINES: MeetingLine[] = [
   {
     id: 'm6',
     speaker: 'Sarah',
-    text: 'great, Syntheon handled all of that automatically',
+    text: 'great, Syntheon Hub handled all of that automatically',
     ticketId: '6',
   },
 ];

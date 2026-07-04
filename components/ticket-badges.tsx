@@ -32,8 +32,31 @@ export const ESTIMATE_CONFIG: Record<
   none: { label: 'No estimate', color: '#9ca3af', symbol: '' },
 };
 
-export function PriorityDot({ priority, size = 8 }: { priority: TicketPriority; size?: number }) {
+export function PriorityDot({
+  priority,
+  size = 8,
+  showLabel = false,
+}: {
+  priority: TicketPriority;
+  size?: number;
+  showLabel?: boolean;
+}) {
   const config = PRIORITY_CONFIG[priority] ?? PRIORITY_CONFIG.none;
+  if (showLabel && priority !== 'none') {
+    return (
+      <span
+        className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+        style={{ background: `${config.color}15`, color: config.color }}
+        title={config.label}
+      >
+        <span
+          className="inline-block rounded-full shrink-0"
+          style={{ width: size, height: size, backgroundColor: config.color }}
+        />
+        {config.label}
+      </span>
+    );
+  }
   return (
     <span
       className="inline-block rounded-full shrink-0"
@@ -109,7 +132,7 @@ export function TicketBadges({
 }) {
   return (
     <div className="flex items-center gap-1.5 flex-wrap">
-      {priority && priority !== 'none' && <PriorityDot priority={priority} />}
+      {priority && priority !== 'none' && <PriorityDot priority={priority} showLabel />}
       {type && type !== 'task' && (
         <span className="inline-flex items-center gap-1">
           <TypeIcon type={type} size={12} />

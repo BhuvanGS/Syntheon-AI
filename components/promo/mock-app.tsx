@@ -215,7 +215,7 @@ export function MockApp() {
             <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
               <span className="text-sm font-bold text-white">S</span>
             </div>
-            <span className="font-semibold text-white">Syntheon</span>
+            <span className="font-semibold text-white">Syntheon Hub</span>
           </div>
           <div className="h-6 w-px bg-white/10" />
           <div className="flex items-center gap-2 text-white/50 text-sm">

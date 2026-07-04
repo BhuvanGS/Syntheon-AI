@@ -13,7 +13,7 @@ export default function HowItWorksPage() {
     {
       number: '01',
       title: 'Connect your calendar',
-      desc: 'Sign up and connect your Google Calendar, Outlook, or manual meeting links. Syntheon detects upcoming meetings automatically.',
+      desc: 'Sign up and connect your Google Calendar, Outlook, or manual meeting links. Syntheon Hub detects upcoming meetings automatically.',
       detail: [
         'Works with Google Meet, Zoom, and Microsoft Teams',
         'No extension required — everything runs in the browser',
@@ -22,10 +22,10 @@ export default function HowItWorksPage() {
     },
     {
       number: '02',
-      title: 'Syntheon joins the meeting',
-      desc: 'When the meeting starts, Syntheon joins as a participant. It records, transcribes, and listens for decisions, action items, and blockers.',
+      title: 'Syntheon Hub joins the meeting',
+      desc: 'When the meeting starts, Syntheon Hub joins as a participant. It records, transcribes, and listens for decisions, action items, and blockers.',
       detail: [
-        'Bot appears as "Syntheonhub" in the call',
+        'Bot appears as "Syntheon Hub" in the call',
         'All participants should be informed the meeting is being recorded',
         'Bot leaves automatically when the meeting ends',
       ],
@@ -132,7 +132,7 @@ export default function HowItWorksPage() {
         >
           <img
             src="/syntheon-logo.png"
-            alt="Syntheon"
+            alt="Syntheon Hub"
             width={28}
             height={28}
             style={{ borderRadius: '6px', objectFit: 'cover' }}
@@ -146,7 +146,7 @@ export default function HowItWorksPage() {
               letterSpacing: '-0.02em',
             }}
           >
-            Syntheon
+            Syntheon Hub
           </span>
         </Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
@@ -219,8 +219,8 @@ export default function HowItWorksPage() {
             margin: '0 auto',
           }}
         >
-          Six steps. Zero manual ticket writing. Here&apos;s how Syntheon turns every meeting into
-          structured, trackable work.
+          Six steps. Zero manual ticket writing. Here&apos;s how Syntheon Hub turns every meeting
+          into structured, trackable work.
         </p>
       </section>
 
@@ -342,7 +342,7 @@ export default function HowItWorksPage() {
           Stop writing tickets.
         </h2>
         <p style={{ fontSize: '18px', color: 'rgba(255,255,255,0.4)', marginBottom: '2.5rem' }}>
-          Let Syntheon do it after every meeting.
+          Let Syntheon Hub do it after every meeting.
         </p>
         <Link
           href={`${APP_URL}/sign-up`}
@@ -377,7 +377,7 @@ export default function HowItWorksPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
           <img
             src="/syntheon-logo.png"
-            alt="Syntheon"
+            alt="Syntheon Hub"
             width={24}
             height={24}
             style={{ borderRadius: '4px' }}
@@ -390,7 +390,7 @@ export default function HowItWorksPage() {
               color: '#fff',
             }}
           >
-            Syntheon
+            Syntheon Hub
           </span>
         </div>
         <div style={{ display: 'flex', gap: '2rem' }}>
@@ -425,7 +425,7 @@ export default function HowItWorksPage() {
             Legal
           </Link>
         </div>
-        <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.25)' }}>2026 Syntheonhub.</p>
+        <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.25)' }}>2026 Syntheon Hub.</p>
       </footer>
     </div>
   );

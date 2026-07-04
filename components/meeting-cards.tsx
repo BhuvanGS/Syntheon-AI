@@ -102,7 +102,7 @@ export function MeetingCards({ onSelectMeeting, onCreateTicket }: MeetingCardsPr
       <div className="bg-muted/50 rounded-2xl p-12 border border-border text-center animate-fade-in-up">
         <p className="text-2xl font-playfair font-bold text-foreground mb-2">No meetings yet</p>
         <p className="text-muted-foreground">
-          Start recording a meeting with the Syntheon extension.
+          Start recording a meeting with the Syntheon Hub extension.
         </p>
       </div>
     );
@@ -169,7 +169,7 @@ export function MeetingCards({ onSelectMeeting, onCreateTicket }: MeetingCardsPr
                 }`}
                 title={
                   meeting.status === 'not_admitted'
-                    ? 'Syntheonhub not admitted to meeting'
+                    ? 'Syntheon Hub not admitted to meeting'
                     : undefined
                 }
               >

@@ -17,9 +17,9 @@ export default function SprintStonesPage() {
         Sprint-stones
       </h1>
       <p style={{ fontSize: '16px', color: 'rgba(255,255,255,0.5)', marginBottom: '2.5rem' }}>
-        Syntheonhub generates sprints from your backlog using AI. Each sprint includes a name, goal,
-        date range, and a grouped set of tickets. The Sprint-stones tab provides sprint planning and
-        tracking tools.
+        Syntheon Hub generates sprints from your backlog using AI. Each sprint includes a name,
+        goal, date range, and a grouped set of tickets. The Sprint-stones tab provides sprint
+        planning and tracking tools.
       </p>
     </>
   );

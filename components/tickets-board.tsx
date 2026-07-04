@@ -36,6 +36,7 @@ import {
   Square,
   Tag,
   SlidersHorizontal,
+  ChevronRight,
 } from 'lucide-react';
 import { AssigneePicker, type AssigneeValue } from '@/components/assignee-picker';
 import { TicketDependencyPanel } from '@/components/ticket-dependency-panel';
@@ -79,6 +80,7 @@ interface Ticket {
   updatedAt?: string | null;
   timeEstimate?: number | null;
   timeSpent?: number | null;
+  dependency_ticket_id?: string | null;
 }
 
 interface Label {
@@ -819,114 +821,120 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 rounded-lg border border-border p-0.5 bg-muted/40">
-            {(
-              [
-                { key: 'all', label: 'All' },
-                { key: 'mine', label: 'Mine' },
-                { key: 'unassigned', label: 'Unassigned' },
-              ] as const
-            ).map(({ key, label }) => (
+      <details className="group" open>
+        <summary className="flex items-center gap-2 cursor-pointer select-none list-none">
+          <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-90" />
+          <h2 className="font-playfair text-xl font-bold text-foreground">Tickets</h2>
+        </summary>
+        <div className="flex items-center justify-between flex-wrap gap-2 mt-2">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 rounded-lg border border-border p-0.5 bg-muted/40">
+              {(
+                [
+                  { key: 'all', label: 'All' },
+                  { key: 'mine', label: 'Mine' },
+                  { key: 'unassigned', label: 'Unassigned' },
+                ] as const
+              ).map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => setAssigneeFilter(key)}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                    assigneeFilter === key
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-1 rounded-lg border border-border p-0.5 bg-muted/40">
               <button
-                key={key}
-                onClick={() => setAssigneeFilter(key)}
-                className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-                  assigneeFilter === key
+                onClick={() => setViewMode('list')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                  viewMode === 'list'
                     ? 'bg-background text-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                {label}
+                <List className="w-3 h-3" />
+                List
               </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-1 rounded-lg border border-border p-0.5 bg-muted/40">
+              <button
+                onClick={() => setViewMode('kanban')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                  viewMode === 'kanban'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <LayoutGrid className="w-3 h-3" />
+                Kanban
+              </button>
+            </div>
             <button
-              onClick={() => setViewMode('list')}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-                viewMode === 'list'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
+              onClick={() => {
+                setBulkMode((v) => {
+                  if (v) setSelectedIds(new Set());
+                  return !v;
+                });
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${
+                bulkMode
+                  ? 'bg-primary/10 text-primary border-primary/20'
+                  : 'text-muted-foreground hover:text-foreground border-border bg-muted/40'
               }`}
+              title="Toggle bulk select (⌘B)"
             >
-              <List className="w-3 h-3" />
-              List
+              <CheckSquare className="h-3.5 w-3.5" />
+              Bulk
             </button>
             <button
-              onClick={() => setViewMode('kanban')}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-                viewMode === 'kanban'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
+              onClick={() => setFilterDialogOpen(true)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${
+                filters.status ||
+                filters.priority ||
+                filters.type ||
+                filters.estimate ||
+                filters.labelIds.length > 0 ||
+                filters.assignee !== 'all' ||
+                filters.dueDate !== 'all'
+                  ? 'bg-primary/10 text-primary border-primary/20'
+                  : 'text-muted-foreground hover:text-foreground border-border bg-muted/40'
               }`}
+              title="Filter tickets"
             >
-              <LayoutGrid className="w-3 h-3" />
-              Kanban
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              Filter
+            </button>
+            <button
+              onClick={() => setLabelManagerOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors text-muted-foreground hover:text-foreground border border-border bg-muted/40"
+            >
+              <Tag className="h-3.5 w-3.5" />
+              Labels
             </button>
           </div>
-          <button
-            onClick={() => {
-              setBulkMode((v) => {
-                if (v) setSelectedIds(new Set());
-                return !v;
-              });
-            }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${
-              bulkMode
-                ? 'bg-primary/10 text-primary border-primary/20'
-                : 'text-muted-foreground hover:text-foreground border-border bg-muted/40'
-            }`}
-            title="Toggle bulk select (⌘B)"
-          >
-            <CheckSquare className="h-3.5 w-3.5" />
-            Bulk
-          </button>
-          <button
-            onClick={() => setFilterDialogOpen(true)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${
-              filters.status ||
-              filters.priority ||
-              filters.type ||
-              filters.estimate ||
-              filters.labelIds.length > 0 ||
-              filters.assignee !== 'all' ||
-              filters.dueDate !== 'all'
-                ? 'bg-primary/10 text-primary border-primary/20'
-                : 'text-muted-foreground hover:text-foreground border-border bg-muted/40'
-            }`}
-            title="Filter tickets"
-          >
-            <SlidersHorizontal className="h-3.5 w-3.5" />
-            Filter
-          </button>
-          <button
-            onClick={() => setLabelManagerOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors text-muted-foreground hover:text-foreground border border-border bg-muted/40"
-          >
-            <Tag className="h-3.5 w-3.5" />
-            Labels
-          </button>
+          {hasPendingChanges && (
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleDiscardClick}
+                disabled={saving}
+                className="rounded-full"
+              >
+                Discard changes
+              </Button>
+              <Button onClick={saveChanges} disabled={saving} className="rounded-full gap-2">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                {saving ? 'Saving...' : `Save changes (${Object.keys(pendingChanges).length})`}
+              </Button>
+            </div>
+          )}
         </div>
-        {hasPendingChanges && (
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleDiscardClick}
-              disabled={saving}
-              className="rounded-full"
-            >
-              Discard changes
-            </Button>
-            <Button onClick={saveChanges} disabled={saving} className="rounded-full gap-2">
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-              {saving ? 'Saving...' : `Save changes (${Object.keys(pendingChanges).length})`}
-            </Button>
-          </div>
-        )}
-      </div>
+      </details>
 
       {/* Filter dialog */}
       <FilterDialog
@@ -1129,23 +1137,30 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
             </div>
 
             <div className="border-t border-border/60 pt-3">
-              <p className="text-sm font-medium text-foreground mb-2">Properties</p>
-              <TicketMetadataEditor
-                priority={metaPriority}
-                type={metaType}
-                estimate={metaEstimate}
-                labels={metaLabels}
-                timeEstimate={metaTimeEstimate}
-                timeSpent={metaTimeSpent}
-                onPriorityChange={setMetaPriority}
-                onTypeChange={setMetaType}
-                onEstimateChange={setMetaEstimate}
-                onLabelsChange={setMetaLabels}
-                onTimeEstimateChange={setMetaTimeEstimate}
-                onTimeSpentChange={setMetaTimeSpent}
-                availableLabels={labels}
-                onManageLabels={() => setLabelManagerOpen(true)}
-              />
+              <details className="group">
+                <summary className="flex items-center gap-2 cursor-pointer select-none list-none mb-2">
+                  <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-90" />
+                  <p className="text-sm font-medium text-foreground">Properties</p>
+                </summary>
+                <div className="mt-3">
+                  <TicketMetadataEditor
+                    priority={metaPriority}
+                    type={metaType}
+                    estimate={metaEstimate}
+                    labels={metaLabels}
+                    timeEstimate={metaTimeEstimate}
+                    timeSpent={metaTimeSpent}
+                    onPriorityChange={setMetaPriority}
+                    onTypeChange={setMetaType}
+                    onEstimateChange={setMetaEstimate}
+                    onLabelsChange={setMetaLabels}
+                    onTimeEstimateChange={setMetaTimeEstimate}
+                    onTimeSpentChange={setMetaTimeSpent}
+                    availableLabels={labels}
+                    onManageLabels={() => setLabelManagerOpen(true)}
+                  />
+                </div>
+              </details>
             </div>
 
             {ticketToEdit && (
@@ -1173,7 +1188,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
               className="rounded-full"
               disabled={Boolean(updatingTicketId)}
             >
-              Delete ticket
+              {ticketToEdit?.dependency_ticket_id ? 'Delete subtask' : 'Delete ticket'}
             </Button>
             <Button
               type="button"
@@ -1230,7 +1245,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
               disabled={Boolean(deletingTicketId)}
             >
               {deletingTicketId ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-              Delete ticket
+              {ticketToDelete?.dependency_ticket_id ? 'Delete subtask' : 'Delete ticket'}
             </Button>
           </DialogFooter>
         </DialogContent>

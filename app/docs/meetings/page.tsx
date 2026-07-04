@@ -19,7 +19,7 @@ export default function MeetingsPage() {
         Meetings
       </h1>
       <p style={{ fontSize: '16px', color: 'rgba(255,255,255,0.5)', marginBottom: '2.5rem' }}>
-        Meetings are the core input to Syntheonhub. The bot joins your call, records audio, and
+        Meetings are the core input to Syntheon Hub. The bot joins your call, records audio, and
         transcribes in real-time via Skribby.
       </p>
 
@@ -33,15 +33,15 @@ export default function MeetingsPage() {
       <div className="doc-card">
         <p className="doc-card-title">How the bot works</p>
         <p className="doc-card-text">
-          When you start a meeting, Syntheonhub sends a bot via Skribby. The bot joins as a
-          participant named &quot;Syntheonhub&quot;, records audio, and transcribes in real-time.
+          When you start a meeting, Syntheon Hub sends a bot via Skribby. The bot joins as a
+          participant named &quot;Syntheon Hub&quot;, records audio, and transcribes in real-time.
           Audio is deleted immediately after transcription — we never store raw audio.
         </p>
       </div>
       <div className="doc-card">
         <p className="doc-card-title">Consent</p>
         <p className="doc-card-text">
-          The bot appears as &quot;Syntheonhub&quot; in the participant list, making it clear the
+          The bot appears as &quot;Syntheon Hub&quot; in the participant list, making it clear the
           meeting is being recorded. You are responsible for obtaining consent from all participants
           before recording.
         </p>

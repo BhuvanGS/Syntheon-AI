@@ -118,7 +118,7 @@ export function Sidebar({
         >
           <img
             src="/syntheon-logo.png"
-            alt="Syntheon"
+            alt="Syntheon Hub"
             className="w-[30px] h-[30px] object-contain shrink-0 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3"
             onError={(e) => {
               (e.target as HTMLImageElement).style.display = 'none';
@@ -126,7 +126,7 @@ export function Sidebar({
           />
           <div className="min-w-0">
             <span className="font-[family-name:var(--font-dm-serif)] text-[1.05rem] text-primary tracking-tight block truncate">
-              Syntheon
+              Syntheon Hub
             </span>
             {organization?.name && (
               <span className="text-[10px] text-muted-foreground truncate block leading-none">

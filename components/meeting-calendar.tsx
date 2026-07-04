@@ -81,7 +81,7 @@ export function MeetingCalendar({ meetings, onSelectMeeting }: MeetingCalendarPr
       const data = await res.json();
       setGoogleEvents(data.events ?? []);
     } catch {
-      // silently fail — calendar still shows Syntheon meetings
+      // silently fail — calendar still shows Syntheon Hub meetings
     } finally {
       setGoogleLoading(false);
     }

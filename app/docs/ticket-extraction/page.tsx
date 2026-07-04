@@ -17,7 +17,7 @@ export default function TicketExtractionPage() {
         AI Ticket Extraction
       </h1>
       <p style={{ fontSize: '16px', color: 'rgba(255,255,255,0.5)', marginBottom: '2.5rem' }}>
-        After each meeting, Syntheonhub uses AI (powered by Groq) to analyze the transcript and
+        After each meeting, Syntheon Hub uses AI (powered by Groq) to analyze the transcript and
         extract structured tickets. The AI identifies action items, decisions, insights, and
         blockers from the conversation.
       </p>

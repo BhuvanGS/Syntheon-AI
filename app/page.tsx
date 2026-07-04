@@ -26,7 +26,7 @@ const features = [
   {
     icon: Bot,
     title: 'Meeting Bot',
-    desc: 'Syntheon joins your Google Meet, Zoom, or Teams call. It records, transcribes, and extracts decisions automatically.',
+    desc: 'Syntheon Hub joins your Google Meet, Zoom, or Teams call. It records, transcribes, and extracts decisions automatically.',
   },
   {
     icon: Sparkles,
@@ -51,7 +51,7 @@ const features = [
   {
     icon: Zap,
     title: 'Auto-Organize',
-    desc: 'No manual updates. Syntheon moves tickets, sets dependencies, and keeps your board in sync after every meeting.',
+    desc: 'No manual updates. Syntheon Hub moves tickets, sets dependencies, and keeps your board in sync after every meeting.',
   },
 ];
 
@@ -109,7 +109,7 @@ function Nav({
         >
           <img
             src="/syntheon-logo.png"
-            alt="Syntheon logo"
+            alt="Syntheon Hub logo"
             width={28}
             height={28}
             style={{ borderRadius: '6px', objectFit: 'cover' }}
@@ -123,7 +123,7 @@ function Nav({
               letterSpacing: '-0.02em',
             }}
           >
-            Syntheon
+            Syntheon Hub
           </span>
         </Link>
         <div
@@ -249,7 +249,7 @@ function HeroSection() {
             textWrap: 'balance',
           }}
         >
-          Syntheon
+          Syntheon Hub
         </h1>
 
         <p
@@ -611,7 +611,7 @@ function Footer() {
           >
             <img
               src="/syntheon-logo.png"
-              alt="Syntheon"
+              alt="Syntheon Hub"
               width={28}
               height={28}
               style={{ borderRadius: '6px', objectFit: 'cover' }}
@@ -625,7 +625,7 @@ function Footer() {
                 letterSpacing: '-0.02em',
               }}
             >
-              Syntheon
+              Syntheon Hub
             </span>
           </div>
           <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', maxWidth: '300px' }}>
@@ -667,7 +667,7 @@ function Footer() {
         }}
       >
         <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.3)' }}>
-          &copy; 2026 Syntheon. All rights reserved.
+          &copy; 2026 Syntheon Hub. All rights reserved.
         </span>
         <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.3)' }}>
           Built with Next.js, Clerk, and Drizzle.

@@ -77,7 +77,8 @@
 }
 
 @theme inline {
-  --font-sans: 'Geist', 'Geist Fallback';
+  --font-sans: var(--font-inter), 'Inter', 'Geist', 'Geist Fallback';
+  --font-heading: var(--font-space-grotesk), 'Space Grotesk', sans-serif;
   --font-mono: 'Geist Mono', 'Geist Mono Fallback';
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -127,7 +128,7 @@
     -moz-osx-font-smoothing: grayscale;
   }
   .font-playfair {
-    font-family: var(--font-playfair), serif;
+    font-family: var(--font-space-grotesk), 'Space Grotesk', sans-serif;
   }
 
   /* Buttery global transitions for interactive elements */
