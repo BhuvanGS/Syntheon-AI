@@ -20,7 +20,15 @@ function isAppDomain(hostname: string): boolean {
 }
 
 // ─── Route matchers ───────────────────────────────────────────────
-const isMarketingRoute = createRouteMatcher(['/', '/pricing', '/how-it-works', '/legal', '/promo']);
+const isMarketingRoute = createRouteMatcher([
+  '/',
+  '/pricing',
+  '/how-it-works',
+  '/legal',
+  '/promo',
+  '/docs(.*)',
+  '/faq',
+]);
 
 const isAppOnlyRoute = createRouteMatcher([
   '/dashboard(.*)',

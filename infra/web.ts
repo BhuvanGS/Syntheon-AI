@@ -25,6 +25,7 @@ export function createSite(args: {
       ? {
           name: 'syntheonhub.com',
           aliases: ['www.syntheonhub.com', 'app.syntheonhub.com'],
+          cert: 'arn:aws:acm:us-east-1:565139240803:certificate/29b1d926-63c1-4337-96fb-e58585208fc6',
         }
       : undefined,
     link: [
@@ -62,10 +63,14 @@ export function createSite(args: {
       WEBHOOK_ACCESS_TOKEN: s.webhookAccessToken.value,
       GITHUB_OAUTH_CLIENT_ID: s.githubOauthClientId.value,
       GITHUB_OAUTH_CLIENT_SECRET: s.githubOauthClientSecret.value,
-      GITHUB_OAUTH_REDIRECT_URI: `${appUrl}/api/oauth/github/callback`,
+      GITHUB_OAUTH_REDIRECT_URI: isProduction
+        ? 'https://app.syntheonhub.com/api/oauth/github/callback'
+        : `${appUrl}/api/oauth/github/callback`,
       GOOGLE_OAUTH_CLIENT_ID: process.env.GOOGLE_OAUTH_CLIENT_ID!,
       GOOGLE_OAUTH_CLIENT_SECRET: s.googleOauthClientSecret.value,
-      GOOGLE_OAUTH_REDIRECT_URI: `${appUrl}/api/oauth/google/callback`,
+      GOOGLE_OAUTH_REDIRECT_URI: isProduction
+        ? 'https://app.syntheonhub.com/api/oauth/google/callback'
+        : `${appUrl}/api/oauth/google/callback`,
       TOKEN_ENCRYPTION_KEY: s.tokenEncryptionKey.value,
       NEXT_PUBLIC_CLERK_SIGN_IN_URL: process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL!,
       NEXT_PUBLIC_CLERK_SIGN_UP_URL: process.env.NEXT_PUBLIC_CLERK_SIGN_UP_URL!,

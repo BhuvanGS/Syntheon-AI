@@ -2,7 +2,7 @@ name: Deploy Production
 
 on:
   push:
-    tags: ['v*.*.*']
+    branches: ['main']
 
 jobs:
   deploy:
@@ -11,8 +11,6 @@ jobs:
       id-token: write
       contents: read
     env:
-      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
       GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
       GITHUB_OWNER: ${{ secrets.GH_OWNER }}
@@ -47,7 +45,6 @@ jobs:
 
       - name: Set SST secrets
         env:
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           SKRIBBY_API_KEY: ${{ secrets.SKRIBBY_API_KEY }}
           CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
@@ -63,7 +60,6 @@ jobs:
           GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
           TOKEN_ENCRYPTION_KEY: ${{ secrets.TOKEN_ENCRYPTION_KEY }}
         run: |
-          npx sst secret set SupabaseServiceRoleKey "$SUPABASE_SERVICE_ROLE_KEY" --stage production
           npx sst secret set GroqApiKey "$GROQ_API_KEY" --stage production
           npx sst secret set SkribbyApiKey "$SKRIBBY_API_KEY" --stage production
           npx sst secret set ClerkSecretKey "$CLERK_SECRET_KEY" --stage production
