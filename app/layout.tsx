@@ -38,9 +38,59 @@ const _dmSerif = DM_Serif_Display({
 });
 
 export const metadata: Metadata = {
-  title: 'Syntheon — Turns conversations into software',
+  metadataBase: new URL('https://syntheonhub.com'),
+  title: {
+    default: 'Syntheon — Turn meetings into tickets, automatically',
+    template: '%s | Syntheon',
+  },
   description:
-    'Syntheon joins your meetings, extracts spec blocks, generates code, opens PRs, creates Linear tickets, and deploys a live preview — automatically.',
+    'Syntheon joins your meetings, extracts action items, and creates organized tickets automatically. AI-powered project management that works while you talk.',
+  keywords: [
+    'meeting notes',
+    'ticket management',
+    'project management',
+    'AI meeting assistant',
+    'automatic ticket creation',
+    'sprint planning',
+    'kanban board',
+    'team productivity',
+  ],
+  authors: [{ name: 'Syntheon' }],
+  creator: 'Syntheon',
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: 'https://syntheonhub.com',
+    siteName: 'Syntheon',
+    title: 'Syntheon — Turn meetings into tickets, automatically',
+    description:
+      'Syntheon joins your meetings, extracts action items, and creates organized tickets automatically. AI-powered project management that works while you talk.',
+    images: [
+      {
+        url: '/syntheon-logo.png',
+        width: 1200,
+        height: 630,
+        alt: 'Syntheon',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Syntheon — Turn meetings into tickets, automatically',
+    description:
+      'AI-powered project management that joins your meetings and creates tickets automatically.',
+    images: ['/syntheon-logo.png'],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
   icons: {
     icon: [
       { url: '/syntheon-logo.png', media: '(prefers-color-scheme: light)' },
