@@ -93,10 +93,11 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
+      { url: '/favicon.ico', sizes: 'any' },
       { url: '/syntheon-logo.png', media: '(prefers-color-scheme: light)' },
       { url: '/syntheon-logo.png', media: '(prefers-color-scheme: dark)' },
     ],
-    apple: '/syntheon-logo.png',
+    apple: '/apple-icon.png',
   },
 };
 
