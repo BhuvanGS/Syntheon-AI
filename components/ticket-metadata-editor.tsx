@@ -58,8 +58,9 @@ function FieldDropdown({
   return (
     <div ref={ref} className="relative">
       <button
+        type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-border bg-muted/30 text-sm hover:bg-muted/50 transition-colors"
+        className="w-full flex items-center justify-between px-3 py-2 rounded-none border border-border bg-muted/30 text-sm hover:bg-muted/50 transition-colors"
       >
         <span className="text-muted-foreground text-xs">{label}</span>
         <span className="flex items-center gap-1.5 text-foreground text-xs font-medium">
@@ -68,7 +69,7 @@ function FieldDropdown({
         </span>
       </button>
       {open && (
-        <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-popover border border-border rounded-lg shadow-lg py-1 max-h-[280px] overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-popover border border-border rounded-none shadow-lg py-1 max-h-[280px] overflow-y-auto">
           {children(() => setOpen(false))}
         </div>
       )}
@@ -128,6 +129,7 @@ export function TicketMetadataEditor({
             <>
               {(Object.keys(PRIORITY_CONFIG) as TicketPriority[]).map((p) => (
                 <button
+                  type="button"
                   key={p}
                   onClick={() => {
                     onPriorityChange(p);
@@ -169,6 +171,7 @@ export function TicketMetadataEditor({
                 const Icon = config.icon;
                 return (
                   <button
+                    type="button"
                     key={t}
                     onClick={() => {
                       onTypeChange(t);
@@ -203,6 +206,7 @@ export function TicketMetadataEditor({
             <>
               {(Object.keys(ESTIMATE_CONFIG) as TicketEstimate[]).map((e) => (
                 <button
+                  type="button"
                   key={e}
                   onClick={() => {
                     onEstimateChange(e);
@@ -225,7 +229,7 @@ export function TicketMetadataEditor({
       {onTimeEstimateChange && onTimeSpentChange && (
         <div className="grid grid-cols-3 gap-3">
           <div className="relative">
-            <div className="flex items-center justify-between px-3 py-2 rounded-lg border border-border bg-muted/30">
+            <div className="flex items-center justify-between px-3 py-2 rounded-none border border-border bg-muted/30">
               <span className="text-muted-foreground text-xs">Estimate (h)</span>
               <input
                 type="number"
@@ -241,7 +245,7 @@ export function TicketMetadataEditor({
             </div>
           </div>
           <div className="relative">
-            <div className="flex items-center justify-between px-3 py-2 rounded-lg border border-border bg-muted/30">
+            <div className="flex items-center justify-between px-3 py-2 rounded-none border border-border bg-muted/30">
               <span className="text-muted-foreground text-xs">Spent (h)</span>
               <input
                 type="number"
@@ -254,7 +258,7 @@ export function TicketMetadataEditor({
               />
             </div>
           </div>
-          <div className="flex items-center justify-between px-3 py-2 rounded-lg border border-border bg-muted/30">
+          <div className="flex items-center justify-between px-3 py-2 rounded-none border border-border bg-muted/30">
             <span className="text-muted-foreground text-xs">Remaining</span>
             <span
               className={`text-xs font-medium ${
@@ -277,7 +281,7 @@ export function TicketMetadataEditor({
 
       {/* Labels */}
       <div ref={labelRef} className="relative">
-        <div className="flex items-center gap-2 flex-wrap min-h-[36px] px-3 py-2 rounded-lg border border-border bg-muted/30">
+        <div className="flex items-center gap-2 flex-wrap min-h-[36px] px-3 py-2 rounded-none border border-border bg-muted/30">
           <Tag className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
           {selectedLabels.map((label) => (
             <span
@@ -291,6 +295,7 @@ export function TicketMetadataEditor({
             >
               {label.name}
               <button
+                type="button"
                 onClick={() => onLabelsChange(labels.filter((id) => id !== label.id))}
                 className="hover:opacity-70"
               >
@@ -299,6 +304,7 @@ export function TicketMetadataEditor({
             </span>
           ))}
           <button
+            type="button"
             onClick={() => setLabelSearchOpen((v) => !v)}
             className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
@@ -307,6 +313,7 @@ export function TicketMetadataEditor({
           </button>
           {onManageLabels && (
             <button
+              type="button"
               onClick={onManageLabels}
               className="ml-auto text-[10px] text-muted-foreground hover:text-primary transition-colors"
             >
@@ -316,7 +323,7 @@ export function TicketMetadataEditor({
         </div>
 
         {labelSearchOpen && (
-          <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-popover border border-border rounded-lg shadow-lg py-1 max-h-[200px] overflow-y-auto">
+          <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-popover border border-border rounded-none shadow-lg py-1 max-h-[200px] overflow-y-auto">
             {unselectedLabels.length === 0 && availableLabels.length === 0 && (
               <div className="px-3 py-2 text-xs text-muted-foreground">
                 No labels available. {onManageLabels && 'Create some in Manage.'}
@@ -327,6 +334,7 @@ export function TicketMetadataEditor({
             )}
             {unselectedLabels.map((label) => (
               <button
+                type="button"
                 key={label.id}
                 onClick={() => {
                   onLabelsChange([...labels, label.id]);

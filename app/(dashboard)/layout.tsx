@@ -1,6 +1,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 import { SseProvider } from '@/components/sse-provider';
+import { ConsentGate } from '@/components/consent-gate';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { userId, orgId } = await auth();
@@ -17,5 +18,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
     redirect('/onboarding');
   }
 
-  return <SseProvider>{children}</SseProvider>;
+  return (
+    <SseProvider>
+      <ConsentGate>{children}</ConsentGate>
+    </SseProvider>
+  );
 }

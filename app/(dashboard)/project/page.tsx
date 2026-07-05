@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, Suspense } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/sidebar';
 import { ProjectsWorkspace } from '@/components/projects-workspace';
@@ -53,7 +53,7 @@ interface Ticket {
   id: string;
   title: string;
   description: string;
-  status: 'backlog' | 'in_progress' | 'done' | 'blocked';
+  status: string;
   assignee?: string | null;
   projectId?: string | null;
   meeting_id: string | null;
@@ -87,6 +87,11 @@ function ProjectContent() {
   const [isProjectCreateOpen, setIsProjectCreateOpen] = useState(false);
   const [isMeetingTicketOpen, setIsMeetingTicketOpen] = useState(false);
   const [meetingTicketMeetingId, setMeetingTicketMeetingId] = useState<string | null>(null);
+
+  const memoizedMeetingOptions = useMemo(
+    () => meetings.map((m) => ({ id: m.id, projectName: m.projectName })),
+    [meetings]
+  );
 
   // Listen for create:ticket command from global search (works on any view)
   useEffect(() => {
@@ -229,6 +234,7 @@ function ProjectContent() {
       throw new Error(data?.error || 'Failed to create project');
     }
     const data = await res.json();
+
     await Promise.all([loadProjects(), refreshWorkspace()]);
     router.push(`/project?projectId=${data.project.id}&tab=tickets`);
     toast({ title: 'Project created', description: `${data.project.name} is ready.` });
@@ -330,7 +336,7 @@ function ProjectContent() {
       <ManualTicketDialog
         open={isMeetingTicketOpen}
         onOpenChange={setIsMeetingTicketOpen}
-        meetings={meetings.map((m) => ({ id: m.id, projectName: m.projectName }))}
+        meetings={memoizedMeetingOptions}
         defaultMeetingId={meetingTicketMeetingId}
         onCreated={refreshWorkspace}
       />

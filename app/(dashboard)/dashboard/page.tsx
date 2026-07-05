@@ -80,7 +80,8 @@ interface Ticket {
   id: string;
   title: string;
   description: string;
-  status: 'backlog' | 'in_progress' | 'done' | 'blocked';
+  status: string;
+  user_id?: string | null;
   assignee?: string | null;
   assignee_user_id?: string | null;
   projectId?: string | null;
@@ -123,6 +124,11 @@ function DashboardContent() {
   const [isProjectCreateOpen, setIsProjectCreateOpen] = useState(false);
   const [isMeetingTicketOpen, setIsMeetingTicketOpen] = useState(false);
   const [meetingTicketMeetingId, setMeetingTicketMeetingId] = useState<string | null>(null);
+
+  const memoizedMeetingOptions = useMemo(
+    () => meetings.map((m) => ({ id: m.id, projectName: m.projectName })),
+    [meetings]
+  );
 
   const orgId = organization?.id;
 
@@ -302,6 +308,7 @@ function DashboardContent() {
     }
 
     const data = await res.json();
+
     await Promise.all([loadProjects(), refreshWorkspace()]);
     router.push(`/project?projectId=${data.project.id}&tab=tickets`);
     toast({ title: 'Project created', description: `${data.project.name} is ready.` });
@@ -935,7 +942,7 @@ function DashboardContent() {
                 </p>
               </div>
               <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[1fr_240px] gap-4">
-                <div className="min-h-[600px]">
+                <div className="min-h-[600px] max-h-[calc(100vh-200px)] overflow-hidden rounded-2xl border border-border">
                   <GanttCalendar
                     tickets={tickets as any}
                     projects={projects as any}
@@ -1193,7 +1200,7 @@ function DashboardContent() {
       <ManualTicketDialog
         open={isMeetingTicketOpen}
         onOpenChange={setIsMeetingTicketOpen}
-        meetings={meetings.map((meeting) => ({ id: meeting.id, projectName: meeting.projectName }))}
+        meetings={memoizedMeetingOptions}
         defaultMeetingId={meetingTicketMeetingId}
         onCreated={refreshWorkspace}
       />

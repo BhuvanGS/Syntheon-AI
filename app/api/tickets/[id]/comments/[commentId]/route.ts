@@ -1,6 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
+import DOMPurify from 'isomorphic-dompurify';
 import { deleteComment, updateComment, getTicketById, createActivity } from '@/lib/db';
+
+const ALLOWED_TAGS = [
+  'p',
+  'strong',
+  'em',
+  'u',
+  's',
+  'a',
+  'ul',
+  'ol',
+  'li',
+  'h1',
+  'h2',
+  'h3',
+  'blockquote',
+  'code',
+  'pre',
+  'br',
+];
+const ALLOWED_ATTR = ['href', 'target', 'rel'];
 
 export async function DELETE(
   req: NextRequest,
@@ -62,7 +83,8 @@ export async function PATCH(
       return NextResponse.json({ error: 'content is required' }, { status: 400 });
     }
 
-    const updated = await updateComment(commentId, content.trim());
+    const sanitized = DOMPurify.sanitize(content.trim(), { ALLOWED_TAGS, ALLOWED_ATTR });
+    const updated = await updateComment(commentId, sanitized);
     return NextResponse.json(updated);
   } catch (err) {
     console.error('PATCH /comments error:', err);

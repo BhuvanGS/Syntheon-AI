@@ -194,7 +194,7 @@ export function TicketAttachmentsPanel({ ticketId }: TicketAttachmentsPanelProps
       onDrop={handleDrop}
     >
       {dragOver && (
-        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-primary bg-primary/10 backdrop-blur-sm pointer-events-none">
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-none border-2 border-dashed border-primary bg-primary/10 backdrop-blur-sm pointer-events-none">
           <Upload className="h-10 w-10 text-primary mb-3" />
           <p className="text-sm font-semibold text-primary">Drop here to upload</p>
         </div>
@@ -209,7 +209,7 @@ export function TicketAttachmentsPanel({ ticketId }: TicketAttachmentsPanelProps
           variant="outline"
           size="sm"
           disabled={uploading}
-          className="rounded-full"
+          className="rounded-none"
           onClick={triggerFileInput}
         >
           {uploading ? (
@@ -238,7 +238,7 @@ export function TicketAttachmentsPanel({ ticketId }: TicketAttachmentsPanelProps
           type="button"
           onClick={triggerFileInput}
           disabled={uploading}
-          className="w-full text-center py-8 border-2 border-dashed border-border rounded-xl bg-muted/30 hover:bg-muted/50 hover:border-primary/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full text-center py-8 border-2 border-dashed border-border rounded-none bg-muted/30 hover:bg-muted/50 hover:border-primary/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Paperclip className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
           <p className="text-sm text-muted-foreground">No attachments yet</p>
@@ -249,9 +249,9 @@ export function TicketAttachmentsPanel({ ticketId }: TicketAttachmentsPanelProps
           {attachments.map((attachment) => (
             <div
               key={attachment.id}
-              className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/50 hover:bg-muted/60 transition-colors"
+              className="flex items-center gap-3 p-3 rounded-none border border-border bg-muted/50 hover:bg-muted/60 transition-colors"
             >
-              <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+              <div className="flex-shrink-0 w-8 h-8 rounded-none bg-primary/10 flex items-center justify-center text-primary">
                 {getFileIcon(attachment.file_type)}
               </div>
 

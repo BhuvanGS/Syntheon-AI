@@ -20,6 +20,7 @@ const TABLE_NAMES = [
   'syntheon-labels',
   'syntheon-sprints',
   'syntheon-milestones',
+  'syntheon-consent-records',
 ] as const;
 
 const FIELDS = {

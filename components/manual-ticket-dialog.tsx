@@ -59,7 +59,7 @@ export function ManualTicketDialog({
 }: ManualTicketDialogProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [status, setStatus] = useState<string>(defaultStatus ?? 'backlog');
+  const [status, setStatus] = useState<string>(defaultStatus ?? '');
   const [assignee, setAssignee] = useState<AssigneeValue | null>(null);
   const [meetingId, setMeetingId] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
@@ -77,6 +77,7 @@ export function ManualTicketDialog({
     limit: number;
   } | null>(null);
   const wasOpenRef = useRef(false);
+  const submittingRef = useRef(false);
 
   const resolvedMeetingId = useMemo(
     () => (projectOnly ? '' : meetingId || defaultMeetingId || meetings[0]?.id || ''),
@@ -87,7 +88,7 @@ export function ManualTicketDialog({
     if (open && !wasOpenRef.current) {
       setTitle('');
       setDescription('');
-      setStatus(defaultStatus ?? 'backlog');
+      setStatus(defaultStatus ?? statusOptions?.[0]?.value ?? '');
       setAssignee(null);
       setMeetingId(projectOnly ? '' : defaultMeetingId || meetings[0]?.id || '');
       setPriority('none');
@@ -95,6 +96,7 @@ export function ManualTicketDialog({
       setEstimate('none');
       setLabels([]);
       setSubmitting(false);
+      submittingRef.current = false;
       setError(null);
       setLimitReached(null);
     }
@@ -120,8 +122,10 @@ export function ManualTicketDialog({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (submittingRef.current) return;
     if (!title.trim()) return;
 
+    submittingRef.current = true;
     setSubmitting(true);
     setError(null);
     setLimitReached(null);
@@ -178,6 +182,7 @@ export function ManualTicketDialog({
       setError(err instanceof Error ? err.message : 'Failed to create ticket');
     } finally {
       setSubmitting(false);
+      submittingRef.current = false;
     }
   }
 
@@ -291,15 +296,7 @@ export function ManualTicketDialog({
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
-                    {(statusOptions && statusOptions.length > 0
-                      ? statusOptions
-                      : [
-                          { value: 'backlog', label: 'Backlog' },
-                          { value: 'in_progress', label: 'In progress' },
-                          { value: 'done', label: 'Done' },
-                          { value: 'blocked', label: 'Blocked' },
-                        ]
-                    ).map((opt) => (
+                    {(statusOptions && statusOptions.length > 0 ? statusOptions : []).map((opt) => (
                       <SelectItem key={opt.value} value={opt.value}>
                         {opt.label}
                       </SelectItem>

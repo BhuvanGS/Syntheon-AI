@@ -368,6 +368,11 @@ export const TicketActivitiesEntity = makeEntity(
       pk: { field: 'gsi1pk', composite: ['ticketId'] },
       sk: { field: 'gsi1sk', composite: ['createdAt'] },
     },
+    byActionType: {
+      index: 'gsi2',
+      pk: { field: 'gsi2pk', composite: ['actionType'] },
+      sk: { field: 'gsi2sk', composite: ['createdAt'] },
+    },
   }
 );
 
@@ -609,6 +614,41 @@ export const SprintsEntity = makeEntity(
       index: 'gsi2',
       pk: { field: 'gsi2pk', composite: ['orgId'] },
       sk: { field: 'gsi2sk', composite: ['createdAt'] },
+    },
+  }
+);
+
+// ─── Consent Records (DPDP Act 2023) ─────────────────────────────
+export const ConsentRecordsEntity = makeEntity(
+  'syntheon-consent-records',
+  'DYNAMO_TABLE_CONSENT_RECORDS',
+  'consentRecord',
+  {
+    id: { type: 'string', required: true },
+    userId: { type: 'string', required: true },
+    consentVersion: { type: 'string', required: true },
+    purposes: { type: 'any', required: true },
+    ipAddress: { type: 'string' },
+    deviceId: { type: 'string' },
+    userAgent: { type: 'string' },
+    givenAt: { type: 'string', default: () => new Date().toISOString() },
+    withdrawnAt: { type: 'string' },
+    status: { type: 'string', default: 'active' },
+  },
+  {
+    primary: {
+      pk: { field: 'pk', composite: ['id'] },
+      sk: { field: 'sk', template: 'consentRecord' },
+    },
+    byUser: {
+      index: 'gsi1',
+      pk: { field: 'gsi1pk', composite: ['userId'] },
+      sk: { field: 'gsi1sk', composite: ['givenAt'] },
+    },
+    byStatus: {
+      index: 'gsi2',
+      pk: { field: 'gsi2pk', composite: ['status'] },
+      sk: { field: 'gsi2sk', composite: ['givenAt'] },
     },
   }
 );

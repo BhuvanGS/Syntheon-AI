@@ -147,7 +147,7 @@ export function TicketCommentsPanel({ ticketId, currentUserId }: TicketCommentsP
       </h3>
 
       {comments.length === 0 ? (
-        <div className="text-center py-6 border-2 border-dashed border-border rounded-xl bg-muted/30">
+        <div className="text-center py-6 border-2 border-dashed border-border rounded-lg bg-muted/30">
           <MessageSquare className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
           <p className="text-sm text-muted-foreground">No comments yet</p>
           <p className="text-xs text-muted-foreground/60 mt-1">Start the conversation</p>
@@ -229,7 +229,7 @@ export function TicketCommentsPanel({ ticketId, currentUserId }: TicketCommentsP
                     <div className="flex justify-end">
                       <Button
                         size="sm"
-                        className="rounded-full gap-2 h-7 text-xs"
+                        className="rounded-none gap-2 h-7 text-xs"
                         onClick={() => handleSaveEdit(comment.id)}
                         disabled={!editContent.trim() || savingEditId === comment.id}
                       >
@@ -266,7 +266,7 @@ export function TicketCommentsPanel({ ticketId, currentUserId }: TicketCommentsP
           <Button
             onClick={handleSubmit}
             disabled={!newComment.trim() || sending}
-            className="rounded-full gap-2"
+            className="rounded-none gap-2"
             size="sm"
           >
             {sending ? (

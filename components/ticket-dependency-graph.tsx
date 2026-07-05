@@ -8,7 +8,7 @@ import { useToast } from '@/components/island-toast';
 interface GraphTicket {
   id: string;
   title: string;
-  status: 'backlog' | 'in_progress' | 'done' | 'blocked';
+  status: string;
   assignee?: string | null;
 }
 

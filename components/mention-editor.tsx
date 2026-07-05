@@ -67,11 +67,34 @@ const PersonMention = Mark.create({
     ];
   },
   addKeyboardShortcuts() {
-    return {};
+    return {
+      Backspace: ({ editor }) => {
+        const { state } = editor;
+        const { selection } = state;
+        if (!selection.empty) return false;
+        const { from } = selection;
+        if (from === 0) return false;
+        // Check if the character before cursor has personMention mark
+        const $from = state.doc.resolve(from);
+        const marks = $from.marks();
+        const personMark = marks.find((m) => m.type.name === 'personMention');
+        if (!personMark) return false;
+        // Find the start of the marked range
+        let start = from - 1;
+        while (start > 0) {
+          const $pos = state.doc.resolve(start);
+          if (!$pos.marks().some((m) => m.type.name === 'personMention')) {
+            start += 1;
+            break;
+          }
+          start -= 1;
+        }
+        editor.view.dispatch(state.tr.delete(start, from));
+        return true;
+      },
+    };
   },
 });
-
-// ─── Mark: #ticket (purple pill) ────────────────────────────────────────────
 const TicketMention = Mark.create({
   name: 'ticketMention',
   addAttributes() {
@@ -95,7 +118,30 @@ const TicketMention = Mark.create({
     ];
   },
   addKeyboardShortcuts() {
-    return {};
+    return {
+      Backspace: ({ editor }) => {
+        const { state } = editor;
+        const { selection } = state;
+        if (!selection.empty) return false;
+        const { from } = selection;
+        if (from === 0) return false;
+        const $from = state.doc.resolve(from);
+        const marks = $from.marks();
+        const ticketMark = marks.find((m) => m.type.name === 'ticketMention');
+        if (!ticketMark) return false;
+        let start = from - 1;
+        while (start > 0) {
+          const $pos = state.doc.resolve(start);
+          if (!$pos.marks().some((m) => m.type.name === 'ticketMention')) {
+            start += 1;
+            break;
+          }
+          start -= 1;
+        }
+        editor.view.dispatch(state.tr.delete(start, from));
+        return true;
+      },
+    };
   },
 });
 
@@ -291,7 +337,7 @@ export function MentionEditor({
 
   if (!editor) {
     return (
-      <div className="min-h-[200px] rounded-md border border-input bg-background px-3 py-2 text-sm text-muted-foreground">
+      <div className="min-h-[200px] border border-input bg-zinc-100 dark:bg-zinc-800 px-3 py-2 text-sm text-muted-foreground">
         Loading editor...
       </div>
     );
@@ -343,7 +389,7 @@ export function MentionEditor({
   };
 
   return (
-    <div ref={editorWrapRef} className="relative rounded-md border border-input bg-background">
+    <div ref={editorWrapRef} className="relative border border-input bg-zinc-100 dark:bg-zinc-800">
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-1 border-b border-input px-2 py-1">
         <ToolbarButton

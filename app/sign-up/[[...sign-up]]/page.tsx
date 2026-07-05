@@ -1,4 +1,5 @@
 import { SignUp } from '@clerk/nextjs';
+import { PreAuthConsent } from '@/components/pre-auth-consent';
 
 export default function SignUpPage() {
   return (
@@ -93,7 +94,9 @@ export default function SignUpPage() {
       {/* Right side — auth form */}
       <div className="flex-1 flex items-center justify-center p-6 md:p-12">
         <div className="w-full max-w-sm">
-          <SignUp />
+          <PreAuthConsent>
+            <SignUp />
+          </PreAuthConsent>
         </div>
       </div>
     </div>

@@ -163,7 +163,7 @@ export async function PATCH(req: NextRequest) {
 
     for (const change of changes) {
       const ticketId = change.ticketId as string;
-      const status = change.status as 'backlog' | 'in_progress' | 'done' | 'blocked';
+      const status = change.status as string;
 
       if (status === 'in_progress') {
         const { blocked, blockers } = await checkHardBlockers(ticketId);

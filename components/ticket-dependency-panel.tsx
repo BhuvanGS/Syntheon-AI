@@ -204,7 +204,7 @@ export function TicketDependencyPanel({
 
   if (!projectId) {
     return (
-      <div className="rounded-lg border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
+      <div className="rounded-none border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
         Dependencies are only available for project-linked tickets.
       </div>
     );
@@ -240,7 +240,7 @@ export function TicketDependencyPanel({
             return (
               <div
                 key={dep.id}
-                className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-2"
+                className="flex items-center justify-between gap-2 rounded-none border border-border bg-background px-3 py-2"
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <ArrowRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
@@ -312,7 +312,7 @@ export function TicketDependencyPanel({
             return (
               <div
                 key={dep.id}
-                className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2"
+                className="flex items-center gap-2 rounded-none border border-border bg-background px-3 py-2"
               >
                 <ArrowRight className="w-3.5 h-3.5 text-muted-foreground shrink-0 rotate-180" />
                 <span className="text-sm text-foreground truncate">
@@ -362,7 +362,7 @@ export function TicketDependencyPanel({
       {editingDepId && (
         <div
           id="dependency-edit-form"
-          className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-3"
+          className="rounded-none border border-primary/20 bg-primary/5 p-3 space-y-3"
         >
           {(() => {
             const editingDep = [...parents, ...children].find((d) => d.id === editingDepId);
@@ -447,7 +447,7 @@ export function TicketDependencyPanel({
                 setEditingDepId(null);
                 setEditError(null);
               }}
-              className="rounded-full text-xs h-7"
+              className="rounded-none text-xs h-7"
             >
               Cancel
             </Button>
@@ -456,7 +456,7 @@ export function TicketDependencyPanel({
               size="sm"
               onClick={handleSaveEdit}
               disabled={savingEdit}
-              className="rounded-full text-xs h-7 gap-1"
+              className="rounded-none text-xs h-7 gap-1"
             >
               {savingEdit ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
               Save changes
@@ -466,7 +466,7 @@ export function TicketDependencyPanel({
       )}
 
       {showAddForm && (
-        <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-3">
+        <div className="rounded-none border border-primary/20 bg-primary/5 p-3 space-y-3">
           <p className="text-xs font-medium text-foreground">Add a dependency</p>
 
           {availableTickets.length === 0 ? (
@@ -564,7 +564,7 @@ export function TicketDependencyPanel({
                 setShowAddForm(false);
                 setError(null);
               }}
-              className="rounded-full text-xs h-7"
+              className="rounded-none text-xs h-7"
             >
               Cancel
             </Button>
@@ -574,7 +574,7 @@ export function TicketDependencyPanel({
                 size="sm"
                 onClick={handleAddDep}
                 disabled={submitting || !newDep.depends_on_ticket_id}
-                className="rounded-full text-xs h-7 gap-1"
+                className="rounded-none text-xs h-7 gap-1"
               >
                 {submitting ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
                 Add dependency

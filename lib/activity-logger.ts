@@ -16,7 +16,8 @@ export type ActivityActionType =
   | 'dependency_updated'
   | 'subtask_created'
   | 'subtask_completed'
-  | 'subtask_deleted';
+  | 'subtask_deleted'
+  | 'deleted';
 
 interface ActivityMetadata {
   [key: string]: unknown;

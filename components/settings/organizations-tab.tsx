@@ -529,23 +529,6 @@ export function OrganizationsTab() {
               )}
 
               <Separator className="my-4" />
-
-              <Button
-                variant="outline"
-                className="w-full rounded-full border-dashed"
-                onClick={() => {
-                  setNewOrgForm({
-                    name: '',
-                    companyName: '',
-                    managerName: '',
-                    allowAccessRequests: false,
-                  });
-                  setCreateOrgDialogOpen(true);
-                }}
-              >
-                <UserPlus className="h-4 w-4 mr-2" />
-                Create New Organization
-              </Button>
             </CardContent>
           </Card>
         </TabsContent>

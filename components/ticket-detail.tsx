@@ -603,9 +603,8 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
           </DialogHeader>
 
           <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Name</label>
-              <Input
+            <div className="space-y-1">
+              <input
                 value={ticketEditForm.title}
                 onChange={(e) =>
                   setTicketEditForm((prev) => ({
@@ -614,6 +613,7 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
                   }))
                 }
                 placeholder="Ticket title"
+                className="w-full text-xl font-semibold bg-transparent border-none outline-none text-foreground placeholder:text-muted-foreground/50 px-0 focus:ring-0"
               />
             </div>
 

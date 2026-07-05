@@ -53,6 +53,7 @@ const ACTION_ICONS: Record<string, React.ElementType> = {
   subtask_created: Plus,
   subtask_completed: CheckCircle,
   subtask_deleted: Trash2,
+  deleted: Trash2,
 };
 
 const ACTION_COLORS: Record<string, string> = {
@@ -68,6 +69,7 @@ const ACTION_COLORS: Record<string, string> = {
   subtask_created: 'bg-emerald-100 text-emerald-700',
   subtask_completed: 'bg-green-100 text-green-700',
   subtask_deleted: 'bg-red-100 text-red-700',
+  deleted: 'bg-red-100 text-red-700',
 };
 
 const ACTION_LABELS: Record<string, string> = {
@@ -83,6 +85,7 @@ const ACTION_LABELS: Record<string, string> = {
   subtask_created: 'created a subtask',
   subtask_completed: 'completed a subtask',
   subtask_deleted: 'deleted a subtask',
+  deleted: 'deleted this ticket',
 };
 
 function formatRelativeTime(dateString: string): string {

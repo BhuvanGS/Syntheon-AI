@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useOrganization, useUser, useAuth } from '@clerk/nextjs';
 import { useSse } from '@/components/sse-provider';
 
@@ -117,6 +117,7 @@ import {
   CheckSquare,
   Square,
   Tag,
+  LayoutGrid,
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -218,12 +219,7 @@ type StageConfig = {
   status: string;
 };
 
-const DEFAULT_STAGES: StageConfig[] = [
-  { id: 'stage-backlog', label: 'Backlog', color: '#8a8a80', status: 'backlog' },
-  { id: 'stage-progress', label: 'In Progress', color: '#3d7abf', status: 'in_progress' },
-  { id: 'stage-done', label: 'Done', color: '#3d8a5e', status: 'done' },
-  { id: 'stage-blocked', label: 'Blocked', color: '#b84040', status: 'blocked' },
-];
+const DEFAULT_STAGES: StageConfig[] = [];
 
 interface ProjectsWorkspaceProps {
   projects: Project[];
@@ -345,6 +341,13 @@ export function ProjectsWorkspace({
     } catch {}
   }, []);
 
+  const fetchDeletedActivities = useCallback(async (projectId: string) => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}/deleted-activities`);
+      if (res.ok) setDeletedActivities(await res.json());
+    } catch {}
+  }, []);
+
   const fetchSprints = useCallback(async (projectId: string) => {
     try {
       const res = await fetch(`/api/projects/${projectId}/sprints`);
@@ -355,6 +358,7 @@ export function ProjectsWorkspace({
   const [draggedTicketId, setDraggedTicketId] = useState<string | null>(null);
   const [draggedStageId, setDraggedStageId] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
+  const kanbanScrollRef = useRef<HTMLDivElement>(null);
   const [isMeetingDialogOpen, setIsMeetingDialogOpen] = useState(false);
   const [isTicketDialogOpen, setIsTicketDialogOpen] = useState(false);
   const [newTicketStatus, setNewTicketStatus] = useState<string | undefined>(undefined);
@@ -368,6 +372,16 @@ export function ProjectsWorkspace({
     status: string;
     reason: string;
   } | null>(null);
+  const [deletedActivities, setDeletedActivities] = useState<
+    {
+      id: string;
+      ticket_id: string;
+      user_id: string;
+      action_type: string;
+      metadata: Record<string, unknown>;
+      created_at: string;
+    }[]
+  >([]);
   const [milestones, setMilestones] = useState<
     Array<{
       id: string;
@@ -442,14 +456,17 @@ export function ProjectsWorkspace({
   const [ticketStageMap, setTicketStageMap] = useState<Record<string, string>>({});
   const [hydratedProjectId, setHydratedProjectId] = useState<string | null>(null);
   const [isStageDialogOpen, setIsStageDialogOpen] = useState(false);
+  const [isAddingStageInline, setIsAddingStageInline] = useState(false);
   const [stageForm, setStageForm] = useState<{
     id: string | null;
     label: string;
     color: string;
+    stageType: 'backlog' | 'in_progress' | 'done' | 'blocked';
   }>({
     id: null,
     label: '',
     color: '#64748b',
+    stageType: 'backlog',
   });
   const [stageToDelete, setStageToDelete] = useState<StageConfig | null>(null);
   const [isDeleteStageDialogOpen, setIsDeleteStageDialogOpen] = useState(false);
@@ -458,6 +475,7 @@ export function ProjectsWorkspace({
   const [expandedTicketIds, setExpandedTicketIds] = useState<Record<string, boolean>>({});
   const [newChildDraft, setNewChildDraft] = useState({ title: '' });
   const [isAddingSubtask, setIsAddingSubtask] = useState(false);
+  const [subtasksExpanded, setSubtasksExpanded] = useState(true);
   const [savingTicketId, setSavingTicketId] = useState<string | null>(null);
   const [isSavingProject, setIsSavingProject] = useState(false);
   const [subtasksPopupTicket, setSubtasksPopupTicket] = useState<Ticket | null>(null);
@@ -529,6 +547,12 @@ export function ProjectsWorkspace({
     return result;
   }, [stages, projectTickets]);
 
+  useEffect(() => {
+    if (kanbanScrollRef.current) {
+      kanbanScrollRef.current.scrollLeft = 0;
+    }
+  }, [effectiveStages]);
+
   const rootProjectTickets = useMemo(() => {
     const base = projectTickets.filter((ticket) => !ticket.dependency_ticket_id);
     let result = base;
@@ -564,6 +588,16 @@ export function ProjectsWorkspace({
   }, [projectTickets, kanbanAssigneeFilter, user?.id, filters]);
 
   const totalTickets = projectTickets.length;
+
+  const memoizedMeetings = useMemo(
+    () => projectMeetings.map((meeting) => ({ id: meeting.id, projectName: meeting.projectName })),
+    [projectMeetings]
+  );
+
+  const memoizedStatusOptions = useMemo(
+    () => effectiveStages.map((stage) => ({ value: stage.status, label: stage.label })),
+    [effectiveStages]
+  );
 
   const childrenByParentId = useMemo(() => {
     const grouped: Record<string, Ticket[]> = {};
@@ -693,7 +727,7 @@ export function ProjectsWorkspace({
           title: newChildDraft.title.trim(),
           description: '',
           assignee: null,
-          status: 'backlog',
+          status: effectiveStages[0]?.status ?? 'backlog',
           parentTicketId: ticketToEdit.id,
         }),
       });
@@ -841,15 +875,21 @@ export function ProjectsWorkspace({
       id: null,
       label: '',
       color: '#64748b',
+      stageType: 'backlog',
     });
-    setIsStageDialogOpen(true);
+    setIsAddingStageInline(true);
   }
 
   function openEditStageDialog(stage: StageConfig) {
+    const systemStatuses = ['backlog', 'in_progress', 'done', 'blocked'];
+    const currentType = systemStatuses.includes(stage.status)
+      ? (stage.status as 'backlog' | 'in_progress' | 'done' | 'blocked')
+      : 'backlog';
     setStageForm({
       id: stage.id,
       label: stage.label,
       color: stage.color,
+      stageType: currentType,
     });
     setIsStageDialogOpen(true);
   }
@@ -866,28 +906,25 @@ export function ProjectsWorkspace({
                 ...stage,
                 label,
                 color: stageForm.color,
+                status: stageForm.stageType,
               }
             : stage
         )
       );
     } else {
-      const normalizedStatus =
-        label
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '_')
-          .replace(/^_+|_+$/g, '') || `status_${Date.now().toString(36)}`;
       setStages((prev) => [
         ...prev,
         {
           id: `stage-${Date.now().toString(36)}`,
           label,
           color: stageForm.color,
-          status: normalizedStatus,
+          status: stageForm.stageType,
         },
       ]);
     }
 
     setIsStageDialogOpen(false);
+    setIsAddingStageInline(false);
   }
 
   async function promptDeleteStage(stage: StageConfig) {
@@ -1509,6 +1546,11 @@ export function ProjectsWorkspace({
   }, [selectedProjectId, fetchMilestones]);
 
   useEffect(() => {
+    if (selectedProjectId) fetchDeletedActivities(selectedProjectId);
+    else setDeletedActivities([]);
+  }, [selectedProjectId, fetchDeletedActivities]);
+
+  useEffect(() => {
     if (selectedProjectId) fetchSprints(selectedProjectId);
     else setSprints([]);
   }, [selectedProjectId, fetchSprints]);
@@ -1626,6 +1668,7 @@ export function ProjectsWorkspace({
         if (selectedProjectId) {
           void fetchSprints(selectedProjectId);
           void fetchMilestones(selectedProjectId);
+          void fetchDeletedActivities(selectedProjectId);
         }
       }
     };
@@ -2250,10 +2293,12 @@ export function ProjectsWorkspace({
                   <div className="w-px h-5 bg-border mx-1" />
                   <button
                     onClick={() => {
+                      if (effectiveStages.length === 0) return;
                       setNewTicketStatus(undefined);
                       setIsTicketDialogOpen(true);
                     }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors text-primary hover:bg-primary/10"
+                    disabled={effectiveStages.length === 0}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${effectiveStages.length === 0 ? 'text-muted-foreground/40 cursor-not-allowed' : 'text-primary hover:bg-primary/10'}`}
                   >
                     <PlusCircle className="h-3.5 w-3.5" />
                     New ticket
@@ -2301,34 +2346,162 @@ export function ProjectsWorkspace({
             )}
 
             <div className="mt-2">
-              {projectTickets.filter((t) => !t.dependency_ticket_id).length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-border bg-muted/50 p-12 text-center">
-                  <p className="font-medium text-foreground mb-2">No tickets yet</p>
-                  <p className="text-sm text-muted-foreground mb-5">
-                    Import tickets from a meeting or create them manually.
-                  </p>
-                  <div className="flex items-center justify-center gap-3">
+              {effectiveStages.length === 0 &&
+              projectTickets.filter((t) => !t.dependency_ticket_id).length === 0 ? (
+                isAddingStageInline ? (
+                  <div className="rounded-2xl border-2 border-primary/40 bg-muted/40 p-6 max-w-md mx-auto space-y-4">
+                    <div className="flex items-center gap-2">
+                      <LayoutGrid className="h-5 w-5 text-primary" />
+                      <p className="text-sm font-semibold text-foreground">Create your board</p>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Add columns for your board. Tickets will be organized into these columns.
+                    </p>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-xs font-medium text-foreground mb-1.5 block">
+                          Column name
+                        </label>
+                        <Input
+                          value={stageForm.label}
+                          onChange={(e) =>
+                            setStageForm((prev) => ({ ...prev, label: e.target.value }))
+                          }
+                          placeholder="e.g. To Do, In Progress, Done"
+                          className="bg-white"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              saveStageDetails();
+                            }
+                            if (e.key === 'Escape') {
+                              setIsAddingStageInline(false);
+                            }
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-foreground mb-1.5 block">
+                          Color
+                        </label>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {[
+                            '#64748b',
+                            '#3b82f6',
+                            '#22c55e',
+                            '#eab308',
+                            '#f97316',
+                            '#ef4444',
+                            '#a855f7',
+                            '#ec4899',
+                          ].map((color) => (
+                            <button
+                              key={color}
+                              type="button"
+                              onClick={() => setStageForm((prev) => ({ ...prev, color }))}
+                              className={`w-6 h-6 rounded-full transition-transform ${
+                                stageForm.color === color
+                                  ? 'ring-2 ring-offset-2 ring-foreground scale-110'
+                                  : 'hover:scale-110'
+                              }`}
+                              style={{ backgroundColor: color }}
+                              aria-label={`Select color ${color}`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-foreground mb-1.5 block">
+                          Set stage as
+                        </label>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {(
+                            [
+                              { value: 'backlog', label: 'Backlog', color: '#f59e0b' },
+                              { value: 'in_progress', label: 'In Progress', color: '#3b82f6' },
+                              { value: 'done', label: 'Done', color: '#10b981' },
+                              { value: 'blocked', label: 'Blocked', color: '#ef4444' },
+                            ] as const
+                          ).map((opt) => (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() =>
+                                setStageForm((prev) => ({ ...prev, stageType: opt.value }))
+                              }
+                              className={`px-2.5 py-1 text-xs font-medium rounded-full border transition-colors ${
+                                stageForm.stageType === opt.value
+                                  ? 'border-foreground bg-foreground text-background'
+                                  : 'border-border text-muted-foreground hover:bg-muted/50'
+                              }`}
+                            >
+                              <span
+                                className="inline-block w-2 h-2 rounded-full mr-1.5 align-middle"
+                                style={{ backgroundColor: opt.color }}
+                              />
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 pt-2">
+                      <Button
+                        type="button"
+                        onClick={saveStageDetails}
+                        disabled={!stageForm.label.trim()}
+                        className="rounded-none"
+                      >
+                        Create column
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => setIsAddingStageInline(false)}
+                        className="rounded-none"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                    {effectiveStages.length > 0 && (
+                      <div className="border-t border-border pt-3 mt-3">
+                        <p className="text-xs text-muted-foreground mb-2">Columns created:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {effectiveStages.map((s) => (
+                            <span
+                              key={s.id}
+                              className="inline-flex items-center gap-1.5 px-2 py-1 text-xs border border-border bg-background"
+                            >
+                              <span
+                                className="w-2 h-2 rounded-full"
+                                style={{ backgroundColor: s.color }}
+                              />
+                              {s.label}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-border bg-muted/50 p-12 text-center">
+                    <LayoutGrid className="h-10 w-10 text-muted-foreground/40 mx-auto mb-4" />
+                    <p className="font-medium text-foreground mb-2">No board yet</p>
+                    <p className="text-sm text-muted-foreground mb-5 max-w-sm mx-auto">
+                      Create your board with columns before you add tickets. You can add more
+                      columns later.
+                    </p>
                     <Button
-                      onClick={() => setIsImportDialogOpen(true)}
-                      variant="outline"
-                      className="rounded-full gap-2"
-                      disabled={meetings.length === 0}
-                    >
-                      <Download className="h-4 w-4" />
-                      Import from meeting
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        setNewTicketStatus(undefined);
-                        setIsTicketDialogOpen(true);
-                      }}
-                      className="rounded-full gap-2"
+                      type="button"
+                      onClick={openAddStageDialog}
+                      className="rounded-none gap-2"
                     >
                       <PlusCircle className="h-4 w-4" />
-                      New ticket
+                      Create board
                     </Button>
                   </div>
-                </div>
+                )
               ) : ticketsViewMode === 'list' ? (
                 <div className="rounded-2xl border border-border bg-muted/30 overflow-hidden">
                   <div className="grid grid-cols-[1fr_120px_120px_40px] items-center px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground border-b border-border/60 bg-muted/40">
@@ -2426,7 +2599,7 @@ export function ProjectsWorkspace({
                     }
                   }}
                   onAddTicket={() => {
-                    setNewTicketStatus('backlog');
+                    setNewTicketStatus(effectiveStages[0]?.status);
                     setIsTicketDialogOpen(true);
                   }}
                 />
@@ -2690,7 +2863,25 @@ export function ProjectsWorkspace({
                   );
                 })()
               ) : (
-                <div className="flex gap-4 overflow-x-auto pb-4 items-start">
+                <div ref={kanbanScrollRef} className="flex gap-4 overflow-x-auto pb-4 items-start">
+                  {effectiveStages.length === 0 && !isAddingStageInline && (
+                    <div className="flex flex-col items-center justify-center w-full py-20 text-center">
+                      <LayoutGrid className="h-12 w-12 text-muted-foreground/40 mb-4" />
+                      <p className="text-lg font-semibold text-foreground mb-1">No board yet</p>
+                      <p className="text-sm text-muted-foreground mb-6 max-w-sm">
+                        Create your board with columns to start organizing tickets. You can add more
+                        columns later.
+                      </p>
+                      <Button
+                        type="button"
+                        onClick={openAddStageDialog}
+                        className="rounded-none gap-2"
+                      >
+                        <PlusCircle className="h-4 w-4" />
+                        Create board
+                      </Button>
+                    </div>
+                  )}
                   {effectiveStages.map((stage) => {
                     const colTickets = rootProjectTickets.filter(
                       (ticket) => resolveTicketStage(ticket).id === stage.id
@@ -2732,22 +2923,20 @@ export function ProjectsWorkspace({
                           isOver ? 'border-primary/50 bg-primary/5' : 'border-border bg-muted/40'
                         } ${draggedStageId === stage.id ? 'opacity-40' : ''}`}
                       >
-                        <div className="flex items-center justify-center px-4 pt-4 pb-2 gap-2">
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              className="cursor-grab active:cursor-grabbing text-muted-foreground/70 hover:text-foreground"
-                              aria-label={`Reorder ${stage.label} stage`}
-                            >
-                              <GripVertical className="h-3.5 w-3.5" />
-                            </button>
-                            <span
-                              className="text-xs font-semibold uppercase tracking-widest"
-                              style={{ color: stage.color }}
-                            >
-                              {stage.label}
-                            </span>
-                          </div>
+                        <div className="relative flex items-center px-3 pt-4 pb-2">
+                          <button
+                            type="button"
+                            className="cursor-grab active:cursor-grabbing text-muted-foreground/70 hover:text-foreground shrink-0 absolute left-3"
+                            aria-label={`Reorder ${stage.label} stage`}
+                          >
+                            <GripVertical className="h-3.5 w-3.5" />
+                          </button>
+                          <span
+                            className="text-xs font-semibold uppercase tracking-widest text-center w-full"
+                            style={{ color: stage.color }}
+                          >
+                            {stage.label}
+                          </span>
                         </div>
 
                         <div className="flex flex-col gap-2 p-3">
@@ -2900,19 +3089,122 @@ export function ProjectsWorkspace({
                     );
                   })}
 
-                  <button
-                    type="button"
-                    onClick={openAddStageDialog}
-                    className="min-w-[280px] w-[280px] rounded-2xl border border-dashed border-border bg-muted/50 text-left p-4 hover:border-primary/40 hover:bg-muted/70 transition-colors"
-                  >
-                    <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                      <PlusCircle className="h-4 w-4 text-primary" />
-                      Add stage
+                  {isAddingStageInline ? (
+                    <div className="min-w-[280px] w-[280px] rounded-2xl border-2 border-primary/40 bg-muted/40 p-4 space-y-3">
+                      <div className="text-sm font-medium text-foreground">New column</div>
+                      <Input
+                        value={stageForm.label}
+                        onChange={(e) =>
+                          setStageForm((prev) => ({ ...prev, label: e.target.value }))
+                        }
+                        placeholder="Column name (e.g. To Do)"
+                        className="bg-white"
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            saveStageDetails();
+                          }
+                          if (e.key === 'Escape') {
+                            setIsAddingStageInline(false);
+                          }
+                        }}
+                      />
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {[
+                          '#64748b',
+                          '#3b82f6',
+                          '#22c55e',
+                          '#eab308',
+                          '#f97316',
+                          '#ef4444',
+                          '#a855f7',
+                          '#ec4899',
+                        ].map((color) => (
+                          <button
+                            key={color}
+                            type="button"
+                            onClick={() => setStageForm((prev) => ({ ...prev, color }))}
+                            className={`w-5 h-5 rounded-full transition-transform ${
+                              stageForm.color === color
+                                ? 'ring-2 ring-offset-2 ring-foreground scale-110'
+                                : 'hover:scale-110'
+                            }`}
+                            style={{ backgroundColor: color }}
+                            aria-label={`Select color ${color}`}
+                          />
+                        ))}
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-foreground mb-1 block">
+                          Set stage as
+                        </label>
+                        <div className="flex items-center gap-1 flex-wrap">
+                          {(
+                            [
+                              { value: 'backlog', label: 'Backlog', color: '#f59e0b' },
+                              { value: 'in_progress', label: 'In Progress', color: '#3b82f6' },
+                              { value: 'done', label: 'Done', color: '#10b981' },
+                              { value: 'blocked', label: 'Blocked', color: '#ef4444' },
+                            ] as const
+                          ).map((opt) => (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() =>
+                                setStageForm((prev) => ({ ...prev, stageType: opt.value }))
+                              }
+                              className={`px-2 py-0.5 text-[10px] font-medium rounded-full border transition-colors ${
+                                stageForm.stageType === opt.value
+                                  ? 'border-foreground bg-foreground text-background'
+                                  : 'border-border text-muted-foreground hover:bg-muted/50'
+                              }`}
+                            >
+                              <span
+                                className="inline-block w-1.5 h-1.5 rounded-full mr-1 align-middle"
+                                style={{ backgroundColor: opt.color }}
+                              />
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={saveStageDetails}
+                          disabled={!stageForm.label.trim()}
+                          className="rounded-none"
+                        >
+                          Create column
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setIsAddingStageInline(false)}
+                          className="rounded-none"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
                     </div>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Create a new column at the end.
-                    </p>
-                  </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={openAddStageDialog}
+                      className="min-w-[280px] w-[280px] rounded-2xl border border-dashed border-border bg-muted/50 text-left p-4 hover:border-primary/40 hover:bg-muted/70 transition-colors"
+                    >
+                      <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                        <PlusCircle className="h-4 w-4 text-primary" />
+                        Add column
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Create a new column at the end.
+                      </p>
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -3555,6 +3847,73 @@ export function ProjectsWorkspace({
                         value={totalSpecs > 0 ? (total / totalSpecs) * 100 : 0}
                         className="h-1.5"
                       />
+                    </div>
+                  )}
+                </div>
+
+                {/* Deleted Tickets History */}
+                <div className="rounded-2xl border border-border bg-muted/50 p-5 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Trash2 className="h-4 w-4 text-red-500" />
+                    <p className="text-sm font-semibold text-foreground">Deleted Tickets History</p>
+                    <span className="text-xs text-muted-foreground ml-auto">
+                      {deletedActivities.length} deleted
+                    </span>
+                  </div>
+                  {deletedActivities.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                      <Trash2 className="h-7 w-7 text-muted-foreground/30 mb-2" />
+                      <p className="text-sm text-muted-foreground">No deleted tickets</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                      {deletedActivities.map((act) => {
+                        const meta = act.metadata as Record<string, unknown>;
+                        const title = String(meta.title ?? 'Unknown');
+                        const status = String(meta.status ?? '');
+                        const assignee = String(meta.assignee ?? 'Unassigned');
+                        const member = memberships?.data?.find(
+                          (m) => m.publicUserData?.userId === act.user_id
+                        );
+                        const userName = member
+                          ? `${member.publicUserData?.firstName ?? ''} ${member.publicUserData?.lastName ?? ''}`.trim() ||
+                            (member.publicUserData?.identifier ?? 'Unknown')
+                          : 'Unknown';
+                        const timeAgo = (() => {
+                          const diff = Date.now() - new Date(act.created_at).getTime();
+                          const mins = Math.floor(diff / 60000);
+                          if (mins < 60) return `${mins}m ago`;
+                          const hrs = Math.floor(mins / 60);
+                          if (hrs < 24) return `${hrs}h ago`;
+                          return `${Math.floor(hrs / 24)}d ago`;
+                        })();
+                        return (
+                          <div
+                            key={act.id}
+                            className="flex items-center gap-3 p-2.5 rounded-lg border border-border/60 bg-background/50"
+                          >
+                            <div className="h-8 w-8 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
+                              <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-foreground truncate">
+                                {title}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground mt-0.5">
+                                Deleted by {userName} · {timeAgo}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              {status && (
+                                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground capitalize">
+                                  {status.replace(/_/g, ' ')}
+                                </span>
+                              )}
+                              <span className="text-[10px] text-muted-foreground">{assignee}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -5278,6 +5637,40 @@ export function ProjectsWorkspace({
                 className="h-10 w-full rounded-lg border border-border bg-background px-2"
               />
             </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Set stage as</label>
+              <div className="flex items-center gap-2 flex-wrap">
+                {(
+                  [
+                    { value: 'backlog', label: 'Backlog', color: '#f59e0b' },
+                    { value: 'in_progress', label: 'In Progress', color: '#3b82f6' },
+                    { value: 'done', label: 'Done', color: '#10b981' },
+                    { value: 'blocked', label: 'Blocked', color: '#ef4444' },
+                  ] as const
+                ).map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setStageForm((prev) => ({ ...prev, stageType: opt.value }))}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-colors ${
+                      stageForm.stageType === opt.value
+                        ? 'border-foreground bg-foreground text-background'
+                        : 'border-border text-muted-foreground hover:bg-muted/50'
+                    }`}
+                  >
+                    <span
+                      className="inline-block w-2 h-2 rounded-full mr-1.5 align-middle"
+                      style={{ backgroundColor: opt.color }}
+                    />
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground/70">
+                This maps your column to a system status for analytics.
+              </p>
+            </div>
           </div>
 
           <DialogFooter>
@@ -5456,17 +5849,11 @@ export function ProjectsWorkspace({
       <ManualTicketDialog
         open={isTicketDialogOpen}
         onOpenChange={setIsTicketDialogOpen}
-        meetings={projectMeetings.map((meeting) => ({
-          id: meeting.id,
-          projectName: meeting.projectName,
-        }))}
+        meetings={memoizedMeetings}
         defaultMeetingId={projectMeetings[0]?.id}
         defaultProjectId={selectedProject.id}
         defaultStatus={newTicketStatus}
-        statusOptions={effectiveStages.map((stage) => ({
-          value: stage.status,
-          label: stage.label,
-        }))}
+        statusOptions={memoizedStatusOptions}
         projectOnly
         onCreated={onRefresh}
       />
@@ -5487,7 +5874,10 @@ export function ProjectsWorkspace({
           if (!open) closeTicketEditor();
         }}
       >
-        <SheetContent side="right" className="w-[680px] sm:max-w-[680px] p-0 overflow-hidden">
+        <SheetContent
+          side="right"
+          className="w-[680px] sm:max-w-[680px] p-0 overflow-hidden bg-zinc-100 dark:bg-zinc-900"
+        >
           <SheetHeader className="border-b border-border px-6 py-4">
             <div className="flex items-center justify-between gap-2">
               <SheetTitle className="text-lg">
@@ -5536,12 +5926,11 @@ export function ProjectsWorkspace({
             </div>
           </div>
 
-          <div className="flex-1 overflow-auto px-6 py-5 space-y-5">
+          <div className="flex-1 overflow-auto px-6 py-5">
             {ticketEditTab === 'details' && (
               <>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">Name</label>
-                  <Input
+                <div className="bg-zinc-100 dark:bg-zinc-800 border border-border px-4 py-3">
+                  <input
                     value={ticketEditForm.title}
                     onChange={(e) =>
                       setTicketEditForm((prev) => ({
@@ -5550,11 +5939,14 @@ export function ProjectsWorkspace({
                       }))
                     }
                     placeholder="Ticket title"
+                    className="w-full text-2xl font-semibold bg-transparent border-none outline-none text-foreground placeholder:text-muted-foreground/50 px-0 focus:ring-0"
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-foreground">Description</label>
+                <div className="space-y-2 mt-1.5">
+                  <label className="text-xs font-medium text-muted-foreground block">
+                    Description
+                  </label>
                   <MentionEditor
                     content={ticketEditForm.description}
                     onChange={(html) =>
@@ -5583,17 +5975,21 @@ export function ProjectsWorkspace({
                   />
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground">Assignee</label>
+                <div className="grid grid-cols-3 gap-4 mt-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground block">
+                      Assignee
+                    </label>
                     <AssigneePicker
                       value={ticketEditForm.assignee}
                       onChange={(val) => setTicketEditForm((prev) => ({ ...prev, assignee: val }))}
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground">Status</label>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground block">
+                      Status
+                    </label>
                     <Select
                       value={ticketEditForm.status}
                       onValueChange={(value) =>
@@ -5603,7 +5999,7 @@ export function ProjectsWorkspace({
                         }))
                       }
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="rounded-none bg-zinc-100 dark:bg-zinc-800">
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
                       <SelectContent>
@@ -5616,18 +6012,13 @@ export function ProjectsWorkspace({
                     </Select>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground">Dates</label>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground block">
+                      Due date
+                    </label>
                     <DateRangePicker
-                      startDate={ticketEditForm.start_date || undefined}
                       dueDate={ticketEditForm.due_date || undefined}
                       deadlineTime={ticketEditForm.deadline_time || undefined}
-                      onStartDateChange={(date) =>
-                        setTicketEditForm((prev) => ({
-                          ...prev,
-                          start_date: date || '',
-                        }))
-                      }
                       onDueDateChange={(date) =>
                         setTicketEditForm((prev) => ({
                           ...prev,
@@ -5645,7 +6036,7 @@ export function ProjectsWorkspace({
                   </div>
                 </div>
 
-                <div className="border-t border-border/60 pt-3">
+                <div className="border-t border-border/60 pt-3 mt-4">
                   <details className="group">
                     <summary className="flex items-center gap-2 cursor-pointer select-none list-none">
                       <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-90" />
@@ -5676,7 +6067,7 @@ export function ProjectsWorkspace({
                           <select
                             value={metaMilestoneId ?? ''}
                             onChange={(e) => setMetaMilestoneId(e.target.value || null)}
-                            className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm text-foreground"
+                            className="w-full border border-border bg-background px-2.5 py-1.5 text-sm text-foreground"
                           >
                             <option value="">None</option>
                             {milestones.map((ms) => (
@@ -5693,7 +6084,7 @@ export function ProjectsWorkspace({
                           <select
                             value={metaSprintId ?? ''}
                             onChange={(e) => setMetaSprintId(e.target.value || null)}
-                            className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm text-foreground"
+                            className="w-full border border-border bg-background px-2.5 py-1.5 text-sm text-foreground"
                           >
                             <option value="">None</option>
                             {sprints.map((sp) => (
@@ -5709,80 +6100,88 @@ export function ProjectsWorkspace({
                 </div>
 
                 {ticketToEdit && (
-                  <div className="rounded-lg border border-border bg-muted/50">
-                    <details className="group" open>
-                      <summary className="flex items-center gap-2 px-3 py-2.5 cursor-pointer select-none list-none">
-                        <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-90" />
-                        <h3 className="text-sm font-semibold text-foreground">Subtasks</h3>
-                        <span className="rounded-md border border-border bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
-                          {
-                            (childrenByParentId[ticketToEdit.id] ?? []).filter(
-                              (child) => child.status === 'done'
-                            ).length
-                          }
-                          /{(childrenByParentId[ticketToEdit.id] ?? []).length}
-                        </span>
-                      </summary>
+                  <div className="border border-border bg-muted/50 overflow-hidden mt-4">
+                    <button
+                      type="button"
+                      onClick={() => setSubtasksExpanded((prev) => !prev)}
+                      className="flex items-center gap-2 px-3 py-2.5 cursor-pointer select-none w-full text-left hover:bg-muted/30 transition-colors"
+                    >
+                      <ChevronRight
+                        className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${subtasksExpanded ? 'rotate-90' : ''}`}
+                      />
+                      <h3 className="text-sm font-semibold text-foreground">Subtasks</h3>
+                      <span className="border border-border bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                        {(childrenByParentId[ticketToEdit.id] ?? []).length}
+                      </span>
+                    </button>
 
-                      <div>
-                        {(childrenByParentId[ticketToEdit.id] ?? []).length === 0 ? (
-                          <p className="border-t border-border/60 px-3 py-2 text-xs text-muted-foreground">
-                            No subtasks yet.
-                          </p>
-                        ) : (
-                          (childrenByParentId[ticketToEdit.id] ?? []).map((child) =>
-                            renderChildTicketTree(child, 0)
-                          )
-                        )}
-                      </div>
-
-                      {isAddingSubtask && (
-                        <div className="border-t border-border/60 bg-primary/5 px-2 py-2">
-                          <div className="flex items-center gap-2">
-                            <Circle className="h-4 w-4 text-muted-foreground" />
-                            <Input
-                              value={newChildDraft.title}
-                              onChange={(e) =>
-                                setNewChildDraft((prev) => ({
-                                  ...prev,
-                                  title: e.target.value,
-                                }))
-                              }
-                              className="flex-1 h-8"
-                              placeholder="Subtask name"
-                              autoFocus
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault();
-                                  void handleCreateChildTicket();
-                                }
-                              }}
-                            />
-                            <Button
-                              type="button"
-                              size="icon"
-                              onClick={handleCreateChildTicket}
-                              disabled={!newChildDraft.title.trim() || Boolean(savingTicketId)}
-                            >
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                          </div>
+                    <div
+                      className="grid transition-all duration-200 ease-out"
+                      style={{
+                        gridTemplateRows: subtasksExpanded ? '1fr' : '0fr',
+                      }}
+                    >
+                      <div className="overflow-hidden">
+                        <div>
+                          {(childrenByParentId[ticketToEdit.id] ?? []).length === 0 ? (
+                            <p className="border-t border-border/60 px-3 py-2 text-xs text-muted-foreground">
+                              No subtasks yet.
+                            </p>
+                          ) : (
+                            (childrenByParentId[ticketToEdit.id] ?? []).map((child) =>
+                              renderChildTicketTree(child, 0)
+                            )
+                          )}
                         </div>
-                      )}
 
-                      <button
-                        type="button"
-                        onClick={() => setIsAddingSubtask(true)}
-                        className="w-full border-t border-border/60 px-3 py-2 text-left text-sm font-medium text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                      >
-                        Add subtask
-                      </button>
-                    </details>
+                        {isAddingSubtask && (
+                          <div className="border-t border-border/60 bg-primary/5 px-2 py-2">
+                            <div className="flex items-center gap-2">
+                              <Circle className="h-4 w-4 text-muted-foreground" />
+                              <Input
+                                value={newChildDraft.title}
+                                onChange={(e) =>
+                                  setNewChildDraft((prev) => ({
+                                    ...prev,
+                                    title: e.target.value,
+                                  }))
+                                }
+                                className="flex-1 h-8 rounded-none"
+                                placeholder="Subtask name"
+                                autoFocus
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    void handleCreateChildTicket();
+                                  }
+                                }}
+                              />
+                              <Button
+                                type="button"
+                                size="icon"
+                                onClick={handleCreateChildTicket}
+                                disabled={!newChildDraft.title.trim() || Boolean(savingTicketId)}
+                              >
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => setIsAddingSubtask(true)}
+                          className="w-full border-t border-border/60 px-3 py-2 text-left text-sm font-medium text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                        >
+                          Add subtask
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
 
                 {ticketToEdit && ticketToEdit.projectId && (
-                  <div className="border-t border-border/60 pt-4">
+                  <div className="border-t border-border/60 pt-4 mt-4">
                     <TicketDependencyPanel
                       ticketId={ticketToEdit.id}
                       projectId={ticketToEdit.projectId}
@@ -6288,7 +6687,7 @@ export function ProjectsWorkspace({
                     body: JSON.stringify({
                       title: newGroupName.trim(),
                       description: '',
-                      status: 'backlog',
+                      status: effectiveStages[0]?.status ?? 'backlog',
                       isGroup: true,
                     }),
                   });
@@ -6444,7 +6843,7 @@ export function ProjectsWorkspace({
                       body: JSON.stringify({
                         title: suggestion.name,
                         description: suggestion.reason,
-                        status: 'backlog',
+                        status: effectiveStages[0]?.status ?? 'backlog',
                         isGroup: true,
                       }),
                     });

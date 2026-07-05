@@ -73,7 +73,8 @@ interface Ticket {
   id: string;
   title: string;
   description: string;
-  status: 'backlog' | 'in_progress' | 'done' | 'blocked';
+  status: string;
+  user_id?: string | null;
   assignee?: string | null;
   assignee_user_id?: string | null;
   projectId?: string | null;
@@ -299,12 +300,12 @@ export function DashboardGrid({
     }[] = [];
     for (const t of tickets) {
       if (t.createdAt) {
-        const m = memberMap.get(t.assignee_user_id || '');
+        const creator = memberMap.get(t.user_id || '');
         items.push({
           ticketId: t.id,
           title: t.title,
           status: t.status,
-          assigneeName: m ? getMemberName(m) : t.assignee || 'Unassigned',
+          assigneeName: creator ? getMemberName(creator) : 'Someone',
           projectName: getProjectName(projects, t.projectId),
           timestamp: t.createdAt,
           kind: 'created',
@@ -316,7 +317,7 @@ export function DashboardGrid({
           ticketId: t.id,
           title: t.title,
           status: t.status,
-          assigneeName: m ? getMemberName(m) : t.assignee || 'Unassigned',
+          assigneeName: m ? getMemberName(m) : t.assignee || 'Someone',
           projectName: getProjectName(projects, t.projectId),
           timestamp: t.updatedAt,
           kind: 'completed',

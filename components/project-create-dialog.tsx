@@ -15,6 +15,13 @@ import { Button } from '@/components/ui/button';
 import { FolderPlus, Sparkles, Lock, ArrowUpRight } from 'lucide-react';
 import Link from 'next/link';
 
+export interface BoardColumn {
+  id: string;
+  label: string;
+  color: string;
+  status: string;
+}
+
 interface ProjectCreateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -40,6 +47,8 @@ export function ProjectCreateDialog({ open, onOpenChange, onCreate }: ProjectCre
     setError(null);
     setLimitReached(null);
   }, [open]);
+
+  const canCreate = name.trim().length > 0;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -69,20 +78,6 @@ export function ProjectCreateDialog({ open, onOpenChange, onCreate }: ProjectCre
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl border-border bg-background shadow-2xl">
-        <DialogHeader>
-          <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary w-fit mb-2">
-            <Sparkles className="h-3.5 w-3.5" />
-            Syntheon Hub Projects
-          </div>
-          <DialogTitle className="font-playfair text-2xl text-foreground">
-            Create a new project
-          </DialogTitle>
-          <DialogDescription className="text-muted-foreground">
-            Start a workspace for a product, client, or feature stream. You can add meetings and
-            tickets under it later.
-          </DialogDescription>
-        </DialogHeader>
-
         {limitReached ? (
           <div className="space-y-4 rounded-2xl border border-primary/10 bg-primary/5 p-6 text-center">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -117,6 +112,20 @@ export function ProjectCreateDialog({ open, onOpenChange, onCreate }: ProjectCre
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
+            <DialogHeader>
+              <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary w-fit mb-2">
+                <Sparkles className="h-3.5 w-3.5" />
+                Syntheon Hub Projects
+              </div>
+              <DialogTitle className="font-playfair text-2xl text-foreground">
+                Create a new project
+              </DialogTitle>
+              <DialogDescription className="text-muted-foreground">
+                Start a workspace for a product, client, or feature stream. You'll set up your board
+                columns next.
+              </DialogDescription>
+            </DialogHeader>
+
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Project name</label>
               <Input
@@ -155,7 +164,7 @@ export function ProjectCreateDialog({ open, onOpenChange, onCreate }: ProjectCre
               </Button>
               <Button
                 type="submit"
-                disabled={submitting || !name.trim()}
+                disabled={submitting || !canCreate}
                 className="rounded-full gap-2"
               >
                 <FolderPlus className="h-4 w-4" />

@@ -20,6 +20,7 @@ import {
   LabelsEntity,
   MilestonesEntity,
   SprintsEntity,
+  ConsentRecordsEntity,
 } from '@/db/entities';
 
 // ─── Types ─────────────────────────────────────────────────────
@@ -69,7 +70,7 @@ export interface Ticket {
   parent_id?: string | null;
   title: string;
   description: string;
-  status: 'backlog' | 'in_progress' | 'done' | 'blocked';
+  status: string;
   priority?: TicketPriority;
   type?: TicketType;
   estimate?: TicketEstimate;
@@ -485,10 +486,10 @@ export async function deleteProject(id: string): Promise<void> {
     await TicketDependenciesEntity.delete({ id: dep.id }).go();
   }
 
-  // Unlink tickets from this project (keep them associated with their meeting)
+  // Delete tickets belonging to this project
   const tickets = await TicketsEntity.query.byProject({ projectId: id }).go();
   for (const ticket of tickets.data ?? []) {
-    await TicketsEntity.update({ id: ticket.id }).set({ projectId: undefined }).go();
+    await TicketsEntity.delete({ id: ticket.id }).go();
   }
 
   // Unlink meetings
@@ -1045,7 +1046,18 @@ export async function updateComment(id: string, content: string): Promise<Ticket
   const now = new Date().toISOString();
   await TicketCommentsEntity.update({ id }).set({ content, updatedAt: now }).go();
   const res = await TicketCommentsEntity.get({ id }).go();
-  const data = res.data!;
+  if (!res.data) {
+    return {
+      id,
+      ticket_id: '',
+      project_id: null,
+      user_id: '',
+      content,
+      created_at: now,
+      updated_at: now,
+    };
+  }
+  const data = res.data;
   return {
     id: data.id,
     ticket_id: data.ticketId,
@@ -1079,6 +1091,22 @@ export async function getActivitiesForTicket(ticketId: string): Promise<TicketAc
       created_at: row.createdAt,
     }))
     .sort((a: any, b: any) => b.created_at.localeCompare(a.created_at));
+}
+
+export async function getDeletedActivitiesByProject(projectId: string): Promise<TicketActivity[]> {
+  const res = await TicketActivitiesEntity.query
+    .byActionType({ actionType: 'deleted' })
+    .go({ limit: 100, order: 'desc' });
+  return (res.data ?? [])
+    .filter((row: any) => row.metadata?.projectId === projectId)
+    .map((row: any) => ({
+      id: row.id,
+      ticket_id: row.ticketId,
+      user_id: row.userId,
+      action_type: row.actionType,
+      metadata: row.metadata ?? {},
+      created_at: row.createdAt,
+    }));
 }
 
 export async function createActivity(
@@ -1705,4 +1733,88 @@ export async function updateSprint(
 
 export async function deleteSprint(id: string): Promise<void> {
   await SprintsEntity.delete({ id }).go();
+}
+
+// ─── Consent Records (DPDP Act 2023) ────────────────────────────
+export interface ConsentRecord {
+  id: string;
+  userId: string;
+  consentVersion: string;
+  purposes: string[];
+  ipAddress?: string;
+  deviceId?: string;
+  userAgent?: string;
+  givenAt: string;
+  withdrawnAt?: string;
+  status: 'active' | 'withdrawn';
+}
+
+export const CURRENT_CONSENT_VERSION = 'dpdp-2023-v1';
+
+export async function recordConsent(input: {
+  userId: string;
+  consentVersion?: string;
+  purposes: string[];
+  ipAddress?: string;
+  deviceId?: string;
+  userAgent?: string;
+}): Promise<ConsentRecord> {
+  const id = randomUUID();
+  const now = new Date().toISOString();
+  await ConsentRecordsEntity.create({
+    id,
+    userId: input.userId,
+    consentVersion: input.consentVersion ?? CURRENT_CONSENT_VERSION,
+    purposes: input.purposes,
+    ipAddress: input.ipAddress ?? 'unknown',
+    deviceId: input.deviceId ?? 'unknown',
+    userAgent: input.userAgent ?? 'unknown',
+    givenAt: now,
+    status: 'active',
+  }).go();
+  return {
+    id,
+    userId: input.userId,
+    consentVersion: input.consentVersion ?? CURRENT_CONSENT_VERSION,
+    purposes: input.purposes,
+    ipAddress: input.ipAddress,
+    deviceId: input.deviceId,
+    userAgent: input.userAgent,
+    givenAt: now,
+    status: 'active',
+  };
+}
+
+export async function getActiveConsentByUser(userId: string): Promise<ConsentRecord | null> {
+  const res = await ConsentRecordsEntity.query.byUser({ userId }).go({ limit: 1, order: 'desc' });
+  const row = res.data?.[0];
+  if (!row || row.status === 'withdrawn') return null;
+  return {
+    id: row.id,
+    userId: row.userId,
+    consentVersion: row.consentVersion,
+    purposes: row.purposes ?? [],
+    ipAddress: row.ipAddress,
+    deviceId: row.deviceId,
+    userAgent: row.userAgent,
+    givenAt: row.givenAt,
+    withdrawnAt: row.withdrawnAt,
+    status: row.status,
+  };
+}
+
+export async function hasValidConsent(userId: string): Promise<boolean> {
+  const record = await getActiveConsentByUser(userId);
+  if (!record) return false;
+  return record.consentVersion === CURRENT_CONSENT_VERSION && record.status === 'active';
+}
+
+export async function withdrawConsent(userId: string): Promise<void> {
+  const res = await ConsentRecordsEntity.query.byUser({ userId }).go({ limit: 1, order: 'desc' });
+  const row = res.data?.[0];
+  if (row && row.status === 'active') {
+    await ConsentRecordsEntity.update({ id: row.id })
+      .set({ status: 'withdrawn', withdrawnAt: new Date().toISOString() })
+      .go();
+  }
 }

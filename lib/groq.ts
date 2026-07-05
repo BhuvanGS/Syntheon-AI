@@ -63,7 +63,7 @@ export interface TicketBlock {
   id: string;
   title: string;
   description: string;
-  status: 'backlog' | 'in_progress' | 'done' | 'blocked';
+  status: string;
   assignee: string | null;
   assignee_user_id: string | null;
   project_id: string | null;
@@ -87,7 +87,7 @@ interface TicketForDependencyInference {
   id: string;
   title: string;
   description: string;
-  status: 'backlog' | 'in_progress' | 'done' | 'blocked';
+  status: string;
 }
 
 function normalizeTicketStatus(status: string | undefined): TicketBlock['status'] {

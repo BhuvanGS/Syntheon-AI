@@ -295,6 +295,19 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
+    // Log deletion activity before deleting (for traceability)
+    await createActivity({
+      ticket_id: id,
+      user_id: ctx.userId,
+      action_type: 'deleted',
+      metadata: {
+        title: ticket.title,
+        status: ticket.status,
+        projectId: ticket.projectId,
+        assignee: ticket.assignee,
+      },
+    });
+
     await deleteTicketById(id);
     broadcastToOrg(ctx.orgId, {
       type: 'ticket_deleted',

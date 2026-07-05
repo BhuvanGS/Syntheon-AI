@@ -1050,7 +1050,10 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
           if (!open) setTicketToEdit(null);
         }}
       >
-        <SheetContent side="right" className="w-[680px] sm:max-w-[680px] p-0 overflow-hidden">
+        <SheetContent
+          side="right"
+          className="w-[680px] sm:max-w-[680px] p-0 overflow-hidden bg-zinc-100 dark:bg-zinc-900"
+        >
           <SheetHeader className="border-b border-border px-6 py-4">
             <SheetTitle className="font-playfair text-2xl text-foreground">
               {ticketToEdit?.dependency_ticket_id ? 'Edit subticket' : 'Edit ticket'}
@@ -1060,10 +1063,9 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
             </SheetDescription>
           </SheetHeader>
 
-          <div className="flex-1 overflow-auto px-6 py-5 space-y-5">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Name</label>
-              <Input
+          <div className="flex-1 overflow-auto px-6 py-5">
+            <div className="bg-zinc-100 dark:bg-zinc-800 border border-border px-4 py-3">
+              <input
                 value={ticketEditForm.title}
                 onChange={(e) =>
                   setTicketEditForm((prev) => ({
@@ -1072,11 +1074,12 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                   }))
                 }
                 placeholder="Ticket title"
+                className="w-full text-2xl font-semibold bg-transparent border-none outline-none text-foreground placeholder:text-muted-foreground/50 px-0 focus:ring-0"
               />
             </div>
 
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-foreground">Description</label>
+            <div className="space-y-2 mt-1.5">
+              <label className="text-xs font-medium text-muted-foreground block">Description</label>
               <MentionEditor
                 content={ticketEditForm.description}
                 onChange={(html) =>
@@ -1100,17 +1103,17 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
               />
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Assignee</label>
+            <div className="grid grid-cols-3 gap-4 mt-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground block">Assignee</label>
                 <AssigneePicker
                   value={ticketEditForm.assignee}
                   onChange={(val) => setTicketEditForm((prev) => ({ ...prev, assignee: val }))}
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Status</label>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground block">Status</label>
                 <Select
                   value={ticketEditForm.status}
                   onValueChange={(value) =>
@@ -1120,7 +1123,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                     }))
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="rounded-none bg-zinc-100 dark:bg-zinc-800">
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1133,15 +1136,11 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Dates</label>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground block">Due date</label>
                 <DateRangePicker
-                  startDate={ticketEditForm.start_date || undefined}
                   dueDate={ticketEditForm.due_date || undefined}
                   deadlineTime={ticketEditForm.deadline_time || undefined}
-                  onStartDateChange={(date) =>
-                    setTicketEditForm((prev) => ({ ...prev, start_date: date || '' }))
-                  }
                   onDueDateChange={(date) =>
                     setTicketEditForm((prev) => ({ ...prev, due_date: date || '' }))
                   }
@@ -1153,7 +1152,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
               </div>
             </div>
 
-            <div className="border-t border-border/60 pt-3">
+            <div className="border-t border-border/60 pt-3 mt-4">
               <details className="group">
                 <summary className="flex items-center gap-2 cursor-pointer select-none list-none mb-2">
                   <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-90" />
@@ -1181,7 +1180,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
             </div>
 
             {ticketToEdit && (
-              <div className="border-t border-border/60 pt-4">
+              <div className="border-t border-border/60 pt-4 mt-4">
                 <TicketDependencyPanel
                   ticketId={ticketToEdit.id}
                   projectId={ticketToEdit.projectId}

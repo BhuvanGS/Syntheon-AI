@@ -58,7 +58,7 @@ export function TipTapEditor({
 
   if (!editor) {
     return (
-      <div className="min-h-[200px] rounded-md border border-input bg-background px-3 py-2 text-sm text-muted-foreground">
+      <div className="min-h-[200px] rounded-lg border border-input bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
         Loading editor...
       </div>
     );
@@ -111,7 +111,16 @@ export function TipTapEditor({
   };
 
   return (
-    <div className="rounded-md border border-input bg-background">
+    <div className="rounded-lg border border-input bg-muted/30">
+      <style>{`
+        .ProseMirror p.is-editor-empty:first-child::before {
+          content: attr(data-placeholder);
+          float: left;
+          color: color-mix(in oklch, var(--muted-foreground) 60%, transparent);
+          pointer-events: none;
+          height: 0;
+        }
+      `}</style>
       <div className="flex flex-wrap items-center gap-1 border-b border-input px-2 py-1">
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleBold().run()}
@@ -192,7 +201,7 @@ export function TipTapEditor({
       </div>
       <EditorContent
         editor={editor}
-        className="px-3 py-2 [&_.ProseMirror]:min-h-[150px] [&_.ProseMirror]:outline-none [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-muted-foreground [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:my-2 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_blockquote]:border-l-4 [&_blockquote]:border-border [&_blockquote]:pl-4 [&_blockquote]:italic [&_code]:bg-muted [&_code]:px-1 [&_code]:rounded [&_a]:text-primary [&_a]:underline"
+        className="px-3 py-2 [&_.ProseMirror]:min-h-[150px] [&_.ProseMirror]:outline-none [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:my-2 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_blockquote]:border-l-4 [&_blockquote]:border-border [&_blockquote]:pl-4 [&_blockquote]:italic [&_code]:bg-muted [&_code]:px-1 [&_code]:rounded [&_a]:text-primary [&_a]:underline"
       />
     </div>
   );

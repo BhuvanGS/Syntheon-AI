@@ -54,8 +54,8 @@ export default function ContactPage() {
         }
         .contact-input {
           width: 100%;
-          background: rgba(255,255,255,0.03);
-          border: 1px solid rgba(255,255,255,0.1);
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.1);
           border-radius: 8px;
           padding: 12px 16px;
           color: #fff;
@@ -65,18 +65,18 @@ export default function ContactPage() {
           transition: border-color 0.2s;
         }
         .contact-input:focus {
-          border-color: rgba(255,255,255,0.3);
+          border-color: rgba(255, 255, 255, 0.3);
         }
         .contact-input::placeholder {
-          color: rgba(255,255,255,0.25);
+          color: rgba(255, 255, 255, 0.25);
         }
         .contact-label {
           display: block;
-          fontSize: 13px;
-          fontWeight: 500;
-          color: rgba(255,255,255,0.5);
-          marginBottom: 0.5rem;
-          letterSpacing: 0.02em;
+          fontsize: 13px;
+          fontweight: 500;
+          color: rgba(255, 255, 255, 0.5);
+          marginbottom: 0.5rem;
+          letterspacing: 0.02em;
         }
       `}</style>
 
