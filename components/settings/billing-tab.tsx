@@ -4,6 +4,7 @@ import { useAuth, useOrganization } from '@clerk/nextjs';
 import { PricingTable } from '@clerk/nextjs';
 import { CreditCard, Check, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
 const PLAN_FEATURES: Record<string, string[]> = {
   Free: ['2 meetings/mo', '25 tickets', '1 project', 'Basic board'],
@@ -12,9 +13,108 @@ const PLAN_FEATURES: Record<string, string[]> = {
   Enterprise: ['SSO', 'Audit logs', 'Data residency', 'Dedicated support'],
 };
 
+const PLAN_LIMITS: Record<string, { meetings: number; tickets: number; projects: number }> = {
+  Free: { meetings: 2, tickets: 25, projects: 1 },
+  Pro: { meetings: Infinity, tickets: 500, projects: 10 },
+  Max: { meetings: Infinity, tickets: Infinity, projects: Infinity },
+};
+
+interface UsageData {
+  meetingsUsed: number;
+  ticketsUsed: number;
+  projectsUsed: number;
+}
+
+function UsageBar({
+  label,
+  used,
+  limit,
+}: {
+  label: string;
+  used: number;
+  limit: number;
+}) {
+  const isUnlimited = limit === Infinity;
+  const pct = isUnlimited ? 0 : Math.min((used / limit) * 100, 100);
+  const remaining = isUnlimited ? Infinity : Math.max(limit - used, 0);
+  const isExhausted = !isUnlimited && remaining === 0;
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between text-xs">
+        <span className="font-medium text-foreground">{label}</span>
+        <span className={isExhausted ? 'text-red-500 font-medium' : 'text-muted-foreground'}>
+          {isUnlimited
+            ? `${used} used`
+            : isExhausted
+              ? 'Limit reached'
+              : `${used}/${limit} used · ${remaining} left`}
+        </span>
+      </div>
+      <div className="h-2 rounded-full bg-muted overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all duration-500 ${
+            isExhausted
+              ? 'bg-red-500'
+              : pct > 80
+                ? 'bg-orange-400'
+                : 'bg-primary'
+          }`}
+          style={{ width: isUnlimited ? '100%' : `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export function BillingTab() {
   const { isLoaded, has } = useAuth();
   const { organization } = useOrganization();
+  const [usage, setUsage] = useState<UsageData | null>(null);
+
+  const currentPlan =
+    has?.({ plan: 'user_max' }) || has?.({ plan: 'org:org_max' })
+      ? 'Max'
+      : has?.({ plan: 'user_pro' }) || has?.({ plan: 'org:org_pro' })
+        ? 'Pro'
+        : 'Free';
+
+  const limits = PLAN_LIMITS[currentPlan] ?? PLAN_LIMITS.Free;
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const [meetingsRes, ticketsRes, projectsRes] = await Promise.all([
+          fetch('/api/meetings?limit=500').then((r) => r.json().catch(() => ({ meetings: [] }))),
+          fetch('/api/tickets?limit=1').then((r) => r.json().catch(() => ({ total: 0 }))),
+          fetch('/api/projects?limit=100').then((r) => r.json().catch(() => ({ projects: [] }))),
+        ]);
+
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+        const meetingsThisMonth = (meetingsRes.meetings ?? []).filter(
+          (m: any) => m.date >= monthStart
+        ).length;
+
+        if (!cancelled) {
+          setUsage({
+            meetingsUsed: meetingsThisMonth,
+            ticketsUsed: ticketsRes.total ?? (ticketsRes.tickets ?? []).length ?? 0,
+            projectsUsed: (projectsRes.projects ?? []).length,
+          });
+        }
+      } catch {
+        // silent
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoaded, currentPlan]);
 
   if (!isLoaded) {
     return (
@@ -26,13 +126,6 @@ export function BillingTab() {
 
   const isOrg = Boolean(organization);
   const billingType = isOrg ? 'organization' : 'user';
-
-  const currentPlan =
-    has?.({ plan: 'user_max' }) || has?.({ plan: 'org:org_max' })
-      ? 'Max'
-      : has?.({ plan: 'user_pro' }) || has?.({ plan: 'org:org_pro' })
-        ? 'Pro'
-        : 'Free';
 
   const planBadgeColor =
     currentPlan === 'Max'
@@ -83,6 +176,16 @@ export function BillingTab() {
             </div>
           ))}
         </div>
+
+        {/* Usage bars */}
+        {usage && (
+          <div className="mt-5 space-y-4 rounded-xl border border-border/60 bg-background/50 p-4">
+            <p className="text-sm font-medium text-foreground">Usage this period</p>
+            <UsageBar label="Meetings" used={usage.meetingsUsed} limit={limits.meetings} />
+            <UsageBar label="Tickets" used={usage.ticketsUsed} limit={limits.tickets} />
+            <UsageBar label="Projects" used={usage.projectsUsed} limit={limits.projects} />
+          </div>
+        )}
       </div>
 
       {/* Pricing table for upgrade */}

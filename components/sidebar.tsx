@@ -64,7 +64,6 @@ const ADMIN_NAV = [
     href: '/dashboard?view=tickets',
     view: 'tickets',
   },
-  { id: 'settings', label: 'Settings', icon: Settings, href: '/settings', view: null },
 ];
 
 const MEMBER_NAV = [
@@ -76,7 +75,6 @@ const MEMBER_NAV = [
     href: '/dashboard?view=meetings',
     view: 'meetings',
   },
-  { id: 'settings', label: 'Settings', icon: Settings, href: '/settings', view: null },
 ];
 
 export function Sidebar({
@@ -167,11 +165,9 @@ export function Sidebar({
           const Icon = item.icon;
           const currentView = searchParams.get('view');
           const active =
-            item.view === null && item.href !== '/settings'
+            item.view === null
               ? pathname === '/dashboard' && !currentView
-              : item.href === '/settings'
-                ? pathname === '/settings'
-                : currentView === item.view;
+              : currentView === item.view;
           return (
             <button
               key={item.id}
@@ -305,7 +301,7 @@ export function Sidebar({
           </div>
           <button
             onClick={() => router.push('/settings')}
-            className="opacity-0 group-hover:opacity-100 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-all"
+            className="p-1 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all hover:shadow-[0_0_8px_rgba(124,58,237,0.4)]"
             title="Settings"
           >
             <Settings className="h-3.5 w-3.5" />
