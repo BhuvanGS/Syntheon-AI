@@ -25,15 +25,7 @@ interface UsageData {
   projectsUsed: number;
 }
 
-function UsageBar({
-  label,
-  used,
-  limit,
-}: {
-  label: string;
-  used: number;
-  limit: number;
-}) {
+function UsageBar({ label, used, limit }: { label: string; used: number; limit: number }) {
   const isUnlimited = limit === Infinity;
   const pct = isUnlimited ? 0 : Math.min((used / limit) * 100, 100);
   const remaining = isUnlimited ? Infinity : Math.max(limit - used, 0);
@@ -54,11 +46,7 @@ function UsageBar({
       <div className="h-2 rounded-full bg-muted overflow-hidden">
         <div
           className={`h-full rounded-full transition-all duration-500 ${
-            isExhausted
-              ? 'bg-red-500'
-              : pct > 80
-                ? 'bg-orange-400'
-                : 'bg-primary'
+            isExhausted ? 'bg-red-500' : pct > 80 ? 'bg-orange-400' : 'bg-primary'
           }`}
           style={{ width: isUnlimited ? '100%' : `${pct}%` }}
         />

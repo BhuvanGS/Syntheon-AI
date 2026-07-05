@@ -113,9 +113,9 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: '/favicon.ico', sizes: 'any' },
-      { url: '/syntheon-logo.png', media: '(prefers-color-scheme: light)' },
-      { url: '/syntheon-logo.png', media: '(prefers-color-scheme: dark)' },
+      { url: '/favicon.ico', sizes: '16x16 32x32 48x48 64x64' },
+      { url: '/syntheon-logo-light.png', media: '(prefers-color-scheme: light)', sizes: '512x512' },
+      { url: '/syntheon-logo-dark.png', media: '(prefers-color-scheme: dark)', sizes: '512x512' },
     ],
     apple: '/apple-icon.png',
   },
