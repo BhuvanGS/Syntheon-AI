@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { useUser, useOrganization } from '@clerk/nextjs';
+import { useUser, useOrganization, useClerk } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
-import { Building2, Sliders, ArrowLeft, Plug } from 'lucide-react';
+import { Building2, Sliders, ArrowLeft, Plug, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -32,6 +32,7 @@ const tabs: Array<{ id: SettingsTab; label: string; icon: typeof Plug; descripti
 export default function SettingsPage() {
   const { user } = useUser();
   const { organization } = useOrganization();
+  const { signOut } = useClerk();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<SettingsTab>('integrations');
 
@@ -103,22 +104,16 @@ export default function SettingsPage() {
           </nav>
         </ScrollArea>
 
-        {/* Org badge footer */}
+        {/* Logout footer */}
         <div className="p-4 border-t border-border/40">
-          <div className="flex items-center gap-3 rounded-xl bg-muted/40 border border-border/40 px-3 py-2.5">
-            <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-              <span className="text-sm font-bold text-primary">{orgInitial}</span>
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-foreground truncate">{organization.name}</p>
-              <p className="text-[11px] text-muted-foreground truncate">
-                {user.fullName ||
-                  [user.firstName, user.lastName].filter(Boolean).join(' ') ||
-                  user.username ||
-                  user.primaryEmailAddress?.emailAddress}
-              </p>
-            </div>
-          </div>
+          <Button
+            variant="outline"
+            className="w-full justify-center gap-2 border-red-500/30 text-red-500 hover:bg-red-500/10 hover:text-red-500"
+            onClick={() => signOut({ redirectUrl: '/sign-in' })}
+          >
+            <LogOut className="h-4 w-4" />
+            Log out
+          </Button>
         </div>
       </aside>
 

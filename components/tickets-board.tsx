@@ -23,6 +23,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import {
   Loader2,
   Clock,
   CheckCircle,
@@ -37,6 +44,7 @@ import {
   Tag,
   SlidersHorizontal,
   ChevronRight,
+  Plus,
 } from 'lucide-react';
 import { AssigneePicker, type AssigneeValue } from '@/components/assignee-picker';
 import { TicketDependencyPanel } from '@/components/ticket-dependency-panel';
@@ -112,6 +120,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [labelManagerOpen, setLabelManagerOpen] = useState(false);
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+  const [toolbarOpen, setToolbarOpen] = useState(false);
   const [metaPriority, setMetaPriority] = useState<TicketPriority>('none');
   const [metaType, setMetaType] = useState<TicketType>('task');
   const [metaEstimate, setMetaEstimate] = useState<TicketEstimate>('none');
@@ -821,12 +830,16 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
 
   return (
     <div className="space-y-4">
-      <details className="group" open>
-        <summary className="flex items-center gap-2 cursor-pointer select-none list-none">
-          <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-90" />
-          <h2 className="font-playfair text-xl font-bold text-foreground">Tickets</h2>
-        </summary>
-        <div className="flex items-center justify-between flex-wrap gap-2 mt-2">
+      <div className="flex items-center gap-3">
+        <h2 className="font-playfair text-xl font-bold text-foreground">Tickets</h2>
+        <button
+          onClick={() => setToolbarOpen((v) => !v)}
+          className="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          title={toolbarOpen ? 'Hide toolbar' : 'Show toolbar'}
+        >
+          <Plus className={`h-4 w-4 transition-transform duration-300 ${toolbarOpen ? 'rotate-45' : ''}`} />
+        </button>
+        <div className={`flex items-center justify-between flex-wrap gap-2 overflow-hidden transition-all duration-300 ${toolbarOpen ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-8 pointer-events-none'}`}>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1 rounded-lg border border-border p-0.5 bg-muted/40">
               {(
@@ -934,7 +947,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
             </div>
           )}
         </div>
-      </details>
+      </div>
 
       {/* Filter dialog */}
       <FilterDialog
@@ -1027,23 +1040,23 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
         </DialogContent>
       </Dialog>
 
-      <Dialog
+      <Sheet
         open={Boolean(ticketToEdit)}
         onOpenChange={(open) => {
           if (!open) setTicketToEdit(null);
         }}
       >
-        <DialogContent className="sm:max-w-2xl border-border bg-background shadow-2xl">
-          <DialogHeader>
-            <DialogTitle className="font-playfair text-2xl text-foreground">
-              Update ticket
-            </DialogTitle>
-            <DialogDescription className="text-muted-foreground">
+        <SheetContent side="right" className="w-[680px] sm:max-w-[680px] p-0 overflow-hidden">
+          <SheetHeader className="border-b border-border px-6 py-4">
+            <SheetTitle className="font-playfair text-2xl text-foreground">
+              {ticketToEdit?.dependency_ticket_id ? 'Edit subticket' : 'Edit ticket'}
+            </SheetTitle>
+            <SheetDescription className="text-muted-foreground">
               Edit name, description, assignee, and status before confirming.
-            </DialogDescription>
-          </DialogHeader>
+            </SheetDescription>
+          </SheetHeader>
 
-          <div className="space-y-4 py-2">
+          <div className="flex-1 overflow-auto px-6 py-5 space-y-5">
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Name</label>
               <Input
@@ -1083,7 +1096,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Assignee</label>
                 <AssigneePicker
@@ -1115,25 +1128,25 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                   </SelectContent>
                 </Select>
               </div>
-            </div>
 
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">Dates</p>
-              <DateRangePicker
-                startDate={ticketEditForm.start_date || undefined}
-                dueDate={ticketEditForm.due_date || undefined}
-                deadlineTime={ticketEditForm.deadline_time || undefined}
-                onStartDateChange={(date) =>
-                  setTicketEditForm((prev) => ({ ...prev, start_date: date || '' }))
-                }
-                onDueDateChange={(date) =>
-                  setTicketEditForm((prev) => ({ ...prev, due_date: date || '' }))
-                }
-                onDeadlineTimeChange={(time) =>
-                  setTicketEditForm((prev) => ({ ...prev, deadline_time: time || '' }))
-                }
-                disabled={Boolean(updatingTicketId)}
-              />
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Dates</label>
+                <DateRangePicker
+                  startDate={ticketEditForm.start_date || undefined}
+                  dueDate={ticketEditForm.due_date || undefined}
+                  deadlineTime={ticketEditForm.deadline_time || undefined}
+                  onStartDateChange={(date) =>
+                    setTicketEditForm((prev) => ({ ...prev, start_date: date || '' }))
+                  }
+                  onDueDateChange={(date) =>
+                    setTicketEditForm((prev) => ({ ...prev, due_date: date || '' }))
+                  }
+                  onDeadlineTimeChange={(time) =>
+                    setTicketEditForm((prev) => ({ ...prev, deadline_time: time || '' }))
+                  }
+                  disabled={Boolean(updatingTicketId)}
+                />
+              </div>
             </div>
 
             <div className="border-t border-border/60 pt-3">
@@ -1176,7 +1189,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
             )}
           </div>
 
-          <DialogFooter className="pt-2">
+          <div className="border-t border-border px-6 py-4 flex items-center justify-between gap-2">
             <Button
               type="button"
               variant="destructive"
@@ -1190,27 +1203,29 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
             >
               {ticketToEdit?.dependency_ticket_id ? 'Delete subtask' : 'Delete ticket'}
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setTicketToEdit(null)}
-              className="rounded-full"
-              disabled={Boolean(updatingTicketId)}
-            >
-              Discard changes
-            </Button>
-            <Button
-              type="button"
-              onClick={handleSaveTicketEdit}
-              className="rounded-full"
-              disabled={Boolean(updatingTicketId) || ticketEditForm.title.trim().length === 0}
-            >
-              {updatingTicketId ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-              Confirm changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setTicketToEdit(null)}
+                className="rounded-full"
+                disabled={Boolean(updatingTicketId)}
+              >
+                Discard
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSaveTicketEdit}
+                className="rounded-full"
+                disabled={Boolean(updatingTicketId) || ticketEditForm.title.trim().length === 0}
+              >
+                {updatingTicketId ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                Save changes
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <Dialog
         open={Boolean(ticketToDelete)}

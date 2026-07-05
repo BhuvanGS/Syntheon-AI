@@ -113,7 +113,7 @@ export function Sidebar({
       {/* Logo + Org */}
       <div className="h-14 flex items-center px-4 shrink-0 gap-2">
         <Link
-          href="/"
+          href="/dashboard"
           className="flex items-center gap-2.5 flex-1 min-w-0 group rounded-md -ml-1 pl-1 py-1 hover:bg-accent/40"
         >
           <img
@@ -125,7 +125,7 @@ export function Sidebar({
             }}
           />
           <div className="min-w-0">
-            <span className="font-[family-name:var(--font-dm-serif)] text-[1.05rem] text-primary tracking-tight block truncate">
+            <span className="font-[family-name:var(--font-space-grotesk)] text-[1.05rem] text-primary tracking-tight block truncate">
               Syntheon Hub
             </span>
             {organization?.name && (
@@ -284,6 +284,13 @@ export function Sidebar({
               {organization?.name ?? 'No org'}
             </p>
           </div>
+          <button
+            onClick={() => router.push('/settings')}
+            className="opacity-0 group-hover:opacity-100 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-all"
+            title="Settings"
+          >
+            <Settings className="h-3.5 w-3.5" />
+          </button>
         </div>
         <Button
           variant="ghost"

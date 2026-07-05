@@ -275,6 +275,7 @@ export function ProjectsWorkspace({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [labelManagerOpen, setLabelManagerOpen] = useState(false);
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+  const [toolbarOpen, setToolbarOpen] = useState(false);
   const [metaPriority, setMetaPriority] = useState<TicketPriority>('none');
   const [metaType, setMetaType] = useState<TicketType>('task');
   const [metaEstimate, setMetaEstimate] = useState<TicketEstimate>('none');
@@ -2115,12 +2116,16 @@ export function ProjectsWorkspace({
         {/* ── TICKETS tab (unified board + list) ── */}
         {projectTab === 'tickets' && (
           <div className="space-y-4">
-            <details className="group" open>
-              <summary className="flex items-center gap-2 cursor-pointer select-none list-none">
-                <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-90" />
-                <h2 className="font-playfair text-2xl font-bold text-foreground">Tickets</h2>
-              </summary>
-              <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-3">
+              <h2 className="font-playfair text-2xl font-bold text-foreground">Tickets</h2>
+              <button
+                onClick={() => setToolbarOpen((v) => !v)}
+                className="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                title={toolbarOpen ? 'Hide toolbar' : 'Show toolbar'}
+              >
+                <Plus className={`h-4 w-4 transition-transform duration-300 ${toolbarOpen ? 'rotate-45' : ''}`} />
+              </button>
+              <div className={`flex items-center justify-between flex-wrap gap-2 overflow-hidden transition-all duration-300 ${toolbarOpen ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-8 pointer-events-none'}`}>
                 <div className="flex items-center rounded-lg border border-border bg-muted/40 p-0.5">
                   {(
                     [
@@ -2242,7 +2247,7 @@ export function ProjectsWorkspace({
                   </button>
                 </div>
               </div>
-            </details>
+            </div>
 
             {/* Bulk action bar */}
             {bulkMode && (
@@ -5565,7 +5570,7 @@ export function ProjectsWorkspace({
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-foreground">Assignee</label>
                     <AssigneePicker
@@ -5598,35 +5603,33 @@ export function ProjectsWorkspace({
                     </Select>
                   </div>
 
-                  <label className="block text-sm text-muted-foreground">
-                    Dates
-                    <div className="mt-1">
-                      <DateRangePicker
-                        startDate={ticketEditForm.start_date || undefined}
-                        dueDate={ticketEditForm.due_date || undefined}
-                        deadlineTime={ticketEditForm.deadline_time || undefined}
-                        onStartDateChange={(date) =>
-                          setTicketEditForm((prev) => ({
-                            ...prev,
-                            start_date: date || '',
-                          }))
-                        }
-                        onDueDateChange={(date) =>
-                          setTicketEditForm((prev) => ({
-                            ...prev,
-                            due_date: date || '',
-                          }))
-                        }
-                        onDeadlineTimeChange={(time) =>
-                          setTicketEditForm((prev) => ({
-                            ...prev,
-                            deadline_time: time || '',
-                          }))
-                        }
-                        disabled={Boolean(savingTicketId)}
-                      />
-                    </div>
-                  </label>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">Dates</label>
+                    <DateRangePicker
+                      startDate={ticketEditForm.start_date || undefined}
+                      dueDate={ticketEditForm.due_date || undefined}
+                      deadlineTime={ticketEditForm.deadline_time || undefined}
+                      onStartDateChange={(date) =>
+                        setTicketEditForm((prev) => ({
+                          ...prev,
+                          start_date: date || '',
+                        }))
+                      }
+                      onDueDateChange={(date) =>
+                        setTicketEditForm((prev) => ({
+                          ...prev,
+                          due_date: date || '',
+                        }))
+                      }
+                      onDeadlineTimeChange={(time) =>
+                        setTicketEditForm((prev) => ({
+                          ...prev,
+                          deadline_time: time || '',
+                        }))
+                      }
+                      disabled={Boolean(savingTicketId)}
+                    />
+                  </div>
                 </div>
 
                 <div className="border-t border-border/60 pt-3">
