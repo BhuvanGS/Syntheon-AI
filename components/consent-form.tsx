@@ -127,18 +127,18 @@ export function ConsentForm({ onConsentGiven, loading }: ConsentFormProps) {
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
+    <div className="w-full">
       {/* Header */}
-      <div className="text-center mb-6">
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/10 mb-4">
-          <ShieldCheck className="h-7 w-7 text-primary" />
+      <div className="text-center mb-8">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-5">
+          <ShieldCheck className="h-8 w-8 text-primary" />
         </div>
-        <h1 className="font-[family-name:var(--font-space-grotesk)] text-2xl font-bold text-foreground tracking-tight">
+        <h1 className="font-[family-name:var(--font-space-grotesk)] text-3xl font-bold text-foreground tracking-tight">
           Data Privacy & Consent
         </h1>
-        <p className="text-sm text-muted-foreground mt-2 font-sans">
-          Under the Digital Personal Data Protection Act 2023 (India), we need your consent before
-          collecting your data.
+        <p className="text-base text-muted-foreground mt-3 font-sans max-w-xl mx-auto">
+          Under the Digital Personal Data Protection Act 2023 (India), we need your explicit consent
+          before collecting your data.
         </p>
       </div>
 
@@ -147,16 +147,16 @@ export function ConsentForm({ onConsentGiven, loading }: ConsentFormProps) {
         ref={scrollRef}
         className={cn(
           'relative rounded-2xl border border-border bg-muted/30 overflow-y-auto transition-all',
-          'max-h-[50vh] scroll-smooth'
+          'max-h-[70vh] scroll-smooth'
         )}
       >
         <div className="p-6 space-y-6">
           {/* Intro */}
           <section>
-            <h2 className="font-[family-name:var(--font-space-grotesk)] text-lg font-semibold text-foreground mb-3">
+            <h2 className="font-[family-name:var(--font-space-grotesk)] text-xl font-semibold text-foreground mb-3">
               What data we collect and why
             </h2>
-            <p className="text-[15px] text-muted-foreground leading-relaxed font-sans">
+            <p className="text-base text-muted-foreground leading-relaxed font-sans">
               Syntheon Hub processes your personal data to provide meeting transcription, ticket
               management, and project analytics. Below is a clear breakdown of each data category,
               why we collect it, and how long we keep it.
@@ -171,17 +171,17 @@ export function ConsentForm({ onConsentGiven, loading }: ConsentFormProps) {
               <div
                 key={purpose.id}
                 className={cn(
-                  'rounded-xl border p-4 transition-colors',
+                  'rounded-xl border p-5 transition-colors',
                   isChecked ? 'border-primary/40 bg-primary/5' : 'border-border bg-background/50'
                 )}
               >
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                    <Icon className="h-5 w-5 text-primary" />
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <Icon className="h-6 w-6 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-[family-name:var(--font-space-grotesk)] text-base font-semibold text-foreground">
+                    <div className="flex items-center gap-2 mb-2">
+                      <h3 className="font-[family-name:var(--font-space-grotesk)] text-lg font-semibold text-foreground">
                         {purpose.label}
                       </h3>
                       {purpose.required && (
@@ -191,40 +191,41 @@ export function ConsentForm({ onConsentGiven, loading }: ConsentFormProps) {
                       )}
                     </div>
 
-                    <div className="space-y-2 mt-2">
+                    <div className="space-y-3 mt-3">
                       <div>
-                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                           What we collect
                         </span>
-                        <p className="text-[14px] text-foreground/80 leading-relaxed font-sans mt-0.5">
+                        <p className="text-base text-foreground/80 leading-relaxed font-sans mt-1">
                           {purpose.what}
                         </p>
                       </div>
                       <div>
-                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                           Why we collect it
                         </span>
-                        <p className="text-[14px] text-foreground/80 leading-relaxed font-sans mt-0.5">
+                        <p className="text-base text-foreground/80 leading-relaxed font-sans mt-1">
                           {purpose.why}
                         </p>
                       </div>
                       <div>
-                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                           Retention period
                         </span>
-                        <p className="text-[14px] text-foreground/80 leading-relaxed font-sans mt-0.5">
+                        <p className="text-base text-foreground/80 leading-relaxed font-sans mt-1">
                           {purpose.retention}
                         </p>
                       </div>
                     </div>
 
-                    <label className="flex items-center gap-2.5 mt-3 cursor-pointer select-none">
+                    <label className="flex items-center gap-3 mt-4 cursor-pointer select-none">
                       <Checkbox
                         checked={isChecked}
                         onCheckedChange={() => togglePurpose(purpose.id)}
                         disabled={!hasScrolledToBottom}
+                        className="h-5 w-5"
                       />
-                      <span className="text-[14px] text-foreground font-sans">
+                      <span className="text-base text-foreground font-sans">
                         I consent to this data processing
                         {!hasScrolledToBottom && (
                           <span className="text-muted-foreground/50 ml-1">
@@ -240,11 +241,11 @@ export function ConsentForm({ onConsentGiven, loading }: ConsentFormProps) {
           })}
 
           {/* Rights section */}
-          <section className="rounded-xl border border-border bg-background/50 p-4">
-            <h3 className="font-[family-name:var(--font-space-grotesk)] text-base font-semibold text-foreground mb-2">
+          <section className="rounded-xl border border-border bg-background/50 p-5">
+            <h3 className="font-[family-name:var(--font-space-grotesk)] text-lg font-semibold text-foreground mb-3">
               Your rights under DPDP Act 2023
             </h3>
-            <ul className="space-y-1.5 text-[14px] text-foreground/80 font-sans leading-relaxed">
+            <ul className="space-y-2 text-base text-foreground/80 font-sans leading-relaxed">
               <li>
                 - <strong>Access:</strong> You can request a copy of all personal data we hold about
                 you.
@@ -269,15 +270,15 @@ export function ConsentForm({ onConsentGiven, loading }: ConsentFormProps) {
           </section>
 
           {/* Third-party disclosure */}
-          <section className="rounded-xl border border-border bg-background/50 p-4">
-            <h3 className="font-[family-name:var(--font-space-grotesk)] text-base font-semibold text-foreground mb-2">
+          <section className="rounded-xl border border-border bg-background/50 p-5">
+            <h3 className="font-[family-name:var(--font-space-grotesk)] text-lg font-semibold text-foreground mb-3">
               Third-party processors
             </h3>
-            <p className="text-[14px] text-foreground/80 font-sans leading-relaxed">
+            <p className="text-base text-foreground/80 font-sans leading-relaxed">
               We use the following third-party services to process your data. Each has signed Data
               Processing Agreements:
             </p>
-            <ul className="space-y-1 text-[14px] text-foreground/80 font-sans mt-2">
+            <ul className="space-y-1.5 text-base text-foreground/80 font-sans mt-3">
               <li>
                 - <strong>Clerk</strong> — Authentication & user identity (name, email, profile
                 photo)
@@ -297,14 +298,14 @@ export function ConsentForm({ onConsentGiven, loading }: ConsentFormProps) {
           </section>
 
           {/* Penalty notice */}
-          <section className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
-            <div className="flex items-start gap-2.5">
-              <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+          <section className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-5">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-6 w-6 text-amber-500 shrink-0 mt-0.5" />
               <div>
-                <h3 className="font-[family-name:var(--font-space-grotesk)] text-base font-semibold text-foreground mb-1">
+                <h3 className="font-[family-name:var(--font-space-grotesk)] text-lg font-semibold text-foreground mb-1">
                   Important
                 </h3>
-                <p className="text-[14px] text-foreground/80 font-sans leading-relaxed">
+                <p className="text-base text-foreground/80 font-sans leading-relaxed">
                   By checking the boxes above, you provide specific, granular consent under Section
                   6 of the DPDP Act 2023. Your consent record (timestamp, IP address, device ID,
                   consent version) is stored securely and can be accessed in your account settings.
@@ -326,16 +327,16 @@ export function ConsentForm({ onConsentGiven, loading }: ConsentFormProps) {
       </div>
 
       {/* Submit */}
-      <div className="mt-5 flex flex-col items-center gap-3">
+      <div className="mt-6 flex flex-col items-center gap-3">
         <Button
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className="w-full max-w-sm h-11 text-[15px] font-medium"
+          className="w-full max-w-md h-12 text-base font-semibold"
         >
           {submitting ? 'Recording consent...' : 'I consent — Continue to Syntheon'}
         </Button>
         {!allRequiredChecked && hasScrolledToBottom && (
-          <p className="text-xs text-muted-foreground font-sans">
+          <p className="text-sm text-muted-foreground font-sans">
             Please check all required consent boxes to continue
           </p>
         )}

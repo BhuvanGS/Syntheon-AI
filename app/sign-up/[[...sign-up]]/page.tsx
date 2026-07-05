@@ -56,7 +56,7 @@ export default function SignUpPage() {
               letterSpacing: '-0.03em',
             }}
           >
-            Get started with Syntheon Hub
+            We value your privacy more than anything else
           </h1>
 
           <p
@@ -69,8 +69,20 @@ export default function SignUpPage() {
               maxWidth: '420px',
             }}
           >
-            Join your meetings, extract action items, and turn conversations into organized tickets
-            — automatically.
+            Before you sign up, we want you to clearly understand what data we collect, why we
+            collect it, and how it is used under the Digital Personal Data Protection Act 2023.
+          </p>
+
+          <p
+            className="font-[family-name:var(--font-space-grotesk)]"
+            style={{
+              fontSize: '14px',
+              color: 'rgba(255,255,255,0.35)',
+              marginTop: '1rem',
+              fontStyle: 'italic',
+            }}
+          >
+            — Team SyntheonHub
           </p>
 
           <div className="mt-12 flex items-center gap-6">
@@ -91,9 +103,9 @@ export default function SignUpPage() {
         </div>
       </div>
 
-      {/* Right side — auth form */}
-      <div className="flex-1 flex items-center justify-center p-6 md:p-12">
-        <div className="w-full max-w-sm">
+      {/* Right side — consent + auth form */}
+      <div className="flex-1 flex items-center justify-center p-6 md:p-12 overflow-auto">
+        <div className="w-full max-w-3xl">
           <PreAuthConsent>
             <SignUp />
           </PreAuthConsent>

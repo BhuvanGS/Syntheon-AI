@@ -852,9 +852,16 @@ function Footer() {
           ]}
         />
         <FooterCol
-          title="Company"
+          title="Legal"
           links={[
-            { label: 'Legal', href: '/legal' },
+            { label: 'Privacy Policy', href: '/privacy' },
+            { label: 'Cookie Policy', href: '/cookie-policy' },
+            { label: 'Terms of Service', href: '/terms' },
+          ]}
+        />
+        <FooterCol
+          title="Account"
+          links={[
             { label: 'Sign In', href: `${APP_URL}/sign-in` },
             { label: 'Sign Up', href: `${APP_URL}/sign-up` },
           ]}
