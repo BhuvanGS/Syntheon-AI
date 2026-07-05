@@ -96,6 +96,25 @@ export async function POST(req: NextRequest) {
 
   // Direct join
   try {
+    // Check org seat limit for free tier
+    const { has } = session;
+    const isPaidOrg = has?.({ plan: 'org:org_pro' }) || has?.({ plan: 'org:org_max' });
+    if (!isPaidOrg) {
+      const members = await client.organizations.getOrganizationMembershipList({
+        organizationId: meta.orgId,
+      });
+      if ((members.data?.length ?? 0) >= 3) {
+        return NextResponse.json(
+          {
+            error: 'Free plan limit reached',
+            message: 'This organization has reached the 3-member free plan limit.',
+            upgradeUrl: '/pricing',
+          },
+          { status: 403 }
+        );
+      }
+    }
+
     await client.organizations.createOrganizationMembership({
       organizationId: meta.orgId,
       userId: session.userId,

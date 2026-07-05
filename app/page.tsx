@@ -131,7 +131,7 @@ function Nav({
           style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}
         >
           <NavLink href="/how-it-works">How It Works</NavLink>
-          <NavLink href="/pricing">Pricing</NavLink>
+          <NavLink href="/#pricing">Pricing</NavLink>
           <NavLink href="/docs">Docs</NavLink>
           <Link
             href={`${APP_URL}/sign-in`}
@@ -183,7 +183,7 @@ function Nav({
           }}
         >
           <NavLink href="/how-it-works">How It Works</NavLink>
-          <NavLink href="/pricing">Pricing</NavLink>
+          <NavLink href="/#pricing">Pricing</NavLink>
           <NavLink href="/docs">Docs</NavLink>
           <Link
             href={`${APP_URL}/sign-in`}
@@ -382,6 +382,9 @@ export default function LandingPage() {
         </FadeIn>
         <CardSwapShowcase />
         <FadeIn>
+          <PricingSection />
+        </FadeIn>
+        <FadeIn>
           <FinalCTA mounted={mounted} />
         </FadeIn>
       </main>
@@ -527,6 +530,213 @@ function FeatureGrid() {
   );
 }
 
+function PricingSection() {
+  const plans = [
+    {
+      name: 'Free',
+      price: '$0',
+      period: 'forever',
+      desc: 'For solo founders getting started',
+      features: ['2 meetings/mo', '25 tickets', '1 project', 'Basic Kanban board'],
+      cta: 'Start Free',
+      highlight: false,
+    },
+    {
+      name: 'Pro',
+      price: '$8.50',
+      period: '/mo',
+      annualNote: 'billed annually',
+      desc: 'For small teams shipping fast',
+      features: ['Unlimited meetings', '500 tickets', '10 projects', 'Dependencies', 'API access'],
+      cta: 'Start 15-day Trial',
+      highlight: true,
+    },
+    {
+      name: 'Max',
+      price: '$14.50',
+      period: '/mo',
+      annualNote: 'billed annually',
+      desc: 'For teams that want everything',
+      features: [
+        'Everything unlimited',
+        'Analytics',
+        'Sprint-stones',
+        'Roadmap',
+        'Priority support',
+      ],
+      cta: 'Start 15-day Trial',
+      highlight: false,
+    },
+  ];
+
+  return (
+    <section
+      id="pricing"
+      style={{ padding: '10rem 5vw', borderTop: '1px solid rgba(255,255,255,0.06)' }}
+    >
+      <div style={{ textAlign: 'center', maxWidth: '800px', margin: '0 auto 5rem' }}>
+        <p
+          style={{
+            fontFamily: "'Inter', sans-serif",
+            fontSize: '14px',
+            fontWeight: 600,
+            color: 'rgba(255,255,255,0.4)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.15em',
+            marginBottom: '1.5rem',
+          }}
+        >
+          Pricing
+        </p>
+        <h2
+          style={{
+            fontFamily: "'Space Grotesk', sans-serif",
+            fontSize: 'clamp(2.5rem, 5vw, 4rem)',
+            fontWeight: 700,
+            color: '#fff',
+            letterSpacing: '-0.04em',
+            lineHeight: 1,
+          }}
+        >
+          Start free. Scale when ready.
+        </h2>
+        <p
+          style={{
+            fontSize: '18px',
+            color: 'rgba(255,255,255,0.4)',
+            marginTop: '1.5rem',
+          }}
+        >
+          15-day free trial on paid plans. No credit card required.
+        </p>
+      </div>
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: '1.5rem',
+          maxWidth: '1000px',
+          margin: '0 auto',
+        }}
+      >
+        {plans.map((plan) => (
+          <div
+            key={plan.name}
+            style={{
+              border: plan.highlight
+                ? '1px solid rgba(255,255,255,0.2)'
+                : '1px solid rgba(255,255,255,0.08)',
+              borderRadius: '12px',
+              padding: '2.5rem 2rem',
+              background: plan.highlight ? 'rgba(255,255,255,0.04)' : 'transparent',
+              position: 'relative',
+            }}
+          >
+            {plan.highlight && (
+              <span
+                style={{
+                  position: 'absolute',
+                  top: '-12px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  background: '#fff',
+                  color: '#000',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  padding: '4px 12px',
+                  borderRadius: '20px',
+                  letterSpacing: '0.05em',
+                }}
+              >
+                POPULAR
+              </span>
+            )}
+            <h3
+              style={{
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontSize: '24px',
+                fontWeight: 700,
+                color: '#fff',
+                marginBottom: '0.5rem',
+              }}
+            >
+              {plan.name}
+            </h3>
+            <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', marginBottom: '1.5rem' }}>
+              {plan.desc}
+            </p>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'baseline',
+                gap: '4px',
+                marginBottom: '0.25rem',
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontSize: '40px',
+                  fontWeight: 700,
+                  color: '#fff',
+                  letterSpacing: '-0.03em',
+                }}
+              >
+                {plan.price}
+              </span>
+              <span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)' }}>
+                {plan.period}
+              </span>
+            </div>
+            {plan.annualNote && (
+              <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)', marginBottom: '2rem' }}>
+                {plan.annualNote}
+              </p>
+            )}
+            {!plan.annualNote && <div style={{ marginBottom: '2rem' }} />}
+            <ul
+              style={{
+                listStyle: 'none',
+                padding: 0,
+                margin: '0 0 2rem 0',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.75rem',
+              }}
+            >
+              {plan.features.map((f) => (
+                <li key={f} style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+                  <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px' }}>✓</span>
+                  <span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)' }}>{f}</span>
+                </li>
+              ))}
+            </ul>
+            <Link
+              href={`${APP_URL}/sign-up`}
+              style={{
+                display: 'block',
+                textAlign: 'center',
+                fontSize: '15px',
+                fontWeight: 600,
+                color: plan.highlight ? '#000' : '#fff',
+                background: plan.highlight ? '#fff' : 'transparent',
+                border: plan.highlight ? 'none' : '1px solid rgba(255,255,255,0.15)',
+                textDecoration: 'none',
+                padding: '0.875rem 1.5rem',
+                borderRadius: '8px',
+                transition: 'all 0.2s',
+              }}
+            >
+              {plan.cta}
+            </Link>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function FinalCTA({ mounted }: { mounted: boolean }) {
   return (
     <section
@@ -636,7 +846,7 @@ function Footer() {
           title="Product"
           links={[
             { label: 'How It Works', href: '/how-it-works' },
-            { label: 'Pricing', href: '/pricing' },
+            { label: 'Pricing', href: '/#pricing' },
             { label: 'Docs', href: '/docs' },
             { label: 'FAQ', href: '/faq' },
           ]}

@@ -12,6 +12,7 @@ import { requireAuth, isOrgAdmin } from '@/lib/rbac';
 import { ensureUser } from '@/lib/ensureUser';
 import { currentUser } from '@clerk/nextjs/server';
 import { broadcastToOrg } from '@/lib/event-bus';
+import { checkProjectLimit, limitErrorResponse } from '@/lib/billing-limits';
 
 export async function GET(req: NextRequest) {
   try {
@@ -72,6 +73,12 @@ export async function POST(req: NextRequest) {
 
     if (!name) {
       return NextResponse.json({ error: 'Project name is required' }, { status: 400 });
+    }
+
+    // 🚦 Project limit check
+    const projectCheck = await checkProjectLimit(orgId, userId);
+    if (!projectCheck.allowed) {
+      return limitErrorResponse(projectCheck) as NextResponse;
     }
 
     const projectId = `project-${randomUUID()}`;

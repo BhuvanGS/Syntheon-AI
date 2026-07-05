@@ -11,7 +11,17 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Video, Sparkles, Link2, CalendarDays, AlertCircle, Settings } from 'lucide-react';
+import {
+  Video,
+  Sparkles,
+  Link2,
+  CalendarDays,
+  AlertCircle,
+  Settings,
+  Lock,
+  ArrowUpRight,
+} from 'lucide-react';
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
 type Mode = 'paste' | 'create';
@@ -39,6 +49,7 @@ export function ProjectMeetingDialog({
   const [checkingGoogle, setCheckingGoogle] = useState(false);
   const [createdMeetUrl, setCreatedMeetUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [limitReached, setLimitReached] = useState<{ used: number; limit: number } | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -49,6 +60,7 @@ export function ProjectMeetingDialog({
     setHasJoined(false);
     setCreatedMeetUrl(null);
     setError(null);
+    setLimitReached(null);
 
     // Default start time to now + 5 minutes
     const now = new Date();
@@ -75,6 +87,12 @@ export function ProjectMeetingDialog({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ meetingUrl: meetingUrl.trim(), projectId }),
       });
+
+      if (res.status === 403) {
+        const data = await res.json().catch(() => ({}));
+        setLimitReached({ used: data.used ?? 0, limit: data.limit ?? 2 });
+        return;
+      }
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -125,11 +143,16 @@ export function ProjectMeetingDialog({
 
       // Also trigger bot to join
       try {
-        await fetch('/api/bot/continue', {
+        const botRes = await fetch('/api/bot/continue', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ meetingUrl: data.meetUrl, projectId }),
         });
+        if (botRes.status === 403) {
+          const botData = await botRes.json().catch(() => ({}));
+          setLimitReached({ used: botData.used ?? 0, limit: botData.limit ?? 2 });
+          return;
+        }
       } catch {
         // Bot join failure is non-fatal — user still has the meeting link
       }
@@ -161,8 +184,40 @@ export function ProjectMeetingDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Mode toggle */}
-        {!hasJoined && (
+        {/* Limit reached */}
+        {limitReached ? (
+          <div className="space-y-4 rounded-2xl border border-primary/10 bg-primary/5 p-6 text-center">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Lock className="h-7 w-7" />
+            </div>
+            <div className="space-y-2">
+              <p className="font-playfair text-2xl text-foreground">
+                You've hit the free plan limit
+              </p>
+              <p className="text-sm text-muted-foreground">
+                You've used all {limitReached.limit} meetings this month on the Free plan. Upgrade
+                to Pro for unlimited meetings, dependencies, and API access.
+              </p>
+            </div>
+            <div className="flex items-center justify-center gap-2 pt-2">
+              <Link href="/pricing">
+                <Button className="rounded-full gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  Upgrade to Pro
+                  <ArrowUpRight className="h-4 w-4" />
+                </Button>
+              </Link>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => onOpenChange(false)}
+                className="rounded-full"
+              >
+                Maybe later
+              </Button>
+            </div>
+          </div>
+        ) : !hasJoined ? (
           <div className="flex items-center rounded-full border border-border bg-card p-0.5 w-fit">
             <button
               onClick={() => {
@@ -195,9 +250,9 @@ export function ProjectMeetingDialog({
               Paste URL
             </button>
           </div>
-        )}
+        ) : null}
 
-        {!hasJoined ? (
+        {!limitReached && !hasJoined ? (
           mode === 'paste' ? (
             <form onSubmit={handlePasteSubmit} className="space-y-4">
               <div className="space-y-2">

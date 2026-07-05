@@ -5,8 +5,15 @@ import { auth, clerkClient } from '@clerk/nextjs/server';
 import crypto from 'crypto';
 
 import { createBot } from '@/lib/skribby';
-import { saveMeeting, getActiveMeetingByUrl, updateMeetingStatus } from '@/lib/db';
+import {
+  saveMeeting,
+  getActiveMeetingByUrl,
+  updateMeetingStatus,
+  getMeetings,
+  getMeetingsPaginated,
+} from '@/lib/db';
 import { ApiKeysEntity, MeetingsEntity } from '@/db/entities';
+import { checkMeetingLimit, limitErrorResponse } from '@/lib/billing-limits';
 
 // 🔐 API key → user resolver
 async function getUserFromApiKey(apiKey: string) {
@@ -61,6 +68,12 @@ export async function POST(req: NextRequest) {
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // 🚦 Rate limit check for free tier
+    const meetingCheck = await checkMeetingLimit(orgId, userId);
+    if (!meetingCheck.allowed) {
+      return limitErrorResponse(meetingCheck) as NextResponse;
     }
 
     const { meetingUrl, tabTitle } = await req.json();

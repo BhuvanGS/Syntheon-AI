@@ -15,12 +15,13 @@ import {
   ShieldCheck,
   LogOut,
   Plus,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useClerk, useUser, useOrganization } from '@clerk/nextjs';
+import { useClerk, useUser, useOrganization, useAuth } from '@clerk/nextjs';
 import { useSearchParams } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 
@@ -90,6 +91,7 @@ export function Sidebar({
   const { user } = useUser();
   const { signOut } = useClerk();
   const { membership, organization } = useOrganization();
+  const { isLoaded, has } = useAuth();
 
   const isAdmin = membership?.role === 'org:admin';
   const navItems = isAdmin ? ADMIN_NAV : MEMBER_NAV;
@@ -267,6 +269,23 @@ export function Sidebar({
           )}
         </ScrollArea>
       </div>
+
+      {/* Upgrade button for free users */}
+      {isLoaded &&
+        !has?.({ plan: 'user_pro' }) &&
+        !has?.({ plan: 'user_max' }) &&
+        !has?.({ plan: 'org:org_pro' }) &&
+        !has?.({ plan: 'org:org_max' }) && (
+          <div className="px-3 pb-2 shrink-0">
+            <Link
+              href="/pricing"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10 text-primary text-xs font-medium hover:bg-primary/15 transition-colors"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              Upgrade plan
+            </Link>
+          </div>
+        )}
 
       {/* Footer / User */}
       <Separator />

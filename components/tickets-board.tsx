@@ -837,9 +837,13 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
           className="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           title={toolbarOpen ? 'Hide toolbar' : 'Show toolbar'}
         >
-          <Plus className={`h-4 w-4 transition-transform duration-300 ${toolbarOpen ? 'rotate-45' : ''}`} />
+          <Plus
+            className={`h-4 w-4 transition-transform duration-300 ${toolbarOpen ? 'rotate-45' : ''}`}
+          />
         </button>
-        <div className={`flex items-center justify-between flex-wrap gap-2 overflow-hidden transition-all duration-300 ${toolbarOpen ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-8 pointer-events-none'}`}>
+        <div
+          className={`flex items-center justify-between flex-wrap gap-2 overflow-hidden transition-all duration-300 ${toolbarOpen ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-8 pointer-events-none'}`}
+        >
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1 rounded-lg border border-border p-0.5 bg-muted/40">
               {(

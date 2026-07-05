@@ -12,6 +12,7 @@ import {
   addTicketsToProject,
   createNotification,
 } from '@/lib/db';
+import { checkTicketLimit, limitErrorResponse } from '@/lib/billing-limits';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -68,6 +69,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     if (!title) {
       return NextResponse.json({ error: 'Title is required' }, { status: 400 });
+    }
+
+    // 🚦 Ticket limit check
+    const ticketCheck = await checkTicketLimit(orgId ?? null, userId);
+    if (!ticketCheck.allowed) {
+      return limitErrorResponse(ticketCheck) as NextResponse;
     }
 
     if (parentTicketId) {

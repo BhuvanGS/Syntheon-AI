@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { useOrganization, useUser } from '@clerk/nextjs';
+import { useOrganization, useUser, useAuth } from '@clerk/nextjs';
 import { useSse } from '@/components/sse-provider';
 
 const ORG_QUERY_CONFIG = {
@@ -258,6 +258,7 @@ export function ProjectsWorkspace({
 }: ProjectsWorkspaceProps) {
   const { membership, memberships, invitations } = useOrganization(ORG_QUERY_CONFIG);
   const { user } = useUser();
+  const { has } = useAuth();
   const isAdmin = membership?.role === 'org:admin';
   const [kanbanAssigneeFilter, setKanbanAssigneeFilter] = useState<'all' | 'unassigned' | 'mine'>(
     'all'
@@ -1734,19 +1735,27 @@ export function ProjectsWorkspace({
     );
   }
 
-  const allTabs: { id: ProjectTab; label: string; icon: React.ReactNode; adminOnly?: boolean }[] = [
-    { id: 'tickets', label: 'Tickets', icon: <Ticket className="h-4 w-4" /> },
-    { id: 'meetings', label: 'Meetings', icon: <Calendar className="h-4 w-4" /> },
-    {
-      id: 'analytics',
-      label: 'Analytics',
-      icon: <BarChart3 className="h-4 w-4" />,
-    },
-    { id: 'dependencies', label: 'Dependencies', icon: <GitBranch className="h-4 w-4" /> },
-    { id: 'roadmap', label: 'Future Viz', icon: <Milestone className="h-4 w-4" /> },
-    { id: 'sprint-stones', label: 'Sprint-stones', icon: <Zap className="h-4 w-4" /> },
-    { id: 'members', label: 'Members', icon: <Users className="h-4 w-4" />, adminOnly: true },
-  ];
+  const allTabs: { id: ProjectTab; label: string; icon: React.ReactNode; adminOnly?: boolean }[] = (
+    [
+      { id: 'tickets', label: 'Tickets', icon: <Ticket className="h-4 w-4" /> },
+      { id: 'meetings', label: 'Meetings', icon: <Calendar className="h-4 w-4" /> },
+      {
+        id: 'analytics',
+        label: 'Analytics',
+        icon: <BarChart3 className="h-4 w-4" />,
+      },
+      { id: 'dependencies', label: 'Dependencies', icon: <GitBranch className="h-4 w-4" /> },
+      { id: 'roadmap', label: 'Future Viz', icon: <Milestone className="h-4 w-4" /> },
+      { id: 'sprint-stones', label: 'Sprint-stones', icon: <Zap className="h-4 w-4" /> },
+      { id: 'members', label: 'Members', icon: <Users className="h-4 w-4" />, adminOnly: true },
+    ] as { id: ProjectTab; label: string; icon: React.ReactNode; adminOnly?: boolean }[]
+  ).filter((tab) => {
+    if (tab.id === 'analytics') return has?.({ feature: 'analytics' });
+    if (tab.id === 'dependencies') return has?.({ feature: 'dependencies' });
+    if (tab.id === 'roadmap') return has?.({ feature: 'roadmap' });
+    if (tab.id === 'sprint-stones') return has?.({ feature: 'sprint_stones' });
+    return true;
+  });
   const tabs = allTabs.filter((t) => !t.adminOnly || isAdmin);
 
   const statusConfig: Record<
@@ -2123,9 +2132,13 @@ export function ProjectsWorkspace({
                 className="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                 title={toolbarOpen ? 'Hide toolbar' : 'Show toolbar'}
               >
-                <Plus className={`h-4 w-4 transition-transform duration-300 ${toolbarOpen ? 'rotate-45' : ''}`} />
+                <Plus
+                  className={`h-4 w-4 transition-transform duration-300 ${toolbarOpen ? 'rotate-45' : ''}`}
+                />
               </button>
-              <div className={`flex items-center justify-between flex-wrap gap-2 overflow-hidden transition-all duration-300 ${toolbarOpen ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-8 pointer-events-none'}`}>
+              <div
+                className={`flex items-center justify-between flex-wrap gap-2 overflow-hidden transition-all duration-300 ${toolbarOpen ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-8 pointer-events-none'}`}
+              >
                 <div className="flex items-center rounded-lg border border-border bg-muted/40 p-0.5">
                   {(
                     [

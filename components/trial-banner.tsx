@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useOrganization } from '@clerk/nextjs';
-import { Clock, AlertTriangle, Sparkles } from 'lucide-react';
+import { useAuth, useOrganization } from '@clerk/nextjs';
+import { AlertTriangle, Sparkles, ArrowUpRight, Zap } from 'lucide-react';
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface TrialStatus {
   isTrial: boolean;
@@ -14,9 +14,30 @@ interface TrialStatus {
   trialDays?: number;
 }
 
+interface UsageData {
+  meetingsUsed: number;
+  meetingsLimit: number;
+}
+
+const FREE_MEETING_LIMIT = 2;
+
 export function TrialBanner() {
-  const { organization, isLoaded } = useOrganization();
+  const { organization, isLoaded: orgLoaded } = useOrganization();
+  const { isLoaded: authLoaded, has } = useAuth();
   const [trial, setTrial] = useState<TrialStatus | null>(null);
+  const [usage, setUsage] = useState<UsageData | null>(null);
+
+  const isPaid =
+    has?.({ plan: 'user_pro' }) ||
+    has?.({ plan: 'user_max' }) ||
+    has?.({ plan: 'org:org_pro' }) ||
+    has?.({ plan: 'org:org_max' });
+  const currentPlan =
+    has?.({ plan: 'user_max' }) || has?.({ plan: 'org:org_max' })
+      ? 'Max'
+      : has?.({ plan: 'user_pro' }) || has?.({ plan: 'org:org_pro' })
+        ? 'Pro'
+        : 'Free';
 
   useEffect(() => {
     if (!organization?.id) return;
@@ -39,13 +60,40 @@ export function TrialBanner() {
     };
   }, [organization?.id]);
 
-  if (!isLoaded || !trial || !trial.isTrial) return null;
+  useEffect(() => {
+    if (!authLoaded) return;
+    if (isPaid) return;
+    let cancelled = false;
 
-  const days = trial.daysLeft ?? 0;
-  const totalDays = trial.trialDays ?? 30;
-  const progress = Math.max(0, Math.min(100, ((totalDays - days) / totalDays) * 100));
+    async function loadUsage() {
+      try {
+        const res = await fetch('/api/meetings?limit=500');
+        if (!res.ok) return;
+        const data = await res.json();
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+        const meetings = (data.meetings ?? []).filter((m: any) => m.date >= monthStart);
+        if (!cancelled)
+          setUsage({ meetingsUsed: meetings.length, meetingsLimit: FREE_MEETING_LIMIT });
+      } catch {
+        // silent
+      }
+    }
 
-  if (trial.expired) {
+    void loadUsage();
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoaded, isPaid]);
+
+  if (!orgLoaded || !authLoaded) return null;
+
+  const days = trial?.daysLeft ?? 0;
+  const totalDays = trial?.trialDays ?? 15;
+  const isTrial = trial?.isTrial && !trial.expired;
+  const isUrgent = isTrial && days <= 7;
+
+  if (trial?.expired) {
     return (
       <AnimatePresence>
         <motion.div
@@ -56,56 +104,106 @@ export function TrialBanner() {
         >
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
           <span>Trial expired</span>
-          <span className="text-destructive/60 hidden sm:inline">— upgrade to continue</span>
+          <Link href="/pricing" className="flex items-center gap-1 hover:underline ml-1">
+            Upgrade <ArrowUpRight className="h-3 w-3" />
+          </Link>
         </motion.div>
       </AnimatePresence>
     );
   }
 
-  const isUrgent = days <= 7;
+  if (isPaid) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className={cn(
+          'flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium',
+          currentPlan === 'Max'
+            ? 'border-purple-500/30 bg-purple-500/10 text-purple-600'
+            : 'border-blue-500/30 bg-blue-500/10 text-blue-600'
+        )}
+      >
+        <Sparkles className="h-3.5 w-3.5 shrink-0" />
+        <span className="font-bold">{currentPlan}</span>
+        <span className="opacity-50">·</span>
+        <span className="opacity-70">Unlimited meetings</span>
+      </motion.div>
+    );
+  }
 
-  return (
-    <TooltipProvider delayDuration={200}>
-      <Tooltip>
-        <TooltipTrigger asChild>
+  if (isTrial) {
+    const progress = Math.max(0, Math.min(100, ((totalDays - days) / totalDays) * 100));
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className={cn(
+          'flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium',
+          isUrgent
+            ? 'border-primary/30 bg-primary/10 text-primary'
+            : 'border-primary/20 bg-primary/5 text-primary'
+        )}
+      >
+        {isUrgent ? (
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+        ) : (
+          <Sparkles className="h-3.5 w-3.5 shrink-0" />
+        )}
+        <span>
+          {days === 0 ? 'Trial ends today' : days === 1 ? '1 day left' : `${days} days left`}
+        </span>
+        <div className="hidden sm:block w-16 h-1.5 rounded-full bg-muted overflow-hidden">
           <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className={cn(
-              'flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium cursor-default',
-              isUrgent
-                ? 'border-primary/30 bg-primary/10 text-primary'
-                : 'border-primary/20 bg-primary/5 text-primary'
-            )}
-          >
-            {isUrgent ? (
-              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-            ) : (
-              <Sparkles className="h-3.5 w-3.5 shrink-0" />
-            )}
-            <span>
-              {days === 0 ? 'Trial ends today' : days === 1 ? '1 day left' : `${days} days left`}
-            </span>
-            <div className="hidden sm:block w-16 h-1.5 rounded-full bg-muted overflow-hidden">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${progress}%` }}
-                transition={{ duration: 0.6, ease: 'easeOut' }}
-                className={cn('h-full rounded-full', isUrgent ? 'bg-primary' : 'bg-primary/60')}
-              />
-            </div>
-          </motion.div>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" className="text-xs">
-          <div className="flex items-center gap-1.5">
-            <Clock className="h-3 w-3" />
-            <span>
-              {totalDays}-day free trial · {days} days remaining
-            </span>
-          </div>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
+            initial={{ width: 0 }}
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 0.6, ease: 'easeOut' }}
+            className={cn('h-full rounded-full', isUrgent ? 'bg-primary' : 'bg-primary/60')}
+          />
+        </div>
+        <Link
+          href="/pricing"
+          className="flex items-center gap-1 ml-1 px-2 py-0.5 rounded-md bg-primary/15 hover:bg-primary/25 transition-colors"
+        >
+          Upgrade <ArrowUpRight className="h-3 w-3" />
+        </Link>
+      </motion.div>
+    );
+  }
+
+  if (usage) {
+    const remaining = Math.max(0, usage.meetingsLimit - usage.meetingsUsed);
+    const isExhausted = remaining === 0;
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className={cn(
+          'flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium',
+          isExhausted
+            ? 'border-destructive/20 bg-destructive/10 text-destructive'
+            : 'border-border bg-muted/40 text-muted-foreground'
+        )}
+      >
+        <Zap className="h-3.5 w-3.5 shrink-0" />
+        <span className="font-bold">Free</span>
+        <span className="opacity-50">·</span>
+        <span>
+          {isExhausted ? '0 meetings left' : `${remaining}/${usage.meetingsLimit} meetings left`}
+        </span>
+        <Link
+          href="/pricing"
+          className="flex items-center gap-1 ml-1 px-2 py-0.5 rounded-md bg-primary/15 hover:bg-primary/25 transition-colors text-primary"
+        >
+          Upgrade <ArrowUpRight className="h-3 w-3" />
+        </Link>
+      </motion.div>
+    );
+  }
+
+  return null;
 }

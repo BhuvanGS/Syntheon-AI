@@ -3,15 +3,16 @@
 import { useState } from 'react';
 import { useUser, useOrganization, useClerk } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
-import { Building2, Sliders, ArrowLeft, Plug, LogOut } from 'lucide-react';
+import { Building2, Sliders, ArrowLeft, Plug, LogOut, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { IntegrationsTab } from '@/components/settings/integrations-tab';
 import { OrganizationsTab } from '@/components/settings/organizations-tab';
 import { PreferencesTab } from '@/components/settings/preferences-tab';
+import { BillingTab } from '@/components/settings/billing-tab';
 
-type SettingsTab = 'integrations' | 'organizations' | 'preferences';
+type SettingsTab = 'integrations' | 'organizations' | 'preferences' | 'billing';
 
 const tabs: Array<{ id: SettingsTab; label: string; icon: typeof Plug; description: string }> = [
   {
@@ -25,6 +26,12 @@ const tabs: Array<{ id: SettingsTab; label: string; icon: typeof Plug; descripti
     label: 'Organizations',
     icon: Building2,
     description: 'Manage your workspace',
+  },
+  {
+    id: 'billing',
+    label: 'Billing',
+    icon: CreditCard,
+    description: 'Plan & subscription',
   },
   { id: 'preferences', label: 'Preferences', icon: Sliders, description: 'Appearance & theme' },
 ];
@@ -122,6 +129,7 @@ export default function SettingsPage() {
         <div className="max-w-5xl mx-auto">
           {activeTab === 'integrations' && <IntegrationsTab />}
           {activeTab === 'organizations' && <OrganizationsTab />}
+          {activeTab === 'billing' && <BillingTab />}
           {activeTab === 'preferences' && <PreferencesTab />}
         </div>
       </main>

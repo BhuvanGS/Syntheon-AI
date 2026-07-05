@@ -3,7 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { randomUUID } from 'crypto';
 import { OrganizationMetadataEntity } from '@/db/entities';
 
-const TRIAL_DAYS = 30;
+const TRIAL_DAYS = 15;
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ orgId: string }> }) {
   const session = await auth();

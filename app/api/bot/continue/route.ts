@@ -5,6 +5,7 @@ import { auth } from '@clerk/nextjs/server';
 
 import { createBot } from '@/lib/skribby';
 import { saveMeeting, getProjectById, getActiveMeetingByUrl, addMeetingToProject } from '@/lib/db';
+import { checkMeetingLimit, limitErrorResponse } from '@/lib/billing-limits';
 
 export async function POST(req: NextRequest) {
   try {
@@ -31,6 +32,12 @@ export async function POST(req: NextRequest) {
     }
 
     const isFollowUpMeeting = (project.meetings?.length ?? 0) > 0;
+
+    // 🚦 Rate limit check for free tier
+    const meetingCheck = await checkMeetingLimit(orgId ?? null, userId);
+    if (!meetingCheck.allowed) {
+      return limitErrorResponse(meetingCheck) as NextResponse;
+    }
 
     const webhookBaseUrl = process.env.NGROK_URL || process.env.NEXT_PUBLIC_APP_URL;
     const webhookUrl = `${webhookBaseUrl}/api/bot/webhook`;

@@ -19,7 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { CirclePlus, Sparkles } from 'lucide-react';
+import { CirclePlus, Sparkles, Lock, ArrowUpRight } from 'lucide-react';
+import Link from 'next/link';
 import { AssigneePicker, type AssigneeValue } from '@/components/assignee-picker';
 import { TicketMetadataEditor } from '@/components/ticket-metadata-editor';
 import {
@@ -69,6 +70,12 @@ export function ManualTicketDialog({
   const [availableLabels, setAvailableLabels] = useState<
     { id: string; name: string; color: string }[]
   >([]);
+  const [error, setError] = useState<string | null>(null);
+  const [limitReached, setLimitReached] = useState<{
+    resource: string;
+    used: number;
+    limit: number;
+  } | null>(null);
   const wasOpenRef = useRef(false);
 
   const resolvedMeetingId = useMemo(
@@ -88,6 +95,8 @@ export function ManualTicketDialog({
       setEstimate('none');
       setLabels([]);
       setSubmitting(false);
+      setError(null);
+      setLimitReached(null);
     }
 
     wasOpenRef.current = open;
@@ -114,6 +123,8 @@ export function ManualTicketDialog({
     if (!title.trim()) return;
 
     setSubmitting(true);
+    setError(null);
+    setLimitReached(null);
     try {
       const payload = {
         title: title.trim(),
@@ -146,6 +157,16 @@ export function ManualTicketDialog({
         throw new Error('No meeting available for ticket creation');
       }
 
+      if (res.status === 403) {
+        const data = await res.json().catch(() => ({}));
+        setLimitReached({
+          resource: data.resource ?? 'tickets',
+          used: data.used ?? 0,
+          limit: data.limit ?? 25,
+        });
+        return;
+      }
+
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data?.error || 'Failed to create ticket');
@@ -153,6 +174,8 @@ export function ManualTicketDialog({
 
       await onCreated?.();
       onOpenChange(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create ticket');
     } finally {
       setSubmitting(false);
     }
@@ -176,121 +199,162 @@ export function ManualTicketDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Title</label>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Design the billing settings panel"
-              className="bg-background"
-              autoFocus
-            />
+        {limitReached ? (
+          <div className="space-y-4 rounded-2xl border border-primary/10 bg-primary/5 p-6 text-center">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Lock className="h-7 w-7" />
+            </div>
+            <div className="space-y-2">
+              <p className="font-playfair text-2xl text-foreground">
+                You've hit the free plan limit
+              </p>
+              <p className="text-sm text-muted-foreground">
+                You've used all {limitReached.limit} {limitReached.resource} on the Free plan.
+                Upgrade to Pro for{' '}
+                {limitReached.resource === 'tickets' ? '500 tickets' : 'higher limits'}.
+              </p>
+            </div>
+            <div className="flex items-center justify-center gap-2 pt-2">
+              <Link href="/pricing">
+                <Button className="rounded-full gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  Upgrade to Pro
+                  <ArrowUpRight className="h-4 w-4" />
+                </Button>
+              </Link>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => onOpenChange(false)}
+                className="rounded-full"
+              >
+                Maybe later
+              </Button>
+            </div>
           </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Title</label>
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Design the billing settings panel"
+                className="bg-background"
+                autoFocus
+              />
+            </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Description</label>
-            <Textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Add enough context for the next person to execute without asking twice."
-              className="min-h-28 bg-background"
-            />
-          </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Description</label>
+              <Textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Add enough context for the next person to execute without asking twice."
+                className="min-h-28 bg-background"
+              />
+            </div>
 
-          <div className={`grid grid-cols-1 gap-4 ${projectOnly ? '' : 'sm:grid-cols-2'}`}>
-            {!projectOnly && (
+            <div className={`grid grid-cols-1 gap-4 ${projectOnly ? '' : 'sm:grid-cols-2'}`}>
+              {!projectOnly && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Meeting</label>
+                  <Select
+                    value={resolvedMeetingId}
+                    onValueChange={(value) => setMeetingId(value)}
+                    disabled={meetings.length === 0}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a meeting" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {meetings.length === 0 ? (
+                        <SelectItem value="__none__" disabled>
+                          No meetings available
+                        </SelectItem>
+                      ) : (
+                        meetings.map((meeting) => (
+                          <SelectItem key={meeting.id} value={meeting.id}>
+                            {meeting.projectName}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Meeting</label>
-                <Select
-                  value={resolvedMeetingId}
-                  onValueChange={(value) => setMeetingId(value)}
-                  disabled={meetings.length === 0}
-                >
+                <label className="text-sm font-medium text-foreground">Status</label>
+                <Select value={status} onValueChange={(value) => setStatus(value as typeof status)}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a meeting" />
+                    <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
-                    {meetings.length === 0 ? (
-                      <SelectItem value="__none__" disabled>
-                        No meetings available
+                    {(statusOptions && statusOptions.length > 0
+                      ? statusOptions
+                      : [
+                          { value: 'backlog', label: 'Backlog' },
+                          { value: 'in_progress', label: 'In progress' },
+                          { value: 'done', label: 'Done' },
+                          { value: 'blocked', label: 'Blocked' },
+                        ]
+                    ).map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
                       </SelectItem>
-                    ) : (
-                      meetings.map((meeting) => (
-                        <SelectItem key={meeting.id} value={meeting.id}>
-                          {meeting.projectName}
-                        </SelectItem>
-                      ))
-                    )}
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
-            )}
+            </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Status</label>
-              <Select value={status} onValueChange={(value) => setStatus(value as typeof status)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(statusOptions && statusOptions.length > 0
-                    ? statusOptions
-                    : [
-                        { value: 'backlog', label: 'Backlog' },
-                        { value: 'in_progress', label: 'In progress' },
-                        { value: 'done', label: 'Done' },
-                        { value: 'blocked', label: 'Blocked' },
-                      ]
-                  ).map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <label className="text-sm font-medium text-foreground">Assignee</label>
+              <AssigneePicker value={assignee} onChange={setAssignee} />
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Assignee</label>
-            <AssigneePicker value={assignee} onChange={setAssignee} />
-          </div>
+            <div className="border-t border-border/60 pt-3">
+              <p className="text-sm font-medium text-foreground mb-2">Properties</p>
+              <TicketMetadataEditor
+                priority={priority}
+                type={type}
+                estimate={estimate}
+                labels={labels}
+                onPriorityChange={setPriority}
+                onTypeChange={setType}
+                onEstimateChange={setEstimate}
+                onLabelsChange={setLabels}
+                availableLabels={availableLabels}
+              />
+            </div>
 
-          <div className="border-t border-border/60 pt-3">
-            <p className="text-sm font-medium text-foreground mb-2">Properties</p>
-            <TicketMetadataEditor
-              priority={priority}
-              type={type}
-              estimate={estimate}
-              labels={labels}
-              onPriorityChange={setPriority}
-              onTypeChange={setType}
-              onEstimateChange={setEstimate}
-              onLabelsChange={setLabels}
-              availableLabels={availableLabels}
-            />
-          </div>
+            {error && (
+              <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-800">
+                {error}
+              </div>
+            )}
 
-          <DialogFooter className="pt-2">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => onOpenChange(false)}
-              className="rounded-full"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={submitting || !title.trim()}
-              className="rounded-full gap-2"
-            >
-              <CirclePlus className="h-4 w-4" />
-              {submitting ? 'Creating...' : 'Create ticket'}
-            </Button>
-          </DialogFooter>
-        </form>
+            <DialogFooter className="pt-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => onOpenChange(false)}
+                className="rounded-full"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={submitting || !title.trim()}
+                className="rounded-full gap-2"
+              >
+                <CirclePlus className="h-4 w-4" />
+                {submitting ? 'Creating...' : 'Create ticket'}
+              </Button>
+            </DialogFooter>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -19,6 +19,31 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ org
     return NextResponse.json({ error: 'Email is required' }, { status: 400 });
   }
 
+  // Check org seat limit for free tier
+  const { has } = session;
+  const isPaidOrg = has?.({ plan: 'org:org_pro' }) || has?.({ plan: 'org:org_max' });
+  if (!isPaidOrg) {
+    const client = await clerkClient();
+    const members = await client.organizations.getOrganizationMembershipList({
+      organizationId: orgId,
+    });
+    const pendingInvites = await OrganizationInvitesEntity.query.byOrg({ orgId }).go();
+    const pendingCount = (pendingInvites.data ?? []).filter(
+      (i: any) => i.status === 'pending'
+    ).length;
+    const totalSeats = (members.data?.length ?? 0) + pendingCount;
+    if (totalSeats >= 3) {
+      return NextResponse.json(
+        {
+          error: 'Free plan limit reached',
+          message: 'Free organizations are limited to 3 members. Upgrade to add more seats.',
+          upgradeUrl: '/pricing',
+        },
+        { status: 403 }
+      );
+    }
+  }
+
   // Check for existing invite
   const existing = await OrganizationInvitesEntity.get({
     orgId,

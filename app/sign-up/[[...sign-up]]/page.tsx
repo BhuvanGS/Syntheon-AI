@@ -68,8 +68,8 @@ export default function SignUpPage() {
               maxWidth: '420px',
             }}
           >
-            Join your meetings, extract action items, and turn conversations into
-            organized tickets — automatically.
+            Join your meetings, extract action items, and turn conversations into organized tickets
+            — automatically.
           </p>
 
           <div className="mt-12 flex items-center gap-6">
@@ -83,9 +83,7 @@ export default function SignUpPage() {
                   className="w-1.5 h-1.5 rounded-full"
                   style={{ backgroundColor: 'rgba(255,255,255,0.4)' }}
                 />
-                <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>
-                  {feature}
-                </span>
+                <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>{feature}</span>
               </div>
             ))}
           </div>

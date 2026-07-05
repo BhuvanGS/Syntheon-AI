@@ -22,7 +22,6 @@ function isAppDomain(hostname: string): boolean {
 // ─── Route matchers ───────────────────────────────────────────────
 const isMarketingRoute = createRouteMatcher([
   '/',
-  '/pricing',
   '/how-it-works',
   '/legal',
   '/promo',
@@ -34,6 +33,7 @@ const isAppOnlyRoute = createRouteMatcher([
   '/dashboard(.*)',
   '/project(.*)',
   '/settings(.*)',
+  '/pricing',
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/sso-callback(.*)',
@@ -54,6 +54,7 @@ const isPublicAppRoute = createRouteMatcher([
   '/sso-callback(.*)',
   '/accept-invite(.*)',
   '/onboarding(.*)',
+  '/pricing',
   '/api/bot/create',
   '/api/bot/webhook(.*)',
   '/api/deploy/webhook(.*)',
