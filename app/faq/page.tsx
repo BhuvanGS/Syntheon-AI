@@ -54,7 +54,7 @@ export default function FAQPage() {
     },
     {
       q: 'Do you offer annual pricing?',
-      a: 'Annual plans with a 20% discount are coming soon. Contact us at support@syntheon.ai to discuss early access.',
+      a: 'Annual plans with a 20% discount are coming soon. Contact us at support@syntheonhub.com to discuss early access.',
     },
     {
       q: 'What payment methods do you accept?',
@@ -302,10 +302,10 @@ export default function FAQPage() {
         <p style={{ fontSize: '18px', color: 'rgba(255,255,255,0.4)', marginBottom: '2rem' }}>
           Still have questions? Email us at{' '}
           <a
-            href="mailto:support@syntheon.ai"
+            href="mailto:support@syntheonhub.com"
             style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none' }}
           >
-            support@syntheon.ai
+            support@syntheonhub.com
           </a>
         </p>
         <Link

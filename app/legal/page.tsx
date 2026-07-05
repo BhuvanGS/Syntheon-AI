@@ -103,11 +103,11 @@ export default function LegalPage() {
       <h2 style={s().h2}>Your rights under DPDP Act 2023</h2>
       <ul style={{ paddingLeft: '1.5rem', marginBottom: '1rem' }}>
         {[
-          'Access — request your data at privacy@syntheon.ai',
+          'Access — request your data at privacy@syntheonhub.com',
           'Correction — update via Settings',
           'Erasure — delete account and all data via Settings',
           'Withdraw consent — disconnect integrations anytime',
-          'Grievance — contact privacy@syntheon.ai, 72hr response',
+          'Grievance — contact privacy@syntheonhub.com, 72hr response',
         ].map((r, i) => (
           <li key={i} style={s().li}>
             {r}
@@ -118,8 +118,8 @@ export default function LegalPage() {
       <h2 style={s().h2}>Contact</h2>
       <p style={s().p}>
         Data Protection Officer:{' '}
-        <a href="mailto:privacy@syntheon.ai" style={{ color: 'rgba(255,255,255,0.3)' }}>
-          privacy@syntheon.ai
+        <a href="mailto:privacy@syntheonhub.com" style={{ color: 'rgba(255,255,255,0.3)' }}>
+          privacy@syntheonhub.com
         </a>
       </p>
     </div>
@@ -193,8 +193,8 @@ export default function LegalPage() {
 
       <h2 style={s().h2}>Contact</h2>
       <p style={s().p}>
-        <a href="mailto:legal@syntheon.ai" style={{ color: 'rgba(255,255,255,0.3)' }}>
-          legal@syntheon.ai
+        <a href="mailto:legal@syntheonhub.com" style={{ color: 'rgba(255,255,255,0.3)' }}>
+          legal@syntheonhub.com
         </a>
       </p>
     </div>
@@ -300,8 +300,8 @@ export default function LegalPage() {
       <h2 style={s().h2}>Contact</h2>
       <p style={s().p}>
         Data Protection Officer:{' '}
-        <a href="mailto:privacy@syntheon.ai" style={{ color: 'rgba(255,255,255,0.3)' }}>
-          privacy@syntheon.ai
+        <a href="mailto:privacy@syntheonhub.com" style={{ color: 'rgba(255,255,255,0.3)' }}>
+          privacy@syntheonhub.com
         </a>
       </p>
     </div>
@@ -347,8 +347,8 @@ export default function LegalPage() {
       <h2 style={s().h2}>How to request</h2>
       <p style={s().p}>
         Email{' '}
-        <a href="mailto:refunds@syntheon.ai" style={{ color: 'rgba(255,255,255,0.3)' }}>
-          refunds@syntheon.ai
+        <a href="mailto:refunds@syntheonhub.com" style={{ color: 'rgba(255,255,255,0.3)' }}>
+          refunds@syntheonhub.com
         </a>{' '}
         from your registered email with your reason. We respond within 2 business days. Eligible
         refunds are processed within 5-7 business days to your original payment method via Razorpay.

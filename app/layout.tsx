@@ -8,7 +8,6 @@ import {
   Space_Grotesk,
   Inter,
 } from 'next/font/google';
-import { Analytics } from '@vercel/analytics/next';
 import { ClerkProvider } from '@clerk/nextjs';
 import { shadcn } from '@clerk/ui/themes';
 import { ToastProvider } from '@/components/island-toast';
@@ -156,7 +155,6 @@ export default function RootLayout({
           >
             <ToastProvider>
               {children}
-              <Analytics />
             </ToastProvider>
           </ThemeProvider>
         </ClerkProvider>
