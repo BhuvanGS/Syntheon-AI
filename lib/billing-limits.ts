@@ -20,6 +20,7 @@ type PlanTier = keyof typeof PLAN_LIMITS;
 const BETA_LIMITS = {
   meetings: 10,
   tickets: 50,
+  projects: 3,
 } as const;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -135,6 +136,24 @@ export async function checkTicketLimit(
 }
 
 export async function checkProjectLimit(orgId: string | null, userId: string): Promise<LimitCheck> {
+  const beta = getBetaStatus();
+  if (beta.isActive) {
+    let projects: any[] = [];
+    if (orgId) {
+      projects = await getProjectsByOrg(orgId);
+    } else {
+      projects = await getProjectsForMember('', userId);
+    }
+
+    return {
+      allowed: projects.length < BETA_LIMITS.projects,
+      used: projects.length,
+      limit: BETA_LIMITS.projects,
+      resource: 'projects',
+      plan: 'beta',
+    };
+  }
+
   const { has } = await auth();
   const tier = getPlanTier(has);
   const limit = PLAN_LIMITS[tier].projects;
