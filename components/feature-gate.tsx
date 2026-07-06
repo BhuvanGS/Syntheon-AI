@@ -22,9 +22,7 @@ export function FeatureGate({ feature, title, description, children }: FeatureGa
         {description ??
           `Upgrade to unlock ${feature.replace(/_/g, ' ')} and more advanced features.`}
       </p>
-      <p className="text-xs text-muted-foreground mt-4">
-        Available after beta.
-      </p>
+      <p className="text-xs text-muted-foreground mt-4">Available after beta.</p>
       {children}
     </div>
   );

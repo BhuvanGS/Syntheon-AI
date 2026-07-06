@@ -128,7 +128,8 @@ export default function PricingPage() {
             <Sparkles className="h-8 w-8 text-primary mx-auto mb-3" />
             <p className="text-sm font-medium text-foreground">You're in the beta</p>
             <p className="text-xs text-muted-foreground mt-1">
-              All features are unlocked during the beta period. Paid subscriptions will be available after beta ends.
+              All features are unlocked during the beta period. Paid subscriptions will be available
+              after beta ends.
             </p>
           </div>
         </div>

@@ -27,7 +27,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ org
     const members = await client.organizations.getOrganizationMembershipList({
       organizationId: orgId,
     });
-    const pendingInvites = await OrganizationInvitesEntity.query.byOrg({ orgId }).go();
+    const pendingInvites = await OrganizationInvitesEntity.query.primary({ orgId }).go();
     const pendingCount = (pendingInvites.data ?? []).filter(
       (i: any) => i.status === 'pending'
     ).length;
@@ -64,16 +64,26 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ org
   }).go();
 
   // Send invitation via Clerk
+  let inviteUrl = '';
   try {
     const client = await clerkClient();
-    await client.organizations.createOrganizationInvitation({
+    const origin = new URL(req.url).origin;
+    const invitation = await client.organizations.createOrganizationInvitation({
       organizationId: orgId,
       emailAddress: email.trim().toLowerCase(),
       role: 'org:member',
+      inviterUserId: session.userId,
+      redirectUrl: `${origin}/accept-invite`,
     });
+    inviteUrl = invitation.url ?? '';
   } catch (error) {
     console.error('Clerk invite error:', error);
   }
 
-  return NextResponse.json({ success: true, token });
+  return NextResponse.json({
+    success: true,
+    token,
+    inviteLink: inviteUrl,
+    email: email.trim().toLowerCase(),
+  });
 }

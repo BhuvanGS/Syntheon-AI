@@ -27,9 +27,10 @@ export function getBetaStatus(now = new Date()): BetaStatus {
 
   const durationRaw = process.env.BETA_DURATION_DAYS ?? process.env.NEXT_PUBLIC_BETA_DURATION_DAYS;
   const durationParsed = Number.parseInt(durationRaw ?? '', 10);
-  const durationDays = Number.isFinite(durationParsed) && durationParsed > 0
-    ? durationParsed
-    : DEFAULT_BETA_DURATION_DAYS;
+  const durationDays =
+    Number.isFinite(durationParsed) && durationParsed > 0
+      ? durationParsed
+      : DEFAULT_BETA_DURATION_DAYS;
 
   if (!enabled || !startAt) {
     return {

@@ -82,7 +82,9 @@ export async function submitWaitlistRequest(input: {
 
 export async function listWaitlistEntries(status?: WaitlistStatus): Promise<WaitlistEntry[]> {
   if (status) {
-    const res = await BetaWaitlistEntity.query.byStatus({ status }).go({ order: 'desc', limit: 500 });
+    const res = await BetaWaitlistEntity.query
+      .byStatus({ status })
+      .go({ order: 'desc', limit: 500 });
     return (res.data ?? []).map(mapWaitlistEntry);
   }
 
@@ -116,6 +118,21 @@ export async function hasBetaAccess(userId: string): Promise<boolean> {
   if (!beta.isActive) {
     return true;
   }
+
   const latest = await getLatestWaitlistEntryForUser(userId);
-  return latest?.status === 'approved';
+  if (!latest || latest.status !== 'approved') {
+    return false;
+  }
+
+  if (!beta.startAt) {
+    return false;
+  }
+
+  const approvedAtRaw = latest.reviewedAt ?? latest.requestedAt;
+  const approvedAt = new Date(approvedAtRaw);
+  if (Number.isNaN(approvedAt.getTime())) {
+    return false;
+  }
+
+  return approvedAt >= beta.startAt;
 }

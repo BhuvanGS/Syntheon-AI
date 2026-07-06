@@ -43,8 +43,6 @@ const isAppOnlyRoute = createRouteMatcher([
 
 const isApiRoute = createRouteMatcher(['/api/(.*)']);
 
-const isDashboardRoute = createRouteMatcher(['/dashboard(.*)', '/project(.*)', '/settings(.*)']);
-
 const isClerkSessionTask = createRouteMatcher(['/sign-up/tasks(.*)', '/sign-in/tasks(.*)']);
 
 // Routes that are public (no auth) on the app subdomain
@@ -114,11 +112,6 @@ export default clerkMiddleware(async (auth, request) => {
       await auth.protect();
     }
 
-    // Authenticated but no org → redirect to onboarding for dashboard routes
-    if (session.userId && !session.orgId && isDashboardRoute(request)) {
-      return NextResponse.redirect(new URL('/onboarding', request.url));
-    }
-
     return NextResponse.next();
   }
 
@@ -144,10 +137,6 @@ export default clerkMiddleware(async (auth, request) => {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     await auth.protect();
-  }
-
-  if (session.userId && !session.orgId && isDashboardRoute(request)) {
-    return NextResponse.redirect(new URL('/onboarding', request.url));
   }
 
   return NextResponse.next();

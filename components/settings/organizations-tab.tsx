@@ -230,6 +230,8 @@ export function OrganizationsTab() {
         `/api/organizations/${organization.id}/sent-invites/${revokeInviteId}`,
         {
           method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'revoke' }),
         }
       );
       if (!res.ok) throw new Error('Failed to revoke invite');
@@ -252,7 +254,10 @@ export function OrganizationsTab() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim() }),
       });
-      if (!res.ok) throw new Error('Failed to send invite');
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || errData.message || 'Failed to send invite');
+      }
       const data = await res.json();
       setGeneratedInviteLink(data.inviteLink || '');
       setCopiedLink(false);

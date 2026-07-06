@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
-import { OrganizationMetadataEntity, OrganizationAccessRequestsEntity } from '@/db/entities';
-import { randomUUID } from 'crypto';
+import { OrganizationMetadataEntity } from '@/db/entities';
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -41,60 +40,7 @@ export async function POST(req: NextRequest) {
     // Continue
   }
 
-  // If access requests are allowed, create a request
-  if (meta.allowAccessRequests) {
-    // Check for existing pending/rejected request
-    const existingRes = await OrganizationAccessRequestsEntity.get({
-      orgId: meta.orgId,
-      userId: session.userId,
-    }).go();
-
-    if (existingRes.data) {
-      if (existingRes.data.status === 'pending') {
-        return NextResponse.json({
-          success: false,
-          waitlisted: true,
-          message: 'Your access request is pending approval.',
-        });
-      }
-      if (existingRes.data.status === 'rejected') {
-        return NextResponse.json(
-          {
-            error: 'Your previous request was rejected. Contact an administrator.',
-          },
-          { status: 403 }
-        );
-      }
-      // If approved, they should already be a member
-      return NextResponse.json({
-        success: true,
-        orgId: meta.orgId,
-        message: 'Already approved',
-      });
-    }
-
-    // Get user info from Clerk
-    const user = await client.users.getUser(session.userId);
-    const email = user.emailAddresses[0]?.emailAddress ?? '';
-    const name = `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || 'User';
-
-    await OrganizationAccessRequestsEntity.create({
-      id: randomUUID(),
-      orgId: meta.orgId,
-      userId: session.userId,
-      userEmail: email,
-      userName: name,
-      status: 'pending',
-    }).go();
-
-    return NextResponse.json({
-      success: false,
-      waitlisted: true,
-      message: 'Access request submitted. An admin will review your request.',
-    });
-  }
-
-  // Direct join
+  // Direct join (no waitlist during beta)
   try {
     // Check org seat limit for free tier
     const { has } = session;

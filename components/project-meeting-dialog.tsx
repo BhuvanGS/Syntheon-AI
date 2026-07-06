@@ -11,15 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import {
-  Video,
-  Sparkles,
-  Link2,
-  CalendarDays,
-  AlertCircle,
-  Settings,
-  Lock,
-} from 'lucide-react';
+import { Video, Sparkles, Link2, CalendarDays, AlertCircle, Settings, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type Mode = 'paste' | 'create';

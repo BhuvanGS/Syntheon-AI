@@ -29,7 +29,10 @@ export async function isBetaAdmin(userId: string, _orgRole: string | null): Prom
   return allowedEmails.includes(email);
 }
 
-export async function requireBetaAdminUser(): Promise<{ userId: string; email: string | null } | null> {
+export async function requireBetaAdminUser(): Promise<{
+  userId: string;
+  email: string | null;
+} | null> {
   const { userId, orgRole } = await auth();
   if (!userId) return null;
   const allowed = await isBetaAdmin(userId, orgRole ?? null);

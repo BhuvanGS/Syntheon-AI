@@ -10,7 +10,6 @@ import {
   Sparkles,
   KeyRound,
   CheckCircle2,
-  Clock,
   ArrowLeft,
 } from 'lucide-react';
 import {
@@ -30,7 +29,7 @@ import {
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 
-type Step = 'loading' | 'choose' | 'create' | 'join' | 'join-existing' | 'waitlisted' | 'error';
+type Step = 'loading' | 'choose' | 'create' | 'join' | 'join-existing' | 'error';
 
 type DomainCheckResult = {
   exists: boolean;
@@ -197,11 +196,6 @@ export default function OnboardingPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to join');
-
-      if (data.waitlisted) {
-        setStep('waitlisted');
-        return;
-      }
 
       if (data.success || data.alreadyMember || data.joined) {
         if (data.orgId && setActive) {
@@ -584,50 +578,6 @@ export default function OnboardingPage() {
                   {loading ? 'Joining...' : 'Join organization'}
                 </Button>
               </form>
-            </motion.div>
-          )}
-
-          {step === 'waitlisted' && (
-            <motion.div
-              key="waitlisted"
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.96 }}
-              transition={{ duration: 0.3 }}
-              className="space-y-6 text-center"
-            >
-              <div className="flex justify-center">
-                <motion.div
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ delay: 0.1, type: 'spring', stiffness: 200, damping: 15 }}
-                  className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted/50 text-muted-foreground"
-                >
-                  <Clock className="h-8 w-8" />
-                </motion.div>
-              </div>
-              <div className="space-y-2">
-                <h1 className="font-playfair text-3xl font-bold text-foreground">
-                  You're on the waitlist
-                </h1>
-                <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-                  Your join request has been sent to the organization admin. You'll get access once
-                  they approve it.
-                </p>
-              </div>
-              <div className="rounded-xl border border-border bg-muted/40 p-4">
-                <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                  <Clock className="h-3.5 w-3.5" />
-                  <span>Pending admin approval</span>
-                </div>
-              </div>
-              <Button
-                onClick={() => window.location.assign('/')}
-                variant="outline"
-                className="rounded-full"
-              >
-                Back to home
-              </Button>
             </motion.div>
           )}
 
