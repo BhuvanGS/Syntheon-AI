@@ -16,8 +16,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const beta = getBetaStatus();
   if (beta.isActive) {
-    const adminAllowed = await isBetaAdmin(userId, orgRole ?? null);
-    if (!adminAllowed) {
+    const admin = await isBetaAdmin(userId, orgRole ?? null);
+    if (!admin) {
       const approved = await hasBetaAccess(userId);
       if (!approved) {
         redirect('/waitlist');
