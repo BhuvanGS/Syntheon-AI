@@ -15,6 +15,7 @@ import {
 import { verifyWebhookSignature } from '@/lib/webhook';
 import { broadcast } from '@/lib/event-bus';
 import { buildSpeakerMap, extractSpeakerNames } from '@/lib/speaker-match';
+import { checkTicketLimit, limitErrorResponse } from '@/lib/billing-limits';
 import crypto from 'crypto';
 
 // Strict alphanumeric+hyphen/underscore only — prevents SSRF and command injection via bot_id
@@ -257,6 +258,16 @@ export async function POST(req: NextRequest) {
         assignee_user_id,
       };
     });
+
+    const ticketCheck = await checkTicketLimit(
+      meeting.org_id ?? null,
+      meeting.user_id,
+      ticketsWithUser.length
+    );
+    if (!ticketCheck.allowed) {
+      await updateMeetingStatus(meeting.id, 'failed');
+      return limitErrorResponse(ticketCheck) as NextResponse;
+    }
 
     const insertedTickets = await saveExtractedTickets(ticketsWithUser);
     console.log('[bot/webhook] Saved', insertedTickets.length, 'tickets to DB');

@@ -13,6 +13,7 @@ import {
   updateMeetingName,
   saveExtractedTickets,
 } from '@/lib/db';
+import { checkMeetingLimit, checkTicketLimit, limitErrorResponse } from '@/lib/billing-limits';
 
 export const maxDuration = 60;
 
@@ -22,6 +23,11 @@ export async function POST(req: NextRequest) {
   try {
     const { userId, orgId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const meetingCheck = await checkMeetingLimit(orgId ?? null, userId);
+    if (!meetingCheck.allowed) {
+      return limitErrorResponse(meetingCheck) as NextResponse;
+    }
 
     const formData = await req.formData();
     const audioFile = formData.get('audio') as File | null;
@@ -64,6 +70,12 @@ export async function POST(req: NextRequest) {
     // Extract tickets + title
     const { tickets, title } = await extractTickets(transcript, meetingId);
     console.log(`Extracted ${tickets.length} tickets, title: ${title}`);
+
+    const ticketCheck = await checkTicketLimit(orgId ?? null, userId, tickets.length);
+    if (!ticketCheck.allowed) {
+      await updateMeetingStatus(meetingId, 'failed').catch(() => {});
+      return limitErrorResponse(ticketCheck) as NextResponse;
+    }
 
     const insertedTickets = await saveExtractedTickets(
       tickets.map((ticket: any) => ({ ...ticket, user_id: userId, org_id: orgId ?? undefined }))

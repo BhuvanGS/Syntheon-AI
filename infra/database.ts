@@ -22,6 +22,7 @@ const TABLE_NAMES = [
   'sh-milestones',
   'sh-deletion-requests',
   'sh-consent-records',
+  'sh-beta-waitlist',
 ] as const;
 
 const FIELDS = {

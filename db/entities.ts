@@ -40,6 +40,41 @@ export const UsersEntity = makeEntity(
   }
 );
 
+// ─── Beta Waitlist ───────────────────────────────────────────────
+export const BetaWaitlistEntity = makeEntity(
+  'sh-beta-waitlist',
+  'SH_BETA_WAITLIST',
+  'betaWaitlist',
+  {
+    id: { type: 'string', required: true },
+    userId: { type: 'string', required: true },
+    email: { type: 'string', required: true },
+    name: { type: 'string' },
+    note: { type: 'string' },
+    status: { type: 'string', default: 'pending' },
+    requestedAt: { type: 'string', default: () => new Date().toISOString() },
+    reviewedAt: { type: 'string' },
+    reviewedBy: { type: 'string' },
+    decisionReason: { type: 'string' },
+  },
+  {
+    primary: {
+      pk: { field: 'pk', composite: ['id'] },
+      sk: { field: 'sk', template: 'betaWaitlist' },
+    },
+    byStatus: {
+      index: 'gsi1',
+      pk: { field: 'gsi1pk', composite: ['status'] },
+      sk: { field: 'gsi1sk', composite: ['requestedAt'] },
+    },
+    byUser: {
+      index: 'gsi2',
+      pk: { field: 'gsi2pk', composite: ['userId'] },
+      sk: { field: 'gsi2sk', composite: ['requestedAt'] },
+    },
+  }
+);
+
 // ─── API Keys ────────────────────────────────────────────────────
 export const ApiKeysEntity = makeEntity(
   'sh-api-keys',

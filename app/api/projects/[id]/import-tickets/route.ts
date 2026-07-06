@@ -10,6 +10,7 @@ import {
   getTicketsByMeetingId,
   saveTickets,
 } from '@/lib/db';
+import { checkTicketLimit, limitErrorResponse } from '@/lib/billing-limits';
 
 function ticketFingerprint(ticket: {
   title: string;
@@ -71,6 +72,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         skipped: true,
         message: 'Tickets from this meeting are already in the project',
       });
+    }
+
+    const ticketCheck = await checkTicketLimit(
+      project.org_id ?? orgId ?? null,
+      userId,
+      sourceTicketsToImport.length
+    );
+    if (!ticketCheck.allowed) {
+      return limitErrorResponse(ticketCheck) as NextResponse;
     }
 
     const now = new Date().toISOString();

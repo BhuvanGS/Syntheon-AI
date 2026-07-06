@@ -78,6 +78,15 @@ export function createSite(args: {
       NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL: process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL!,
       NEXT_PUBLIC_VERCEL_ANALYTICS_ID: process.env.NEXT_PUBLIC_VERCEL_ANALYTICS_ID!,
       CLERK_TELEMETRY_DISABLED: process.env.CLERK_TELEMETRY_DISABLED!,
+      BETA_MODE: process.env.BETA_MODE ?? 'false',
+      BETA_START_AT: process.env.BETA_START_AT ?? '',
+      BETA_DURATION_DAYS: process.env.BETA_DURATION_DAYS ?? '15',
+      BETA_ADMIN_EMAILS: process.env.BETA_ADMIN_EMAILS ?? '',
+      NEXT_PUBLIC_BETA_MODE: process.env.NEXT_PUBLIC_BETA_MODE ?? process.env.BETA_MODE ?? 'false',
+      NEXT_PUBLIC_BETA_START_AT:
+        process.env.NEXT_PUBLIC_BETA_START_AT ?? process.env.BETA_START_AT ?? '',
+      NEXT_PUBLIC_BETA_DURATION_DAYS:
+        process.env.NEXT_PUBLIC_BETA_DURATION_DAYS ?? process.env.BETA_DURATION_DAYS ?? '15',
     },
   });
 

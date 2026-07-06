@@ -1,7 +1,13 @@
 import { SignUp } from '@clerk/nextjs';
 import { PreAuthConsent } from '@/components/pre-auth-consent';
+import { BetaOverMessage } from '@/components/beta-over-message';
+import { isBetaExpired } from '@/lib/beta';
 
 export default function SignUpPage() {
+  if (isBetaExpired()) {
+    return <BetaOverMessage />;
+  }
+
   return (
     <div className="min-h-screen flex bg-background">
       {/* Left side — branding */}

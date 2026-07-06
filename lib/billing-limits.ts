@@ -6,6 +6,8 @@ import {
   getProjectsByOrg,
   getProjectsForMember,
 } from '@/lib/db';
+import { getBetaStatus } from '@/lib/beta';
+import { TicketsEntity } from '@/db/entities';
 
 export const PLAN_LIMITS = {
   free: { meetings: 2, tickets: 25, projects: 1 },
@@ -14,6 +16,11 @@ export const PLAN_LIMITS = {
 } as const;
 
 type PlanTier = keyof typeof PLAN_LIMITS;
+
+const BETA_LIMITS = {
+  meetings: 10,
+  tickets: 50,
+} as const;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function getPlanTier(has: any): PlanTier {
@@ -27,10 +34,31 @@ export interface LimitCheck {
   used: number;
   limit: number;
   resource: string;
-  plan: PlanTier;
+  plan: PlanTier | 'beta';
 }
 
-export async function checkMeetingLimit(orgId: string | null, userId: string): Promise<LimitCheck> {
+export async function checkMeetingLimit(
+  orgId: string | null,
+  userId: string,
+  units = 1
+): Promise<LimitCheck> {
+  const beta = getBetaStatus();
+  if (beta.isActive && beta.startAt) {
+    const meetings = await getMeetings(userId);
+    const used = meetings.filter((m: any) => {
+      const date = new Date(m.date);
+      return !Number.isNaN(date.getTime()) && date >= beta.startAt!;
+    }).length;
+
+    return {
+      allowed: used + units <= BETA_LIMITS.meetings,
+      used,
+      limit: BETA_LIMITS.meetings,
+      resource: 'meetings',
+      plan: 'beta',
+    };
+  }
+
   const { has } = await auth();
   const tier = getPlanTier(has);
   const limit = PLAN_LIMITS[tier].meetings;
@@ -51,7 +79,7 @@ export async function checkMeetingLimit(orgId: string | null, userId: string): P
 
   const thisMonth = meetings.filter((m: any) => m.date >= monthStart);
   return {
-    allowed: thisMonth.length < limit,
+    allowed: thisMonth.length + units <= limit,
     used: thisMonth.length,
     limit,
     resource: 'meetings',
@@ -59,7 +87,28 @@ export async function checkMeetingLimit(orgId: string | null, userId: string): P
   };
 }
 
-export async function checkTicketLimit(orgId: string | null, userId: string): Promise<LimitCheck> {
+export async function checkTicketLimit(
+  orgId: string | null,
+  userId: string,
+  units = 1
+): Promise<LimitCheck> {
+  const beta = getBetaStatus();
+  if (beta.isActive && beta.startAt) {
+    const userRes = await TicketsEntity.query.byUser({ userId }).go();
+    const used = (userRes.data ?? []).filter((t: any) => {
+      const createdAt = new Date(t.createdAt ?? '');
+      return !Number.isNaN(createdAt.getTime()) && createdAt >= beta.startAt!;
+    }).length;
+
+    return {
+      allowed: used + units <= BETA_LIMITS.tickets,
+      used,
+      limit: BETA_LIMITS.tickets,
+      resource: 'tickets',
+      plan: 'beta',
+    };
+  }
+
   const { has } = await auth();
   const tier = getPlanTier(has);
   const limit = PLAN_LIMITS[tier].tickets;
@@ -72,13 +121,12 @@ export async function checkTicketLimit(orgId: string | null, userId: string): Pr
     const res = await getTicketsPaginated(orgId, { limit: 1, offset: 0 });
     total = res.total;
   } else {
-    const { TicketsEntity } = await import('@/db/entities');
     const userRes = await TicketsEntity.query.byUser({ userId }).go();
     total = (userRes.data ?? []).length;
   }
 
   return {
-    allowed: total < limit,
+    allowed: total + units <= limit,
     used: total,
     limit,
     resource: 'tickets',
@@ -111,6 +159,20 @@ export async function checkProjectLimit(orgId: string | null, userId: string): P
 }
 
 export function limitErrorResponse(check: LimitCheck): Response {
+  if (check.plan === 'beta') {
+    return Response.json(
+      {
+        error: 'Beta limit reached',
+        message: `Beta limit reached: ${check.limit} ${check.resource} per user during the 15-day beta.`,
+        used: check.used,
+        limit: check.limit,
+        resource: check.resource,
+        plan: check.plan,
+      },
+      { status: 403 }
+    );
+  }
+
   const resourceLabel =
     check.resource === 'meetings'
       ? `${check.limit} meetings/mo`
