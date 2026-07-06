@@ -143,8 +143,8 @@ export default function RootLayout({
           appearance={{ theme: shadcn }}
           signInUrl="/sign-in"
           signUpUrl="/sign-up"
-          signInFallbackRedirectUrl="/onboarding"
-          signUpFallbackRedirectUrl="/onboarding"
+          signInFallbackRedirectUrl="/dashboard"
+          signUpFallbackRedirectUrl="/dashboard"
           taskUrls={{ 'choose-organization': '/onboarding' }}
         >
           <ThemeProvider

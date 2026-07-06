@@ -106,27 +106,11 @@ declare module "sst" {
       "name": string
       "type": "sst.aws.Dynamo"
     }
-    "GithubOauthClientId": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
-    "GithubOauthClientSecret": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
-    "GithubToken": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
     "GoogleOauthClientSecret": {
       "type": "sst.sst.Secret"
       "value": string
     }
     "GroqApiKey": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
-    "GroqApiKeyT2": {
       "type": "sst.sst.Secret"
       "value": string
     }

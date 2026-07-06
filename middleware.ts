@@ -97,7 +97,7 @@ export default clerkMiddleware(async (auth, request) => {
     if (isClerkSessionTask(request)) {
       const session = await auth();
       if (session.userId) {
-        return NextResponse.redirect(new URL('/onboarding', request.url));
+        return NextResponse.redirect(new URL('/dashboard', request.url));
       }
       return NextResponse.redirect(new URL('/sign-up', request.url));
     }
@@ -129,7 +129,7 @@ export default clerkMiddleware(async (auth, request) => {
   if (isClerkSessionTask(request)) {
     const session = await auth();
     if (session.userId) {
-      return NextResponse.redirect(new URL('/onboarding', request.url));
+      return NextResponse.redirect(new URL('/dashboard', request.url));
     }
     return NextResponse.redirect(new URL('/sign-up', request.url));
   }
