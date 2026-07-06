@@ -1792,13 +1792,7 @@ export function ProjectsWorkspace({
       { id: 'sprint-stones', label: 'Sprint-stones', icon: <Zap className="h-4 w-4" /> },
       { id: 'members', label: 'Members', icon: <Users className="h-4 w-4" />, adminOnly: true },
     ] as { id: ProjectTab; label: string; icon: React.ReactNode; adminOnly?: boolean }[]
-  ).filter((tab) => {
-    if (tab.id === 'analytics') return has?.({ feature: 'analytics' });
-    if (tab.id === 'dependencies') return has?.({ feature: 'dependencies' });
-    if (tab.id === 'roadmap') return has?.({ feature: 'roadmap' });
-    if (tab.id === 'sprint-stones') return has?.({ feature: 'sprint_stones' });
-    return true;
-  });
+  );
   const tabs = allTabs.filter((t) => !t.adminOnly || isAdmin);
 
   const statusConfig: Record<

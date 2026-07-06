@@ -182,11 +182,11 @@ export function ProjectMeetingDialog({
             </div>
             <div className="space-y-2">
               <p className="font-playfair text-2xl text-foreground">
-                You've hit the free plan limit
+                You've hit the beta testing limit
               </p>
               <p className="text-sm text-muted-foreground">
-                You've used all {limitReached.limit} meetings this month on the Free plan. Upgrade
-                to Pro for unlimited meetings, dependencies, and API access.
+                You've used all {limitReached.limit} meetings during the beta. Limits will be lifted
+                after the beta period ends.
               </p>
             </div>
             <div className="flex items-center justify-center gap-2 pt-2">

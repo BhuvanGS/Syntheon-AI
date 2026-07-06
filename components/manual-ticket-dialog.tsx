@@ -210,12 +210,11 @@ export function ManualTicketDialog({
             </div>
             <div className="space-y-2">
               <p className="font-playfair text-2xl text-foreground">
-                You've hit the free plan limit
+                You've hit the beta testing limit
               </p>
               <p className="text-sm text-muted-foreground">
-                You've used all {limitReached.limit} {limitReached.resource} on the Free plan.
-                Upgrade to Pro for{' '}
-                {limitReached.resource === 'tickets' ? '500 tickets' : 'higher limits'}.
+                You've used all {limitReached.limit} {limitReached.resource} during the beta. Limits
+                will be lifted after the beta period ends.
               </p>
             </div>
             <div className="flex items-center justify-center gap-2 pt-2">
