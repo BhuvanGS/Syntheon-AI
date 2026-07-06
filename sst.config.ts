@@ -3,7 +3,7 @@
 export default $config({
   app(input) {
     return {
-      name: 'syntheon-hub',
+      name: 'syntheon-ai',
       removal: input?.stage === 'production' ? 'retain' : 'remove',
       protect: ['production'].includes(input?.stage),
       home: 'aws',
