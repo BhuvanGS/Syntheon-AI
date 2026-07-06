@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect, type ReactNode } from 'react';
+import { useState, useEffect, Suspense, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@clerk/nextjs';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 const APP_URL = 'https://app.syntheonhub.com';
 
-export default function LegalPage() {
+function LegalPageContent() {
   const [active, setActive] = useState('privacy');
   const [mounted, setMounted] = useState(false);
   const { isLoaded, isSignedIn } = useAuth();
@@ -2310,5 +2310,13 @@ export default function LegalPage() {
         </footer>
       )}
     </div>
+  );
+}
+
+export default function LegalPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '100vh', background: '#0a0a0b' }} />}>
+      <LegalPageContent />
+    </Suspense>
   );
 }
