@@ -1,9 +1,7 @@
 'use client';
 
 import { useAuth, useOrganization } from '@clerk/nextjs';
-import { PricingTable } from '@clerk/nextjs';
-import { CreditCard, Check, ArrowRight } from 'lucide-react';
-import Link from 'next/link';
+import { CreditCard, Check, Sparkles } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 const PLAN_FEATURES: Record<string, string[]> = {
@@ -176,21 +174,15 @@ export function BillingTab() {
         )}
       </div>
 
-      {/* Pricing table for upgrade */}
+      {/* Beta notice */}
       <div>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-medium text-foreground">
-            {currentPlan === 'Free' ? 'Upgrade your plan' : 'Change plan'}
-          </h3>
-          <Link
-            href="/pricing"
-            className="flex items-center gap-1 text-xs text-primary hover:underline"
-          >
-            View full pricing
-            <ArrowRight className="h-3 w-3" />
-          </Link>
+        <div className="rounded-xl border border-border bg-muted/30 p-6 text-center">
+          <Sparkles className="h-6 w-6 text-primary mx-auto mb-2" />
+          <p className="text-sm font-medium text-foreground">All features unlocked during beta</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Paid subscriptions will be available after the beta period ends.
+          </p>
         </div>
-        <PricingTable for={billingType} />
       </div>
     </div>
   );

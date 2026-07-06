@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth, useOrganization } from '@clerk/nextjs';
-import { AlertTriangle, Sparkles, ArrowUpRight, Zap } from 'lucide-react';
-import Link from 'next/link';
+import { AlertTriangle, Sparkles, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -104,9 +103,6 @@ export function TrialBanner() {
         >
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
           <span>Trial expired</span>
-          <Link href="/pricing" className="flex items-center gap-1 hover:underline ml-1">
-            Upgrade <ArrowUpRight className="h-3 w-3" />
-          </Link>
         </motion.div>
       </AnimatePresence>
     );
@@ -163,12 +159,6 @@ export function TrialBanner() {
             className={cn('h-full rounded-full', isUrgent ? 'bg-primary' : 'bg-primary/60')}
           />
         </div>
-        <Link
-          href="/pricing"
-          className="flex items-center gap-1 ml-1 px-2 py-0.5 rounded-md bg-primary/15 hover:bg-primary/25 transition-colors"
-        >
-          Upgrade <ArrowUpRight className="h-3 w-3" />
-        </Link>
       </motion.div>
     );
   }
@@ -195,12 +185,6 @@ export function TrialBanner() {
         <span>
           {isExhausted ? '0 meetings left' : `${remaining}/${usage.meetingsLimit} meetings left`}
         </span>
-        <Link
-          href="/pricing"
-          className="flex items-center gap-1 ml-1 px-2 py-0.5 rounded-md bg-primary/15 hover:bg-primary/25 transition-colors text-primary"
-        >
-          Upgrade <ArrowUpRight className="h-3 w-3" />
-        </Link>
       </motion.div>
     );
   }

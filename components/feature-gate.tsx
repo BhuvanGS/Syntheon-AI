@@ -1,7 +1,6 @@
 'use client';
 
-import Link from 'next/link';
-import { Lock, Sparkles } from 'lucide-react';
+import { Lock } from 'lucide-react';
 
 interface FeatureGateProps {
   feature: string;
@@ -23,13 +22,9 @@ export function FeatureGate({ feature, title, description, children }: FeatureGa
         {description ??
           `Upgrade to unlock ${feature.replace(/_/g, ' ')} and more advanced features.`}
       </p>
-      <Link
-        href="/pricing"
-        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
-      >
-        <Sparkles className="h-4 w-4" />
-        Upgrade plan
-      </Link>
+      <p className="text-xs text-muted-foreground mt-4">
+        Available after beta.
+      </p>
       {children}
     </div>
   );

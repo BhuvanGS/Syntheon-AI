@@ -12,8 +12,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { FolderPlus, Sparkles, Lock, ArrowUpRight } from 'lucide-react';
-import Link from 'next/link';
+import { FolderPlus, Sparkles, Lock } from 'lucide-react';
 
 export interface BoardColumn {
   id: string;
@@ -93,13 +92,6 @@ export function ProjectCreateDialog({ open, onOpenChange, onCreate }: ProjectCre
               </p>
             </div>
             <div className="flex items-center justify-center gap-2 pt-2">
-              <Link href="/pricing">
-                <Button className="rounded-full gap-2">
-                  <Sparkles className="h-4 w-4" />
-                  Upgrade to Pro
-                  <ArrowUpRight className="h-4 w-4" />
-                </Button>
-              </Link>
               <Button
                 type="button"
                 variant="ghost"

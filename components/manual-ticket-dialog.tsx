@@ -19,8 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { CirclePlus, Sparkles, Lock, ArrowUpRight } from 'lucide-react';
-import Link from 'next/link';
+import { CirclePlus, Sparkles, Lock } from 'lucide-react';
 import { AssigneePicker, type AssigneeValue } from '@/components/assignee-picker';
 import { TicketMetadataEditor } from '@/components/ticket-metadata-editor';
 import {
@@ -220,13 +219,6 @@ export function ManualTicketDialog({
               </p>
             </div>
             <div className="flex items-center justify-center gap-2 pt-2">
-              <Link href="/pricing">
-                <Button className="rounded-full gap-2">
-                  <Sparkles className="h-4 w-4" />
-                  Upgrade to Pro
-                  <ArrowUpRight className="h-4 w-4" />
-                </Button>
-              </Link>
               <Button
                 type="button"
                 variant="ghost"

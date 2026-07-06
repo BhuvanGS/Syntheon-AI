@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useAuth, useOrganization } from '@clerk/nextjs';
-import { PricingTable } from '@clerk/nextjs';
 import { ArrowLeft, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -70,7 +69,7 @@ export default function PricingPage() {
           {currentPlan === 'Free' && (
             <div className="text-right">
               <p className="text-xs opacity-70">2 meetings/mo · 1 project · 25 tickets</p>
-              <p className="text-xs font-medium mt-0.5">Upgrade to unlock more</p>
+              <p className="text-xs font-medium mt-0.5">All features free during beta</p>
             </div>
           )}
           {currentPlan === 'Pro' && (
@@ -90,7 +89,7 @@ export default function PricingPage() {
         {/* Title */}
         <div className="text-center mb-10">
           <h1 className="font-playfair text-4xl font-bold text-foreground">Choose your plan</h1>
-          <p className="text-muted-foreground mt-2">Upgrade anytime. Cancel anytime.</p>
+          <p className="text-muted-foreground mt-2">All plans are free during beta.</p>
         </div>
 
         {/* Billing type toggle (only show if user is in an org) */}
@@ -123,9 +122,15 @@ export default function PricingPage() {
           </div>
         )}
 
-        {/* Pricing table */}
+        {/* Beta notice instead of subscribe buttons */}
         <div className="flex justify-center">
-          <PricingTable for={billingType} />
+          <div className="rounded-xl border border-border bg-muted/30 p-8 text-center max-w-md">
+            <Sparkles className="h-8 w-8 text-primary mx-auto mb-3" />
+            <p className="text-sm font-medium text-foreground">You're in the beta</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              All features are unlocked during the beta period. Paid subscriptions will be available after beta ends.
+            </p>
+          </div>
         </div>
       </div>
     </div>

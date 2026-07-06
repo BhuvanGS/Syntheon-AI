@@ -538,7 +538,7 @@ function PricingSection() {
       period: 'forever',
       desc: 'For solo founders getting started',
       features: ['2 meetings/mo', '25 tickets', '1 project', 'Basic Kanban board'],
-      cta: 'Start Free',
+      cta: 'Join Beta',
       highlight: false,
     },
     {
@@ -548,7 +548,7 @@ function PricingSection() {
       annualNote: 'billed annually',
       desc: 'For small teams shipping fast',
       features: ['Unlimited meetings', '500 tickets', '10 projects', 'Dependencies', 'API access'],
-      cta: 'Start 15-day Trial',
+      cta: 'Join Beta',
       highlight: true,
     },
     {
@@ -564,7 +564,7 @@ function PricingSection() {
         'Roadmap',
         'Priority support',
       ],
-      cta: 'Start 15-day Trial',
+      cta: 'Join Beta',
       highlight: false,
     },
   ];

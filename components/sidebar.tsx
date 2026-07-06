@@ -14,7 +14,6 @@ import {
   Home,
   Video,
   Plus,
-  Sparkles,
   PanelLeftClose,
   PanelLeftOpen,
 } from 'lucide-react';
@@ -288,27 +287,6 @@ export function Sidebar({
 
       {/* Spacer pushes footer to bottom */}
       <div className="flex-1" />
-
-      {/* Upgrade button for free users */}
-      {isLoaded &&
-        !has?.({ plan: 'user_pro' }) &&
-        !has?.({ plan: 'user_max' }) &&
-        !has?.({ plan: 'org:org_pro' }) &&
-        !has?.({ plan: 'org:org_max' }) && (
-          <div className={cn('px-3 pb-2 shrink-0', collapsed && 'px-1 flex justify-center')}>
-            <Link
-              href="/pricing"
-              className={cn(
-                'flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10 text-primary text-xs font-medium hover:bg-primary/15 transition-colors',
-                collapsed && 'px-2'
-              )}
-              title={collapsed ? 'Upgrade plan' : undefined}
-            >
-              <Sparkles className="h-3.5 w-3.5 shrink-0" />
-              {!collapsed && 'Upgrade plan'}
-            </Link>
-          </div>
-        )}
 
       {/* Footer / User */}
       <Separator />
