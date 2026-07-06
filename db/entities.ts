@@ -25,8 +25,8 @@ function makeEntity(
 
 // ─── Users ───────────────────────────────────────────────────────
 export const UsersEntity = makeEntity(
-  'syntheon-users',
-  'DYNAMO_TABLE_USERS',
+  'sh-users',
+  'SH_USERS',
   'user',
   {
     id: { type: 'string', required: true },
@@ -42,8 +42,8 @@ export const UsersEntity = makeEntity(
 
 // ─── API Keys ────────────────────────────────────────────────────
 export const ApiKeysEntity = makeEntity(
-  'syntheon-api-keys',
-  'DYNAMO_TABLE_API_KEYS',
+  'sh-api-keys',
+  'SH_API_KEYS',
   'apiKey',
   {
     id: { type: 'string', required: true },
@@ -62,8 +62,8 @@ export const ApiKeysEntity = makeEntity(
 
 // ─── Meetings ────────────────────────────────────────────────────
 export const MeetingsEntity = makeEntity(
-  'syntheon-meetings',
-  'DYNAMO_TABLE_MEETINGS',
+  'sh-meetings',
+  'SH_MEETINGS',
   'meeting',
   {
     id: { type: 'string', required: true },
@@ -108,8 +108,8 @@ export const MeetingsEntity = makeEntity(
 
 // ─── Specs ───────────────────────────────────────────────────────
 export const SpecsEntity = makeEntity(
-  'syntheon-specs',
-  'DYNAMO_TABLE_SPECS',
+  'sh-specs',
+  'SH_SPECS',
   'spec',
   {
     id: { type: 'string', required: true },
@@ -147,8 +147,8 @@ export const SpecsEntity = makeEntity(
 
 // ─── Tickets ─────────────────────────────────────────────────────
 export const TicketsEntity = makeEntity(
-  'syntheon-tickets',
-  'DYNAMO_TABLE_TICKETS',
+  'sh-tickets',
+  'SH_TICKETS',
   'ticket',
   {
     id: { type: 'string', required: true },
@@ -211,8 +211,8 @@ export const TicketsEntity = makeEntity(
 
 // ─── Projects ────────────────────────────────────────────────────
 export const ProjectsEntity = makeEntity(
-  'syntheon-projects',
-  'DYNAMO_TABLE_PROJECTS',
+  'sh-projects',
+  'SH_PROJECTS',
   'project',
   {
     id: { type: 'string', required: true },
@@ -249,8 +249,8 @@ export const ProjectsEntity = makeEntity(
 
 // ─── Ticket Dependencies ─────────────────────────────────────────
 export const TicketDependenciesEntity = makeEntity(
-  'syntheon-ticket-dependencies',
-  'DYNAMO_TABLE_TICKET_DEPENDENCIES',
+  'sh-ticket-deps',
+  'SH_TICKET_DEPS',
   'ticketDependency',
   {
     id: { type: 'string', required: true },
@@ -296,8 +296,8 @@ export const TicketDependenciesEntity = makeEntity(
 
 // ─── Ticket Attachments ──────────────────────────────────────────
 export const TicketAttachmentsEntity = makeEntity(
-  'syntheon-ticket-attachments',
-  'DYNAMO_TABLE_TICKET_ATTACHMENTS',
+  'sh-ticket-attachments',
+  'SH_TICKET_ATTACHMENTS',
   'ticketAttachment',
   {
     id: { type: 'string', required: true },
@@ -331,8 +331,8 @@ export const TicketAttachmentsEntity = makeEntity(
 
 // ─── Ticket Comments ─────────────────────────────────────────────
 export const TicketCommentsEntity = makeEntity(
-  'syntheon-ticket-comments',
-  'DYNAMO_TABLE_TICKET_COMMENTS',
+  'sh-ticket-comments',
+  'SH_TICKET_COMMENTS',
   'ticketComment',
   {
     id: { type: 'string', required: true },
@@ -363,8 +363,8 @@ export const TicketCommentsEntity = makeEntity(
 
 // ─── Ticket Activities ───────────────────────────────────────────
 export const TicketActivitiesEntity = makeEntity(
-  'syntheon-ticket-activities',
-  'DYNAMO_TABLE_TICKET_ACTIVITIES',
+  'sh-ticket-activities',
+  'SH_TICKET_ACTIVITIES',
   'ticketActivity',
   {
     id: { type: 'string', required: true },
@@ -399,8 +399,8 @@ export const TicketActivitiesEntity = makeEntity(
 
 // ─── Integrations ────────────────────────────────────────────────
 export const IntegrationsEntity = makeEntity(
-  'syntheon-integrations',
-  'DYNAMO_TABLE_INTEGRATIONS',
+  'sh-integrations',
+  'SH_INTEGRATIONS',
   'integration',
   {
     id: { type: 'string', required: true },
@@ -431,8 +431,8 @@ export const IntegrationsEntity = makeEntity(
 
 // ─── Project Members ─────────────────────────────────────────────
 export const ProjectMembersEntity = makeEntity(
-  'syntheon-project-members',
-  'DYNAMO_TABLE_PROJECT_MEMBERS',
+  'sh-project-members',
+  'SH_PROJECT_MEMBERS',
   'projectMember',
   {
     id: { type: 'string', required: true },
@@ -462,8 +462,8 @@ export const ProjectMembersEntity = makeEntity(
 
 // ─── Organization Metadata ───────────────────────────────────────
 export const OrganizationMetadataEntity = makeEntity(
-  'syntheon-org-metadata',
-  'DYNAMO_TABLE_ORG_METADATA',
+  'sh-org-metadata',
+  'SH_ORG_METADATA',
   'orgMetadata',
   {
     id: { type: 'string', required: true },
@@ -487,8 +487,8 @@ export const OrganizationMetadataEntity = makeEntity(
 
 // ─── Organization Invites ────────────────────────────────────────
 export const OrganizationInvitesEntity = makeEntity(
-  'syntheon-org-invites',
-  'DYNAMO_TABLE_ORG_INVITES',
+  'sh-org-invites',
+  'SH_ORG_INVITES',
   'orgInvite',
   {
     id: { type: 'string', required: true },
@@ -512,8 +512,8 @@ export const OrganizationInvitesEntity = makeEntity(
 
 // ─── Organization Access Requests ────────────────────────────────
 export const OrganizationAccessRequestsEntity = makeEntity(
-  'syntheon-org-access-requests',
-  'DYNAMO_TABLE_ORG_ACCESS_REQUESTS',
+  'sh-org-access-requests',
+  'SH_ORG_ACCESS_REQUESTS',
   'orgAccessRequest',
   {
     id: { type: 'string', required: true },
@@ -537,8 +537,8 @@ export const OrganizationAccessRequestsEntity = makeEntity(
 
 // ─── Notifications ───────────────────────────────────────────────
 export const NotificationsEntity = makeEntity(
-  'syntheon-notifications',
-  'DYNAMO_TABLE_NOTIFICATIONS',
+  'sh-notifications',
+  'SH_NOTIFICATIONS',
   'notification',
   {
     id: { type: 'string', required: true },
@@ -561,8 +561,8 @@ export const NotificationsEntity = makeEntity(
 
 // ─── Labels ──────────────────────────────────────────────────────
 export const LabelsEntity = makeEntity(
-  'syntheon-labels',
-  'DYNAMO_TABLE_LABELS',
+  'sh-labels',
+  'SH_LABELS',
   'label',
   {
     id: { type: 'string', required: true },
@@ -583,8 +583,8 @@ export const LabelsEntity = makeEntity(
 
 // ─── Milestones ──────────────────────────────────────────────────
 export const MilestonesEntity = makeEntity(
-  'syntheon-milestones',
-  'DYNAMO_TABLE_MILESTONES',
+  'sh-milestones',
+  'SH_MILESTONES',
   'milestone',
   {
     id: { type: 'string', required: true },
@@ -614,8 +614,8 @@ export const MilestonesEntity = makeEntity(
 
 // ─── Sprints ──────────────────────────────────────────────────────
 export const SprintsEntity = makeEntity(
-  'syntheon-sprints',
-  'DYNAMO_TABLE_SPRINTS',
+  'sh-sprints',
+  'SH_SPRINTS',
   'sprint',
   {
     id: { type: 'string', required: true },
@@ -647,8 +647,8 @@ export const SprintsEntity = makeEntity(
 
 // ─── Deletion Requests (DPDP/GDPR workflow) ──────────────────────
 export const DeletionRequestsEntity = makeEntity(
-  'syntheon-deletion-requests',
-  'DYNAMO_TABLE_DELETION_REQUESTS',
+  'sh-deletion-requests',
+  'SH_DELETION_REQUESTS',
   'deletionRequest',
   {
     id: { type: 'string', required: true },
@@ -691,8 +691,8 @@ export const DeletionRequestsEntity = makeEntity(
 
 // ─── Consent Records (DPDP Act 2023) ─────────────────────────────
 export const ConsentRecordsEntity = makeEntity(
-  'syntheon-consent-records',
-  'DYNAMO_TABLE_CONSENT_RECORDS',
+  'sh-consent-records',
+  'SH_CONSENT_RECORDS',
   'consentRecord',
   {
     id: { type: 'string', required: true },

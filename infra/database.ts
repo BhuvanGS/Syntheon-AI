@@ -1,27 +1,27 @@
 /// <reference path="../.sst/platform/config.d.ts" />
 
 const TABLE_NAMES = [
-  'syntheon-users',
-  'syntheon-api-keys',
-  'syntheon-meetings',
-  'syntheon-specs',
-  'syntheon-tickets',
-  'syntheon-projects',
-  'syntheon-ticket-dependencies',
-  'syntheon-ticket-attachments',
-  'syntheon-ticket-comments',
-  'syntheon-ticket-activities',
-  'syntheon-integrations',
-  'syntheon-project-members',
-  'syntheon-org-metadata',
-  'syntheon-org-invites',
-  'syntheon-org-access-requests',
-  'syntheon-notifications',
-  'syntheon-labels',
-  'syntheon-sprints',
-  'syntheon-milestones',
-  'syntheon-deletion-requests',
-  'syntheon-consent-records',
+  'sh-users',
+  'sh-api-keys',
+  'sh-meetings',
+  'sh-specs',
+  'sh-tickets',
+  'sh-projects',
+  'sh-ticket-deps',
+  'sh-ticket-attachments',
+  'sh-ticket-comments',
+  'sh-ticket-activities',
+  'sh-integrations',
+  'sh-project-members',
+  'sh-org-metadata',
+  'sh-org-invites',
+  'sh-org-access-requests',
+  'sh-notifications',
+  'sh-labels',
+  'sh-sprints',
+  'sh-milestones',
+  'sh-deletion-requests',
+  'sh-consent-records',
 ] as const;
 
 const FIELDS = {
@@ -58,10 +58,7 @@ export function createDynamoTables(): DynamoTableMap {
       primaryIndex: { hashKey: 'pk', rangeKey: 'sk' },
       globalIndexes: { ...GLOBAL_INDEXES },
     });
-    const envVar = `DYNAMO_TABLE_${name
-      .replace(/syntheon-/g, '')
-      .replace(/-/g, '_')
-      .toUpperCase()}`;
+    const envVar = name.replace(/-/g, '_').toUpperCase();
     tables[name] = { resource, envVar };
   }
 
