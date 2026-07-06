@@ -154,10 +154,9 @@ export function InteractiveKanbanDemo() {
       {/* Cinema roll meeting lines */}
       <div
         className="rounded-xl mb-4"
-        style={{ height: '48px', background: 'rgba(255,255,255,0.04)' }}
+        style={{ height: '64px', background: 'rgba(255,255,255,0.04)' }}
       >
-        <div className="flex items-center h-full px-4 gap-3">
-          <span className="text-xs font-mono text-white/40 shrink-0">TRANSCRIPT</span>
+        <div className="flex items-center h-full px-5 gap-3">
           <div className="flex-1 overflow-hidden relative">
             <AnimatePresence mode="wait">
               {activeLine >= 0 && (
@@ -167,13 +166,13 @@ export function InteractiveKanbanDemo() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -40 }}
                   transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                  className="flex items-center gap-2 whitespace-nowrap"
+                  className="flex items-center gap-3 whitespace-nowrap"
                 >
-                  <span className="text-sm font-semibold text-white/90">
+                  <span className="text-lg font-semibold text-white/90">
                     {MEETING_LINES[activeLine].speaker}
                   </span>
-                  <span className="text-sm text-white/40">:-</span>
-                  <span className="text-sm text-white/70">{MEETING_LINES[activeLine].text}</span>
+                  <span className="text-lg text-white/40">:-</span>
+                  <span className="text-lg text-white/70">{MEETING_LINES[activeLine].text}</span>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -181,15 +180,12 @@ export function InteractiveKanbanDemo() {
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="flex items-center gap-2"
+                className="flex items-center gap-3"
               >
-                <span className="text-sm text-white/40">Waiting for meeting transcript...</span>
+                <span className="text-lg text-white/40">Waiting for meeting transcript...</span>
               </motion.div>
             )}
           </div>
-          <span className="text-xs font-mono text-white/40 shrink-0 tabular-nums">
-            {Math.max(0, activeLine + 1)} / {MEETING_LINES.length}
-          </span>
         </div>
       </div>
 

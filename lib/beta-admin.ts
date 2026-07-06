@@ -18,11 +18,7 @@ export async function getUserPrimaryEmail(userId: string): Promise<string | null
   }
 }
 
-export async function isBetaAdmin(userId: string, orgRole: string | null): Promise<boolean> {
-  if (orgRole === 'org:admin') {
-    return true;
-  }
-
+export async function isBetaAdmin(userId: string, _orgRole: string | null): Promise<boolean> {
   const allowedEmails = parseAdminEmails(process.env.BETA_ADMIN_EMAILS);
   if (allowedEmails.length === 0) {
     return false;
