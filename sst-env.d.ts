@@ -4,146 +4,158 @@
 /* deno-fmt-ignore-file */
 /* biome-ignore-all lint: auto-generated */
 
-declare module 'sst' {
+declare module "sst" {
   export interface Resource {
-    ClerkSecretKey: {
-      type: 'sst.sst.Secret';
-      value: string;
-    };
-    ClerkWebhookSecret: {
-      type: 'sst.sst.Secret';
-      value: string;
-    };
-    DeepgramApiKey: {
-      type: 'sst.sst.Secret';
-      value: string;
-    };
-    Dynamosyntheonapikeys: {
-      name: string;
-      type: 'sst.aws.Dynamo';
-    };
-    Dynamosyntheonintegrations: {
-      name: string;
-      type: 'sst.aws.Dynamo';
-    };
-    Dynamosyntheonlabels: {
-      name: string;
-      type: 'sst.aws.Dynamo';
-    };
-    Dynamosyntheonmeetings: {
-      name: string;
-      type: 'sst.aws.Dynamo';
-    };
-    Dynamosyntheonmilestones: {
-      name: string;
-      type: 'sst.aws.Dynamo';
-    };
-    Dynamosyntheonnotifications: {
-      name: string;
-      type: 'sst.aws.Dynamo';
-    };
-    Dynamosyntheonorgaccessrequests: {
-      name: string;
-      type: 'sst.aws.Dynamo';
-    };
-    Dynamosyntheonorginvites: {
-      name: string;
-      type: 'sst.aws.Dynamo';
-    };
-    Dynamosyntheonorgmetadata: {
-      name: string;
-      type: 'sst.aws.Dynamo';
-    };
-    Dynamosyntheonprojectmembers: {
-      name: string;
-      type: 'sst.aws.Dynamo';
-    };
-    Dynamosyntheonprojects: {
-      name: string;
-      type: 'sst.aws.Dynamo';
-    };
-    Dynamosyntheonspecs: {
-      name: string;
-      type: 'sst.aws.Dynamo';
-    };
-    Dynamosyntheonsprints: {
-      name: string;
-      type: 'sst.aws.Dynamo';
-    };
-    Dynamosyntheonticketactivities: {
-      name: string;
-      type: 'sst.aws.Dynamo';
-    };
-    Dynamosyntheonticketattachments: {
-      name: string;
-      type: 'sst.aws.Dynamo';
-    };
-    Dynamosyntheonticketcomments: {
-      name: string;
-      type: 'sst.aws.Dynamo';
-    };
-    Dynamosyntheonticketdependencies: {
-      name: string;
-      type: 'sst.aws.Dynamo';
-    };
-    Dynamosyntheontickets: {
-      name: string;
-      type: 'sst.aws.Dynamo';
-    };
-    Dynamosyntheonusers: {
-      name: string;
-      type: 'sst.aws.Dynamo';
-    };
-    GithubOauthClientId: {
-      type: 'sst.sst.Secret';
-      value: string;
-    };
-    GithubOauthClientSecret: {
-      type: 'sst.sst.Secret';
-      value: string;
-    };
-    GithubToken: {
-      type: 'sst.sst.Secret';
-      value: string;
-    };
-    GoogleOauthClientSecret: {
-      type: 'sst.sst.Secret';
-      value: string;
-    };
-    GroqApiKey: {
-      type: 'sst.sst.Secret';
-      value: string;
-    };
-    GroqApiKeyT2: {
-      type: 'sst.sst.Secret';
-      value: string;
-    };
-    Site: {
-      type: 'sst.aws.Nextjs';
-      url: string;
-    };
-    SkribbyApiKey: {
-      type: 'sst.sst.Secret';
-      value: string;
-    };
-    SkribbyWebhookSecret: {
-      type: 'sst.sst.Secret';
-      value: string;
-    };
-    TokenEncryptionKey: {
-      type: 'sst.sst.Secret';
-      value: string;
-    };
-    Uploads: {
-      name: string;
-      type: 'sst.aws.Bucket';
-    };
-    WebhookAccessToken: {
-      type: 'sst.sst.Secret';
-      value: string;
-    };
+    "ClerkSecretKey": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "ClerkWebhookSecret": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "DeepgramApiKey": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "Dynamoshapikeys": {
+      "name": string
+      "type": "sst.aws.Dynamo"
+    }
+    "Dynamoshbetawaitlist": {
+      "name": string
+      "type": "sst.aws.Dynamo"
+    }
+    "Dynamoshconsentrecords": {
+      "name": string
+      "type": "sst.aws.Dynamo"
+    }
+    "Dynamoshdeletionrequests": {
+      "name": string
+      "type": "sst.aws.Dynamo"
+    }
+    "Dynamoshintegrations": {
+      "name": string
+      "type": "sst.aws.Dynamo"
+    }
+    "Dynamoshlabels": {
+      "name": string
+      "type": "sst.aws.Dynamo"
+    }
+    "Dynamoshmeetings": {
+      "name": string
+      "type": "sst.aws.Dynamo"
+    }
+    "Dynamoshmilestones": {
+      "name": string
+      "type": "sst.aws.Dynamo"
+    }
+    "Dynamoshnotifications": {
+      "name": string
+      "type": "sst.aws.Dynamo"
+    }
+    "Dynamoshorgaccessrequests": {
+      "name": string
+      "type": "sst.aws.Dynamo"
+    }
+    "Dynamoshorginvites": {
+      "name": string
+      "type": "sst.aws.Dynamo"
+    }
+    "Dynamoshorgmetadata": {
+      "name": string
+      "type": "sst.aws.Dynamo"
+    }
+    "Dynamoshprojectmembers": {
+      "name": string
+      "type": "sst.aws.Dynamo"
+    }
+    "Dynamoshprojects": {
+      "name": string
+      "type": "sst.aws.Dynamo"
+    }
+    "Dynamoshspecs": {
+      "name": string
+      "type": "sst.aws.Dynamo"
+    }
+    "Dynamoshsprints": {
+      "name": string
+      "type": "sst.aws.Dynamo"
+    }
+    "Dynamoshticketactivities": {
+      "name": string
+      "type": "sst.aws.Dynamo"
+    }
+    "Dynamoshticketattachments": {
+      "name": string
+      "type": "sst.aws.Dynamo"
+    }
+    "Dynamoshticketcomments": {
+      "name": string
+      "type": "sst.aws.Dynamo"
+    }
+    "Dynamoshticketdeps": {
+      "name": string
+      "type": "sst.aws.Dynamo"
+    }
+    "Dynamoshtickets": {
+      "name": string
+      "type": "sst.aws.Dynamo"
+    }
+    "Dynamoshusers": {
+      "name": string
+      "type": "sst.aws.Dynamo"
+    }
+    "GithubOauthClientId": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "GithubOauthClientSecret": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "GithubToken": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "GoogleOauthClientSecret": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "GroqApiKey": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "GroqApiKeyT2": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "Site": {
+      "type": "sst.aws.Nextjs"
+      "url": string
+    }
+    "SkribbyApiKey": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "SkribbyWebhookSecret": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "TokenEncryptionKey": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "Uploads": {
+      "name": string
+      "type": "sst.aws.Bucket"
+    }
+    "WebhookAccessToken": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
   }
 }
 
-import 'sst';
-export {};
+import "sst"
+export {}

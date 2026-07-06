@@ -1,12 +1,7 @@
 // lib/groq-ai.ts
-// Separate Groq client for Tier 2+ AI features (project health, sprint suggestions, etc.)
-// Uses GROQ_T2_KEY for isolated rate limits and cost tracking.
-// Falls back to GROQ_API_KEY if GROQ_T2_KEY is not set.
 import Groq from 'groq-sdk';
 
-const aiKey = process.env.GROQ_T2_KEY || process.env.GROQ_API_KEY!;
-
-export const groqAI = new Groq({ apiKey: aiKey });
+export const groqAI = new Groq({ apiKey: process.env.GROQ_API_KEY! });
 
 export const AI_MODEL = 'llama-3.3-70b-versatile';
 

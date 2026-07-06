@@ -48,7 +48,7 @@ function extractJson(text: string): string {
 }
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY! });
-const groqT2 = new Groq({ apiKey: process.env.GROQ_API_KEY_T2 || process.env.GROQ_API_KEY! });
+const groqT2 = groq;
 
 export interface SpecBlock {
   id: string;
