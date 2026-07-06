@@ -257,6 +257,7 @@ export const TicketDependenciesEntity = makeEntity(
     projectId: { type: 'string', required: true },
     ticketId: { type: 'string', required: true },
     dependsOnTicketId: { type: 'string', required: true },
+    userId: { type: 'string' },
     dependencyType: { type: 'string', default: 'hard' },
     strength: { type: 'string', default: 'strong' },
     note: { type: 'string' },
@@ -284,6 +285,11 @@ export const TicketDependenciesEntity = makeEntity(
       index: 'gsi3',
       pk: { field: 'gsi3pk', composite: ['projectId'] },
       sk: { field: 'gsi3sk', composite: ['createdAt'] },
+    },
+    byUser: {
+      index: 'gsi4',
+      pk: { field: 'gsi4pk', composite: ['userId'] },
+      sk: { field: 'gsi4sk', composite: ['createdAt'] },
     },
   }
 );
@@ -315,6 +321,11 @@ export const TicketAttachmentsEntity = makeEntity(
       pk: { field: 'gsi1pk', composite: ['ticketId'] },
       sk: { field: 'gsi1sk', composite: ['createdAt'] },
     },
+    byUser: {
+      index: 'gsi2',
+      pk: { field: 'gsi2pk', composite: ['userId'] },
+      sk: { field: 'gsi2sk', composite: ['createdAt'] },
+    },
   }
 );
 
@@ -341,6 +352,11 @@ export const TicketCommentsEntity = makeEntity(
       index: 'gsi1',
       pk: { field: 'gsi1pk', composite: ['ticketId'] },
       sk: { field: 'gsi1sk', composite: ['createdAt'] },
+    },
+    byUser: {
+      index: 'gsi2',
+      pk: { field: 'gsi2pk', composite: ['userId'] },
+      sk: { field: 'gsi2sk', composite: ['createdAt'] },
     },
   }
 );
@@ -373,6 +389,11 @@ export const TicketActivitiesEntity = makeEntity(
       pk: { field: 'gsi2pk', composite: ['actionType'] },
       sk: { field: 'gsi2sk', composite: ['createdAt'] },
     },
+    byUser: {
+      index: 'gsi3',
+      pk: { field: 'gsi3pk', composite: ['userId'] },
+      sk: { field: 'gsi3sk', composite: ['createdAt'] },
+    },
   }
 );
 
@@ -392,6 +413,7 @@ export const IntegrationsEntity = makeEntity(
     googleToken: { type: 'string' },
     googleRefreshToken: { type: 'string' },
     webhookSecret: { type: 'string' },
+    createdAt: { type: 'string', default: () => new Date().toISOString() },
     updatedAt: { type: 'string', default: () => new Date().toISOString() },
   },
   {
@@ -429,6 +451,11 @@ export const ProjectMembersEntity = makeEntity(
       index: 'gsi1',
       pk: { field: 'gsi1pk', composite: ['orgId'] },
       sk: { field: 'gsi1sk', composite: ['userId'] },
+    },
+    byUser: {
+      index: 'gsi2',
+      pk: { field: 'gsi2pk', composite: ['userId'] },
+      sk: { field: 'gsi2sk', composite: ['createdAt'] },
     },
   }
 );
@@ -614,6 +641,50 @@ export const SprintsEntity = makeEntity(
       index: 'gsi2',
       pk: { field: 'gsi2pk', composite: ['orgId'] },
       sk: { field: 'gsi2sk', composite: ['createdAt'] },
+    },
+  }
+);
+
+// ─── Deletion Requests (DPDP/GDPR workflow) ──────────────────────
+export const DeletionRequestsEntity = makeEntity(
+  'syntheon-deletion-requests',
+  'DYNAMO_TABLE_DELETION_REQUESTS',
+  'deletionRequest',
+  {
+    id: { type: 'string', required: true },
+    userId: { type: 'string', required: true },
+    orgId: { type: 'string' },
+    scope: { type: 'string', required: true },
+    status: { type: 'string', default: 'pending' },
+    requestedAt: { type: 'string', default: () => new Date().toISOString() },
+    scheduledFor: { type: 'string', required: true },
+    warningDueAt: { type: 'string', required: true },
+    warningSentAt: { type: 'string' },
+    processedAt: { type: 'string' },
+    cancelledAt: { type: 'string' },
+    reason: { type: 'string' },
+    retentionNotes: { type: 'string' },
+    processorReceipts: { type: 'any', default: {} },
+  },
+  {
+    primary: {
+      pk: { field: 'pk', composite: ['id'] },
+      sk: { field: 'sk', template: 'deletionRequest' },
+    },
+    byUser: {
+      index: 'gsi1',
+      pk: { field: 'gsi1pk', composite: ['userId'] },
+      sk: { field: 'gsi1sk', composite: ['requestedAt'] },
+    },
+    byStatus: {
+      index: 'gsi2',
+      pk: { field: 'gsi2pk', composite: ['status'] },
+      sk: { field: 'gsi2sk', composite: ['scheduledFor'] },
+    },
+    byOrg: {
+      index: 'gsi3',
+      pk: { field: 'gsi3pk', composite: ['orgId'] },
+      sk: { field: 'gsi3sk', composite: ['requestedAt'] },
     },
   }
 );

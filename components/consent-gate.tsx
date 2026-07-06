@@ -73,9 +73,5 @@ export function ConsentGate({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-background p-6">
-      <ConsentForm loading={false} onConsentGiven={() => setConsentStatus('valid')} />
-    </div>
-  );
+  return <ConsentForm loading={false} onConsentGiven={() => setConsentStatus('valid')} />;
 }

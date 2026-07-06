@@ -17,11 +17,7 @@ export function PreAuthConsent({ children }: { children: React.ReactNode }) {
   }, []);
 
   if (!mounted) {
-    return (
-      <div className="flex-1 flex items-center justify-center p-6 md:p-12">
-        <div className="w-full max-w-sm" />
-      </div>
-    );
+    return <div className="flex-1" />;
   }
 
   if (hasPreAuthConsent) {
@@ -29,14 +25,12 @@ export function PreAuthConsent({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex-1 flex items-center justify-center p-6 md:p-12">
-      <ConsentForm
-        onConsentGiven={(purposes) => {
-          localStorage.setItem(CONSENT_LOCAL_KEY, 'true');
-          localStorage.setItem(CONSENT_PURPOSES_KEY, JSON.stringify(purposes));
-          setHasPreAuthConsent(true);
-        }}
-      />
-    </div>
+    <ConsentForm
+      onConsentGiven={(purposes) => {
+        localStorage.setItem(CONSENT_LOCAL_KEY, 'true');
+        localStorage.setItem(CONSENT_PURPOSES_KEY, JSON.stringify(purposes));
+        setHasPreAuthConsent(true);
+      }}
+    />
   );
 }

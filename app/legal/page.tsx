@@ -2,18 +2,34 @@
 
 import { useState, useEffect, type ReactNode } from 'react';
 import Link from 'next/link';
+import { useAuth } from '@clerk/nextjs';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 const APP_URL = 'https://app.syntheonhub.com';
 
 export default function LegalPage() {
   const [active, setActive] = useState('privacy');
   const [mounted, setMounted] = useState(false);
+  const { isLoaded, isSignedIn } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const isEmbed = searchParams.get('embed') === '1';
 
   useEffect(() => {
     setMounted(true);
     const hash = window.location.hash.replace('#', '');
     if (hash) setActive(hash);
   }, []);
+
+  useEffect(() => {
+    if (isLoaded && isSignedIn && !isEmbed) {
+      router.replace('/settings?tab=legal');
+    }
+  }, [isLoaded, isSignedIn, isEmbed, router]);
+
+  if (isLoaded && isSignedIn && !isEmbed) {
+    return null;
+  }
 
   const tabs = [
     { id: 'privacy', label: 'Privacy Policy' },
@@ -78,7 +94,9 @@ export default function LegalPage() {
           'Use Syntheon Hub — an AI-powered project management platform that helps teams manage projects, meetings, tasks, tickets, sprints, and milestones. The platform uses artificial intelligence to analyze meeting transcripts and user-provided content to generate actionable project artifacts, improve planning, and enhance team collaboration.',
           'Engage with us in other related ways, including any marketing or events',
         ].map((c, i) => (
-          <li key={i} style={s().li}>{c}</li>
+          <li key={i} style={s().li}>
+            {c}
+          </li>
         ))}
       </ul>
       <p style={s().p}>
@@ -96,8 +114,8 @@ export default function LegalPage() {
       <h2 style={s().h2}>Summary of Key Points</h2>
       <p style={s().p}>
         This summary provides key points from our Privacy Notice, but you can find out more details
-        about any of these topics by clicking the link following each key point or by using our table
-        of contents below to find the section you are looking for.
+        about any of these topics by clicking the link following each key point or by using our
+        table of contents below to find the section you are looking for.
       </p>
       <p style={s().p}>
         <strong>What personal information do we process?</strong> When you visit, use, or navigate
@@ -178,8 +196,9 @@ export default function LegalPage() {
       </p>
       <p style={s().p}>
         We collect personal information that you voluntarily provide to us when you register on the
-        Services, express an interest in obtaining information about us or our products and Services,
-        when you participate in activities on the Services, or otherwise when you contact us.
+        Services, express an interest in obtaining information about us or our products and
+        Services, when you participate in activities on the Services, or otherwise when you contact
+        us.
       </p>
       <p style={s().p}>
         <strong>Personal Information Provided by You.</strong> The personal information that we
@@ -188,8 +207,16 @@ export default function LegalPage() {
         include the following:
       </p>
       <ul style={{ paddingLeft: '1.5rem', marginBottom: '1rem' }}>
-        {['Names', 'Email addresses', 'Usernames', 'Contact or authentication data', 'User-generated content'].map((c, i) => (
-          <li key={i} style={s().li}>{c}</li>
+        {[
+          'Names',
+          'Email addresses',
+          'Usernames',
+          'Contact or authentication data',
+          'User-generated content',
+        ].map((c, i) => (
+          <li key={i} style={s().li}>
+            {c}
+          </li>
         ))}
       </ul>
       <p style={s().p}>
@@ -219,11 +246,17 @@ export default function LegalPage() {
       <h3 style={{ ...s().h2, fontSize: '1rem' }}>Google API</h3>
       <p style={s().p}>
         Our use of information received from Google APIs will adhere to{' '}
-        <a href="https://developers.google.com/terms/api-services-user-data-policy" style={{ color: 'rgba(255,255,255,0.5)' }}>
+        <a
+          href="https://developers.google.com/terms/api-services-user-data-policy"
+          style={{ color: 'rgba(255,255,255,0.5)' }}
+        >
           Google API Services User Data Policy
         </a>
         , including the{' '}
-        <a href="https://developers.google.com/terms/api-services-user-data-policy#limited-use" style={{ color: 'rgba(255,255,255,0.5)' }}>
+        <a
+          href="https://developers.google.com/terms/api-services-user-data-policy#limited-use"
+          style={{ color: 'rgba(255,255,255,0.5)' }}
+        >
           Limited Use requirements
         </a>
         .
@@ -250,7 +283,9 @@ export default function LegalPage() {
           'To identify usage trends. We may process information about how you use our Services to better understand how they are being used so we can improve them.',
           'To comply with our legal obligations. We may process your information to comply with our legal obligations, respond to legal requests, and exercise, establish, or defend our legal rights.',
         ].map((c, i) => (
-          <li key={i} style={s().li}>{c}</li>
+          <li key={i} style={s().li}>
+            {c}
+          </li>
         ))}
       </ul>
 
@@ -261,14 +296,14 @@ export default function LegalPage() {
       </p>
       <p style={s().p}>
         <strong>Vendors, Consultants, and Other Third-Party Service Providers.</strong> We may share
-        your data with third-party vendors, service providers, contractors, or agents
-        (&ldquo;third parties&rdquo;) who perform services for us or on our behalf and require
-        access to such information to do that work. We have contracts in place with our third
-        parties, which are designed to help safeguard your personal information. This means that
-        they cannot do anything with your personal information unless we have instructed them to do
-        it. They will also not share your personal information with any organization apart from us.
-        They also commit to protect the data they hold on our behalf and to retain it for the period
-        we instruct.
+        your data with third-party vendors, service providers, contractors, or agents (&ldquo;third
+        parties&rdquo;) who perform services for us or on our behalf and require access to such
+        information to do that work. We have contracts in place with our third parties, which are
+        designed to help safeguard your personal information. This means that they cannot do
+        anything with your personal information unless we have instructed them to do it. They will
+        also not share your personal information with any organization apart from us. They also
+        commit to protect the data they hold on our behalf and to retain it for the period we
+        instruct.
       </p>
       <p style={s().p}>The third parties we may share personal information with are as follows:</p>
       <ul style={{ paddingLeft: '1.5rem', marginBottom: '1rem' }}>
@@ -279,7 +314,9 @@ export default function LegalPage() {
           'AI Platforms: Deepgram',
           'User Account Registration & Authentication: Clerk',
         ].map((c, i) => (
-          <li key={i} style={s().li}>{c}</li>
+          <li key={i} style={s().li}>
+            {c}
+          </li>
         ))}
       </ul>
       <p style={s().p}>
@@ -289,14 +326,16 @@ export default function LegalPage() {
         {[
           'Business Transfers. We may share or transfer your information in connection with, or during negotiations of, any merger, sale of company assets, financing, or acquisition of all or a portion of our business to another company.',
         ].map((c, i) => (
-          <li key={i} style={s().li}>{c}</li>
+          <li key={i} style={s().li}>
+            {c}
+          </li>
         ))}
       </ul>
 
       <h2 style={s().h1}>4. Do We Use Cookies and Other Tracking Technologies?</h2>
       <p style={s().p}>
-        <strong>In Short:</strong> We may use cookies and other tracking technologies to collect
-        and store your information.
+        <strong>In Short:</strong> We may use cookies and other tracking technologies to collect and
+        store your information.
       </p>
       <p style={s().p}>
         We may use cookies and similar tracking technologies (like web beacons and pixels) to gather
@@ -338,7 +377,9 @@ export default function LegalPage() {
       <p style={s().p}>Our AI Products are designed for the following functions:</p>
       <ul style={{ paddingLeft: '1.5rem', marginBottom: '1rem' }}>
         {['Natural language processing', 'AI document generation', 'AI insights'].map((c, i) => (
-          <li key={i} style={s().li}>{c}</li>
+          <li key={i} style={s().li}>
+            {c}
+          </li>
         ))}
       </ul>
       <h3 style={{ ...s().h2, fontSize: '1rem' }}>How We Process Your Data Using AI</h3>
@@ -354,7 +395,9 @@ export default function LegalPage() {
       </p>
       <ul style={{ paddingLeft: '1.5rem', marginBottom: '1rem' }}>
         {['Log in to your account settings and update your user account'].map((c, i) => (
-          <li key={i} style={s().li}>{c}</li>
+          <li key={i} style={s().li}>
+            {c}
+          </li>
         ))}
       </ul>
 
@@ -413,8 +456,8 @@ export default function LegalPage() {
         we cannot promise or guarantee that hackers, cybercriminals, or other unauthorized third
         parties will not be able to defeat our security and improperly collect, access, steal, or
         modify your information. Although we will do our best to protect your personal information,
-        transmission of personal information to and from our Services is at your own risk. You should
-        only access the Services within a secure environment.
+        transmission of personal information to and from our Services is at your own risk. You
+        should only access the Services within a secure environment.
       </p>
 
       <h2 style={s().h1}>9. Do We Collect Information From Minors?</h2>
@@ -424,12 +467,12 @@ export default function LegalPage() {
       </p>
       <p style={s().p}>
         We do not knowingly collect, solicit data from, or market to children under 18 years of age,
-        nor do we knowingly sell such personal information. By using the Services, you represent that
-        you are at least 18 or that you are the parent or guardian of such a minor and consent to
-        such minor dependent&rsquo;s use of the Services. If we learn that personal information from
-        users less than 18 years of age has been collected, we will deactivate the account and take
-        reasonable measures to promptly delete such data from our records. If you become aware of
-        any data we may have collected from children under age 18, please contact us at{' '}
+        nor do we knowingly sell such personal information. By using the Services, you represent
+        that you are at least 18 or that you are the parent or guardian of such a minor and consent
+        to such minor dependent&rsquo;s use of the Services. If we learn that personal information
+        from users less than 18 years of age has been collected, we will deactivate the account and
+        take reasonable measures to promptly delete such data from our records. If you become aware
+        of any data we may have collected from children under age 18, please contact us at{' '}
         <a href="mailto:privacy@syntheonhub.com" style={{ color: 'rgba(255,255,255,0.5)' }}>
           privacy@syntheonhub.com
         </a>
@@ -460,7 +503,9 @@ export default function LegalPage() {
       </p>
       <ul style={{ paddingLeft: '1.5rem', marginBottom: '1rem' }}>
         {['Log in to your account settings and update your user account.'].map((c, i) => (
-          <li key={i} style={s().li}>{c}</li>
+          <li key={i} style={s().li}>
+            {c}
+          </li>
         ))}
       </ul>
       <p style={s().p}>
@@ -535,7 +580,9 @@ export default function LegalPage() {
         __________
       </p>
 
-      <h2 style={s().h1}>15. How Can You Review, Update, or Delete the Data We Collect From You?</h2>
+      <h2 style={s().h1}>
+        15. How Can You Review, Update, or Delete the Data We Collect From You?
+      </h2>
       <p style={s().p}>
         You have the right to request access to the personal information we collect from you,
         details about how we have processed it, correct inaccuracies, or delete your personal
@@ -553,73 +600,718 @@ export default function LegalPage() {
   const Terms = () => (
     <div>
       <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.3)', marginBottom: '2rem' }}>
-        Last updated: March 2026
+        Last updated: July 07, 2026
       </p>
 
-      <h2 style={s().h1}>Terms of Service</h2>
+      <h2 style={s().h1}>Terms and Conditions</h2>
+
+      <h2 style={s().h2}>Agreement to Our Legal Terms</h2>
       <p style={s().p}>
-        By using Syntheon Hub you agree to these Terms. If you do not agree, do not use the service.
+        We are <strong>BHUVAN G S</strong>, doing business as <strong>Syntheon Hub</strong>
+        (&ldquo;Company,&rdquo; &ldquo;we,&rdquo; &ldquo;us,&rdquo; &ldquo;our&rdquo;).
+      </p>
+      <p style={s().p}>
+        We operate the website www.syntheonhub.com (the &ldquo;Site&rdquo;), as well as any other
+        related products and services that refer or link to these legal terms (the &ldquo;Legal
+        Terms&rdquo;) (collectively, the &ldquo;Services&rdquo;).
+      </p>
+      <p style={s().p}>
+        Syntheon Hub is an AI-powered project management platform that helps teams manage projects,
+        meetings, tasks, tickets, sprints, and milestones. The platform uses artificial intelligence
+        to analyze meeting transcripts and user-provided content to generate actionable project
+        artifacts, improve planning, and enhance team collaboration.
+      </p>
+      <p style={s().p}>
+        You can contact us by phone at +91 99026 80981, email at{' '}
+        <a href="mailto:support@syntheonhub.com" style={{ color: 'rgba(255,255,255,0.5)' }}>
+          support@syntheonhub.com
+        </a>
+        , or by mail to __________, __________, __________.
+      </p>
+      <p style={s().p}>
+        These Legal Terms constitute a legally binding agreement made between you, whether
+        personally or on behalf of an entity (&ldquo;you&rdquo;), and BHUVAN G S, concerning your
+        access to and use of the Services. You agree that by accessing the Services, you have read,
+        understood, and agreed to be bound by all of these Legal Terms. IF YOU DO NOT AGREE WITH ALL
+        OF THESE LEGAL TERMS, THEN YOU ARE EXPRESSLY PROHIBITED FROM USING THE SERVICES AND YOU MUST
+        DISCONTINUE USE IMMEDIATELY.
+      </p>
+      <p style={s().p}>
+        We will provide you with prior notice of any scheduled changes to the Services you are
+        using. Changes to these Legal Terms will become effective four (4) days after the notice is
+        given, except if the changes apply to new functionality, security updates, and bug fixes, in
+        which case the changes will be effective immediately. By continuing to use the Services
+        after the effective date of any changes, you agree to be bound by the modified terms. If you
+        disagree with such changes, you may terminate Services as per the section &ldquo;Term and
+        Termination.&rdquo;
+      </p>
+      <p style={s().p}>
+        The Services are intended for users who are at least 18 years old. Persons under the age of
+        18 are not permitted to use or register for the Services.
+      </p>
+      <p style={s().p}>We recommend that you print a copy of these Legal Terms for your records.</p>
+
+      <h2 style={s().h2}>Table of Contents</h2>
+      <ul style={{ paddingLeft: '1.5rem', marginBottom: '1rem' }}>
+        {[
+          'Our Services',
+          'Intellectual Property Rights',
+          'User Representations',
+          'Purchases and Payment',
+          'Subscriptions',
+          'Prohibited Activities',
+          'User Generated Contributions',
+          'Contribution License',
+          'Guidelines for Reviews',
+          'Third-Party Websites and Content',
+          'Services Management',
+          'Privacy Policy',
+          'Copyright Infringements',
+          'Term and Termination',
+          'Modifications and Interruptions',
+          'Governing Law',
+          'Dispute Resolution',
+          'Corrections',
+          'Disclaimer',
+          'Limitations of Liability',
+          'Indemnification',
+          'User Data',
+          'Electronic Communications, Transactions, and Signatures',
+          'Miscellaneous',
+          'Contact Us',
+        ].map((c, i) => (
+          <li key={i} style={s().li}>
+            {i + 1}. {c}
+          </li>
+        ))}
+      </ul>
+
+      <h2 style={s().h1}>1. Our Services</h2>
+      <p style={s().p}>
+        The information provided when using the Services is not intended for distribution to or use
+        by any person or entity in any jurisdiction or country where such distribution or use would
+        be contrary to law or regulation or which would subject us to any registration requirement
+        within such jurisdiction or country. Accordingly, those persons who choose to access the
+        Services from other locations do so on their own initiative and are solely responsible for
+        compliance with local laws, if and to the extent local laws are applicable.
       </p>
 
-      <h2 style={s().h2}>Eligibility</h2>
+      <h2 style={s().h1}>2. Intellectual Property Rights</h2>
+      <h3 style={{ ...s().h2, fontSize: '1rem' }}>Our intellectual property</h3>
       <p style={s().p}>
-        You must be 18 or older and capable of entering a binding legal agreement.
+        We are the owner or the licensee of all intellectual property rights in our Services,
+        including all source code, databases, functionality, software, website designs, audio,
+        video, text, photographs, and graphics in the Services (collectively, the
+        &ldquo;Content&rdquo;), as well as the trademarks, service marks, and logos contained
+        therein (the &ldquo;Marks&rdquo;).
+      </p>
+      <p style={s().p}>
+        Our Content and Marks are protected by copyright and trademark laws (and various other
+        intellectual property rights and unfair competition laws) and treaties around the world.
+      </p>
+      <p style={s().p}>
+        The Content and Marks are provided in or through the Services &ldquo;AS IS&rdquo; for your
+        personal, non-commercial use or internal business purpose only.
+      </p>
+      <h3 style={{ ...s().h2, fontSize: '1rem' }}>Your use of our Services</h3>
+      <p style={s().p}>
+        Subject to your compliance with these Legal Terms, including the &ldquo;Prohibited
+        Activities&rdquo; section below, we grant you a non-exclusive, non-transferable, revocable
+        license to:
+      </p>
+      <ul style={{ paddingLeft: '1.5rem', marginBottom: '1rem' }}>
+        {[
+          'access the Services; and',
+          'download or print a copy of any portion of the Content to which you have properly gained access,',
+        ].map((c, i) => (
+          <li key={i} style={s().li}>
+            {c}
+          </li>
+        ))}
+      </ul>
+      <p style={s().p}>
+        solely for your personal, non-commercial use or internal business purpose. Except as set out
+        in this section or elsewhere in our Legal Terms, no part of the Services and no Content or
+        Marks may be copied, reproduced, aggregated, republished, uploaded, posted, publicly
+        displayed, encoded, translated, transmitted, distributed, sold, licensed, or otherwise
+        exploited for any commercial purpose whatsoever, without our express prior written
+        permission.
+      </p>
+      <p style={s().p}>
+        If you wish to make any use of the Services, Content, or Marks other than as set out in this
+        section or elsewhere in our Legal Terms, please address your request to:{' '}
+        <a href="mailto:support@syntheonhub.com" style={{ color: 'rgba(255,255,255,0.5)' }}>
+          support@syntheonhub.com
+        </a>
+        . If we ever grant you the permission to post, reproduce, or publicly display any part of
+        our Services or Content, you must identify us as the owners or licensors of the Services,
+        Content, or Marks and ensure that any copyright or proprietary notice appears or is visible
+        on posting, reproducing, or displaying our Content.
+      </p>
+      <p style={s().p}>
+        We reserve all rights not expressly granted to you in and to the Services, Content, and
+        Marks. Any breach of these Intellectual Property Rights will constitute a material breach of
+        our Legal Terms and your right to use our Services will terminate immediately.
+      </p>
+      <h3 style={{ ...s().h2, fontSize: '1rem' }}>Your submissions and contributions</h3>
+      <p style={s().p}>
+        Please review this section and the &ldquo;Prohibited Activities&rdquo; section carefully
+        prior to using our Services to understand the (a) rights you give us and (b) obligations you
+        have when you post or upload any content through the Services.
+      </p>
+      <p style={s().p}>
+        <strong>Submissions:</strong> By directly sending us any question, comment, suggestion,
+        idea, feedback, or other information about the Services (&ldquo;Submissions&rdquo;), you
+        agree to assign to us all intellectual property rights in such Submission. You agree that we
+        shall own this Submission and be entitled to its unrestricted use and dissemination for any
+        lawful purpose, commercial or otherwise, without acknowledgment or compensation to you.
+      </p>
+      <p style={s().p}>
+        <strong>Contributions:</strong> The Services may invite you to chat, contribute to, or
+        participate in blogs, message boards, online forums, and other functionality during which
+        you may create, submit, post, display, transmit, publish, distribute, or broadcast content
+        and materials to us or through the Services, including but not limited to text, writings,
+        video, audio, photographs, music, graphics, comments, reviews, rating suggestions, personal
+        information, or other material (&ldquo;Contributions&rdquo;). Any Submission that is
+        publicly posted shall also be treated as a Contribution.
+      </p>
+      <p style={s().p}>
+        You understand that Contributions may be viewable by other users of the Services and
+        possibly through third-party websites.
+      </p>
+      <p style={s().p}>
+        <strong>
+          When you post Contributions, you grant us a license (including use of your name,
+          trademarks, and logos):
+        </strong>{' '}
+        By posting any Contributions, you grant us an unrestricted, unlimited, irrevocable,
+        perpetual, non-exclusive, transferable, royalty-free, fully-paid, worldwide right, and
+        license to: use, copy, reproduce, distribute, sell, resell, publish, broadcast, retitle,
+        store, publicly perform, publicly display, reformat, translate, excerpt (in whole or in
+        part), and exploit your Contributions (including, without limitation, your image, name, and
+        voice) for any purpose, commercial, advertising, or otherwise, to prepare derivative works
+        of, or incorporate into other works, your Contributions, and to sublicense the licenses
+        granted in this section. Our use and distribution may occur in any media formats and through
+        any media channels.
+      </p>
+      <p style={s().p}>
+        This license includes our use of your name, company name, and franchise name, as applicable,
+        and any of the trademarks, service marks, trade names, logos, and personal and commercial
+        images you provide.
+      </p>
+      <p style={s().p}>
+        <strong>You are responsible for what you post or upload:</strong> By sending us Submissions
+        and/or posting Contributions through any part of the Services or making Contributions
+        accessible through the Services by linking your account through the Services to any of your
+        social networking accounts, you:
+      </p>
+      <ul style={{ paddingLeft: '1.5rem', marginBottom: '1rem' }}>
+        {[
+          'confirm that you have read and agree with our "Prohibited Activities" and will not post, send, publish, upload, or transmit through the Services any Submission nor post any Contribution that is illegal, harassing, hateful, harmful, defamatory, obscene, bullying, abusive, discriminatory, threatening to any person or group, sexually explicit, false, inaccurate, deceitful, or misleading;',
+          'to the extent permissible by applicable law, waive any and all moral rights to any such Submission and/or Contribution;',
+          'warrant that any such Submission and/or Contributions are original to you or that you have the necessary rights and licenses to submit such Submissions and/or Contributions and that you have full authority to grant us the above-mentioned rights in relation to your Submissions and/or Contributions; and',
+          'warrant and represent that your Submissions and/or Contributions do not constitute confidential information.',
+        ].map((c, i) => (
+          <li key={i} style={s().li}>
+            {c}
+          </li>
+        ))}
+      </ul>
+      <p style={s().p}>
+        You are solely responsible for your Submissions and/or Contributions and you expressly agree
+        to reimburse us for any and all losses that we may suffer because of your breach of (a) this
+        section, (b) any third party&rsquo;s intellectual property rights, or (c) applicable law.
+      </p>
+      <p style={s().p}>
+        <strong>We may remove or edit your Content:</strong> Although we have no obligation to
+        monitor any Contributions, we shall have the right to remove or edit any Contributions at
+        any time without notice if in our reasonable opinion we consider such Contributions harmful
+        or in breach of these Legal Terms. If we remove or edit any such Contributions, we may also
+        suspend or disable your account and report you to the authorities.
+      </p>
+      <h3 style={{ ...s().h2, fontSize: '1rem' }}>Copyright infringement</h3>
+      <p style={s().p}>
+        We respect the intellectual property rights of others. If you believe that any material
+        available on or through the Services infringes upon any copyright you own or control, please
+        immediately refer to the &ldquo;Copyright Infringements&rdquo; section below.
       </p>
 
-      <h2 style={s().h2}>Subscription and payment</h2>
+      <h2 style={s().h1}>3. User Representations</h2>
       <p style={s().p}>
-        Plans are billed monthly in INR via Razorpay. Subscriptions auto-renew. You will be notified
-        3 days before renewal. Exceeding usage limits pauses the relevant feature until the next
-        billing cycle.
+        By using the Services, you represent and warrant that: (1) you have the legal capacity and
+        you agree to comply with these Legal Terms; (2) you are not a minor in the jurisdiction in
+        which you reside; (3) you will not access the Services through automated or non-human means,
+        whether through a bot, script or otherwise; (4) you will not use the Services for any
+        illegal or unauthorized purpose; and (5) your use of the Services will not violate any
+        applicable law or regulation.
+      </p>
+      <p style={s().p}>
+        If you provide any information that is untrue, inaccurate, not current, or incomplete, we
+        have the right to suspend or terminate your account and refuse any and all current or future
+        use of the Services (or any portion thereof).
       </p>
 
-      <h2 style={s().h2}>Acceptable use</h2>
+      <h2 style={s().h1}>4. Purchases and Payment</h2>
+      <p style={s().p}>We accept the following forms of payment:</p>
+      <ul style={{ paddingLeft: '1.5rem', marginBottom: '1rem' }}>
+        {['Visa', 'Mastercard', 'American Express', 'Discover'].map((c, i) => (
+          <li key={i} style={s().li}>
+            {c}
+          </li>
+        ))}
+      </ul>
       <p style={s().p}>
-        You may use Syntheon Hub to record and process your own business meetings, extract tickets
-        automatically, and organize projects in workspaces you own.
+        You agree to provide current, complete, and accurate purchase and account information for
+        all purchases made via the Services. You further agree to promptly update account and
+        payment information, including email address, payment method, and payment card expiration
+        date, so that we can complete your transactions and contact you as needed. Sales tax will be
+        added to the price of purchases as deemed required by us. We may change prices at any time.
+        All payments shall be in US dollars.
       </p>
       <p style={s().p}>
-        You may not record meetings without participant consent, circumvent usage limits, or use the
-        service for any illegal purpose under Indian law.
+        You agree to pay all charges at the prices then in effect for your purchases and any
+        applicable shipping fees, and you authorize us to charge your chosen payment provider for
+        any such amounts upon placing your order. We reserve the right to correct any errors or
+        mistakes in pricing, even if we have already requested or received payment.
       </p>
-
-      <h2 style={s().h2}>Meeting recording consent</h2>
       <p style={s().p}>
-        You are solely responsible for obtaining consent from all meeting participants before using
-        the Syntheon Hub bot. Recording laws vary by jurisdiction. By using Syntheon Hub, you
-        represent and warrant that you have obtained all necessary consents from meeting
-        participants. Syntheon Hub is not liable for your failure to obtain proper consent.
-      </p>
-
-      <h2 style={s().h2}>AI-generated content disclaimer</h2>
-      <p style={s().p}>
-        AI-extracted tickets may contain inaccuracies. You are solely responsible for reviewing all
-        extracted tickets before acting on them. Syntheon Hub does not guarantee the accuracy or
-        fitness of AI-generated content.
-      </p>
-
-      <h2 style={s().h2}>Intellectual property</h2>
-      <p style={s().p}>
-        You retain full ownership of your meeting transcripts, tickets, and all project data.
-        Syntheon Hub claims no ownership over content you create using the platform.
-      </p>
-
-      <h2 style={s().h2}>Limitation of liability</h2>
-      <p style={s().p}>
-        Syntheon Hub's total liability shall not exceed the amount paid in the 3 months preceding
-        the claim. We are not liable for indirect, incidental, or consequential damages.
+        We reserve the right to refuse any order placed through the Services. We may, in our sole
+        discretion, limit or cancel quantities purchased per person, per household, or per order.
+        These restrictions may include orders placed by or under the same customer account, the same
+        payment method, and/or orders that use the same billing or shipping address. We reserve the
+        right to limit or prohibit orders that, in our sole judgment, appear to be placed by
+        dealers, resellers, or distributors.
       </p>
 
-      <h2 style={s().h2}>Governing law</h2>
+      <h2 style={s().h1}>5. Subscriptions</h2>
+      <h3 style={{ ...s().h2, fontSize: '1rem' }}>Billing and Renewal</h3>
       <p style={s().p}>
-        These Terms are governed by the laws of India. Disputes are subject to the exclusive
-        jurisdiction of courts in Bengaluru, Karnataka.
+        Your subscription will continue and automatically renew unless canceled. You consent to our
+        charging your payment method on a recurring basis without requiring your prior approval for
+        each recurring charge, until such time as you cancel the applicable order. The length of
+        your billing cycle will depend on the type of subscription plan you choose when you
+        subscribed to the Services.
+      </p>
+      <h3 style={{ ...s().h2, fontSize: '1rem' }}>Free Trial</h3>
+      <p style={s().p}>
+        We offer a 15-day free trial to new users who register with the Services. The account will
+        not be charged and the subscription will be suspended until upgraded to a paid version at
+        the end of the free trial.
+      </p>
+      <h3 style={{ ...s().h2, fontSize: '1rem' }}>Cancellation</h3>
+      <p style={s().p}>
+        You can cancel your subscription at any time by logging into your account. Your cancellation
+        will take effect at the end of the current paid term. If you have any questions or are
+        unsatisfied with our Services, please email us at{' '}
+        <a href="mailto:support@syntheonhub.com" style={{ color: 'rgba(255,255,255,0.5)' }}>
+          support@syntheonhub.com
+        </a>
+        .
+      </p>
+      <h3 style={{ ...s().h2, fontSize: '1rem' }}>Fee Changes</h3>
+      <p style={s().p}>
+        We may, from time to time, make changes to the subscription fee and will communicate any
+        price changes to you in accordance with applicable law.
       </p>
 
-      <h2 style={s().h2}>Contact</h2>
+      <h2 style={s().h1}>6. Prohibited Activities</h2>
       <p style={s().p}>
-        <a href="mailto:legal@syntheonhub.com" style={{ color: 'rgba(255,255,255,0.3)' }}>
-          legal@syntheonhub.com
+        You may not access or use the Services for any purpose other than that for which we make the
+        Services available. The Services may not be used in connection with any commercial endeavors
+        except those that are specifically endorsed or approved by us.
+      </p>
+      <p style={s().p}>As a user of the Services, you agree not to:</p>
+      <ul style={{ paddingLeft: '1.5rem', marginBottom: '1rem' }}>
+        {[
+          'Systematically retrieve data or other content from the Services to create or compile, directly or indirectly, a collection, compilation, database, or directory without written permission from us.',
+          'Trick, defraud, or mislead us and other users, especially in any attempt to learn sensitive account information such as user passwords.',
+          'Circumvent, disable, or otherwise interfere with security-related features of the Services, including features that prevent or restrict the use or copying of any Content or enforce limitations on the use of the Services and/or the Content contained therein.',
+          'Disparage, tarnish, or otherwise harm, in our opinion, us and/or the Services.',
+          'Use any information obtained from the Services in order to harass, abuse, or harm another person.',
+          'Make improper use of our support services or submit false reports of abuse or misconduct.',
+          'Use the Services in a manner inconsistent with any applicable laws or regulations.',
+          'Engage in unauthorized framing of or linking to the Services.',
+          'Upload or transmit (or attempt to upload or to transmit) viruses, Trojan horses, or other material, including excessive use of capital letters and spamming (continuous posting of repetitive text), that interferes with any party\u2019s uninterrupted use and enjoyment of the Services or modifies, impairs, disrupts, alters, or interferes with the use, features, functions, operation, or maintenance of the Services.',
+          'Engage in any automated use of the system, such as using scripts to send comments or messages, or using any data mining, robots, or similar data gathering and extraction tools.',
+          'Delete the copyright or other proprietary rights notice from any Content.',
+          'Attempt to impersonate another user or person or use the username of another user.',
+          'Upload or transmit (or attempt to upload or to transmit) any material that acts as a passive or active information collection or transmission mechanism, including without limitation, clear graphics interchange formats ("gifs"), 1\u00d71 pixels, web bugs, cookies, or other similar devices (sometimes referred to as "spyware" or "passive collection mechanisms" or "pcms").',
+          'Interfere with, disrupt, or create an undue burden on the Services or the networks or services connected to the Services.',
+          'Harass, annoy, intimidate, or threaten any of our employees or agents engaged in providing any portion of the Services to you.',
+          'Attempt to bypass any measures of the Services designed to prevent or restrict access to the Services, or any portion of the Services.',
+          "Copy or adapt the Services' software, including but not limited to Flash, PHP, HTML, JavaScript, or other code.",
+          'Except as permitted by applicable law, decipher, decompile, disassemble, or reverse engineer any of the software comprising or in any way making up a part of the Services.',
+          'Except as may be the result of standard search engine or Internet browser usage, use, launch, develop, or distribute any automated system, including without limitation, any spider, robot, cheat utility, scraper, or offline reader that accesses the Services, or use or launch any unauthorized script or other software.',
+          'Use a buying agent or purchasing agent to make purchases on the Services.',
+          'Make any unauthorized use of the Services, including collecting usernames and/or email addresses of users by electronic or other means for the purpose of sending unsolicited email, or creating user accounts by automated means or under false pretenses.',
+          'Use the Services as part of any effort to compete with us or otherwise use the Services and/or the Content for any revenue-generating endeavor or commercial enterprise.',
+          'Sell or otherwise transfer your profile.',
+          'Use the Services in any manner that could interfere with, disrupt, negatively affect, or inhibit other users from fully enjoying the Services.',
+          'Use the Services to violate any law, regulation, or legal obligation.',
+          'Infringe upon the rights of others, including intellectual property rights.',
+          'Upload or transmit viruses, malware, or other malicious code.',
+          'Attempt to gain unauthorized access to any part of the Services.',
+          'Collect or harvest personal information of other users.',
+          'Use the Services to harass, abuse, or harm others.',
+          'Use the Services to send unsolicited communications or spam.',
+          'Impersonate another person or entity.',
+          'Use the Services in any way that could damage, disable, or impair the Services.',
+          'Use the Services to advertise or offer to sell goods and services.',
+        ].map((c, i) => (
+          <li key={i} style={s().li}>
+            {c}
+          </li>
+        ))}
+      </ul>
+
+      <h2 style={s().h1}>7. User Generated Contributions</h2>
+      <p style={s().p}>
+        The Services may invite you to chat, contribute to, or participate in blogs, message boards,
+        online forums, and other functionality, and may provide you with the opportunity to create,
+        submit, post, display, transmit, perform, publish, distribute, or broadcast content and
+        materials to us or on the Services, including but not limited to text, writings, video,
+        audio, photographs, graphics, comments, suggestions, or personal information or other
+        material (collectively, &ldquo;Contributions&rdquo;). Contributions may be viewable by other
+        users of the Services and through third-party websites. As such, any Contributions you
+        transmit may be treated as non-confidential and non-proprietary. When you create or make
+        available any Contributions, you thereby represent and warrant that:
+      </p>
+      <ul style={{ paddingLeft: '1.5rem', marginBottom: '1rem' }}>
+        {[
+          'The creation, distribution, transmission, public display, or performance, and the accessing, downloading, or copying of your Contributions do not and will not infringe the proprietary rights, including but not limited to the copyright, patent, trademark, trade secret, or moral rights of any third party.',
+          'You are the creator and owner of or have the necessary licenses, rights, consents, releases, and permissions to use and to authorize us, the Services, and other users of the Services to use your Contributions in any manner contemplated by the Services and these Legal Terms.',
+          'You have the written consent, release, and/or permission of each and every identifiable individual person in your Contributions to use the name or likeness of each and every such identifiable individual person to enable inclusion and use of your Contributions in any manner contemplated by the Services and these Legal Terms.',
+          'Your Contributions are not false, inaccurate, or misleading.',
+          'Your Contributions are not unsolicited or unauthorized advertising, promotional materials, pyramid schemes, chain letters, spam, mass mailings, or other forms of solicitation.',
+          'Your Contributions are not obscene, lewd, lascivious, filthy, violent, harassing, libelous, slanderous, or otherwise objectionable (as determined by us).',
+          'Your Contributions do not ridicule, mock, disparage, intimidate, or abuse anyone.',
+          'Your Contributions are not used to harass or threaten (in the legal sense of those terms) any other person and to promote violence against a specific person or class of people.',
+          'Your Contributions do not violate any applicable law, regulation, or rule.',
+          'Your Contributions do not violate the privacy or publicity rights of any third party.',
+          'Your Contributions do not violate any applicable law concerning child pornography, or otherwise intended to protect the health or well-being of minors.',
+          'Your Contributions do not include any offensive comments that are connected to race, national origin, gender, sexual preference, or physical handicap.',
+          'Your Contributions do not otherwise violate, or link to material that violates, any provision of these Legal Terms, or any applicable law or regulation.',
+        ].map((c, i) => (
+          <li key={i} style={s().li}>
+            {c}
+          </li>
+        ))}
+      </ul>
+      <p style={s().p}>
+        Any use of the Services in violation of the foregoing violates these Legal Terms and may
+        result in, among other things, termination or suspension of your rights to use the Services.
+      </p>
+
+      <h2 style={s().h1}>8. Contribution License</h2>
+      <p style={s().p}>
+        By posting your Contributions to any part of the Services, you automatically grant, and you
+        represent and warrant that you have the right to grant, to us an unrestricted, unlimited,
+        irrevocable, perpetual, non-exclusive, transferable, royalty-free, fully-paid, worldwide
+        right, and license to host, use, copy, reproduce, disclose, sell, resell, publish,
+        broadcast, retitle, archive, store, cache, publicly perform, publicly display, reformat,
+        translate, transmit, excerpt (in whole or in part), and distribute such Contributions
+        (including, without limitation, your image and voice) for any purpose, commercial,
+        advertising, or otherwise, and to prepare derivative works of, or incorporate into other
+        works, such Contributions, and grant and authorize sublicenses of the foregoing. The use and
+        distribution may occur in any media formats and through any media channels.
+      </p>
+      <p style={s().p}>
+        This license will apply to any form, media, or technology now known or hereafter developed,
+        and includes our use of your name, company name, and franchise name, as applicable, and any
+        of the trademarks, service marks, trade names, logos, and personal and commercial images you
+        provide. You waive all moral rights in your Contributions, and you warrant that moral rights
+        have not otherwise been asserted in your Contributions.
+      </p>
+      <p style={s().p}>
+        We do not assert any ownership over your Contributions. You retain full ownership of all of
+        your Contributions and any intellectual property rights or other proprietary rights
+        associated with your Contributions. We are not liable for any statements or representations
+        in your Contributions provided by you in any area on the Services. You are solely
+        responsible for your Contributions to the Services and you expressly agree to exonerate us
+        from any and all responsibility and to refrain from any legal action against us regarding
+        your Contributions.
+      </p>
+      <p style={s().p}>
+        We have the right, in our sole and absolute discretion, (1) to edit, redact, or otherwise
+        change any Contributions; (2) to re-categorize any Contributions to place them in more
+        appropriate locations on the Services; and (3) to pre-screen or delete any Contributions at
+        any time and for any reason, without notice. We have no obligation to monitor your
+        Contributions.
+      </p>
+
+      <h2 style={s().h1}>9. Guidelines for Reviews</h2>
+      <p style={s().p}>
+        We may provide you areas on the Services to leave reviews or ratings. When posting a review,
+        you must comply with the following criteria: (1) you should have firsthand experience with
+        the person/entity being reviewed; (2) your reviews should not contain offensive profanity,
+        or abusive, racist, offensive, or hateful language; (3) your reviews should not contain
+        discriminatory references based on religion, race, gender, national origin, age, marital
+        status, sexual orientation, or disability; (4) your reviews should not contain references to
+        illegal activity; (5) you should not be affiliated with competitors if posting negative
+        reviews; (6) you should not make any conclusions as to the legality of conduct; (7) you may
+        not post any false or misleading statements; and (8) you may not organize a campaign
+        encouraging others to post reviews, whether positive or negative.
+      </p>
+      <p style={s().p}>
+        We may accept, reject, or remove reviews in our sole discretion. We have absolutely no
+        obligation to screen reviews or to delete reviews, even if anyone considers reviews
+        objectionable or inaccurate. Reviews are not endorsed by us, and do not necessarily
+        represent our opinions or the views of any of our affiliates or partners. We do not assume
+        liability for any review or for any claims, liabilities, or losses resulting from any
+        review. By posting a review, you hereby grant to us a perpetual, non-exclusive, worldwide,
+        royalty-free, fully paid, assignable, and sublicensable right and license to reproduce,
+        modify, translate, transmit by any means, display, perform, and/or distribute all content
+        relating to review.
+      </p>
+
+      <h2 style={s().h1}>10. Third-Party Websites and Content</h2>
+      <p style={s().p}>
+        The Services may contain (or you may be sent via the Site) links to other websites
+        (&ldquo;Third-Party Websites&rdquo;) as well as articles, photographs, text, graphics,
+        pictures, designs, music, sound, video, information, applications, software, and other
+        content or items belonging to or originating from third parties (&ldquo;Third-Party
+        Content&rdquo;). Such Third-Party Websites and Third-Party Content are not investigated,
+        monitored, or checked for accuracy, appropriateness, or completeness by us, and we are not
+        responsible for any Third-Party Websites accessed through the Services or any Third-Party
+        Content posted on, available through, or installed from the Services, including the content,
+        accuracy, offensiveness, opinions, reliability, privacy practices, or other policies of or
+        contained in the Third-Party Websites or the Third-Party Content.
+      </p>
+      <p style={s().p}>
+        Inclusion of, linking to, or permitting the use or installation of any Third-Party Websites
+        or any Third-Party Content does not imply approval or endorsement thereof by us. If you
+        decide to leave the Services and access the Third-Party Websites or to use or install any
+        Third-Party Content, you do so at your own risk, and you should be aware these Legal Terms
+        no longer govern. You should review the applicable terms and policies, including privacy and
+        data gathering practices, of any website to which you navigate from the Services or relating
+        to any applications you use or install from the Services. Any purchases you make through
+        Third-Party Websites will be through other websites and from other companies, and we take no
+        responsibility whatsoever in relation to such purchases which are exclusively between you
+        and the applicable third party. You agree and acknowledge that we do not endorse the
+        products or services offered on Third-Party Websites and you shall hold us blameless from
+        any harm caused by your purchase of such products or services.
+      </p>
+
+      <h2 style={s().h1}>11. Services Management</h2>
+      <p style={s().p}>
+        We reserve the right, but not the obligation, to: (1) monitor the Services for violations of
+        these Legal Terms; (2) take appropriate legal action against anyone who, in our sole
+        discretion, violates the law or these Legal Terms, including without limitation, reporting
+        such user to law enforcement authorities; (3) in our sole discretion and without limitation,
+        refuse, restrict access to, limit the availability of, or disable (to the extent
+        technologically feasible) any of your Contributions or any portion thereof; (4) in our sole
+        discretion and without limitation, notice, or liability, to remove from the Services or
+        otherwise disable all files and content that are excessive in size or are in any way
+        burdensome to our systems; and (5) otherwise manage the Services in a manner designed to
+        protect our rights and property and to facilitate the proper functioning of the Services.
+      </p>
+
+      <h2 style={s().h1}>12. Privacy Policy</h2>
+      <p style={s().p}>
+        We care about data privacy and security. Please review our{' '}
+        <a href="/legal#privacy" style={{ color: 'rgba(255,255,255,0.5)' }}>
+          Privacy Policy
+        </a>
+        . By using the Services, you agree to be bound by our Privacy Policy, which is incorporated
+        into these Legal Terms. Please be advised the Services are hosted in India. If you access
+        the Services from any other region of the world with laws or other requirements governing
+        personal data collection, use, or disclosure that differ from applicable laws in India, then
+        through your continued use of the Services, you are transferring your data to India, and you
+        expressly consent to have your data transferred to and processed in India.
+      </p>
+
+      <h2 style={s().h1}>13. Copyright Infringements</h2>
+      <p style={s().p}>
+        We respect the intellectual property rights of others. If you believe that any material
+        available on or through the Services infringes upon any copyright you own or control, please
+        immediately notify us using the contact information provided below (a
+        &ldquo;Notification&rdquo;). A copy of your Notification will be sent to the person who
+        posted or stored the material addressed in the Notification. Please be advised that pursuant
+        to applicable law you may be held liable for damages if you make material misrepresentations
+        in a Notification. Thus, if you are not sure that material located on or linked to by the
+        Services infringes your copyright, you should consider first contacting an attorney.
+      </p>
+
+      <h2 style={s().h1}>14. Term and Termination</h2>
+      <p style={s().p}>
+        These Legal Terms shall remain in full force and effect while you use the Services. WITHOUT
+        LIMITING ANY OTHER PROVISION OF THESE LEGAL TERMS, WE RESERVE THE RIGHT TO, IN OUR SOLE
+        DISCRETION AND WITHOUT NOTICE OR LIABILITY, DENY ACCESS TO AND USE OF THE SERVICES
+        (INCLUDING BLOCKING CERTAIN IP ADDRESSES), TO ANY PERSON FOR ANY REASON OR FOR NO REASON,
+        INCLUDING WITHOUT LIMITATION FOR BREACH OF ANY REPRESENTATION, WARRANTY, OR COVENANT
+        CONTAINED IN THESE LEGAL TERMS OR OF ANY APPLICABLE LAW OR REGULATION. WE MAY TERMINATE YOUR
+        USE OR PARTICIPATION IN THE SERVICES OR DELETE ANY CONTENT OR INFORMATION THAT YOU POSTED AT
+        ANY TIME, WITHOUT WARNING, IN OUR SOLE DISCRETION.
+      </p>
+      <p style={s().p}>
+        If we terminate or suspend your account for any reason, you are prohibited from registering
+        and creating a new account under your name, a fake or borrowed name, or the name of any
+        third party, even if you may be acting on behalf of the third party. In addition to
+        terminating or suspending your account, we reserve the right to take appropriate legal
+        action, including without limitation pursuing civil, criminal, and injunctive redress.
+      </p>
+
+      <h2 style={s().h1}>15. Modifications and Interruptions</h2>
+      <p style={s().p}>
+        We reserve the right to change, modify, or remove the contents of the Services at any time
+        or for any reason at our sole discretion without notice. However, we have no obligation to
+        update any information on our Services. We will not be liable to you or any third party for
+        any modification, price change, suspension, or discontinuance of the Services.
+      </p>
+      <p style={s().p}>
+        We cannot guarantee the Services will be available at all times. We may experience hardware,
+        software, or other problems or need to perform maintenance related to the Services,
+        resulting in interruptions, delays, or errors. We reserve the right to change, revise,
+        update, suspend, discontinue, or otherwise modify the Services at any time or for any reason
+        without notice to you. You agree that we have no liability whatsoever for any loss, damage,
+        or inconvenience caused by your inability to access or use the Services during any downtime
+        or discontinuance of the Services. Nothing in these Legal Terms will be construed to
+        obligate us to maintain and support the Services or to supply any corrections, updates, or
+        releases in connection therewith.
+      </p>
+
+      <h2 style={s().h1}>16. Governing Law</h2>
+      <p style={s().p}>
+        These Legal Terms shall be governed by and defined following the laws of India. BHUVAN G S
+        and yourself irrevocably consent that the courts of India shall have exclusive jurisdiction
+        to resolve any dispute which may arise in connection with these Legal Terms.
+      </p>
+
+      <h2 style={s().h1}>17. Dispute Resolution</h2>
+      <p style={s().p}>
+        You agree to irrevocably submit all disputes related to these Legal Terms or the legal
+        relationship established by these Legal Terms to the jurisdiction of the India courts.
+        BHUVAN G S shall also maintain the right to bring proceedings as to the substance of the
+        matter in the courts of the country where you reside or, if these Legal Terms are entered
+        into in the course of your trade or profession, the state of your principal place of
+        business.
+      </p>
+
+      <h2 style={s().h1}>18. Corrections</h2>
+      <p style={s().p}>
+        There may be information on the Services that contains typographical errors, inaccuracies,
+        or omissions, including descriptions, pricing, availability, and various other information.
+        We reserve the right to correct any errors, inaccuracies, or omissions and to change or
+        update the information on the Services at any time, without prior notice.
+      </p>
+
+      <h2 style={s().h1}>19. Disclaimer</h2>
+      <p style={s().p}>
+        THE SERVICES ARE PROVIDED ON AN AS-IS AND AS-AVAILABLE BASIS. YOU AGREE THAT YOUR USE OF THE
+        SERVICES WILL BE AT YOUR SOLE RISK. TO THE FULLEST EXTENT PERMITTED BY LAW, WE DISCLAIM ALL
+        WARRANTIES, EXPRESS OR IMPLIED, IN CONNECTION WITH THE SERVICES AND YOUR USE THEREOF,
+        INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+        PARTICULAR PURPOSE, AND NON-INFRINGEMENT. WE MAKE NO WARRANTIES OR REPRESENTATIONS ABOUT THE
+        ACCURACY OR COMPLETENESS OF THE SERVICES&rsquo; CONTENT OR THE CONTENT OF ANY WEBSITES OR
+        MOBILE APPLICATIONS LINKED TO THE SERVICES AND WE WILL ASSUME NO LIABILITY OR RESPONSIBILITY
+        FOR ANY (1) ERRORS, MISTAKES, OR INACCURACIES OF CONTENT AND MATERIALS, (2) PERSONAL INJURY
+        OR PROPERTY DAMAGE, OF ANY NATURE WHATSOEVER, RESULTING FROM YOUR ACCESS TO AND USE OF THE
+        SERVICES, (3) ANY UNAUTHORIZED ACCESS TO OR USE OF OUR SECURE SERVERS AND/OR ANY AND ALL
+        PERSONAL INFORMATION AND/OR FINANCIAL INFORMATION STORED THEREIN, (4) ANY INTERRUPTION OR
+        CESSATION OF TRANSMISSION TO OR FROM THE SERVICES, (5) ANY BUGS, VIRUSES, TROJAN HORSES, OR
+        THE LIKE WHICH MAY BE TRANSMITTED TO OR THROUGH THE SERVICES BY ANY THIRD PARTY, AND/OR (6)
+        ANY ERRORS OR OMISSIONS IN ANY CONTENT AND MATERIALS OR FOR ANY LOSS OR DAMAGE OF ANY KIND
+        INCURRED AS A RESULT OF THE USE OF ANY CONTENT POSTED, TRANSMITTED, OR OTHERWISE MADE
+        AVAILABLE VIA THE SERVICES.
+      </p>
+      <p style={s().p}>
+        WE DO NOT WARRANT, ENDORSE, GUARANTEE, OR ASSUME RESPONSIBILITY FOR ANY PRODUCT OR SERVICE
+        ADVERTISED OR OFFERED BY A THIRD PARTY THROUGH THE SERVICES, ANY HYPERLINKED WEBSITE, OR ANY
+        WEBSITE OR MOBILE APPLICATION FEATURED IN ANY BANNER OR OTHER ADVERTISING, AND WE WILL NOT
+        BE A PARTY TO OR IN ANY WAY RESPONSIBLE FOR MONITORING ANY TRANSACTION BETWEEN YOU AND ANY
+        THIRD-PARTY PROVIDERS OF PRODUCTS OR SERVICES. AS WITH THE PURCHASE OF A PRODUCT OR SERVICE
+        THROUGH ANY MEDIUM OR IN ANY ENVIRONMENT, YOU SHOULD USE YOUR BEST JUDGMENT AND EXERCISE
+        CAUTION WHERE APPROPRIATE.
+      </p>
+
+      <h2 style={s().h1}>20. Limitations of Liability</h2>
+      <p style={s().p}>
+        IN NO EVENT WILL WE OR OUR DIRECTORS, EMPLOYEES, OR AGENTS BE LIABLE TO YOU OR ANY THIRD
+        PARTY FOR ANY DIRECT, INDIRECT, CONSEQUENTIAL, EXEMPLARY, INCIDENTAL, SPECIAL, OR PUNITIVE
+        DAMAGES, INCLUDING LOST PROFIT, LOST REVENUE, LOSS OF DATA, OR OTHER DAMAGES ARISING FROM
+        YOUR USE OF THE SERVICES, EVEN IF WE HAVE BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+        NOTWITHSTANDING ANYTHING TO THE CONTRARY CONTAINED HEREIN, OUR LIABILITY TO YOU FOR ANY
+        CAUSE WHATSOEVER AND REGARDLESS OF THE FORM OF THE ACTION, WILL AT ALL TIMES BE LIMITED TO
+        THE AMOUNT PAID, IF ANY, BY YOU TO US DURING THE THREE (3) MONTH PERIOD PRIOR TO ANY CAUSE
+        OF ACTION ARISING. CERTAIN US STATE LAWS AND INTERNATIONAL LAWS DO NOT ALLOW LIMITATIONS ON
+        IMPLIED WARRANTIES OR THE EXCLUSION OR LIMITATION OF CERTAIN DAMAGES. IF THESE LAWS APPLY TO
+        YOU, SOME OR ALL OF THE ABOVE DISCLAIMERS OR LIMITATIONS MAY NOT APPLY TO YOU, AND YOU MAY
+        HAVE ADDITIONAL RIGHTS.
+      </p>
+
+      <h2 style={s().h1}>21. Indemnification</h2>
+      <p style={s().p}>
+        You agree to defend, indemnify, and hold us harmless, including our subsidiaries,
+        affiliates, and all of our respective officers, agents, partners, and employees, from and
+        against any loss, damage, liability, claim, or demand, including reasonable attorneys&rsquo;
+        fees and expenses, made by any third party due to or arising out of: (1) your Contributions;
+        (2) use of the Services; (3) breach of these Legal Terms; (4) any breach of your
+        representations and warranties set forth in these Legal Terms; (5) your violation of the
+        rights of a third party, including but not limited to intellectual property rights; or (6)
+        any overt harmful act toward any other user of the Services with whom you connected via the
+        Services. Notwithstanding the foregoing, we reserve the right, at your expense, to assume
+        the exclusive defense and control of any matter for which you are required to indemnify us,
+        and you agree to cooperate, at your expense, with our defense of such claims. We will use
+        reasonable efforts to notify you of any such claim, action, or proceeding which is subject
+        to this indemnification upon becoming aware of it.
+      </p>
+
+      <h2 style={s().h1}>22. User Data</h2>
+      <p style={s().p}>
+        We will maintain certain data that you transmit to the Services for the purpose of managing
+        the performance of the Services, as well as data relating to your use of the Services.
+        Although we perform regular routine backups of data, you are solely responsible for all data
+        that you transmit or that relates to any activity you have undertaken using the Services.
+        You agree that we shall have no liability to you for any loss or corruption of any such
+        data, and you hereby waive any right of action against us arising from any such loss or
+        corruption of such data.
+      </p>
+
+      <h2 style={s().h1}>23. Electronic Communications, Transactions, and Signatures</h2>
+      <p style={s().p}>
+        Visiting the Services, sending us emails, and completing online forms constitute electronic
+        communications. You consent to receive electronic communications, and you agree that all
+        agreements, notices, disclosures, and other communications we provide to you electronically,
+        via email and on the Services, satisfy any legal requirement that such communication be in
+        writing. YOU HEREBY AGREE TO THE USE OF ELECTRONIC SIGNATURES, CONTRACTS, ORDERS, AND OTHER
+        RECORDS, AND TO ELECTRONIC DELIVERY OF NOTICES, POLICIES, AND RECORDS OF TRANSACTIONS
+        INITIATED OR COMPLETED BY US OR VIA THE SERVICES. You hereby waive any rights or
+        requirements under any statutes, regulations, rules, ordinances, or other laws in any
+        jurisdiction which require an original signature or delivery or retention of non-electronic
+        records, or to payments or the granting of credits by any means other than electronic means.
+      </p>
+
+      <h2 style={s().h1}>24. Miscellaneous</h2>
+      <p style={s().p}>
+        These Legal Terms and any policies or operating rules posted by us on the Services or in
+        respect of the Services constitute the entire agreement and understanding between you and
+        us. Our failure to exercise or enforce any right or provision of these Legal Terms shall not
+        operate as a waiver of such right or provision. These Legal Terms operate to the fullest
+        extent permissible by law. We may assign any or all of our rights and obligations to others
+        at any time. We shall not be responsible or liable for any loss, damage, delay, or failure
+        to act caused by any cause beyond our reasonable control. If any provision or part of a
+        provision of these Legal Terms is determined to be unlawful, void, or unenforceable, that
+        provision or part of the provision is deemed severable from these Legal Terms and does not
+        affect the validity and enforceability of any remaining provisions. There is no joint
+        venture, partnership, employment or agency relationship created between you and us as a
+        result of these Legal Terms or use of the Services. You agree that these Legal Terms will
+        not be construed against us by virtue of having drafted them. You hereby waive any and all
+        defenses you may have based on the electronic form of these Legal Terms and the lack of
+        signing by the parties hereto to execute these Legal Terms.
+      </p>
+
+      <h2 style={s().h1}>25. Contact Us</h2>
+      <p style={s().p}>
+        In order to resolve a complaint regarding the Services or to receive further information
+        regarding use of the Services, please contact us at:
+      </p>
+      <p style={{ ...s().p, paddingLeft: '1rem' }}>
+        BHUVAN G S
+        <br />
+        Phone: +91 99026 80981
+        <br />
+        <a href="mailto:support@syntheonhub.com" style={{ color: 'rgba(255,255,255,0.5)' }}>
+          support@syntheonhub.com
         </a>
       </p>
     </div>
@@ -790,53 +1482,405 @@ export default function LegalPage() {
   const CookiePolicy = () => (
     <div>
       <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.3)', marginBottom: '2rem' }}>
-        Last updated: July 5, 2026
+        Last updated: July 05, 2026
       </p>
 
       <h2 style={s().h1}>Cookie Policy</h2>
       <p style={s().p}>
-        This Cookie Policy explains how Syntheon Hub uses cookies and similar technologies when you
-        visit our website or use our app.
+        This Cookie Policy explains how <strong>BHUVAN G S</strong> (&ldquo;Company,&rdquo;
+        &ldquo;we,&rdquo; &ldquo;us,&rdquo; and &ldquo;our&rdquo;) uses cookies and similar
+        technologies to recognize you when you visit our website at www.syntheonhub.com (the
+        &ldquo;Website&rdquo;). It explains what these technologies are and why we use them, as well
+        as your rights to control our use of them.
+      </p>
+      <p style={s().p}>
+        In some cases we may use cookies to collect personal information, or that becomes personal
+        information if we combine it with other information.
       </p>
 
       <h2 style={s().h2}>What are cookies?</h2>
       <p style={s().p}>
-        Cookies are small text files stored on your device. They help us recognize your device,
-        remember your preferences, and keep you signed in securely.
+        Cookies are small data files that are placed on your computer or mobile device when you
+        visit a website. Cookies are widely used by website owners in order to make their websites
+        work, or to work more efficiently, as well as to provide reporting information.
+      </p>
+      <p style={s().p}>
+        Cookies set by the website owner (in this case, BHUVAN G S) are called &ldquo;first-party
+        cookies.&rdquo; Cookies set by parties other than the website owner are called
+        &ldquo;third-party cookies.&rdquo; Third-party cookies enable third-party features or
+        functionality to be provided on or through the website (e.g., advertising, interactive
+        content, and analytics). The parties that set these third-party cookies can recognize your
+        computer both when it visits the website in question and also when it visits certain other
+        websites.
       </p>
 
-      <h2 style={s().h2}>Cookies we use</h2>
+      <h2 style={s().h2}>Why do we use cookies?</h2>
+      <p style={s().p}>
+        We use first- and third-party cookies for several reasons. Some cookies are required for
+        technical reasons in order for our Website to operate, and we refer to these as
+        &ldquo;essential&rdquo; or &ldquo;strictly necessary&rdquo; cookies. Other cookies also
+        enable us to track and target the interests of our users to enhance the experience on our
+        Online Properties. Third parties serve cookies through our Website for advertising,
+        analytics, and other purposes. This is described in more detail below.
+      </p>
+
+      <h2 style={s().h2}>How can I control cookies?</h2>
+      <p style={s().p}>
+        You have the right to decide whether to accept or reject cookies. You can exercise your
+        cookie rights by setting your preferences in the Cookie Preference Center. The Cookie
+        Preference Center allows you to select which categories of cookies you accept or reject.
+        Essential cookies cannot be rejected as they are strictly necessary to provide you with
+        services.
+      </p>
+      <p style={s().p}>
+        The Cookie Preference Center can be found in the notification banner and on our Website. If
+        you choose to reject cookies, you may still use our Website though your access to some
+        functionality and areas of our Website may be restricted. You may also set or amend your web
+        browser controls to accept or refuse cookies.
+      </p>
+      <p style={s().p}>
+        The specific types of first- and third-party cookies served through our Website and the
+        purposes they perform are described in the table below (please note that the specific
+        cookies served may vary depending on the specific Online Properties you visit):
+      </p>
+
+      <h3 style={{ ...s().h2, fontSize: '1rem' }}>Essential website cookies</h3>
+      <p style={s().p}>
+        These cookies are strictly necessary to provide you with services available through our
+        Website and to use some of its features, such as access to secure areas.
+      </p>
+      <div style={{ overflowX: 'auto', marginBottom: '1rem' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              {['Name', 'Purpose', 'Provider', 'Service', 'Type', 'Expires'].map((h) => (
+                <th
+                  key={h}
+                  style={{
+                    textAlign: 'left',
+                    padding: '8px 12px',
+                    color: 'rgba(255,255,255,0.5)',
+                    fontWeight: 600,
+                  }}
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+              <td style={{ padding: '8px 12px', color: 'rgba(255,255,255,0.7)' }}>
+                <code style={{ fontSize: '12px' }}>__cf_bm</code>
+              </td>
+              <td style={{ padding: '8px 12px', color: 'rgba(255,255,255,0.7)' }}>
+                Cloudflare places the cookie on end-user devices that access customer sites
+                protected by Bot Management or Bot Fight Mode.
+              </td>
+              <td style={{ padding: '8px 12px', color: 'rgba(255,255,255,0.7)' }}>
+                .causal-viper-48.clerk.accounts.dev
+              </td>
+              <td style={{ padding: '8px 12px', color: 'rgba(255,255,255,0.7)' }}>Cloudflare</td>
+              <td style={{ padding: '8px 12px', color: 'rgba(255,255,255,0.7)' }}>HTTP Cookie</td>
+              <td style={{ padding: '8px 12px', color: 'rgba(255,255,255,0.7)' }}>29 minutes</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 style={{ ...s().h2, fontSize: '1rem' }}>Performance and functionality cookies</h3>
+      <p style={s().p}>
+        These cookies are used to enhance the performance and functionality of our Website but are
+        non-essential to their use. However, without these cookies, certain functionality (like
+        videos) may become unavailable.
+      </p>
+      <div style={{ overflowX: 'auto', marginBottom: '1rem' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              {['Name', 'Purpose', 'Provider', 'Service', 'Type', 'Expires'].map((h) => (
+                <th
+                  key={h}
+                  style={{
+                    textAlign: 'left',
+                    padding: '8px 12px',
+                    color: 'rgba(255,255,255,0.5)',
+                    fontWeight: 600,
+                  }}
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              {
+                name: '_cfuvid',
+                purpose:
+                  'This cookie is set by Cloudflare to enhance security and performance. It helps identify trusted web traffic and ensures a secure browsing experience for users.',
+                provider: '.clerkprod-cloudflare.net',
+                expires: 'Session',
+              },
+              {
+                name: '_cfuvid',
+                purpose:
+                  'This cookie is set by Cloudflare to enhance security and performance. It helps identify trusted web traffic and ensures a secure browsing experience for users.',
+                provider: '.causal-viper-48.clerk.accounts.dev',
+                expires: 'Session',
+              },
+            ].map((c, i) => (
+              <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                <td style={{ padding: '8px 12px', color: 'rgba(255,255,255,0.7)' }}>
+                  <code style={{ fontSize: '12px' }}>{c.name}</code>
+                </td>
+                <td style={{ padding: '8px 12px', color: 'rgba(255,255,255,0.7)' }}>{c.purpose}</td>
+                <td style={{ padding: '8px 12px', color: 'rgba(255,255,255,0.7)' }}>
+                  {c.provider}
+                </td>
+                <td style={{ padding: '8px 12px', color: 'rgba(255,255,255,0.7)' }}>Cloudflare</td>
+                <td style={{ padding: '8px 12px', color: 'rgba(255,255,255,0.7)' }}>
+                  Server Cookie
+                </td>
+                <td style={{ padding: '8px 12px', color: 'rgba(255,255,255,0.7)' }}>{c.expires}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <h3 style={{ ...s().h2, fontSize: '1rem' }}>Unclassified cookies</h3>
+      <p style={s().p}>
+        These are cookies that have not yet been categorized. We are in the process of classifying
+        these cookies with the help of their providers.
+      </p>
+      <div style={{ overflowX: 'auto', marginBottom: '1rem' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              {['Name', 'Provider', 'Type', 'Expires'].map((h) => (
+                <th
+                  key={h}
+                  style={{
+                    textAlign: 'left',
+                    padding: '8px 12px',
+                    color: 'rgba(255,255,255,0.5)',
+                    fontWeight: 600,
+                  }}
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              {
+                name: '__clerk_db_jwt_hIwMqtWr',
+                provider: 'www.syntheonhub.com',
+                type: 'HTTP Cookie',
+                expires: '11 months 30 days',
+              },
+              {
+                name: '__clerk_db_jwt',
+                provider: 'www.syntheonhub.com',
+                type: 'Server Cookie',
+                expires: '11 months 30 days',
+              },
+              {
+                name: '__clerk_redirect_count',
+                provider: 'www.syntheonhub.com',
+                type: 'Server Cookie',
+                expires: 'less than 1 minute',
+              },
+              {
+                name: '__client_uat',
+                provider: '.syntheonhub.com',
+                type: 'Server Cookie',
+                expires: '9 years 11 months 28 days',
+              },
+              {
+                name: '__clerk_environment',
+                provider: 'www.syntheonhub.com',
+                type: 'Local Storage',
+                expires: 'Persistent',
+              },
+              {
+                name: '__client_uat_hIwMqtWr',
+                provider: '.syntheonhub.com',
+                type: 'HTTP Cookie',
+                expires: '11 months 30 days',
+              },
+            ].map((c, i) => (
+              <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                <td style={{ padding: '8px 12px', color: 'rgba(255,255,255,0.7)' }}>
+                  <code style={{ fontSize: '12px' }}>{c.name}</code>
+                </td>
+                <td style={{ padding: '8px 12px', color: 'rgba(255,255,255,0.7)' }}>
+                  {c.provider}
+                </td>
+                <td style={{ padding: '8px 12px', color: 'rgba(255,255,255,0.7)' }}>{c.type}</td>
+                <td style={{ padding: '8px 12px', color: 'rgba(255,255,255,0.7)' }}>{c.expires}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <h2 style={s().h2}>How can I control cookies on my browser?</h2>
+      <p style={s().p}>
+        As the means by which you can refuse cookies through your web browser controls vary from
+        browser to browser, you should visit your browser&rsquo;s help menu for more information.
+        The following is information about how to manage cookies on the most popular browsers:
+      </p>
       <ul style={{ paddingLeft: '1.5rem', marginBottom: '1rem' }}>
         {[
-          'Authentication cookies — set by Clerk to keep you signed in securely',
-          'Preference cookies — remember your theme choice (light/dark/system)',
-          'Consent storage — store your DPDP consent preferences locally before authentication',
-        ].map((c, i) => (
-          <li key={i} style={s().li}>
-            {c}
+          {
+            label: 'Chrome',
+            url: 'https://support.google.com/chrome/answer/95647#zippy=%2Callow-or-block-cookies',
+          },
+          {
+            label: 'Internet Explorer',
+            url: 'https://support.microsoft.com/en-us/windows/delete-and-manage-cookies-168dab11-0753-043d-7c16-ede5947fc64d',
+          },
+          {
+            label: 'Firefox',
+            url: 'https://support.mozilla.org/en-US/kb/enhanced-tracking-protection-firefox-desktop',
+          },
+          { label: 'Safari', url: 'https://support.apple.com/en-ie/guide/safari/sfri11471/mac' },
+          {
+            label: 'Edge',
+            url: 'https://support.microsoft.com/en-us/windows/microsoft-edge-browsing-data-and-privacy-bb8174ba-9d73-dcf2-9b4a-c582b4e640dd',
+          },
+          { label: 'Opera', url: 'https://help.opera.com/en/latest/web-preferences/' },
+        ].map((b) => (
+          <li key={b.label} style={s().li}>
+            <a
+              href={b.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: 'rgba(255,255,255,0.5)' }}
+            >
+              {b.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+      <p style={s().p}>
+        In addition, most advertising networks offer you a way to opt out of targeted advertising.
+        If you would like to find out more information, please visit:
+      </p>
+      <ul style={{ paddingLeft: '1.5rem', marginBottom: '1rem' }}>
+        {[
+          { label: 'Digital Advertising Alliance', url: 'http://www.aboutads.info/choices/' },
+          { label: 'Digital Advertising Alliance of Canada', url: 'https://youradchoices.ca/' },
+          {
+            label: 'European Interactive Digital Advertising Alliance',
+            url: 'http://www.youronlinechoices.com/',
+          },
+        ].map((a) => (
+          <li key={a.label} style={s().li}>
+            <a
+              href={a.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: 'rgba(255,255,255,0.5)' }}
+            >
+              {a.label}
+            </a>
           </li>
         ))}
       </ul>
 
-      <h2 style={s().h2}>Third-party cookies</h2>
+      <h2 style={s().h2}>What about other tracking technologies, like web beacons?</h2>
       <p style={s().p}>
-        Our authentication provider, Clerk, may use cookies to manage sessions and security. We do
-        not use advertising or analytics cookies.
+        Cookies are not the only way to recognize or track visitors to a website. We may use other,
+        similar technologies from time to time, like web beacons (sometimes called &ldquo;tracking
+        pixels&rdquo; or &ldquo;clear gifs&rdquo;). These are tiny graphics files that contain a
+        unique identifier that enables us to recognize when someone has visited our Website or
+        opened an email including them. This allows us, for example, to monitor the traffic patterns
+        of users from one page within a website to another, to deliver or communicate with cookies,
+        to understand whether you have come to the website from an online advertisement displayed on
+        a third-party website, to improve site performance, and to measure the success of email
+        marketing campaigns. In many instances, these technologies are reliant on cookies to
+        function properly, and so declining cookies will impair their functioning.
       </p>
 
-      <h2 style={s().h2}>Managing cookies</h2>
+      <h2 style={s().h2}>Do you use Flash cookies or Local Shared Objects?</h2>
       <p style={s().p}>
-        You can manage or delete cookies through your browser settings. Disabling essential cookies
-        may prevent you from signing in or using core features.
+        Websites may also use so-called &ldquo;Flash Cookies&rdquo; (also known as Local Shared
+        Objects or &ldquo;LSOs&rdquo;) to, among other things, collect and store information about
+        your use of our services, fraud prevention, and for other site operations.
       </p>
-
-      <h2 style={s().h2}>Contact</h2>
       <p style={s().p}>
-        Questions? Email{' '}
-        <a href="mailto:privacy@syntheon.ai" style={{ color: 'rgba(255,255,255,0.3)' }}>
-          privacy@syntheon.ai
+        If you do not want Flash Cookies stored on your computer, you can adjust the settings of
+        your Flash player to block Flash Cookies storage using the tools contained in the{' '}
+        <a
+          href="http://www.macromedia.com/support/documentation/en/flashplayer/help/settings_manager07.html"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: 'rgba(255,255,255,0.5)' }}
+        >
+          Website Storage Settings Panel
         </a>
-        .
+        . You can also control Flash Cookies by going to the{' '}
+        <a
+          href="http://www.macromedia.com/support/documentation/en/flashplayer/help/settings_manager03.html"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: 'rgba(255,255,255,0.5)' }}
+        >
+          Global Storage Settings Panel
+        </a>{' '}
+        and following the instructions (which may include instructions that explain, for example,
+        how to delete existing Flash Cookies (referred to &ldquo;information&rdquo; on the
+        Macromedia site), how to prevent Flash LSOs from being placed on your computer without your
+        being asked, and (for Flash Player 8 and later) how to block Flash Cookies that are not
+        being delivered by the operator of the page you are on at the time).
+      </p>
+      <p style={s().p}>
+        Please note that setting the Flash Player to restrict or limit acceptance of Flash Cookies
+        may reduce or impede the functionality of some Flash applications, including, potentially,
+        Flash applications used in connection with our services or online content.
+      </p>
+
+      <h2 style={s().h2}>Do you serve targeted advertising?</h2>
+      <p style={s().p}>
+        Third parties may serve cookies on your computer or mobile device to serve advertising
+        through our Website. These companies may use information about your visits to this and other
+        websites in order to provide relevant advertisements about goods and services that you may
+        be interested in. They may also employ technology that is used to measure the effectiveness
+        of advertisements. They can accomplish this by using cookies or web beacons to collect
+        information about your visits to this and other sites in order to provide relevant
+        advertisements about goods and services of potential interest to you. The information
+        collected through this process does not enable us or them to identify your name, contact
+        details, or other details that directly identify you unless you choose to provide these.
+      </p>
+
+      <h2 style={s().h2}>How often will you update this Cookie Policy?</h2>
+      <p style={s().p}>
+        We may update this Cookie Policy from time to time in order to reflect, for example, changes
+        to the cookies we use or for other operational, legal, or regulatory reasons. Please
+        therefore revisit this Cookie Policy regularly to stay informed about our use of cookies and
+        related technologies.
+      </p>
+      <p style={s().p}>
+        The date at the top of this Cookie Policy indicates when it was last updated.
+      </p>
+
+      <h2 style={s().h2}>Where can I get further information?</h2>
+      <p style={s().p}>
+        If you have any questions about our use of cookies or other technologies, please contact us
+        at:
+      </p>
+      <p style={{ ...s().p, paddingLeft: '1rem' }}>
+        BHUVAN G S
+        <br />
+        Phone: +91 99026 80981
+        <br />
+        <a href="mailto:support@syntheonhub.com" style={{ color: 'rgba(255,255,255,0.5)' }}>
+          support@syntheonhub.com
+        </a>
       </p>
     </div>
   );
@@ -855,7 +1899,9 @@ export default function LegalPage() {
       </p>
 
       <h2 style={s().h2}>Consent version</h2>
-      <p style={s().p}>Current consent version: <strong>dpdp-2023-v1</strong></p>
+      <p style={s().p}>
+        Current consent version: <strong>dpdp-2023-v1</strong>
+      </p>
 
       <h2 style={s().h2}>What we collect with consent</h2>
       <ul style={{ paddingLeft: '1.5rem', marginBottom: '1rem' }}>
@@ -899,8 +1945,8 @@ export default function LegalPage() {
 
       <h2 style={s().h2}>Consent records</h2>
       <p style={s().p}>
-        We maintain a record of your consent, including the version, timestamp, purposes, IP address,
-        and device information. This helps us demonstrate compliance with DPDP.
+        We maintain a record of your consent, including the version, timestamp, purposes, IP
+        address, and device information. This helps us demonstrate compliance with DPDP.
       </p>
     </div>
   );
@@ -913,7 +1959,8 @@ export default function LegalPage() {
 
       <h2 style={s().h1}>Your Rights Under DPDP Act 2023</h2>
       <p style={s().p}>
-        As a Data Principal under the DPDP Act, you have the following rights over your personal data:
+        As a Data Principal under the DPDP Act, you have the following rights over your personal
+        data:
       </p>
 
       <h2 style={s().h2}>Right to access</h2>
@@ -930,8 +1977,8 @@ export default function LegalPage() {
 
       <h2 style={s().h2}>Right to erasure</h2>
       <p style={s().p}>
-        You can request deletion of your personal data, including transcripts, audio, tickets, and your
-        entire account.
+        You can request deletion of your personal data, including transcripts, audio, tickets, and
+        your entire account.
       </p>
 
       <h2 style={s().h2}>Right to grievance redressal</h2>
@@ -945,8 +1992,8 @@ export default function LegalPage() {
 
       <h2 style={s().h2}>Right to nominate</h2>
       <p style={s().p}>
-        You can nominate another individual to exercise your data rights in case of your incapacity or
-        death.
+        You can nominate another individual to exercise your data rights in case of your incapacity
+        or death.
       </p>
 
       <h2 style={s().h2}>Right to withdraw consent</h2>
@@ -1006,101 +2053,144 @@ export default function LegalPage() {
           pointer-events: none;
           z-index: 0;
         }
+        @media (max-width: 1024px) {
+          .legal-layout {
+            display: block !important;
+            padding: 92px 1rem 80px !important;
+          }
+          .legal-sidebar {
+            position: static !important;
+            top: auto !important;
+            margin-bottom: 1rem;
+          }
+          .legal-content {
+            padding: 0 !important;
+          }
+        }
       `}</style>
 
-      <nav
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 50,
-          borderBottom: '1px solid rgba(255,255,255,0.08)',
-          background: 'rgba(0,0,0,0.8)',
-          backdropFilter: 'blur(12px)',
-          padding: '0 5vw',
-          height: '64px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
-      >
-        <Link
-          href="/"
-          style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', textDecoration: 'none' }}
+      {!isEmbed && (
+        <nav
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 50,
+            borderBottom: '1px solid rgba(255,255,255,0.08)',
+            background: 'rgba(0,0,0,0.8)',
+            backdropFilter: 'blur(12px)',
+            padding: '0 5vw',
+            height: '64px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
         >
-          <img
-            src="/syntheon-logo.png"
-            alt="Syntheon Hub"
-            width={28}
-            height={28}
-            style={{ borderRadius: '6px', objectFit: 'cover' }}
-          />
-          <span
+          <Link
+            href="/"
             style={{
-              fontFamily: "'Space Grotesk', sans-serif",
-              fontSize: '18px',
-              fontWeight: 700,
-              color: '#fff',
-              letterSpacing: '-0.02em',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.875rem',
+              textDecoration: 'none',
             }}
           >
-            Syntheon Hub
-          </span>
-        </Link>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-          {mounted ? (
-            <>
-              <Link
-                href="/pricing"
-                style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)', textDecoration: 'none' }}
-              >
-                Pricing
-              </Link>
-              <Link
-                href="/how-it-works"
-                style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)', textDecoration: 'none' }}
-              >
-                How it works
-              </Link>
-              <Link
-                href={`${APP_URL}/sign-up`}
-                style={{
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  color: '#000',
-                  background: '#fff',
-                  textDecoration: 'none',
-                  padding: '0.5rem 1rem',
-                  borderRadius: '6px',
-                }}
-              >
-                Start Free
-              </Link>
-            </>
-          ) : null}
-        </div>
-      </nav>
+            <img
+              src="/syntheon-logo.png"
+              alt="Syntheon Hub"
+              width={28}
+              height={28}
+              style={{ borderRadius: '6px', objectFit: 'cover' }}
+            />
+            <span
+              style={{
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontSize: '18px',
+                fontWeight: 700,
+                color: '#fff',
+                letterSpacing: '-0.02em',
+              }}
+            >
+              Syntheon Hub
+            </span>
+          </Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+            {mounted ? (
+              <>
+                <Link
+                  href="/pricing"
+                  style={{
+                    fontSize: '14px',
+                    color: 'rgba(255,255,255,0.6)',
+                    textDecoration: 'none',
+                  }}
+                >
+                  Pricing
+                </Link>
+                <Link
+                  href="/how-it-works"
+                  style={{
+                    fontSize: '14px',
+                    color: 'rgba(255,255,255,0.6)',
+                    textDecoration: 'none',
+                  }}
+                >
+                  How it works
+                </Link>
+                <Link
+                  href={`${APP_URL}/sign-up`}
+                  style={{
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    color: '#000',
+                    background: '#fff',
+                    textDecoration: 'none',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '6px',
+                  }}
+                >
+                  Start Free
+                </Link>
+              </>
+            ) : null}
+          </div>
+        </nav>
+      )}
 
       <div
+        className="legal-layout"
         style={{
-          paddingTop: '80px',
-          maxWidth: '860px',
-          margin: '0 auto',
-          padding: '100px 5vw 100px',
+          paddingTop: isEmbed ? '16px' : '80px',
+          width: '100%',
+          margin: '0',
+          padding: isEmbed ? '24px 2vw 24px' : '100px 3vw 100px',
           display: 'grid',
-          gridTemplateColumns: '200px 1fr',
-          gap: '3rem',
+          gridTemplateColumns: '260px minmax(0, 1fr)',
+          gap: '2rem',
           alignItems: 'start',
         }}
       >
         {/* Sidebar */}
-        <div style={{ position: 'sticky', top: '100px' }}>
+        <div
+          className="legal-sidebar"
+          style={{
+            position: 'sticky',
+            top: '90px',
+            alignSelf: 'start',
+            background: 'rgba(39,39,42,0.78)',
+            border: '1px solid rgba(113,113,122,0.45)',
+            borderRadius: '12px',
+            padding: '1rem',
+            backdropFilter: 'blur(8px)',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+          }}
+        >
           <p
             style={{
               fontSize: '12px',
               fontWeight: 500,
-              color: 'rgba(255,255,255,0.3)',
+              color: 'rgba(212,212,216,0.75)',
               letterSpacing: '0.08em',
               textTransform: 'uppercase',
               marginBottom: '1rem',
@@ -1119,13 +2209,13 @@ export default function LegalPage() {
                 display: 'block',
                 width: '100%',
                 textAlign: 'left',
-                background: active === tab.id ? 'rgba(255,255,255,0.05)' : 'none',
+                background: active === tab.id ? 'rgba(82,82,91,0.65)' : 'transparent',
                 border: 'none',
                 borderLeft:
-                  active === tab.id ? '3px solid rgba(255,255,255,0.4)' : '3px solid transparent',
+                  active === tab.id ? '3px solid rgba(244,244,245,0.95)' : '3px solid transparent',
                 padding: '10px 16px',
                 fontSize: '14px',
-                color: active === tab.id ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.4)',
+                color: active === tab.id ? 'rgba(250,250,250,0.98)' : 'rgba(212,212,216,0.78)',
                 cursor: 'pointer',
                 fontWeight: active === tab.id ? 500 : 300,
                 borderRadius: '0 6px 6px 0',
@@ -1140,83 +2230,85 @@ export default function LegalPage() {
 
         {/* Content */}
         <div
+          className="legal-content"
           style={{
-            background: 'rgba(255,255,255,0.02)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: '12px',
-            padding: '2.5rem',
+            width: '100%',
+            maxWidth: 'none',
+            padding: '0.5rem 0',
           }}
         >
           {content[active]}
         </div>
       </div>
 
-      <footer
-        style={{
-          borderTop: '1px solid rgba(255,255,255,0.08)',
-          padding: '3rem 5vw',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '1rem',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
-          <img
-            src="/syntheon-logo.png"
-            alt="Syntheon Hub"
-            width={24}
-            height={24}
-            style={{ borderRadius: '4px' }}
-          />
-          <span
-            style={{
-              fontFamily: "'Space Grotesk', sans-serif",
-              fontSize: '14px',
-              fontWeight: 700,
-              color: '#fff',
-            }}
-          >
-            Syntheon Hub
-          </span>
-        </div>
-        <div style={{ display: 'flex', gap: '2rem' }}>
-          <Link
-            href="/"
-            style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}
-          >
-            Home
-          </Link>
-          <Link
-            href="/pricing"
-            style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}
-          >
-            Pricing
-          </Link>
-          <Link
-            href="/docs"
-            style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}
-          >
-            Docs
-          </Link>
-          <Link
-            href="/faq"
-            style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}
-          >
-            FAQ
-          </Link>
-          <Link
-            href="/how-it-works"
-            style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}
-          >
-            How it works
-          </Link>
-        </div>
-        <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.25)' }}>
-          2026 Syntheon Hub. Governed by Indian law.
-        </p>
-      </footer>
+      {!isEmbed && (
+        <footer
+          style={{
+            borderTop: '1px solid rgba(255,255,255,0.08)',
+            padding: '3rem 5vw',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '1rem',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
+            <img
+              src="/syntheon-logo.png"
+              alt="Syntheon Hub"
+              width={24}
+              height={24}
+              style={{ borderRadius: '4px' }}
+            />
+            <span
+              style={{
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontSize: '14px',
+                fontWeight: 700,
+                color: '#fff',
+              }}
+            >
+              Syntheon Hub
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: '2rem' }}>
+            <Link
+              href="/"
+              style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}
+            >
+              Home
+            </Link>
+            <Link
+              href="/pricing"
+              style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}
+            >
+              Pricing
+            </Link>
+            <Link
+              href="/docs"
+              style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}
+            >
+              Docs
+            </Link>
+            <Link
+              href="/faq"
+              style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}
+            >
+              FAQ
+            </Link>
+            <Link
+              href="/how-it-works"
+              style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}
+            >
+              How it works
+            </Link>
+          </div>
+          <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.25)' }}>
+            2026 Syntheon Hub. Governed by Indian law.
+          </p>
+        </footer>
+      )}
     </div>
   );
 }

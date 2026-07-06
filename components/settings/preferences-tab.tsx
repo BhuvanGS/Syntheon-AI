@@ -2,15 +2,149 @@
 
 import { useState } from 'react';
 import { useTheme } from 'next-themes';
-import { Monitor, Moon, Sun, Palette, Shield, Download, Trash2, UserX, FileText } from 'lucide-react';
+import { useAuth, useUser } from '@clerk/nextjs';
+import {
+  Monitor,
+  Moon,
+  Sun,
+  Palette,
+  Shield,
+  Download,
+  Trash2,
+  UserX,
+  FileText,
+} from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 
+function generateConfirmCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz';
+  let result = '';
+  for (let i = 0; i < 8; i++) {
+    result += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return result;
+}
+
 export function PreferencesTab() {
   const { theme, setTheme } = useTheme();
+  const { orgRole } = useAuth();
+  const { user } = useUser();
+  const [deletionLoading, setDeletionLoading] = useState<'none' | 'user' | 'org'>('none');
+
+  async function runEmailVerificationLayer(): Promise<boolean> {
+    try {
+      const email = user?.primaryEmailAddress;
+      if (!email) {
+        alert('No primary email address found for verification.');
+        return false;
+      }
+
+      await email.prepareVerification({ strategy: 'email_code' });
+      const enteredCode = window.prompt(
+        `We sent a Clerk verification code to ${email.emailAddress}. Enter that code to continue.`
+      );
+
+      if (enteredCode === null) {
+        alert('Deletion process cancelled.');
+        return false;
+      }
+
+      const verified = await email.attemptVerification({ code: enteredCode.trim() });
+      if (verified.verification?.status !== 'verified') {
+        alert('Email verification failed. Please try again.');
+        return false;
+      }
+
+      return true;
+    } catch {
+      alert('Failed to complete Clerk email verification. Please try again.');
+      return false;
+    }
+  }
+
+  function runAlphabetVerificationLayer(): boolean {
+    const confirmCode = generateConfirmCode();
+    const typedCode = window.prompt(
+      `Type this 8-character verification code exactly as shown:\n\n${confirmCode}`
+    );
+
+    if (typedCode === null) {
+      alert('Deletion process cancelled.');
+      return false;
+    }
+
+    if (typedCode.trim() !== confirmCode) {
+      alert('Verification code mismatch. Deletion process cancelled.');
+      return false;
+    }
+
+    return true;
+  }
+
+  function runTripleConfirmationLayer(scope: 'user' | 'org'): boolean {
+    for (let step = 1; step <= 3; step += 1) {
+      const ok = window.confirm(
+        `${scope === 'org' ? 'Organization' : 'Account'} deletion confirmation ${step}/3.\n\nPress OK to continue, or Cancel to abort the entire deletion process.`
+      );
+
+      if (!ok) {
+        alert('Deletion process cancelled.');
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  async function requestDeletion(scope: 'user' | 'org') {
+    if (deletionLoading !== 'none') return;
+
+    const emailVerified = await runEmailVerificationLayer();
+    if (!emailVerified) return;
+
+    const alphabetVerified = runAlphabetVerificationLayer();
+    if (!alphabetVerified) return;
+
+    const tripleConfirmed = runTripleConfirmationLayer(scope);
+    if (!tripleConfirmed) return;
+
+    const confirmText = window.prompt(
+      scope === 'org'
+        ? 'Type DELETE to request full organization deletion (all users and data).'
+        : 'Type DELETE to request account deletion.'
+    );
+
+    if (confirmText === null) return;
+    if (confirmText !== 'DELETE') {
+      alert('Confirmation text mismatch. Please type DELETE exactly.');
+      return;
+    }
+
+    const reason = window.prompt('Optional: reason for deletion request') ?? undefined;
+
+    setDeletionLoading(scope);
+    try {
+      const res = await fetch('/api/privacy/deletion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scope, confirmText, reason }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data?.error || 'Failed to submit deletion request');
+        return;
+      }
+      alert(data?.message || 'Deletion request submitted successfully.');
+    } catch {
+      alert('Failed to submit deletion request');
+    } finally {
+      setDeletionLoading('none');
+    }
+  }
 
   const themes = [
     { value: 'light', label: 'Light', icon: Sun, description: 'Light mode' },
@@ -125,7 +259,9 @@ export function PreferencesTab() {
               title="Request a copy of your data"
               description="Export all personal data we hold about you, including tickets, meetings, and consent records."
               action="Export data"
-              onClick={() => alert('Data export request submitted. We will email you within 7 days.')}
+              onClick={() =>
+                alert('Data export request submitted. We will email you within 7 days.')
+              }
               tone="primary"
             />
             <DataAction
@@ -133,7 +269,9 @@ export function PreferencesTab() {
               title="Manage consent"
               description="Review or withdraw your consent for AI processing and data collection."
               action="Review consent"
-              onClick={() => alert('Consent review request submitted. We will email you within 48 hours.')}
+              onClick={() =>
+                alert('Consent review request submitted. We will email you within 48 hours.')
+              }
               tone="primary"
             />
             <DataAction
@@ -141,17 +279,31 @@ export function PreferencesTab() {
               title="Delete meeting transcripts and audio"
               description="Remove all meeting transcripts and audio recordings from your account."
               action="Delete media"
-              onClick={() => alert('Media deletion request submitted. We will process it within 30 days.')}
+              onClick={() =>
+                alert('Media deletion request submitted. We will process it within 30 days.')
+              }
               tone="danger"
             />
             <DataAction
               icon={UserX}
               title="Delete your account"
               description="Permanently delete your account and all associated data. This cannot be undone."
-              action="Delete account"
-              onClick={() => alert('Account deletion request submitted. We will email you to confirm.')}
+              action={deletionLoading === 'user' ? 'Submitting...' : 'Delete account'}
+              onClick={() => requestDeletion('user')}
+              disabled={deletionLoading !== 'none'}
               tone="danger"
             />
+            {orgRole === 'org:admin' && (
+              <DataAction
+                icon={Trash2}
+                title="Delete organization"
+                description="Permanently delete this organization, all projects, and all member data under this org."
+                action={deletionLoading === 'org' ? 'Submitting...' : 'Delete org'}
+                onClick={() => requestDeletion('org')}
+                disabled={deletionLoading !== 'none'}
+                tone="danger"
+              />
+            )}
           </CardContent>
         </Card>
       </div>
@@ -165,6 +317,7 @@ function DataAction({
   description,
   action,
   onClick,
+  disabled,
   tone,
 }: {
   icon: React.ElementType;
@@ -172,11 +325,17 @@ function DataAction({
   description: string;
   action: string;
   onClick: () => void;
+  disabled?: boolean;
   tone: 'primary' | 'danger';
 }) {
   return (
     <div className="flex items-start gap-3 p-3 rounded-lg border border-border/60 bg-muted/20 hover:bg-muted/40 transition-colors">
-      <div className={cn('h-9 w-9 rounded-lg flex items-center justify-center shrink-0', tone === 'danger' ? 'bg-red-500/10' : 'bg-primary/10')}>
+      <div
+        className={cn(
+          'h-9 w-9 rounded-lg flex items-center justify-center shrink-0',
+          tone === 'danger' ? 'bg-red-500/10' : 'bg-primary/10'
+        )}
+      >
         <Icon className={cn('h-4 w-4', tone === 'danger' ? 'text-red-500' : 'text-primary')} />
       </div>
       <div className="flex-1 min-w-0">
@@ -185,8 +344,10 @@ function DataAction({
       </div>
       <button
         onClick={onClick}
+        disabled={disabled}
         className={cn(
           'shrink-0 text-xs font-medium px-3 py-1.5 rounded-md transition-colors',
+          disabled && 'opacity-60 cursor-not-allowed',
           tone === 'danger'
             ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20'
             : 'bg-primary/10 text-primary hover:bg-primary/15'
