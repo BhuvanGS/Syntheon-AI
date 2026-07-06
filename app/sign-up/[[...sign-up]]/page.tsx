@@ -62,7 +62,7 @@ export default function SignUpPage() {
               letterSpacing: '-0.03em',
             }}
           >
-            We value your privacy more than anything else
+            Turn your meetings into shipped work
           </h1>
 
           <p
@@ -75,8 +75,8 @@ export default function SignUpPage() {
               maxWidth: '420px',
             }}
           >
-            Before you sign up, we want you to clearly understand what data we collect, why we
-            collect it, and how it is used under the Digital Personal Data Protection Act 2023.
+            Syntheon Hub captures your conversations, extracts the important stuff, and turns it
+            into tickets, specs, and action items — automatically.
           </p>
 
           <p
