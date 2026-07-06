@@ -26,6 +26,7 @@ export function PreAuthConsent({ children }: { children: React.ReactNode }) {
 
   return (
     <ConsentForm
+      persistConsentToApi={false}
       onConsentGiven={(purposes) => {
         localStorage.setItem(CONSENT_LOCAL_KEY, 'true');
         localStorage.setItem(CONSENT_PURPOSES_KEY, JSON.stringify(purposes));

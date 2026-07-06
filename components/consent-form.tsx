@@ -80,9 +80,14 @@ function generateConfirmCode(): string {
 export interface ConsentFormProps {
   onConsentGiven: (purposes: string[]) => void;
   loading?: boolean;
+  persistConsentToApi?: boolean;
 }
 
-export function ConsentForm({ onConsentGiven, loading }: ConsentFormProps) {
+export function ConsentForm({
+  onConsentGiven,
+  loading,
+  persistConsentToApi = true,
+}: ConsentFormProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
   const [checkedPurposes, setCheckedPurposes] = useState<Record<string, boolean>>({});
@@ -91,6 +96,7 @@ export function ConsentForm({ onConsentGiven, loading }: ConsentFormProps) {
   const [confirmCode, setConfirmCode] = useState('');
   const [typedCode, setTypedCode] = useState('');
   const [codeError, setCodeError] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   const [dpdpConsentText, setDpdpConsentText] = useState('');
   const [thirdPartyConsentText, setThirdPartyConsentText] = useState('');
 
@@ -105,7 +111,7 @@ export function ConsentForm({ onConsentGiven, loading }: ConsentFormProps) {
     thirdPartyConsentConfirmed &&
     !submitting &&
     !loading;
-  const codeMatches = typedCode === confirmCode;
+  const codeMatches = typedCode.trim() === confirmCode;
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -131,6 +137,7 @@ export function ConsentForm({ onConsentGiven, loading }: ConsentFormProps) {
     setConfirmCode(generateConfirmCode());
     setTypedCode('');
     setCodeError(false);
+    setSubmitError('');
     setShowConfirmDialog(true);
   };
 
@@ -138,6 +145,7 @@ export function ConsentForm({ onConsentGiven, loading }: ConsentFormProps) {
     setShowConfirmDialog(false);
     setTypedCode('');
     setCodeError(false);
+    setSubmitError('');
   };
 
   const handleSubmit = async () => {
@@ -150,20 +158,30 @@ export function ConsentForm({ onConsentGiven, loading }: ConsentFormProps) {
     if (!allRequiredChecked) return;
 
     setSubmitting(true);
+    setSubmitError('');
     try {
-      const res = await fetch('/api/consent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ purposes: selected }),
-      });
+      if (persistConsentToApi) {
+        const res = await fetch('/api/consent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ purposes: selected }),
+        });
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        console.error('[consent] Failed:', err);
-        return;
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          console.error('[consent] Failed to persist consent:', {
+            status: res.status,
+            error: err,
+          });
+          setSubmitError('Unable to record consent right now. Please try again.');
+          return;
+        }
       }
 
       onConsentGiven(selected);
+    } catch (error) {
+      console.error('[consent] Unexpected submit error:', error);
+      setSubmitError('Network error while recording consent. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -512,6 +530,9 @@ export function ConsentForm({ onConsentGiven, loading }: ConsentFormProps) {
                       Code matched — ready to confirm.
                     </p>
                   </div>
+                )}
+                {submitError && (
+                  <p className="text-xs text-red-500 font-sans mt-2">{submitError}</p>
                 )}
               </div>
 

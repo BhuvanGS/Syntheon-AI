@@ -5,6 +5,7 @@ import { recordConsent, hasValidConsent, CURRENT_CONSENT_VERSION } from '@/lib/d
 export async function POST(req: NextRequest) {
   const { userId } = await auth();
   if (!userId) {
+    console.warn('[consent] Unauthorized POST request');
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -43,6 +44,7 @@ export async function POST(req: NextRequest) {
 export async function GET() {
   const { userId } = await auth();
   if (!userId) {
+    console.warn('[consent] Unauthorized GET request');
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
