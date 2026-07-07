@@ -39,6 +39,7 @@ export function createSite(args: {
       s.skribbyWebhookSecret,
       s.webhookAccessToken,
       s.googleOauthClientSecret,
+      s.googleOauthClientId,
       s.tokenEncryptionKey,
     ],
     environment: {
@@ -53,7 +54,7 @@ export function createSite(args: {
       DEEPGRAM_API_KEY: s.deepgramApiKey.value,
       SKRIBBY_WEBHOOK_SECRET: s.skribbyWebhookSecret.value,
       WEBHOOK_ACCESS_TOKEN: s.webhookAccessToken.value,
-      GOOGLE_OAUTH_CLIENT_ID: process.env.GOOGLE_OAUTH_CLIENT_ID!,
+      GOOGLE_OAUTH_CLIENT_ID: s.googleOauthClientId.value,
       GOOGLE_OAUTH_CLIENT_SECRET: s.googleOauthClientSecret.value,
       GOOGLE_OAUTH_REDIRECT_URI: isProduction
         ? 'https://app.syntheonhub.com/api/oauth/google/callback'
