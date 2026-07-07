@@ -23,22 +23,14 @@ export default function SignUpPage() {
         }}
       >
         <div className="relative z-10 max-w-lg">
-          <div className="flex items-center gap-2 mb-12">
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{ background: '#fff' }}
-            >
-              <span
-                style={{
-                  fontFamily: "'Space Grotesk', sans-serif",
-                  fontSize: '16px',
-                  fontWeight: 700,
-                  color: '#000',
-                }}
-              >
-                S
-              </span>
-            </div>
+          <div className="flex items-center gap-2.5 mb-12">
+            <img
+              src="/syntheon-logo.png"
+              alt="Syntheon Hub"
+              width={32}
+              height={32}
+              style={{ borderRadius: '6px', objectFit: 'cover' }}
+            />
             <span
               style={{
                 fontFamily: "'Space Grotesk', sans-serif",
@@ -110,7 +102,17 @@ export default function SignUpPage() {
       </div>
 
       {/* Right side — consent + auth form */}
-      <div className="flex-1 flex items-center justify-center p-6 md:p-12 overflow-auto">
+      <div
+        className="flex-1 flex items-center justify-center p-6 md:p-12 overflow-auto"
+        style={{
+          backgroundColor: '#0a0a0a',
+          backgroundImage: `
+            linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)
+          `,
+          backgroundSize: '48px 48px',
+        }}
+      >
         <div className="w-full max-w-3xl">
           <PreAuthConsent>
             <SignUp />

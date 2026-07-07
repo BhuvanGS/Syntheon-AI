@@ -212,16 +212,30 @@ export default function OnboardingPage() {
 
   if (step === 'loading' && !isPublicDomain && domainCheck === null) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+      <div
+        className="min-h-screen flex flex-col items-center justify-center p-6"
+        style={{
+          backgroundColor: '#0a0a0a',
+          backgroundImage: `
+            linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)
+          `,
+          backgroundSize: '48px 48px',
+        }}
+      >
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="flex items-center gap-2 mb-12"
+          className="flex items-center gap-2.5 mb-12"
         >
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <Sparkles className="h-5 w-5" />
-          </div>
+          <img
+            src="/syntheon-logo.png"
+            alt="Syntheon Hub"
+            width={32}
+            height={32}
+            style={{ borderRadius: '6px', objectFit: 'cover' }}
+          />
           <span className="font-playfair text-xl font-bold text-foreground">Syntheon Hub</span>
         </motion.div>
         <motion.div
@@ -239,16 +253,30 @@ export default function OnboardingPage() {
 
   if (step === 'loading' && isPublicDomain) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+      <div
+        className="min-h-screen flex flex-col items-center justify-center p-6"
+        style={{
+          backgroundColor: '#0a0a0a',
+          backgroundImage: `
+            linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)
+          `,
+          backgroundSize: '48px 48px',
+        }}
+      >
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="flex items-center gap-2 mb-12"
+          className="flex items-center gap-2.5 mb-12"
         >
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <Sparkles className="h-5 w-5" />
-          </div>
+          <img
+            src="/syntheon-logo.png"
+            alt="Syntheon Hub"
+            width={32}
+            height={32}
+            style={{ borderRadius: '6px', objectFit: 'cover' }}
+          />
           <span className="font-playfair text-xl font-bold text-foreground">Syntheon Hub</span>
         </motion.div>
         <motion.div
@@ -266,11 +294,25 @@ export default function OnboardingPage() {
 
   if (step === 'error' && isPublicDomain) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
-        <div className="flex items-center gap-2 mb-12">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <Sparkles className="h-5 w-5" />
-          </div>
+      <div
+        className="min-h-screen flex flex-col items-center justify-center p-6"
+        style={{
+          backgroundColor: '#0a0a0a',
+          backgroundImage: `
+            linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)
+          `,
+          backgroundSize: '48px 48px',
+        }}
+      >
+        <div className="flex items-center gap-2.5 mb-12">
+          <img
+            src="/syntheon-logo.png"
+            alt="Syntheon Hub"
+            width={32}
+            height={32}
+            style={{ borderRadius: '6px', objectFit: 'cover' }}
+          />
           <span className="font-playfair text-xl font-bold text-foreground">Syntheon Hub</span>
         </div>
         <motion.div
@@ -329,26 +371,42 @@ export default function OnboardingPage() {
             )}
             {loading ? 'Creating...' : 'Create Workspace'}
           </Button>
-          <Button
-            onClick={handleRetry}
-            variant="ghost"
-            className="w-full rounded-full gap-2"
-            disabled={loading}
-          >
-            <Sparkles className="h-4 w-4" />
-            Retry
-          </Button>
+          {error && (
+            <Button
+              onClick={handleRetry}
+              variant="ghost"
+              className="w-full rounded-full gap-2"
+              disabled={loading}
+            >
+              <Sparkles className="h-4 w-4" />
+              Retry
+            </Button>
+          )}
         </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
-      <div className="flex items-center gap-2 mb-12">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-          <Sparkles className="h-5 w-5" />
-        </div>
+    <div
+      className="min-h-screen flex flex-col items-center justify-center p-6"
+      style={{
+        backgroundColor: '#0a0a0a',
+        backgroundImage: `
+          linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)
+        `,
+        backgroundSize: '48px 48px',
+      }}
+    >
+      <div className="flex items-center gap-2.5 mb-12">
+        <img
+          src="/syntheon-logo.png"
+          alt="Syntheon Hub"
+          width={32}
+          height={32}
+          style={{ borderRadius: '6px', objectFit: 'cover' }}
+        />
         <span className="font-playfair text-xl font-bold text-foreground">Syntheon Hub</span>
       </div>
 
