@@ -842,7 +842,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
           />
         </button>
         <div
-          className={`flex items-center justify-between flex-wrap gap-2 overflow-hidden transition-all duration-300 ${toolbarOpen ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-8 pointer-events-none'}`}
+          className={`flex items-center justify-between flex-wrap gap-2 overflow-hidden transition-all duration-300 ${toolbarOpen ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-8 pointer-events-none'}`}
         >
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1 rounded-lg border border-border p-0.5 bg-muted/40">

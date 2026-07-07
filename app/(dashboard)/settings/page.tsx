@@ -7,6 +7,7 @@ import { Building2, Sliders, ArrowLeft, Plug, LogOut, CreditCard, Scale } from '
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { LoadingMessage } from '@/components/loading-message';
 import { IntegrationsTab } from '@/components/settings/integrations-tab';
 import { OrganizationsTab } from '@/components/settings/organizations-tab';
 import { PreferencesTab } from '@/components/settings/preferences-tab';
@@ -68,7 +69,7 @@ export default function SettingsPage() {
   if (!user || !organization) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <p className="text-sm text-muted-foreground">Loading...</p>
+        <LoadingMessage />
       </div>
     );
   }

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { ConsentForm } from '@/components/consent-form';
 import { Loader2 } from 'lucide-react';
+import { LoadingMessage } from '@/components/loading-message';
 
 const CONSENT_LOCAL_KEY = 'syntheon_pre_auth_consent';
 const CONSENT_PURPOSES_KEY = 'syntheon_pre_auth_consent_purposes';
@@ -64,7 +65,7 @@ export function ConsentGate({ children }: { children: React.ReactNode }) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-3">
         <Loader2 className="h-6 w-6 text-primary animate-spin" />
-        <p className="text-sm text-muted-foreground font-sans">Checking consent status...</p>
+        <LoadingMessage />
       </div>
     );
   }

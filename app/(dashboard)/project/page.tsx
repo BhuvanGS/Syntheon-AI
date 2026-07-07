@@ -6,6 +6,7 @@ import { Sidebar } from '@/components/sidebar';
 import { ProjectsWorkspace } from '@/components/projects-workspace';
 import { ProjectCreateDialog } from '@/components/project-create-dialog';
 import { ManualTicketDialog } from '@/components/manual-ticket-dialog';
+import { LoadingMessage } from '@/components/loading-message';
 import { TicketDetail } from '@/components/ticket-detail';
 import { Button } from '@/components/ui/button';
 import { DynamicIslandSearch } from '@/components/dynamic-island-search';
@@ -346,7 +347,13 @@ function ProjectContent() {
 
 export default function ProjectPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="flex h-screen items-center justify-center">
+          <LoadingMessage />
+        </div>
+      }
+    >
       <ProjectContent />
     </Suspense>
   );

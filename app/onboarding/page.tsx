@@ -27,6 +27,7 @@ import {
   InputOTPSeparator,
 } from '@/components/ui/input-otp';
 import { cn } from '@/lib/utils';
+import { LoadingMessage } from '@/components/loading-message';
 import { motion, AnimatePresence } from 'motion/react';
 
 type Step = 'loading' | 'choose' | 'create' | 'join' | 'join-existing' | 'error';
@@ -245,7 +246,7 @@ export default function OnboardingPage() {
           className="flex flex-col items-center gap-4"
         >
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground">Checking your workspace...</p>
+          <LoadingMessage />
         </motion.div>
       </div>
     );
@@ -286,7 +287,7 @@ export default function OnboardingPage() {
           className="flex flex-col items-center gap-4"
         >
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground">Setting up your workspace...</p>
+          <LoadingMessage />
         </motion.div>
       </div>
     );

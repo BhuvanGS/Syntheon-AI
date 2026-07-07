@@ -1,5 +1,6 @@
 'use client';
 
+import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { useEffect, useState } from 'react';
 import {
   Dialog,
@@ -12,7 +13,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { FolderPlus, Sparkles, Lock } from 'lucide-react';
+import { FolderPlus, Lock, X } from 'lucide-react';
 
 export interface BoardColumn {
   id: string;
@@ -76,7 +77,10 @@ export function ProjectCreateDialog({ open, onOpenChange, onCreate }: ProjectCre
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl border-border bg-background shadow-2xl">
+      <DialogContent
+        className="sm:max-w-2xl border-border bg-background shadow-2xl"
+        showCloseButton={false}
+      >
         {limitReached ? (
           <div className="space-y-4 rounded-2xl border border-primary/10 bg-primary/5 p-6 text-center">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -105,20 +109,28 @@ export function ProjectCreateDialog({ open, onOpenChange, onCreate }: ProjectCre
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <DialogHeader>
-              <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary w-fit mb-2">
-                <Sparkles className="h-3.5 w-3.5" />
-                Syntheon Hub Projects
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex flex-col gap-1">
+                    <span className="block h-0.5 w-5 rounded-full bg-primary" />
+                    <span className="block h-0.5 w-5 rounded-full bg-primary" />
+                  </div>
+                  <DialogTitle className="font-playfair text-2xl text-foreground">
+                    Create a new project
+                  </DialogTitle>
+                </div>
+                <DialogPrimitive.Close className="rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:outline-none">
+                  <X className="h-5 w-5" />
+                  <span className="sr-only">Close</span>
+                </DialogPrimitive.Close>
               </div>
-              <DialogTitle className="font-playfair text-2xl text-foreground">
-                Create a new project
-              </DialogTitle>
               <DialogDescription className="text-muted-foreground">
                 Start a workspace for a product, client, or feature stream. You'll set up your board
                 columns next.
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-2">
+            <div className="space-y-3">
               <label className="text-sm font-medium text-foreground">Project name</label>
               <Input
                 value={name}
@@ -129,7 +141,7 @@ export function ProjectCreateDialog({ open, onOpenChange, onCreate }: ProjectCre
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-3">
               <label className="text-sm font-medium text-foreground">Context</label>
               <Textarea
                 value={context}

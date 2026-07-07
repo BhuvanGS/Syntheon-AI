@@ -1,15 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import {
-  Clock,
-  Calendar,
-  Play,
-  CheckCircle,
-  AlertCircle,
-  Hourglass,
-  ArrowRight,
-} from 'lucide-react';
+import { Clock, Calendar, CheckCircle, AlertCircle, Hourglass, ArrowRight } from 'lucide-react';
 
 interface Ticket {
   id: string;
@@ -158,19 +150,6 @@ export function TicketTimelinePanel({ ticket, subtasks = [] }: TicketTimelinePan
         <div className="relative">
           {/* Timeline Line */}
           <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-border" />
-
-          {/* Start Date */}
-          <div className="relative flex gap-3 pb-6">
-            <div
-              className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center ${ticket.start_date ? 'bg-blue-100 text-blue-600' : 'bg-muted text-muted-foreground'}`}
-            >
-              <Play className="h-4 w-4" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium text-foreground">Start Date</p>
-              <p className="text-sm text-muted-foreground">{formatDate(ticket.start_date)}</p>
-            </div>
-          </div>
 
           {/* Due Date */}
           <div className="relative flex gap-3">

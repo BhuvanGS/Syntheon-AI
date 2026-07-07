@@ -819,7 +819,10 @@ function FinalCTA({ mounted }: { mounted: boolean }) {
 function Footer() {
   return (
     <footer style={{ borderTop: '1px solid rgba(255,255,255,0.08)', padding: '5rem 5vw 2rem' }}>
-      <div className="footer-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr', gap: '3rem' }}>
+      <div
+        className="footer-grid"
+        style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr', gap: '3rem' }}
+      >
         <div>
           <div
             style={{

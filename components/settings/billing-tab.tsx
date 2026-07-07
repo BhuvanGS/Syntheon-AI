@@ -3,6 +3,7 @@
 import { useAuth, useOrganization } from '@clerk/nextjs';
 import { CreditCard, Check, Sparkles } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { LoadingMessage } from '@/components/loading-message';
 
 const PLAN_FEATURES: Record<string, string[]> = {
   Free: ['2 meetings/mo', '25 tickets', '1 project', 'Basic board'],
@@ -105,7 +106,7 @@ export function BillingTab() {
   if (!isLoaded) {
     return (
       <div className="flex items-center justify-center py-20">
-        <p className="text-sm text-muted-foreground">Loading...</p>
+        <LoadingMessage />
       </div>
     );
   }

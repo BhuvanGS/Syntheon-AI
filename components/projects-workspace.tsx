@@ -73,6 +73,7 @@ import { TicketMetadataEditor } from '@/components/ticket-metadata-editor';
 import { BulkActionBar } from '@/components/ticket-bulk-bar';
 import { BacklogView } from '@/components/backlog-view';
 import { RoadmapView } from '@/components/roadmap-view';
+import { LoadingMessage } from '@/components/loading-message';
 import { LabelManager } from '@/components/label-manager';
 import { onCommand } from '@/lib/command-events';
 import {
@@ -81,7 +82,6 @@ import {
   Video,
   Ticket,
   ArrowRight,
-  Download,
   Pencil,
   Trash2,
   GitBranch,
@@ -1778,21 +1778,19 @@ export function ProjectsWorkspace({
     );
   }
 
-  const allTabs: { id: ProjectTab; label: string; icon: React.ReactNode; adminOnly?: boolean }[] = (
-    [
-      { id: 'tickets', label: 'Tickets', icon: <Ticket className="h-4 w-4" /> },
-      { id: 'meetings', label: 'Meetings', icon: <Calendar className="h-4 w-4" /> },
-      {
-        id: 'analytics',
-        label: 'Analytics',
-        icon: <BarChart3 className="h-4 w-4" />,
-      },
-      { id: 'dependencies', label: 'Dependencies', icon: <GitBranch className="h-4 w-4" /> },
-      { id: 'roadmap', label: 'Future Viz', icon: <Milestone className="h-4 w-4" /> },
-      { id: 'sprint-stones', label: 'Sprint-stones', icon: <Zap className="h-4 w-4" /> },
-      { id: 'members', label: 'Members', icon: <Users className="h-4 w-4" />, adminOnly: true },
-    ] as { id: ProjectTab; label: string; icon: React.ReactNode; adminOnly?: boolean }[]
-  );
+  const allTabs: { id: ProjectTab; label: string; icon: React.ReactNode; adminOnly?: boolean }[] = [
+    { id: 'tickets', label: 'Tickets', icon: <Ticket className="h-4 w-4" /> },
+    { id: 'meetings', label: 'Meetings', icon: <Calendar className="h-4 w-4" /> },
+    {
+      id: 'analytics',
+      label: 'Analytics',
+      icon: <BarChart3 className="h-4 w-4" />,
+    },
+    { id: 'dependencies', label: 'Dependencies', icon: <GitBranch className="h-4 w-4" /> },
+    { id: 'roadmap', label: 'Future Viz', icon: <Milestone className="h-4 w-4" /> },
+    { id: 'sprint-stones', label: 'Sprint-stones', icon: <Zap className="h-4 w-4" /> },
+    { id: 'members', label: 'Members', icon: <Users className="h-4 w-4" />, adminOnly: true },
+  ] as { id: ProjectTab; label: string; icon: React.ReactNode; adminOnly?: boolean }[];
   const tabs = allTabs.filter((t) => !t.adminOnly || isAdmin);
 
   const statusConfig: Record<
@@ -2020,7 +2018,7 @@ export function ProjectsWorkspace({
                   className="gap-2 cursor-pointer"
                 >
                   <Pencil className="h-4 w-4 text-primary" />
-                  Change name
+                  Rename project
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setProjectTab('settings')}
@@ -2028,13 +2026,6 @@ export function ProjectsWorkspace({
                 >
                   <Settings className="h-4 w-4 text-primary" />
                   Project settings
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setIsImportDialogOpen(true)}
-                  className="gap-2 cursor-pointer"
-                >
-                  <Download className="h-4 w-4 text-primary" />
-                  Import tickets from meeting
                 </DropdownMenuItem>
                 {isAdmin && (
                   <DropdownMenuItem onClick={onCreateProject} className="gap-2 cursor-pointer">
@@ -2174,7 +2165,7 @@ export function ProjectsWorkspace({
                 />
               </button>
               <div
-                className={`flex items-center justify-between flex-wrap gap-2 overflow-hidden transition-all duration-300 ${toolbarOpen ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-8 pointer-events-none'}`}
+                className={`flex items-center justify-between flex-wrap gap-2 overflow-hidden transition-all duration-300 ${toolbarOpen ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-8 pointer-events-none'}`}
               >
                 <div className="flex items-center rounded-lg border border-border bg-muted/40 p-0.5">
                   {(
@@ -2445,7 +2436,7 @@ export function ProjectsWorkspace({
                         type="button"
                         onClick={saveStageDetails}
                         disabled={!stageForm.label.trim()}
-                        className="rounded-none"
+                        className="rounded-lg"
                       >
                         Create column
                       </Button>
@@ -2453,7 +2444,7 @@ export function ProjectsWorkspace({
                         type="button"
                         variant="ghost"
                         onClick={() => setIsAddingStageInline(false)}
-                        className="rounded-none"
+                        className="rounded-lg"
                       >
                         Cancel
                       </Button>
@@ -2498,14 +2489,16 @@ export function ProjectsWorkspace({
                 )
               ) : ticketsViewMode === 'list' ? (
                 <div className="rounded-2xl border border-border bg-muted/30 overflow-hidden">
-                  <div className="grid grid-cols-[1fr_120px_120px_40px] items-center px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground border-b border-border/60 bg-muted/40">
+                  <div className="grid grid-cols-[1fr_120px_120px_120px_40px] items-center px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground border-b border-border/60 bg-muted/40">
                     <span>Title</span>
-                    <span>Status</span>
-                    <span>Assignee</span>
+                    <span className="text-center">Status</span>
+                    <span className="text-center">Stage</span>
+                    <span className="text-center">Assignee</span>
                     <span />
                   </div>
                   {rootProjectTickets.map((ticket, i) => {
                     const s = getStatusConfig(ticket.status);
+                    const ticketStage = resolveTicketStage(ticket);
                     return (
                       <div
                         key={ticket.id}
@@ -2519,7 +2512,7 @@ export function ProjectsWorkspace({
                             });
                           }
                         }}
-                        className={`grid grid-cols-[1fr_120px_120px_40px] items-center px-4 py-3 gap-2 hover:bg-muted/40 transition-colors ${i < rootProjectTickets.length - 1 ? 'border-b border-border/40' : ''} ${bulkMode ? 'cursor-pointer' : ''} ${selectedIds.has(ticket.id) ? 'bg-primary/5' : ''}`}
+                        className={`grid grid-cols-[1fr_120px_120px_120px_40px] items-center px-4 py-3 gap-2 hover:bg-muted/40 transition-colors ${i < rootProjectTickets.length - 1 ? 'border-b border-border/40' : ''} ${bulkMode ? 'cursor-pointer' : ''} ${selectedIds.has(ticket.id) ? 'bg-primary/5' : ''}`}
                       >
                         <div className="flex items-center gap-2">
                           {bulkMode && (
@@ -2535,14 +2528,13 @@ export function ProjectsWorkspace({
                             {ticket.title}
                           </span>
                         </div>
-                        <span
-                          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium w-fit"
-                          style={{ background: s.bg, color: s.color }}
-                        >
-                          {s.icon}
+                        <span className="text-xs text-muted-foreground text-center capitalize">
                           {s.label}
                         </span>
-                        <span className="text-xs text-muted-foreground truncate">
+                        <span className="text-xs text-muted-foreground text-center">
+                          {ticketStage ? ticketStage.label : '—'}
+                        </span>
+                        <span className="text-xs text-muted-foreground truncate text-center">
                           {ticket.assignee ? `@${ticket.assignee}` : '—'}
                         </span>
                         <button
@@ -2552,9 +2544,9 @@ export function ProjectsWorkspace({
                             e.stopPropagation();
                             openTicketEditor(ticket);
                           }}
-                          className={`text-xs text-primary hover:underline justify-self-end ${bulkMode ? 'pointer-events-none opacity-0' : ''}`}
+                          className={`text-muted-foreground hover:text-foreground justify-self-end ${bulkMode ? 'pointer-events-none opacity-0' : ''}`}
                         >
-                          Open
+                          <Pencil className="h-3.5 w-3.5" />
                         </button>
                       </div>
                     );
@@ -3746,7 +3738,7 @@ export function ProjectsWorkspace({
                                 <span className="text-emerald-600 font-medium">{a.done} done</span>
                               </div>
                             </div>
-                            <div className="h-2 rounded-full bg-muted overflow-hidden flex">
+                            <div className="h-2 rounded-full bg-muted overflow-hidden flex mx-auto w-full max-w-[400px]">
                               {a.inProgress > 0 && (
                                 <div
                                   className="h-full"
@@ -5146,7 +5138,7 @@ export function ProjectsWorkspace({
                 <div className="rounded-2xl border border-border bg-muted/50 p-4 space-y-3">
                   <p className="text-xs font-medium text-muted-foreground">Project members</p>
                   {projectMembersLoading ? (
-                    <p className="text-sm text-muted-foreground">Loading...</p>
+                    <LoadingMessage className="text-sm" />
                   ) : projectMembers.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
                       No members added to this project yet.
@@ -5473,7 +5465,7 @@ export function ProjectsWorkspace({
                             });
                             await onRefresh?.();
                           }}
-                          className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground cursor-pointer hover:bg-muted/50"
+                          className="rounded-lg border border-border bg-background px-4 py-2 text-sm text-foreground cursor-pointer hover:bg-muted/50"
                         >
                           {statusOptions.map((opt) => (
                             <option key={opt.value} value={opt.value}>
@@ -5871,6 +5863,7 @@ export function ProjectsWorkspace({
         <SheetContent
           side="right"
           className="w-[680px] sm:max-w-[680px] p-0 overflow-hidden bg-zinc-100 dark:bg-zinc-900"
+          showCloseButton={!Boolean(ticketToEdit?.dependency_ticket_id)}
         >
           <SheetHeader className="border-b border-border px-6 py-4">
             <div className="flex items-center justify-between gap-2">
@@ -5878,7 +5871,13 @@ export function ProjectsWorkspace({
                 {ticketToEdit?.dependency_ticket_id ? 'Edit subticket' : 'Edit ticket'}
               </SheetTitle>
               {ticketEditorHistory.length > 0 && (
-                <Button type="button" variant="outline" size="sm" onClick={goBackTicketEditor}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={goBackTicketEditor}
+                  className="rounded-none"
+                >
                   Go back
                 </Button>
               )}
@@ -5920,7 +5919,7 @@ export function ProjectsWorkspace({
             </div>
           </div>
 
-          <div className="flex-1 overflow-auto px-6 py-5">
+          <div key={ticketToEdit?.id} className="flex-1 overflow-auto px-6 py-5 animate-fade-in">
             {ticketEditTab === 'details' && (
               <>
                 <div className="bg-zinc-100 dark:bg-zinc-800 border border-border px-4 py-3">
@@ -5969,7 +5968,7 @@ export function ProjectsWorkspace({
                   />
                 </div>
 
-                <div className="grid grid-cols-3 gap-4 mt-4">
+                <div className="grid grid-cols-4 gap-4 mt-4">
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium text-muted-foreground block">
                       Assignee
@@ -5999,6 +5998,44 @@ export function ProjectsWorkspace({
                       <SelectContent>
                         {effectiveStages.map((stage) => (
                           <SelectItem key={stage.id} value={stage.status}>
+                            {stage.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground block">Stage</label>
+                    <Select
+                      value={
+                        ticketToEdit
+                          ? (ticketStageMap[ticketToEdit.id] ??
+                            effectiveStages.find((s) => s.status === ticketEditForm.status)?.id ??
+                            '')
+                          : ''
+                      }
+                      onValueChange={(value) => {
+                        if (!ticketToEdit) return;
+                        const stage = effectiveStages.find((s) => s.id === value);
+                        if (stage) {
+                          setTicketStageMap((prev) => ({
+                            ...prev,
+                            [ticketToEdit.id]: stage.id,
+                          }));
+                          setTicketEditForm((prev) => ({
+                            ...prev,
+                            status: stage.status,
+                          }));
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="rounded-none bg-zinc-100 dark:bg-zinc-800">
+                        <SelectValue placeholder="Select stage" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {effectiveStages.map((stage) => (
+                          <SelectItem key={stage.id} value={stage.id}>
                             {stage.label}
                           </SelectItem>
                         ))}

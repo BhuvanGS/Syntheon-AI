@@ -5,6 +5,7 @@ import { useSignIn } from '@clerk/nextjs/legacy';
 import { useAuth, useClerk } from '@clerk/nextjs';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
+import { LoadingMessage } from '@/components/loading-message';
 
 function AcceptInviteContent() {
   const { isLoaded, signIn, setActive } = useSignIn();
@@ -86,7 +87,7 @@ export default function AcceptInvitePage() {
         <div className="min-h-screen bg-black flex items-center justify-center">
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="h-6 w-6 animate-spin text-white/60" />
-            <p className="text-sm text-white/50">Loading...</p>
+            <LoadingMessage className="text-white/50" />
           </div>
         </div>
       }

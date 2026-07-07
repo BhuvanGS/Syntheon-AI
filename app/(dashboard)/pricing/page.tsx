@@ -6,6 +6,7 @@ import { ArrowLeft, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { LoadingMessage } from '@/components/loading-message';
 
 type BillingType = 'user' | 'organization';
 
@@ -20,7 +21,7 @@ export default function PricingPage() {
   if (!isLoaded) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <p className="text-sm text-muted-foreground">Loading...</p>
+        <LoadingMessage />
       </div>
     );
   }

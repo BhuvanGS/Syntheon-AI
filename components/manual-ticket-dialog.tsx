@@ -198,8 +198,8 @@ export function ManualTicketDialog({
           </DialogTitle>
           <DialogDescription className="text-muted-foreground">
             {projectOnly
-              ? 'Write a Jira-style ticket manually for this project without linking it to a meeting.'
-              : 'Write a Jira-style ticket manually and attach it to one of your meetings.'}
+              ? 'Write tickets manually for this project.'
+              : 'Write a ticket manually and attach it to one of your meetings.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -230,7 +230,7 @@ export function ManualTicketDialog({
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
+            <div className="space-y-3">
               <label className="text-sm font-medium text-foreground">Title</label>
               <Input
                 value={title}
@@ -241,7 +241,7 @@ export function ManualTicketDialog({
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-3">
               <label className="text-sm font-medium text-foreground">Description</label>
               <Textarea
                 value={description}
@@ -253,7 +253,7 @@ export function ManualTicketDialog({
 
             <div className={`grid grid-cols-1 gap-4 ${projectOnly ? '' : 'sm:grid-cols-2'}`}>
               {!projectOnly && (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <label className="text-sm font-medium text-foreground">Meeting</label>
                   <Select
                     value={resolvedMeetingId}
@@ -280,7 +280,7 @@ export function ManualTicketDialog({
                 </div>
               )}
 
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <label className="text-sm font-medium text-foreground">Status</label>
                 <Select value={status} onValueChange={(value) => setStatus(value as typeof status)}>
                   <SelectTrigger>
@@ -297,7 +297,7 @@ export function ManualTicketDialog({
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-3">
               <label className="text-sm font-medium text-foreground">Assignee</label>
               <AssigneePicker value={assignee} onChange={setAssignee} />
             </div>

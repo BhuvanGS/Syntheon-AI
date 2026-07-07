@@ -33,6 +33,7 @@ import { NotificationBell } from '@/components/notification-bell';
 import { GanttCalendar } from '@/components/gantt-calendar';
 import { DashboardGrid } from '@/components/dashboard-grid';
 import { TrialBanner } from '@/components/trial-banner';
+import { LoadingMessage } from '@/components/loading-message';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -1210,7 +1211,13 @@ function DashboardContent() {
 
 export default function Home() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="flex h-screen items-center justify-center">
+          <LoadingMessage />
+        </div>
+      }
+    >
       <DashboardContent />
     </Suspense>
   );

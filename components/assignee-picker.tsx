@@ -1,7 +1,7 @@
 'use client';
 
 import { useOrganization, useUser } from '@clerk/nextjs';
-import { UserCircle2, X } from 'lucide-react';
+import { UserCircle2, Pencil } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -69,7 +69,7 @@ export function AssigneePicker({ value, onChange, disabled }: AssigneePickerProp
                 }
               }}
             >
-              <X className="h-3.5 w-3.5" />
+              <Pencil className="h-3.5 w-3.5" />
             </span>
           )}
         </Button>
@@ -131,7 +131,7 @@ export function AssigneePicker({ value, onChange, disabled }: AssigneePickerProp
           onClick={() => onChange(null)}
           className="gap-2 cursor-pointer text-muted-foreground"
         >
-          <X className="h-4 w-4" />
+          <UserCircle2 className="h-4 w-4" />
           Unassign
         </DropdownMenuItem>
       </DropdownMenuContent>
