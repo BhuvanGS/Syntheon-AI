@@ -18,7 +18,7 @@ interface UsageData {
   meetingsLimit: number;
 }
 
-const FREE_MEETING_LIMIT = 2;
+const FREE_MEETING_LIMIT = 10;
 
 export function TrialBanner() {
   const { organization, isLoaded: orgLoaded } = useOrganization();
@@ -88,7 +88,7 @@ export function TrialBanner() {
   if (!orgLoaded || !authLoaded) return null;
 
   const days = trial?.daysLeft ?? 0;
-  const totalDays = trial?.trialDays ?? 15;
+  const totalDays = trial?.trialDays ?? 7;
   const isTrial = trial?.isTrial && !trial.expired;
   const isUrgent = isTrial && days <= 7;
 

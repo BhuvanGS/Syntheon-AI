@@ -16,10 +16,10 @@ const MagicRings = dynamic(() => import('@/components/MagicRings').then((m) => m
 const APP_URL = 'https://app.syntheonhub.com';
 
 const stats = [
-  { value: '8+', label: 'Tickets per meeting' },
-  { value: '2 min', label: 'Processing time' },
-  { value: '3', label: 'Platforms supported' },
-  { value: '0', label: 'Manual ticket writing' },
+  { value: '8+', label: 'Tickets extracted per meeting' },
+  { value: '2 min', label: 'From meeting to board' },
+  { value: '100%', label: 'Automated workflow' },
+  { value: '0', label: 'Manual updates needed' },
 ];
 
 const features = [
@@ -358,6 +358,15 @@ export default function LandingPage() {
             grid-template-columns: 1fr !important;
             gap: 2rem !important;
           }
+          .footer-grid {
+            grid-template-columns: 1fr 1fr !important;
+            gap: 2rem !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .footer-grid {
+            grid-template-columns: 1fr !important;
+          }
         }
       `}</style>
       <a
@@ -403,9 +412,10 @@ function StatsBar() {
       }}
     >
       <div
+        className="stats-grid"
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
           gap: '2rem',
           textAlign: 'center',
         }}
@@ -537,7 +547,7 @@ function PricingSection() {
       price: '$0',
       period: 'forever',
       desc: 'For solo founders getting started',
-      features: ['2 meetings/mo', '25 tickets', '1 project', 'Basic Kanban board'],
+      features: ['10 meetings/mo', '50 tickets', '3 projects', 'Kanban board'],
       cta: 'Join Beta',
       highlight: false,
     },
@@ -607,7 +617,7 @@ function PricingSection() {
             marginTop: '1.5rem',
           }}
         >
-          15-day free trial on paid plans. No credit card required.
+          7-day free trial on paid plans. No credit card required.
         </p>
       </div>
 
@@ -809,7 +819,7 @@ function FinalCTA({ mounted }: { mounted: boolean }) {
 function Footer() {
   return (
     <footer style={{ borderTop: '1px solid rgba(255,255,255,0.08)', padding: '5rem 5vw 2rem' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '3rem' }}>
+      <div className="footer-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr', gap: '3rem' }}>
         <div>
           <div
             style={{
@@ -885,9 +895,6 @@ function Footer() {
       >
         <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.3)' }}>
           &copy; 2026 Syntheon Hub. All rights reserved.
-        </span>
-        <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.3)' }}>
-          Built with Next.js, Clerk, and Drizzle.
         </span>
       </div>
     </footer>

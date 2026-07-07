@@ -518,7 +518,7 @@ export default function OnboardingPage() {
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-border bg-muted/40 p-5 space-y-3">
+              <div className="rounded-2xl border border-border bg-muted/40 p-6 space-y-3">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                     <Building2 className="h-5 w-5" />

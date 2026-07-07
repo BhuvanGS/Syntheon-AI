@@ -68,7 +68,7 @@ export default function PricingPage() {
           </div>
           {currentPlan === 'Free' && (
             <div className="text-right">
-              <p className="text-xs opacity-70">2 meetings/mo · 1 project · 25 tickets</p>
+              <p className="text-xs opacity-70">10 meetings/mo · 3 projects · 50 tickets</p>
               <p className="text-xs font-medium mt-0.5">All features free during beta</p>
             </div>
           )}

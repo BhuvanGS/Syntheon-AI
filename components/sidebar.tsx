@@ -266,13 +266,6 @@ export function Sidebar({
               )}
               title={collapsed ? item.label : undefined}
             >
-              <span
-                className={cn(
-                  'absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-primary transition-all duration-300',
-                  active ? 'opacity-100 scale-y-100' : 'opacity-0 scale-y-50'
-                )}
-                aria-hidden
-              />
               <Icon
                 className={cn(
                   'h-4 w-4 shrink-0 transition-transform duration-200',
@@ -321,7 +314,7 @@ export function Sidebar({
             </div>
             <button
               onClick={() => router.push('/settings')}
-              className="p-1 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all hover:shadow-[0_0_8px_rgba(124,58,237,0.4)]"
+              className="p-1 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
               title="Settings"
             >
               <Settings className="h-3.5 w-3.5" />

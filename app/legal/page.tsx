@@ -894,7 +894,7 @@ function LegalPageContent() {
       </p>
       <h3 style={{ ...s().h2, fontSize: '1rem' }}>Free Trial</h3>
       <p style={s().p}>
-        We offer a 15-day free trial to new users who register with the Services. The account will
+        We offer a 7-day free trial to new users who register with the Services. The account will
         not be charged and the subscription will be suspended until upgraded to a paid version at
         the end of the free trial.
       </p>
@@ -1370,8 +1370,8 @@ function LegalPageContent() {
             {[
               ['Skribby', 'EU', 'Meeting transcription'],
               ['Groq', 'USA', 'AI processing'],
-              ['Supabase', 'India (Mumbai)', 'Data storage'],
-              ['Vercel', 'USA', 'Hosting'],
+              ['AWS', 'Global', 'Cloud infrastructure'],
+              ['Cloudflare', 'Global', 'CDN & security'],
               ['Clerk', 'USA', 'Authentication'],
               ['Razorpay', 'India', 'Payments'],
             ].map(([s, l, p], i) => (
@@ -1398,7 +1398,7 @@ function LegalPageContent() {
         {[
           'AES-256 encryption for OAuth tokens at rest',
           'TLS 1.3 for all data in transit',
-          'Row-level security in Supabase',
+          'Encrypted data storage on AWS',
           'No plain-text credential storage',
           'Access logs retained for 90 days',
         ].map((m, i) => (

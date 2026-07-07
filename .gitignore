@@ -18,6 +18,7 @@ sql/
 scripts/
 .agents
 DB-changes.txt
+.cursor
 
 
 

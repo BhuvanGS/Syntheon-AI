@@ -934,7 +934,7 @@ function DashboardContent() {
 
           {/* ── CALENDAR — Gantt timeline ── */}
           {currentView === 'calendar' && (
-            <div className="p-6 h-full flex flex-col">
+            <div className="p-6 max-w-5xl mx-auto w-full h-full flex flex-col">
               <div className="mb-5 shrink-0">
                 <h2 className="text-xl font-semibold text-foreground">Future Viz</h2>
                 <p className="text-sm text-muted-foreground mt-0.5">
@@ -960,14 +960,14 @@ function DashboardContent() {
 
                 {/* Upcoming deadlines sidebar */}
                 <Card className="border-border/60 shadow-none hidden lg:flex flex-col max-h-[600px]">
-                  <CardHeader className="pb-3 pt-4 px-4 shrink-0">
+                  <CardHeader className="pb-3 pt-5 px-5 shrink-0">
                     <CardTitle className="text-sm font-semibold flex items-center gap-2">
                       <CalendarClock className="h-4 w-4 text-muted-foreground" />
                       Deadlines
                     </CardTitle>
                     <CardDescription className="text-xs mt-0.5">Next due tickets</CardDescription>
                   </CardHeader>
-                  <CardContent className="px-4 pb-4 overflow-y-auto flex-1">
+                  <CardContent className="px-5 pb-5 overflow-y-auto flex-1">
                     {(() => {
                       const upcoming = tickets
                         .filter((t) => t.due_date && t.status !== 'done')
@@ -1156,11 +1156,11 @@ function DashboardContent() {
 
           {/* ── PROJECTS ── */}
           {currentView === 'projects' && (
-            <div className="p-6 space-y-6">
+            <div className="p-6 space-y-5 max-w-5xl mx-auto w-full">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-semibold text-foreground">Projects</h2>
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <h2 className="text-xl font-semibold text-foreground">Projects</h2>
+                  <p className="text-sm text-muted-foreground mt-0.5">
                     Manage your workspaces and teams
                   </p>
                 </div>

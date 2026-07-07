@@ -194,7 +194,7 @@ Your subscription will continue and automatically renew unless canceled. You con
 
 ### Free Trial
 
-We offer a 15-day free trial to new users who register with the Services. The account will not be charged and the subscription will be suspended until upgraded to a paid version at the end of the free trial.
+We offer a 7-day free trial to new users who register with the Services. The account will not be charged and the subscription will be suspended until upgraded to a paid version at the end of the free trial.
 
 ### Cancellation
 
