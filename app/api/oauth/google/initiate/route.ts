@@ -22,7 +22,9 @@ export async function POST() {
       console.error('[OAuth Initiate] NEXT_PUBLIC_APP_URL not set');
       return NextResponse.json({ error: 'App URL not configured' }, { status: 500 });
     }
-    const redirectUri = `${baseUrl.replace(/\/$/, '')}/api/oauth/google/callback`;
+    const redirectUri =
+      process.env.GOOGLE_OAUTH_REDIRECT_URI ||
+      `${baseUrl.replace(/\/$/, '')}/api/oauth/google/callback`;
     console.log('[OAuth Initiate] redirectUri:', redirectUri);
 
     const state = randomUUID();

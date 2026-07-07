@@ -53,7 +53,9 @@ export async function GET(req: NextRequest) {
 
     const baseUrl =
       process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'http://localhost:3000';
-    const redirectUri = `${baseUrl.replace(/\/$/, '')}/api/oauth/google/callback`;
+    const redirectUri =
+      process.env.GOOGLE_OAUTH_REDIRECT_URI ||
+      `${baseUrl.replace(/\/$/, '')}/api/oauth/google/callback`;
 
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
