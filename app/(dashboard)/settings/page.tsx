@@ -151,7 +151,13 @@ export default function SettingsPage() {
       <main className="flex-1 overflow-auto">
         <div className="max-w-5xl mx-auto">
           {activeTab === 'integrations' && (
-            <Suspense fallback={<div className="flex items-center justify-center py-20"><LoadingMessage /></div>}>
+            <Suspense
+              fallback={
+                <div className="flex items-center justify-center py-20">
+                  <LoadingMessage />
+                </div>
+              }
+            >
               <IntegrationsTab />
             </Suspense>
           )}

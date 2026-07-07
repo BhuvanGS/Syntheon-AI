@@ -106,6 +106,10 @@ declare module 'sst' {
       name: string;
       type: 'sst.aws.Dynamo';
     };
+    GoogleOauthClientId: {
+      type: 'sst.sst.Secret';
+      value: string;
+    };
     GoogleOauthClientSecret: {
       type: 'sst.sst.Secret';
       value: string;

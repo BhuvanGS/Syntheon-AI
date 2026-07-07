@@ -112,7 +112,7 @@ export async function saveGoogleIntegration(params: {
   const encryptedToken = encrypt(params.googleToken);
   const encryptedRefresh = params.googleRefreshToken
     ? encrypt(params.googleRefreshToken)
-    : existing.data?.googleRefreshToken ?? null;
+    : (existing.data?.googleRefreshToken ?? null);
 
   if (existing.data) {
     await IntegrationsEntity.update({ userId: params.userId })

@@ -16,6 +16,7 @@ import {
   Plus,
   PanelLeftClose,
   PanelLeftOpen,
+  MessageSquare,
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -62,6 +63,13 @@ const ADMIN_NAV = [
     href: '/dashboard?view=tickets',
     view: 'tickets',
   },
+  {
+    id: 'feedback',
+    label: 'Feedback',
+    icon: MessageSquare,
+    href: '/dashboard?view=feedback',
+    view: 'feedback',
+  },
 ];
 
 const MEMBER_NAV = [
@@ -72,6 +80,13 @@ const MEMBER_NAV = [
     icon: Video,
     href: '/dashboard?view=meetings',
     view: 'meetings',
+  },
+  {
+    id: 'feedback',
+    label: 'Feedback',
+    icon: MessageSquare,
+    href: '/dashboard?view=feedback',
+    view: 'feedback',
   },
 ];
 

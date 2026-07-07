@@ -32,7 +32,6 @@ import { DynamicIslandSearch } from '@/components/dynamic-island-search';
 import { NotificationBell } from '@/components/notification-bell';
 import { GanttCalendar } from '@/components/gantt-calendar';
 import { DashboardGrid } from '@/components/dashboard-grid';
-import { TrialBanner } from '@/components/trial-banner';
 import { LoadingMessage } from '@/components/loading-message';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -43,6 +42,10 @@ import { toast } from '@/hooks/use-toast';
 import { useUser, useOrganization } from '@clerk/nextjs';
 import { onCommand, emitCommand } from '@/lib/command-events';
 import { useSse } from '@/components/sse-provider';
+import { FeedbackView } from '@/components/feedback-view';
+import { WelcomeDialog } from '@/components/welcome-dialog';
+
+const WELCOME_FLAG_KEY = 'showFounderWelcome';
 
 type ViewType =
   | 'dashboard'
@@ -51,7 +54,8 @@ type ViewType =
   | 'tickets'
   | 'ticket-detail'
   | 'members'
-  | 'calendar';
+  | 'calendar'
+  | 'feedback';
 
 interface Project {
   id: string;
@@ -122,6 +126,7 @@ function DashboardContent() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [selectedMeeting, setSelectedMeeting] = useState<string | null>(null);
+  const [showFounderWelcome, setShowFounderWelcome] = useState(false);
   const [isProjectCreateOpen, setIsProjectCreateOpen] = useState(false);
   const [isMeetingTicketOpen, setIsMeetingTicketOpen] = useState(false);
   const [meetingTicketMeetingId, setMeetingTicketMeetingId] = useState<string | null>(null);
@@ -130,6 +135,15 @@ function DashboardContent() {
     () => meetings.map((m) => ({ id: m.id, projectName: m.projectName })),
     [meetings]
   );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const shouldShow = sessionStorage.getItem(WELCOME_FLAG_KEY) === '1';
+    if (shouldShow) {
+      setShowFounderWelcome(true);
+      sessionStorage.removeItem(WELCOME_FLAG_KEY);
+    }
+  }, []);
 
   const orgId = organization?.id;
 
@@ -387,9 +401,9 @@ function DashboardContent() {
             {currentView === 'members' && 'Members'}
             {currentView === 'calendar' && 'Future Viz'}
             {currentView === 'ticket-detail' && 'Meeting Tickets'}
+            {currentView === 'feedback' && 'Feedback'}
           </h1>
           <div className="flex items-center gap-3">
-            <TrialBanner />
             <NotificationBell onNavigateToTicket={() => handleViewChange('tickets')} />
             <DynamicIslandSearch
               onSelectTicket={(id) => {
@@ -1189,6 +1203,8 @@ function DashboardContent() {
               />
             </div>
           )}
+          {/* ── FEEDBACK ── */}
+          {currentView === 'feedback' && <FeedbackView />}
         </main>
       </div>
 
@@ -1204,6 +1220,16 @@ function DashboardContent() {
         meetings={memoizedMeetingOptions}
         defaultMeetingId={meetingTicketMeetingId}
         onCreated={refreshWorkspace}
+      />
+
+      <WelcomeDialog
+        open={showFounderWelcome}
+        onClose={() => {
+          setShowFounderWelcome(false);
+          if (typeof window !== 'undefined') {
+            sessionStorage.removeItem(WELCOME_FLAG_KEY);
+          }
+        }}
       />
     </div>
   );

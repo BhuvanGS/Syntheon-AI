@@ -66,8 +66,7 @@ function isBetaActiveClient(): boolean {
   const startAt = new Date(startAtStr);
   if (Number.isNaN(startAt.getTime())) return false;
   const durationRaw = process.env.NEXT_PUBLIC_BETA_DURATION_DAYS;
-  const durationDays =
-    Number.parseInt(durationRaw ?? '', 10) || 15;
+  const durationDays = Number.parseInt(durationRaw ?? '', 10) || 15;
   const endAt = new Date(startAt.getTime() + durationDays * 24 * 60 * 60 * 1000);
   const now = new Date();
   return now >= startAt && now < endAt;

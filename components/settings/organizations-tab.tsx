@@ -36,6 +36,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/island-toast';
 import { cn } from '@/lib/utils';
+import { WelcomeDialog } from '@/components/welcome-dialog';
 
 interface OrgMetadata {
   companyName: string;
@@ -101,6 +102,7 @@ export function OrganizationsTab() {
   const [revokeInviteId, setRevokeInviteId] = useState<string | null>(null);
   const [revoking, setRevoking] = useState(false);
   const [reinviteEmail, setReinviteEmail] = useState<string | null>(null);
+  const [showWelcome, setShowWelcome] = useState(false);
 
   const memberships = userMemberships?.data ?? [];
   const currentMembership = memberships.find((m) => m.organization.id === organization?.id);
@@ -1035,6 +1037,7 @@ export function OrganizationsTab() {
                   });
                   if (!res.ok) throw new Error('Failed to create organization');
                   const data = await res.json();
+                  showToast(`${data.name} has been created successfully.`, 'success');
                   setCreateOrgDialogOpen(false);
                   setNewOrgForm({
                     name: '',
@@ -1042,8 +1045,7 @@ export function OrganizationsTab() {
                     managerName: '',
                     allowAccessRequests: false,
                   });
-                  showToast(`${data.name} has been created successfully.`, 'success');
-                  window.location.reload();
+                  setShowWelcome(true);
                 } catch (error) {
                   showToast('Failed to create organization. Please try again.', 'error');
                 } finally {
@@ -1183,6 +1185,14 @@ export function OrganizationsTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <WelcomeDialog
+        open={showWelcome}
+        onClose={() => {
+          setShowWelcome(false);
+          window.location.reload();
+        }}
+      />
     </div>
   );
 }

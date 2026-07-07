@@ -16,10 +16,7 @@ export function createSecrets() {
       'GoogleOauthClientSecret',
       process.env.GOOGLE_OAUTH_CLIENT_SECRET
     ),
-    googleOauthClientId: new sst.Secret(
-      'GoogleOauthClientId',
-      process.env.GOOGLE_OAUTH_CLIENT_ID
-    ),
+    googleOauthClientId: new sst.Secret('GoogleOauthClientId', process.env.GOOGLE_OAUTH_CLIENT_ID),
     tokenEncryptionKey: new sst.Secret('TokenEncryptionKey', process.env.TOKEN_ENCRYPTION_KEY),
   };
 }

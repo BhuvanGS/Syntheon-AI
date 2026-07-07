@@ -17,11 +17,11 @@ export function LoadingMessage({
   className?: string;
   intervalMs?: number;
 }) {
-  const [index, setIndex] = useState(0);
+  const [index, setIndex] = useState(() => Math.floor(Math.random() * MESSAGES.length));
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setIndex((prev) => (prev + 1) % MESSAGES.length);
+      setIndex(Math.floor(Math.random() * MESSAGES.length));
     }, intervalMs);
     return () => clearInterval(timer);
   }, [intervalMs]);

@@ -25,10 +25,7 @@ export function IntegrationsTab() {
       showToast('Google Calendar connected successfully', 'success');
       setGoogleConnected(true);
     } else if (googleError) {
-      showToast(
-        googleErrorDetail || `Google connection failed: ${googleError}`,
-        'error'
-      );
+      showToast(googleErrorDetail || `Google connection failed: ${googleError}`, 'error');
     }
   }, [searchParams, showToast]);
 
