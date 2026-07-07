@@ -52,9 +52,8 @@ export async function POST(req: NextRequest) {
       if ((members.data?.length ?? 0) >= 3) {
         return NextResponse.json(
           {
-            error: 'Free plan limit reached',
-            message: 'This organization has reached the 3-member free plan limit.',
-            upgradeUrl: '/pricing',
+            error: 'Beta testing limit reached',
+            message: 'This organization has reached the 3-member beta testing limit.',
           },
           { status: 403 }
         );

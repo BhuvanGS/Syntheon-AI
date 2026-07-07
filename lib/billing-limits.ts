@@ -10,7 +10,7 @@ import { getBetaStatus } from '@/lib/beta';
 import { TicketsEntity } from '@/db/entities';
 
 export const PLAN_LIMITS = {
-  free: { meetings: 2, tickets: 25, projects: 1 },
+  free: { meetings: 10, tickets: 50, projects: 3 },
   pro: { meetings: Infinity, tickets: 500, projects: 10 },
   max: { meetings: Infinity, tickets: Infinity, projects: Infinity },
 } as const;
@@ -178,33 +178,14 @@ export async function checkProjectLimit(orgId: string | null, userId: string): P
 }
 
 export function limitErrorResponse(check: LimitCheck): Response {
-  if (check.plan === 'beta') {
-    return Response.json(
-      {
-        error: 'Beta limit reached',
-        message: `Beta limit reached: ${check.limit} ${check.resource} per user during the 15-day beta.`,
-        used: check.used,
-        limit: check.limit,
-        resource: check.resource,
-        plan: check.plan,
-      },
-      { status: 403 }
-    );
-  }
-
-  const resourceLabel =
-    check.resource === 'meetings'
-      ? `${check.limit} meetings/mo`
-      : `${check.limit} ${check.resource}`;
   return Response.json(
     {
-      error: 'Free plan limit reached',
-      message: `You've used all ${resourceLabel} on the ${check.plan === 'free' ? 'Free' : check.plan} plan. Upgrade to Pro for higher limits.`,
+      error: 'Beta testing limit reached',
+      message: `Beta testing limit reached: ${check.limit} ${check.resource} during the beta period. Limits will be lifted after beta.`,
       used: check.used,
       limit: check.limit,
       resource: check.resource,
       plan: check.plan,
-      upgradeUrl: '/pricing',
     },
     { status: 403 }
   );

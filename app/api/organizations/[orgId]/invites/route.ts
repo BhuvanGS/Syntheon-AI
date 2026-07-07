@@ -35,9 +35,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ org
     if (totalSeats >= 3) {
       return NextResponse.json(
         {
-          error: 'Free plan limit reached',
-          message: 'Free organizations are limited to 3 members. Upgrade to add more seats.',
-          upgradeUrl: '/pricing',
+          error: 'Beta testing limit reached',
+          message: 'Organizations are limited to 3 members during the beta period.',
         },
         { status: 403 }
       );
