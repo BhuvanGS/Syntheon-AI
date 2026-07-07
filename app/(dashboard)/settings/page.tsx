@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useUser, useOrganization, useClerk } from '@clerk/nextjs';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Building2, Sliders, ArrowLeft, Plug, LogOut, CreditCard, Scale } from 'lucide-react';
@@ -150,7 +150,11 @@ export default function SettingsPage() {
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
         <div className="max-w-5xl mx-auto">
-          {activeTab === 'integrations' && <IntegrationsTab />}
+          {activeTab === 'integrations' && (
+            <Suspense fallback={<div className="flex items-center justify-center py-20"><LoadingMessage /></div>}>
+              <IntegrationsTab />
+            </Suspense>
+          )}
           {activeTab === 'organizations' && <OrganizationsTab />}
           {activeTab === 'billing' && <BillingTab />}
           {activeTab === 'legal' && (

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useUser } from '@clerk/nextjs';
+import { useSearchParams } from 'next/navigation';
 import { Calendar, Loader2, Plug } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,8 +12,25 @@ import { useToast } from '@/components/island-toast';
 export function IntegrationsTab() {
   const { user } = useUser();
   const { showToast } = useToast();
+  const searchParams = useSearchParams();
   const [googleConnected, setGoogleConnected] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const googleConnectedParam = searchParams.get('google_connected');
+    const googleError = searchParams.get('google_error');
+    const googleErrorDetail = searchParams.get('google_error_detail');
+
+    if (googleConnectedParam === 'true') {
+      showToast('Google Calendar connected successfully', 'success');
+      setGoogleConnected(true);
+    } else if (googleError) {
+      showToast(
+        googleErrorDetail || `Google connection failed: ${googleError}`,
+        'error'
+      );
+    }
+  }, [searchParams, showToast]);
 
   useEffect(() => {
     async function loadStatus() {

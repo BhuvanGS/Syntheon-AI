@@ -32,13 +32,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -592,11 +585,6 @@ export function ProjectsWorkspace({
   const memoizedMeetings = useMemo(
     () => projectMeetings.map((meeting) => ({ id: meeting.id, projectName: meeting.projectName })),
     [projectMeetings]
-  );
-
-  const memoizedStatusOptions = useMemo(
-    () => effectiveStages.map((stage) => ({ value: stage.status, label: stage.label })),
-    [effectiveStages]
   );
 
   const childrenByParentId = useMemo(() => {
@@ -2002,49 +1990,20 @@ export function ProjectsWorkspace({
               </button>
             ))}
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 border-transparent text-muted-foreground hover:text-foreground hover:border-border transition-all">
-                  <SlidersHorizontal className="h-4 w-4" />
-                  Options
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-56 bg-popover border-border">
-                <DropdownMenuItem
-                  onClick={() => {
-                    setProjectNameDraft(selectedProject.name);
-                    setIsRenameProjectOpen(true);
-                  }}
-                  className="gap-2 cursor-pointer"
-                >
-                  <Pencil className="h-4 w-4 text-primary" />
-                  Rename project
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setProjectTab('settings')}
-                  className="gap-2 cursor-pointer"
-                >
-                  <Settings className="h-4 w-4 text-primary" />
-                  Project settings
-                </DropdownMenuItem>
-                {isAdmin && (
-                  <DropdownMenuItem onClick={onCreateProject} className="gap-2 cursor-pointer">
-                    <Plus className="h-4 w-4 text-primary" />
-                    New project
-                  </DropdownMenuItem>
-                )}
-                {isAdmin && <DropdownMenuSeparator />}
-                {isAdmin && (
-                  <DropdownMenuItem
-                    onClick={() => setProjectToDelete(selectedProject)}
-                    className="gap-2 cursor-pointer text-destructive focus:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Delete project
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <button
+              onClick={() => {
+                setProjectTab('settings');
+                onTabChange?.('settings');
+              }}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-all ${
+                projectTab === 'settings'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+              }`}
+            >
+              <Settings className="h-4 w-4" />
+              Settings
+            </button>
           </div>
         </div>
       </div>
@@ -2557,9 +2516,9 @@ export function ProjectsWorkspace({
                       setNewTicketStatus(undefined);
                       setIsTicketDialogOpen(true);
                     }}
-                    className="flex items-center gap-1.5 px-4 py-3 text-xs text-muted-foreground/50 hover:text-primary hover:bg-primary/5 transition-colors"
+                    className="flex items-center gap-1.5 px-4 py-3 text-xs text-muted-foreground/50 hover:text-primary hover:drop-shadow-[0_0_4px_rgba(59,130,246,0.5)] transition-all justify-center w-full"
                   >
-                    <PlusCircle className="h-3.5 w-3.5" />
+                    <PlusCircle className="h-3.5 w-3.5 hover:drop-shadow-[0_0_4px_rgba(59,130,246,0.5)]" />
                     Add ticket
                   </button>
                 </div>
@@ -5572,6 +5531,25 @@ export function ProjectsWorkspace({
                 </Button>
               </div>
             </div>
+
+            {isAdmin && (
+              <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-6 space-y-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-destructive">Danger Zone</h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Permanently delete this project and unlink all meetings and tickets.
+                  </p>
+                </div>
+                <Button
+                  variant="destructive"
+                  className="rounded-full gap-2"
+                  onClick={() => setProjectToDelete(selectedProject)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete project
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -5839,7 +5817,6 @@ export function ProjectsWorkspace({
         defaultMeetingId={projectMeetings[0]?.id}
         defaultProjectId={selectedProject.id}
         defaultStatus={newTicketStatus}
-        statusOptions={memoizedStatusOptions}
         projectOnly
         onCreated={onRefresh}
       />
@@ -5969,7 +5946,7 @@ export function ProjectsWorkspace({
                 </div>
 
                 <div className="grid grid-cols-4 gap-4 mt-4">
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <label className="text-xs font-medium text-muted-foreground block">
                       Assignee
                     </label>
@@ -5979,7 +5956,7 @@ export function ProjectsWorkspace({
                     />
                   </div>
 
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <label className="text-xs font-medium text-muted-foreground block">
                       Status
                     </label>
@@ -5996,16 +5973,15 @@ export function ProjectsWorkspace({
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
                       <SelectContent>
-                        {effectiveStages.map((stage) => (
-                          <SelectItem key={stage.id} value={stage.status}>
-                            {stage.label}
-                          </SelectItem>
-                        ))}
+                        <SelectItem value="backlog">Backlog</SelectItem>
+                        <SelectItem value="in_progress">In Progress</SelectItem>
+                        <SelectItem value="done">Done</SelectItem>
+                        <SelectItem value="blocked">Blocked</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <label className="text-xs font-medium text-muted-foreground block">Stage</label>
                     <Select
                       value={
@@ -6043,7 +6019,7 @@ export function ProjectsWorkspace({
                     </Select>
                   </div>
 
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <label className="text-xs font-medium text-muted-foreground block">
                       Due date
                     </label>

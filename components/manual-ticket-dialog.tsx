@@ -40,7 +40,6 @@ interface ManualTicketDialogProps {
   defaultMeetingId?: string | null;
   defaultProjectId?: string | null;
   defaultStatus?: string;
-  statusOptions?: { value: string; label: string }[];
   projectOnly?: boolean;
   onCreated?: () => void | Promise<void>;
 }
@@ -52,7 +51,6 @@ export function ManualTicketDialog({
   defaultMeetingId,
   defaultProjectId,
   defaultStatus,
-  statusOptions,
   projectOnly = false,
   onCreated,
 }: ManualTicketDialogProps) {
@@ -87,7 +85,7 @@ export function ManualTicketDialog({
     if (open && !wasOpenRef.current) {
       setTitle('');
       setDescription('');
-      setStatus(defaultStatus ?? statusOptions?.[0]?.value ?? '');
+      setStatus(defaultStatus ?? 'backlog');
       setAssignee(null);
       setMeetingId(projectOnly ? '' : defaultMeetingId || meetings[0]?.id || '');
       setPriority('none');
@@ -287,11 +285,10 @@ export function ManualTicketDialog({
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
-                    {(statusOptions && statusOptions.length > 0 ? statusOptions : []).map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="backlog">Backlog</SelectItem>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="done">Done</SelectItem>
+                    <SelectItem value="blocked">Blocked</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { useUser, useOrganization } from '@clerk/nextjs';
 import { Sidebar } from '@/components/sidebar';
 import { ProjectsWorkspace } from '@/components/projects-workspace';
 import { ProjectCreateDialog } from '@/components/project-create-dialog';
 import { ManualTicketDialog } from '@/components/manual-ticket-dialog';
 import { LoadingMessage } from '@/components/loading-message';
+import { Loader2 } from 'lucide-react';
 import { TicketDetail } from '@/components/ticket-detail';
 import { Button } from '@/components/ui/button';
 import { DynamicIslandSearch } from '@/components/dynamic-island-search';
@@ -73,6 +75,8 @@ const validProjectTabs: ProjectTab[] = [
 function ProjectContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { user } = useUser();
+  const { membership } = useOrganization();
 
   const projectId = searchParams.get('projectId');
   const tabParam = searchParams.get('tab') as ProjectTab | null;
@@ -88,6 +92,7 @@ function ProjectContent() {
   const [isProjectCreateOpen, setIsProjectCreateOpen] = useState(false);
   const [isMeetingTicketOpen, setIsMeetingTicketOpen] = useState(false);
   const [meetingTicketMeetingId, setMeetingTicketMeetingId] = useState<string | null>(null);
+  const [isDeletingProject, setIsDeletingProject] = useState(false);
 
   const memoizedMeetingOptions = useMemo(
     () => meetings.map((m) => ({ id: m.id, projectName: m.projectName })),
@@ -150,8 +155,9 @@ function ProjectContent() {
   }, [searchParams]);
 
   useEffect(() => {
+    if (membership === undefined) return;
     void loadProjects();
-  }, [loadProjects]);
+  }, [membership, loadProjects]);
 
   const lastFetchRef = useRef<{ projectId: string | null; time: number }>({
     projectId: null,
@@ -159,6 +165,7 @@ function ProjectContent() {
   });
 
   useEffect(() => {
+    if (membership === undefined) return;
     // Skip re-fetch on tab resume (same project, fetched within last 5s)
     const last = lastFetchRef.current;
     if (last.projectId === projectId && Date.now() - last.time < 5000) return;
@@ -169,7 +176,7 @@ function ProjectContent() {
     }
 
     void loadWorkspace();
-  }, [projectId, loadScopedWorkspace]);
+  }, [projectId, membership, loadScopedWorkspace]);
 
   const refreshWorkspace = useCallback(async () => {
     await loadScopedWorkspace(projectId);
@@ -212,16 +219,20 @@ function ProjectContent() {
   }
 
   async function handleDeleteProject(id: string) {
-    const res = await fetch(`/api/projects/${id}`, { method: 'DELETE' });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data?.error || 'Failed to delete project');
+    setIsDeletingProject(true);
+    try {
+      const res = await fetch(`/api/projects/${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || 'Failed to delete project');
+      }
+      await Promise.all([loadProjects(), refreshWorkspace()]);
+      toast({ title: 'Project deleted', description: 'The project was removed.' });
+      router.push('/dashboard');
+    } catch (err) {
+      setIsDeletingProject(false);
+      throw err;
     }
-    await Promise.all([loadProjects(), refreshWorkspace()]);
-    if (projectId === id) {
-      router.push('/dashboard?view=projects');
-    }
-    toast({ title: 'Project deleted', description: 'The project was removed.' });
   }
 
   async function handleCreateProject(payload: { name: string; context: string }) {
@@ -242,6 +253,17 @@ function ProjectContent() {
   }
 
   if (!projectId) return null;
+
+  if (isDeletingProject) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <LoadingMessage />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-background">

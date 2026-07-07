@@ -54,15 +54,17 @@ export async function getValidGoogleAccessToken(userId: string): Promise<{
       return { token: null, error: 'Failed to decrypt stored Google token' };
     }
 
-    const tokenInfoResponse = await fetch(
-      `https://oauth2.googleapis.com/tokeninfo?access_token=${accessToken}`,
-      { method: 'GET' }
+    // Try a lightweight Calendar API call to check if the token is still valid
+    const testResponse = await fetch(
+      'https://www.googleapis.com/calendar/v3/users/me/calendarList/primary',
+      { headers: { Authorization: `Bearer ${accessToken}` } }
     );
 
-    if (tokenInfoResponse.ok) {
+    if (testResponse.ok) {
       return { token: accessToken };
     }
 
+    // Token is invalid — try to refresh
     if (!res.data.googleRefreshToken) {
       return {
         token: null,
@@ -108,7 +110,9 @@ export async function saveGoogleIntegration(params: {
   const existing = await IntegrationsEntity.get({ userId: params.userId }).go();
 
   const encryptedToken = encrypt(params.googleToken);
-  const encryptedRefresh = params.googleRefreshToken ? encrypt(params.googleRefreshToken) : null;
+  const encryptedRefresh = params.googleRefreshToken
+    ? encrypt(params.googleRefreshToken)
+    : existing.data?.googleRefreshToken ?? null;
 
   if (existing.data) {
     await IntegrationsEntity.update({ userId: params.userId })
@@ -128,4 +132,14 @@ export async function saveGoogleIntegration(params: {
       googleRefreshToken: encryptedRefresh,
     }).go();
   }
+}
+
+export async function deleteGoogleIntegration(userId: string) {
+  await IntegrationsEntity.update({ userId })
+    .set({
+      googleToken: null,
+      googleRefreshToken: null,
+      updatedAt: new Date().toISOString(),
+    })
+    .go();
 }

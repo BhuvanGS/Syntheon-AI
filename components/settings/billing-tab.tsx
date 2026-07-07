@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { LoadingMessage } from '@/components/loading-message';
 
 const PLAN_FEATURES: Record<string, string[]> = {
+  Beta: ['10 meetings/mo', '50 tickets', '3 projects', 'All features unlocked'],
   Free: ['2 meetings/mo', '25 tickets', '1 project', 'Basic board'],
   Pro: ['Unlimited meetings', '500 tickets', '10 projects', 'Dependencies', 'API access'],
   Max: ['Everything unlimited', 'Analytics', 'Sprint-stones', 'Roadmap', 'Priority support'],
@@ -13,6 +14,7 @@ const PLAN_FEATURES: Record<string, string[]> = {
 };
 
 const PLAN_LIMITS: Record<string, { meetings: number; tickets: number; projects: number }> = {
+  Beta: { meetings: 10, tickets: 50, projects: 3 },
   Free: { meetings: 2, tickets: 25, projects: 1 },
   Pro: { meetings: Infinity, tickets: 500, projects: 10 },
   Max: { meetings: Infinity, tickets: Infinity, projects: Infinity },
@@ -54,17 +56,38 @@ function UsageBar({ label, used, limit }: { label: string; used: number; limit: 
   );
 }
 
+function isBetaActiveClient(): boolean {
+  const enabled = ['1', 'true', 'yes', 'on'].includes(
+    (process.env.NEXT_PUBLIC_BETA_MODE ?? '').trim().toLowerCase()
+  );
+  if (!enabled) return false;
+  const startAtStr = process.env.NEXT_PUBLIC_BETA_START_AT;
+  if (!startAtStr) return false;
+  const startAt = new Date(startAtStr);
+  if (Number.isNaN(startAt.getTime())) return false;
+  const durationRaw = process.env.NEXT_PUBLIC_BETA_DURATION_DAYS;
+  const durationDays =
+    Number.parseInt(durationRaw ?? '', 10) || 15;
+  const endAt = new Date(startAt.getTime() + durationDays * 24 * 60 * 60 * 1000);
+  const now = new Date();
+  return now >= startAt && now < endAt;
+}
+
 export function BillingTab() {
   const { isLoaded, has } = useAuth();
   const { organization } = useOrganization();
   const [usage, setUsage] = useState<UsageData | null>(null);
 
-  const currentPlan =
+  const betaActive = isBetaActiveClient();
+
+  const clerkPlan =
     has?.({ plan: 'user_max' }) || has?.({ plan: 'org:org_max' })
       ? 'Max'
       : has?.({ plan: 'user_pro' }) || has?.({ plan: 'org:org_pro' })
         ? 'Pro'
         : 'Free';
+
+  const currentPlan = betaActive ? 'Beta' : clerkPlan;
 
   const limits = PLAN_LIMITS[currentPlan] ?? PLAN_LIMITS.Free;
 
@@ -119,7 +142,9 @@ export function BillingTab() {
       ? 'bg-purple-500/10 text-purple-600 border-purple-500/20'
       : currentPlan === 'Pro'
         ? 'bg-blue-500/10 text-blue-600 border-blue-500/20'
-        : 'bg-muted text-muted-foreground border-border';
+        : currentPlan === 'Beta'
+          ? 'bg-amber-500/10 text-amber-600 border-amber-500/20'
+          : 'bg-muted text-muted-foreground border-border';
 
   return (
     <div className="p-6 space-y-6">
@@ -146,8 +171,11 @@ export function BillingTab() {
             {currentPlan === 'Free' && (
               <span className="text-xs text-muted-foreground">Limited to 2 meetings/mo</span>
             )}
+            {currentPlan === 'Beta' && (
+              <span className="text-xs text-amber-600/70">All features unlocked</span>
+            )}
           </div>
-          {currentPlan !== 'Free' && (
+          {currentPlan !== 'Free' && currentPlan !== 'Beta' && (
             <span className="text-xs text-muted-foreground">
               {isOrg ? 'Per seat' : 'Monthly/Annual'}
             </span>

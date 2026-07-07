@@ -29,5 +29,7 @@ export function getDashboardRedirectUrl(req: NextRequest): URL {
 }
 
 export function getSettingsRedirectUrl(req: NextRequest): URL {
-  return new URL('/settings', getAppBaseUrl(req));
+  const url = new URL('/settings', getAppBaseUrl(req));
+  url.searchParams.set('tab', 'integrations');
+  return url;
 }
