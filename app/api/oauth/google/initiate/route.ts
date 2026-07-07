@@ -13,19 +13,26 @@ export async function POST() {
 
     const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
     if (!clientId) {
-      console.error('GOOGLE_OAUTH_CLIENT_ID not set');
+      console.error('[OAuth Initiate] GOOGLE_OAUTH_CLIENT_ID not set');
       return NextResponse.json({ error: 'OAuth not configured' }, { status: 500 });
     }
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL;
     if (!baseUrl) {
-      console.error('NEXT_PUBLIC_APP_URL not set');
+      console.error('[OAuth Initiate] NEXT_PUBLIC_APP_URL not set');
       return NextResponse.json({ error: 'App URL not configured' }, { status: 500 });
     }
     const redirectUri = `${baseUrl.replace(/\/$/, '')}/api/oauth/google/callback`;
+    console.log('[OAuth Initiate] redirectUri:', redirectUri);
 
     const state = randomUUID();
-    const cookieStore = await cookies();
+    let cookieStore;
+    try {
+      cookieStore = await cookies();
+    } catch (cookieError) {
+      console.error('[OAuth Initiate] Failed to get cookie store:', cookieError);
+      return NextResponse.json({ error: 'Failed to initialize session' }, { status: 500 });
+    }
     const cookieOpts = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
