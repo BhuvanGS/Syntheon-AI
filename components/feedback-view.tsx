@@ -1,6 +1,6 @@
 'use client';
 
-import { Linkedin, Heart, MessageSquare, Mail } from 'lucide-react';
+import { Linkedin, Heart, MessageSquare } from 'lucide-react';
 
 const FOUNDER_LINKEDIN = 'https://www.linkedin.com/in/bhuvan-gs/';
 const PRODUCT_LINKEDIN = 'https://www.linkedin.com/in/syntheon-hub-ba901641a/';
@@ -70,21 +70,6 @@ export function FeedbackView() {
             </div>
             <span className="text-xs text-muted-foreground group-hover:text-primary transition-colors">
               Follow →
-            </span>
-          </a>
-          <a
-            href="mailto:hqsyntheon@gmail.com"
-            className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 hover:border-primary/30 hover:bg-primary/5 transition-all group"
-          >
-            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
-              <Mail className="h-5 w-5 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground">Email</p>
-              <p className="text-xs text-muted-foreground truncate">hqsyntheon@gmail.com</p>
-            </div>
-            <span className="text-xs text-muted-foreground group-hover:text-primary transition-colors">
-              Send →
             </span>
           </a>
         </div>

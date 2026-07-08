@@ -32,10 +32,10 @@ export default function IntegrationsPage() {
           <strong>Clerk</strong> — authentication and user management
         </li>
         <li>
-          <strong>Supabase</strong> — data storage (Mumbai region)
+          <strong>DynamoDB</strong> — data storage (AWS, Mumbai region)
         </li>
         <li>
-          <strong>Vercel</strong> — hosting
+          <strong>AWS</strong> — hosting (via SST + OpenNext)
         </li>
         <li>
           <strong>Razorpay</strong> — payment processing

@@ -1,6 +1,7 @@
 import { SignIn } from '@clerk/nextjs';
 import { PreAuthConsent } from '@/components/pre-auth-consent';
 import { BetaOverMessage } from '@/components/beta-over-message';
+import { FounderNoteAuthDialog } from '@/components/founder-note-auth-dialog';
 import { isBetaExpired } from '@/lib/beta';
 
 export default function SignInPage() {
@@ -114,6 +115,7 @@ export default function SignInPage() {
         }}
       >
         <div className="w-full max-w-3xl">
+          <FounderNoteAuthDialog />
           <PreAuthConsent>
             <SignIn />
           </PreAuthConsent>

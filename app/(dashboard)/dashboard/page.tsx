@@ -43,9 +43,6 @@ import { useUser, useOrganization } from '@clerk/nextjs';
 import { onCommand, emitCommand } from '@/lib/command-events';
 import { useSse } from '@/components/sse-provider';
 import { FeedbackView } from '@/components/feedback-view';
-import { WelcomeDialog } from '@/components/welcome-dialog';
-
-const WELCOME_FLAG_KEY = 'showFounderWelcome';
 
 type ViewType =
   | 'dashboard'
@@ -126,7 +123,6 @@ function DashboardContent() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [selectedMeeting, setSelectedMeeting] = useState<string | null>(null);
-  const [showFounderWelcome, setShowFounderWelcome] = useState(false);
   const [isProjectCreateOpen, setIsProjectCreateOpen] = useState(false);
   const [isMeetingTicketOpen, setIsMeetingTicketOpen] = useState(false);
   const [meetingTicketMeetingId, setMeetingTicketMeetingId] = useState<string | null>(null);
@@ -135,15 +131,6 @@ function DashboardContent() {
     () => meetings.map((m) => ({ id: m.id, projectName: m.projectName })),
     [meetings]
   );
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const shouldShow = sessionStorage.getItem(WELCOME_FLAG_KEY) === '1';
-    if (shouldShow) {
-      setShowFounderWelcome(true);
-      sessionStorage.removeItem(WELCOME_FLAG_KEY);
-    }
-  }, []);
 
   const orgId = organization?.id;
 
@@ -249,7 +236,7 @@ function DashboardContent() {
     setSelectedMeeting(null);
     router.push('/dashboard?view=meetings');
 
-    toast({ title: 'Meeting deleted', description: 'The meeting was removed from Supabase.' });
+    toast({ title: 'Meeting deleted', description: 'The meeting was removed from your workspace.' });
   }
 
   function handleProjectSelect(projectId: string) {
@@ -271,7 +258,7 @@ function DashboardContent() {
     }
 
     await Promise.all([loadProjects(), refreshWorkspace()]);
-    toast({ title: 'Project deleted', description: 'The project was removed from Supabase.' });
+    toast({ title: 'Project deleted', description: 'The project was removed from your workspace.' });
   }
 
   const refreshWorkspace = useCallback(async () => {
@@ -1205,6 +1192,7 @@ function DashboardContent() {
           )}
           {/* ── FEEDBACK ── */}
           {currentView === 'feedback' && <FeedbackView />}
+
         </main>
       </div>
 
@@ -1220,16 +1208,6 @@ function DashboardContent() {
         meetings={memoizedMeetingOptions}
         defaultMeetingId={meetingTicketMeetingId}
         onCreated={refreshWorkspace}
-      />
-
-      <WelcomeDialog
-        open={showFounderWelcome}
-        onClose={() => {
-          setShowFounderWelcome(false);
-          if (typeof window !== 'undefined') {
-            sessionStorage.removeItem(WELCOME_FLAG_KEY);
-          }
-        }}
       />
     </div>
   );

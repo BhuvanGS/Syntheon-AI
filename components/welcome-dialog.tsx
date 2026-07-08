@@ -71,6 +71,10 @@ export function WelcomeDialog({ open, onClose }: WelcomeDialogProps) {
               The beta testing period ends on July 23rd, 2026, and the application will be closed
               after that date. Please make sure to share your feedback before then.
             </p>
+            <p className="mt-2">
+              You can use Clerk&apos;s test account to explore the app, but I would not recommend it
+              for real usage.
+            </p>
           </div>
         </div>
 

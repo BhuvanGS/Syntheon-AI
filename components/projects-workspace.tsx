@@ -6419,7 +6419,7 @@ export function ProjectsWorkspace({
               Delete this project?
             </DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              This will remove <strong>{projectToDelete?.name}</strong> from Supabase and unlink its
+              This will remove <strong>{projectToDelete?.name}</strong> from your workspace and unlink its
               meetings and tickets. This cannot be undone.
             </DialogDescription>
           </DialogHeader>

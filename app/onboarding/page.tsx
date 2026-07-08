@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useOrganizationList, useUser } from '@clerk/nextjs';
 import {
   Building2,
@@ -31,8 +31,6 @@ import { LoadingMessage } from '@/components/loading-message';
 import { motion, AnimatePresence } from 'motion/react';
 import { WelcomeDialog } from '@/components/welcome-dialog';
 
-const WELCOME_FLAG_KEY = 'showFounderWelcome';
-
 type Step = 'loading' | 'choose' | 'create' | 'join' | 'join-existing' | 'error';
 
 type DomainCheckResult = {
@@ -55,7 +53,6 @@ export default function OnboardingPage() {
   const [error, setError] = useState('');
   const [domainCheck, setDomainCheck] = useState<DomainCheckResult>(null);
   const [showWelcome, setShowWelcome] = useState(false);
-  const welcomeRef = useRef(false);
   const memberships = userMemberships.data ?? [];
 
   const userEmail = user?.primaryEmailAddress?.emailAddress ?? '';
@@ -96,7 +93,7 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     if (!user) return;
-    if (showWelcome || welcomeRef.current) return;
+    if (showWelcome) return;
 
     if (memberships.length > 0 && setActive) {
       const firstOrg = memberships[0];
@@ -132,7 +129,7 @@ export default function OnboardingPage() {
   }, [user, memberships, isPublicDomain, setActive, domainCheck, showWelcome]);
 
   useEffect(() => {
-    if (showWelcome || welcomeRef.current) return;
+    if (showWelcome) return;
     if (isPublicDomain && memberships.length > 0 && step === 'loading' && setActive) {
       const org = memberships[0];
       setActive({ organization: org.organization.id })
@@ -168,8 +165,6 @@ export default function OnboardingPage() {
     if (!orgName.trim() || !createOrganization) return;
     setLoading(true);
     setError('');
-    welcomeRef.current = true;
-    sessionStorage.setItem(WELCOME_FLAG_KEY, '1');
     try {
       const res = await fetch('/api/organizations', {
         method: 'POST',
@@ -182,11 +177,9 @@ export default function OnboardingPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to create organization');
-      setShowWelcome(true);
       await setActive({ organization: data.id });
+      setShowWelcome(true);
     } catch (err: any) {
-      welcomeRef.current = false;
-      sessionStorage.removeItem(WELCOME_FLAG_KEY);
       setError(err?.message || 'Failed to create organization');
     } finally {
       setLoading(false);
