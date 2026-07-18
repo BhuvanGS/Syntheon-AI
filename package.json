@@ -17,10 +17,7 @@
     "sst:remove": "sst remove",
     "db:local": "DYNAMODB_ENDPOINT=http://localhost:8000 AWS_ACCESS_KEY_ID=local AWS_SECRET_ACCESS_KEY=local npx tsx scripts/create-local-tables.ts",
     "dev:local": "DYNAMODB_ENDPOINT=http://localhost:8000 AWS_ACCESS_KEY_ID=local AWS_SECRET_ACCESS_KEY=local NEXT_PUBLIC_APP_URL=http://localhost:3000 npm run dev",
-    "dev:ngrok": "DYNAMODB_ENDPOINT=http://localhost:8000 AWS_ACCESS_KEY_ID=local AWS_SECRET_ACCESS_KEY=local NEXT_PUBLIC_APP_URL=https://uncapacious-lauraceous-verna.ngrok-free.dev npm run dev",
-    "video:studio": "remotion studio src/index.ts",
-    "video:render": "remotion render src/index.ts SyntheonFilm out/syntheon-film.mp4",
-    "video:preview": "remotion preview src/index.ts"
+    "dev:ngrok": "DYNAMODB_ENDPOINT=http://localhost:8000 AWS_ACCESS_KEY_ID=local AWS_SECRET_ACCESS_KEY=local NEXT_PUBLIC_APP_URL=https://uncapacious-lauraceous-verna.ngrok-free.dev npm run dev"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1075.0",
@@ -60,10 +57,6 @@
     "@radix-ui/react-tooltip": "1.2.8",
     "@react-three/drei": "10",
     "@react-three/fiber": "^9.3.0",
-    "@remotion/cli": "^4.0.486",
-    "@remotion/motion-blur": "4.0.486",
-    "@remotion/player": "^4.0.486",
-    "@remotion/three": "4.0.486",
     "@skribby/sdk": "^0.5.0",
     "@tailwindcss/typography": "^0.5.19",
     "@tiptap/core": "^3.22.3",
@@ -99,7 +92,6 @@
     "react-hook-form": "^7.54.1",
     "react-resizable-panels": "^2.1.7",
     "recharts": "2.15.0",
-    "remotion": "^4.0.486",
     "sonner": "^1.7.1",
     "sst": "4.17.0",
     "svix": "^1.89.0",

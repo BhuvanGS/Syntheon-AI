@@ -236,7 +236,10 @@ function DashboardContent() {
     setSelectedMeeting(null);
     router.push('/dashboard?view=meetings');
 
-    toast({ title: 'Meeting deleted', description: 'The meeting was removed from your workspace.' });
+    toast({
+      title: 'Meeting deleted',
+      description: 'The meeting was removed from your workspace.',
+    });
   }
 
   function handleProjectSelect(projectId: string) {
@@ -258,7 +261,10 @@ function DashboardContent() {
     }
 
     await Promise.all([loadProjects(), refreshWorkspace()]);
-    toast({ title: 'Project deleted', description: 'The project was removed from your workspace.' });
+    toast({
+      title: 'Project deleted',
+      description: 'The project was removed from your workspace.',
+    });
   }
 
   const refreshWorkspace = useCallback(async () => {
@@ -1192,7 +1198,6 @@ function DashboardContent() {
           )}
           {/* ── FEEDBACK ── */}
           {currentView === 'feedback' && <FeedbackView />}
-
         </main>
       </div>
 

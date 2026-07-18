@@ -6419,8 +6419,8 @@ export function ProjectsWorkspace({
               Delete this project?
             </DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              This will remove <strong>{projectToDelete?.name}</strong> from your workspace and unlink its
-              meetings and tickets. This cannot be undone.
+              This will remove <strong>{projectToDelete?.name}</strong> from your workspace and
+              unlink its meetings and tickets. This cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">

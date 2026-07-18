@@ -776,8 +776,8 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
               Delete this meeting?
             </DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              This will remove the meeting from your workspace and unlink its tickets from the meeting.
-              This cannot be undone.
+              This will remove the meeting from your workspace and unlink its tickets from the
+              meeting. This cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="pt-2">

@@ -5,6 +5,7 @@ __v0_jsx-dev-runtime.ts
 
 # Common ignores
 node_modules/
+.pnpm-store/
 .next/
 .env*.local
 .DS_Store
@@ -19,9 +20,6 @@ scripts/
 .agents
 DB-changes.txt
 .cursor
-remotion/
-
-
 
 # sst
 .sst

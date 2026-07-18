@@ -215,7 +215,10 @@ function ProjectContent() {
     await refreshWorkspace();
     setSelectedMeeting(null);
     setCurrentView('project');
-    toast({ title: 'Meeting deleted', description: 'The meeting was removed from your workspace.' });
+    toast({
+      title: 'Meeting deleted',
+      description: 'The meeting was removed from your workspace.',
+    });
   }
 
   async function handleDeleteProject(id: string) {
