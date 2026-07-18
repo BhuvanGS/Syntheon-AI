@@ -143,7 +143,10 @@ export function Sidebar({
               href="/dashboard"
               className="flex items-center gap-2.5 flex-1 min-w-0 group rounded-md py-1 hover:bg-accent/40"
             >
-              <BrandLogo size={30} className="transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3" />
+              <BrandLogo
+                size={30}
+                className="transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3"
+              />
               <div className="min-w-0">
                 <span className="font-[family-name:var(--font-space-grotesk)] text-[1.05rem] text-primary tracking-tight block truncate">
                   Syntheon Hub
@@ -164,9 +167,7 @@ export function Sidebar({
             </button>
           </>
         )}
-        {collapsed && (
-          <BrandLogo size={30} />
-        )}
+        {collapsed && <BrandLogo size={30} />}
       </div>
 
       <Separator />

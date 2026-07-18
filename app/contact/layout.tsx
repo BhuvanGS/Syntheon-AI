@@ -2,7 +2,8 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Contact',
-  description: 'Contact Syntheon Hub support for product help, billing questions, or partnership inquiries.',
+  description:
+    'Contact Syntheon Hub support for product help, billing questions, or partnership inquiries.',
   alternates: { canonical: 'https://syntheonhub.com/contact' },
   openGraph: {
     title: 'Contact Syntheon Hub',

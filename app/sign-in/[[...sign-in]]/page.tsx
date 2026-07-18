@@ -16,12 +16,7 @@ export default function SignInPage() {
       <div
         className="hidden md:flex md:w-1/2 lg:w-3/5 relative flex-col justify-center px-12 lg:px-20"
         style={{
-          backgroundColor: '#0a0a0a',
-          backgroundImage: `
-            linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)
-          `,
-          backgroundSize: '48px 48px',
+          backgroundColor: '#0a0a0a'
         }}
       >
         <div className="relative z-10 max-w-lg">
@@ -33,8 +28,8 @@ export default function SignInPage() {
                 fontSize: '18px',
                 fontWeight: 600,
                 color: '#fff',
-                letterSpacing: '-0.02em',
-              }}
+                letterSpacing: '-0.02em'
+        }}
             >
               Syntheon Hub
             </span>
@@ -47,8 +42,8 @@ export default function SignInPage() {
               fontWeight: 700,
               color: '#fff',
               lineHeight: 1.05,
-              letterSpacing: '-0.03em',
-            }}
+              letterSpacing: '-0.03em'
+        }}
           >
             Turn your meetings into shipped work
           </h1>
@@ -60,8 +55,8 @@ export default function SignInPage() {
               color: 'rgba(255,255,255,0.5)',
               lineHeight: 1.6,
               marginTop: '1.5rem',
-              maxWidth: '420px',
-            }}
+              maxWidth: '420px'
+        }}
           >
             Syntheon Hub captures your conversations, extracts the important stuff, and turns it
             into tickets, specs, and action items — automatically.
@@ -73,8 +68,8 @@ export default function SignInPage() {
               fontSize: '14px',
               color: 'rgba(255,255,255,0.35)',
               marginTop: '1rem',
-              fontStyle: 'italic',
-            }}
+              fontStyle: 'italic'
+        }}
           >
             — Team SyntheonHub
           </p>
@@ -101,12 +96,7 @@ export default function SignInPage() {
       <div
         className="flex-1 flex items-center justify-center p-6 md:p-12 overflow-auto"
         style={{
-          backgroundColor: '#0a0a0a',
-          backgroundImage: `
-            linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)
-          `,
-          backgroundSize: '48px 48px',
+          backgroundColor: '#0a0a0a'
         }}
       >
         <div className="w-full max-w-3xl">

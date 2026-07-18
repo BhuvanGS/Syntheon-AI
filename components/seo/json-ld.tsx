@@ -63,8 +63,7 @@ export const WEBSITE_JSON_LD = {
   '@type': 'WebSite',
   name: 'Syntheon Hub',
   url: BASE,
-  description:
-    'Turn meetings into tickets automatically with AI-powered project management.',
+  description: 'Turn meetings into tickets automatically with AI-powered project management.',
   publisher: {
     '@type': 'Organization',
     name: 'Syntheon Hub',
@@ -129,9 +128,6 @@ export function buildDocsBreadcrumbJsonLd(slug?: string) {
 
 export function JsonLd({ data }: { data: Record<string, unknown> | Record<string, unknown>[] }) {
   return (
-    <script
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
-    />
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }} />
   );
 }

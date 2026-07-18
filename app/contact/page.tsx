@@ -43,17 +43,6 @@ export default function ContactPage() {
         * {
           -webkit-tap-highlight-color: transparent;
         }
-        body::before {
-          content: '';
-          position: fixed;
-          inset: 0;
-          background-image:
-            linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
-          background-size: 48px 48px;
-          pointer-events: none;
-          z-index: 0;
-        }
         .contact-input {
           width: 100%;
           background: rgba(255, 255, 255, 0.03);

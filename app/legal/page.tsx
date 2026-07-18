@@ -1,6 +1,7 @@
 'use client';
 
 import { BrandLogo } from '@/components/brand-logo';
+import { MarketingSurface, MKT_FONT } from '@/components/promo/smooth-scroll';
 
 import { useState, useEffect, Suspense, type ReactNode } from 'react';
 import Link from 'next/link';
@@ -45,7 +46,7 @@ function LegalPageContent() {
 
   const s = () => ({
     h1: {
-      fontFamily: "'Space Grotesk', sans-serif" as const,
+      fontFamily: MKT_FONT,
       fontSize: '1.75rem',
       fontWeight: 700,
       color: '#fff',
@@ -54,7 +55,7 @@ function LegalPageContent() {
       letterSpacing: '-0.02em',
     },
     h2: {
-      fontFamily: "'Space Grotesk', sans-serif" as const,
+      fontFamily: MKT_FONT,
       fontSize: '1.25rem',
       fontWeight: 600,
       color: 'rgba(255,255,255,0.85)',
@@ -2026,280 +2027,249 @@ function LegalPageContent() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background: '#000',
-        color: '#fff',
-        fontFamily: "'Inter', system-ui, sans-serif",
-        overflowX: 'hidden',
-      }}
-    >
-      <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
-        html {
-          scroll-behavior: smooth;
-          color-scheme: dark;
-        }
-        * {
-          -webkit-tap-highlight-color: transparent;
-        }
-        body::before {
-          content: '';
-          position: fixed;
-          inset: 0;
-          background-image:
-            linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
-          background-size: 48px 48px;
-          pointer-events: none;
-          z-index: 0;
-        }
-        @media (max-width: 1024px) {
-          .legal-layout {
-            display: block !important;
-            padding: 92px 1rem 80px !important;
-          }
-          .legal-sidebar {
-            position: static !important;
-            top: auto !important;
-            margin-bottom: 1rem;
-          }
-          .legal-content {
-            padding: 0 !important;
-          }
-        }
-      `}</style>
-
-      {!isEmbed && (
-        <nav
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            zIndex: 50,
-            borderBottom: '1px solid rgba(255,255,255,0.08)',
-            background: 'rgba(0,0,0,0.8)',
-            backdropFilter: 'blur(12px)',
-            padding: '0 5vw',
-            height: '64px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <Link
-            href="/"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.875rem',
-              textDecoration: 'none',
-            }}
-          >
-            <BrandLogo size={28} />
-            <span
-              style={{
-                fontFamily: "'Space Grotesk', sans-serif",
-                fontSize: '18px',
-                fontWeight: 700,
-                color: '#fff',
-                letterSpacing: '-0.02em',
-              }}
-            >
-              Syntheon Hub
-            </span>
-          </Link>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-            {mounted ? (
-              <>
-                <Link
-                  href="/pricing"
-                  style={{
-                    fontSize: '14px',
-                    color: 'rgba(255,255,255,0.6)',
-                    textDecoration: 'none',
-                  }}
-                >
-                  Pricing
-                </Link>
-                <Link
-                  href="/how-it-works"
-                  style={{
-                    fontSize: '14px',
-                    color: 'rgba(255,255,255,0.6)',
-                    textDecoration: 'none',
-                  }}
-                >
-                  How it works
-                </Link>
-                <Link
-                  href={`${APP_URL}/sign-up`}
-                  style={{
-                    fontSize: '14px',
-                    fontWeight: 600,
-                    color: '#000',
-                    background: '#fff',
-                    textDecoration: 'none',
-                    padding: '0.5rem 1rem',
-                    borderRadius: '6px',
-                  }}
-                >
-                  Start Free
-                </Link>
-              </>
-            ) : null}
-          </div>
-        </nav>
-      )}
-
+    <MarketingSurface>
       <div
-        className="legal-layout"
         style={{
-          paddingTop: isEmbed ? '16px' : '80px',
-          width: '100%',
-          margin: '0',
-          padding: isEmbed ? '24px 2vw 24px' : '100px 3vw 100px',
-          display: 'grid',
-          gridTemplateColumns: '260px minmax(0, 1fr)',
-          gap: '2rem',
-          alignItems: 'start',
+          minHeight: '100vh',
+          background: '#000',
+          color: '#fff',
+          fontFamily: MKT_FONT,
+          overflowX: 'hidden',
         }}
       >
-        {/* Sidebar */}
-        <div
-          className="legal-sidebar"
-          style={{
-            position: 'sticky',
-            top: '90px',
-            alignSelf: 'start',
-            background: 'rgba(39,39,42,0.78)',
-            border: '1px solid rgba(113,113,122,0.45)',
-            borderRadius: '12px',
-            padding: '1rem',
-            backdropFilter: 'blur(8px)',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
-          }}
-        >
-          <p
+        <style jsx global>{`
+          html {
+            color-scheme: dark;
+          }
+          * {
+            -webkit-tap-highlight-color: transparent;
+          }
+          @media (max-width: 1024px) {
+            .legal-layout {
+              display: block !important;
+              padding: 92px 1rem 80px !important;
+            }
+            .legal-sidebar {
+              position: static !important;
+              top: auto !important;
+              margin-bottom: 1rem;
+            }
+            .legal-content {
+              padding: 0 !important;
+            }
+          }
+        `}</style>
+
+        {!isEmbed && (
+          <nav
             style={{
-              fontSize: '12px',
-              fontWeight: 500,
-              color: 'rgba(212,212,216,0.75)',
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              marginBottom: '1rem',
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              zIndex: 50,
+              borderBottom: '1px solid rgba(255,255,255,0.08)',
+              background: 'rgba(0,0,0,0.8)',
+              backdropFilter: 'blur(12px)',
+              padding: '0 5vw',
+              height: '64px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
             }}
           >
-            Legal documents
-          </p>
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => {
-                setActive(tab.id);
-                window.history.replaceState(null, '', `#${tab.id}`);
-              }}
-              style={{
-                display: 'block',
-                width: '100%',
-                textAlign: 'left',
-                background: active === tab.id ? 'rgba(82,82,91,0.65)' : 'transparent',
-                border: 'none',
-                borderLeft:
-                  active === tab.id ? '3px solid rgba(244,244,245,0.95)' : '3px solid transparent',
-                padding: '10px 16px',
-                fontSize: '14px',
-                color: active === tab.id ? 'rgba(250,250,250,0.98)' : 'rgba(212,212,216,0.78)',
-                cursor: 'pointer',
-                fontWeight: active === tab.id ? 500 : 300,
-                borderRadius: '0 6px 6px 0',
-                marginBottom: '4px',
-                transition: 'all 0.15s',
-              }}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Content */}
-        <div
-          className="legal-content"
-          style={{
-            width: '100%',
-            maxWidth: 'none',
-            padding: '0.5rem 0',
-          }}
-        >
-          {content[active]}
-        </div>
-      </div>
-
-      {!isEmbed && (
-        <footer
-          style={{
-            borderTop: '1px solid rgba(255,255,255,0.08)',
-            padding: '3rem 5vw',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: '1rem',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
-            <BrandLogo size={24} />
-            <span
-              style={{
-                fontFamily: "'Space Grotesk', sans-serif",
-                fontSize: '14px',
-                fontWeight: 700,
-                color: '#fff',
-              }}
-            >
-              Syntheon Hub
-            </span>
-          </div>
-          <div style={{ display: 'flex', gap: '2rem' }}>
             <Link
               href="/"
-              style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.875rem',
+                textDecoration: 'none',
+              }}
             >
-              Home
+              <BrandLogo size={28} />
+              <span
+                style={{
+                  fontFamily: MKT_FONT,
+                  fontSize: '18px',
+                  fontWeight: 700,
+                  color: '#fff',
+                  letterSpacing: '-0.02em',
+                }}
+              >
+                Syntheon Hub
+              </span>
             </Link>
-            <Link
-              href="/pricing"
-              style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+              {mounted ? (
+                <>
+                  <Link
+                    href="/how-it-works"
+                    style={{
+                      fontSize: '14px',
+                      color: 'rgba(255,255,255,0.6)',
+                      textDecoration: 'none',
+                    }}
+                  >
+                    How it works
+                  </Link>
+                  <Link
+                    href={`${APP_URL}/sign-up`}
+                    style={{
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      color: '#000',
+                      background: '#fff',
+                      textDecoration: 'none',
+                      padding: '0.5rem 1rem',
+                      borderRadius: '6px',
+                    }}
+                  >
+                    Start Free
+                  </Link>
+                </>
+              ) : null}
+            </div>
+          </nav>
+        )}
+
+        <div
+          className="legal-layout"
+          style={{
+            paddingTop: isEmbed ? '16px' : '80px',
+            width: '100%',
+            margin: '0',
+            padding: isEmbed ? '24px 2vw 24px' : '100px 3vw 100px',
+            display: 'grid',
+            gridTemplateColumns: '260px minmax(0, 1fr)',
+            gap: '2rem',
+            alignItems: 'start',
+          }}
+        >
+          {/* Sidebar */}
+          <div
+            className="legal-sidebar"
+            style={{
+              position: 'sticky',
+              top: '90px',
+              alignSelf: 'start',
+              background: 'rgba(39,39,42,0.78)',
+              border: '1px solid rgba(113,113,122,0.45)',
+              borderRadius: '12px',
+              padding: '1rem',
+              backdropFilter: 'blur(8px)',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+            }}
+          >
+            <p
+              style={{
+                fontSize: '12px',
+                fontWeight: 500,
+                color: 'rgba(212,212,216,0.75)',
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                marginBottom: '1rem',
+              }}
             >
-              Pricing
-            </Link>
-            <Link
-              href="/docs"
-              style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}
-            >
-              Docs
-            </Link>
-            <Link
-              href="/faq"
-              style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}
-            >
-              FAQ
-            </Link>
-            <Link
-              href="/how-it-works"
-              style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}
-            >
-              How it works
-            </Link>
+              Legal documents
+            </p>
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setActive(tab.id);
+                  window.history.replaceState(null, '', `#${tab.id}`);
+                }}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  textAlign: 'left',
+                  background: active === tab.id ? 'rgba(82,82,91,0.65)' : 'transparent',
+                  border: 'none',
+                  borderLeft:
+                    active === tab.id
+                      ? '3px solid rgba(244,244,245,0.95)'
+                      : '3px solid transparent',
+                  padding: '10px 16px',
+                  fontSize: '14px',
+                  color: active === tab.id ? 'rgba(250,250,250,0.98)' : 'rgba(212,212,216,0.78)',
+                  cursor: 'pointer',
+                  fontWeight: active === tab.id ? 500 : 300,
+                  borderRadius: '0 6px 6px 0',
+                  marginBottom: '4px',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
-          <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.25)' }}>
-            2026 Syntheon Hub. Governed by Indian law.
-          </p>
-        </footer>
-      )}
-    </div>
+
+          {/* Content */}
+          <div
+            className="legal-content"
+            style={{
+              width: '100%',
+              maxWidth: 'none',
+              padding: '0.5rem 0',
+            }}
+          >
+            {content[active]}
+          </div>
+        </div>
+
+        {!isEmbed && (
+          <footer
+            style={{
+              borderTop: '1px solid rgba(255,255,255,0.08)',
+              padding: '3rem 5vw',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '1rem',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
+              <BrandLogo size={24} />
+              <span
+                style={{
+                  fontFamily: MKT_FONT,
+                  fontSize: '14px',
+                  fontWeight: 700,
+                  color: '#fff',
+                }}
+              >
+                Syntheon Hub
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: '2rem' }}>
+              <Link
+                href="/"
+                style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}
+              >
+                Home
+              </Link>
+              <Link
+                href="/faq"
+                style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}
+              >
+                FAQ
+              </Link>
+              <Link
+                href="/how-it-works"
+                style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}
+              >
+                How it works
+              </Link>
+            </div>
+            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.25)' }}>
+              2026 Syntheon Hub. Governed by Indian law.
+            </p>
+          </footer>
+        )}
+      </div>
+    </MarketingSurface>
   );
 }
 

@@ -7,6 +7,7 @@ import {
   DM_Serif_Display,
   Space_Grotesk,
   Inter,
+  Bricolage_Grotesque,
 } from 'next/font/google';
 import { ClerkProvider } from '@clerk/nextjs';
 import { shadcn } from '@clerk/ui/themes';
@@ -58,6 +59,12 @@ const _spaceGrotesk = Space_Grotesk({
 const _inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
+  display: 'swap',
+  preload: true,
+});
+const _bricolage = Bricolage_Grotesque({
+  subsets: ['latin'],
+  variable: '--font-bricolage',
   display: 'swap',
   preload: true,
 });
@@ -140,7 +147,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${_inter.variable} ${_spaceGrotesk.variable} ${_playfair.variable} ${_dmSans.variable} ${_dmSerif.variable}`}
+      className={`${_inter.variable} ${_spaceGrotesk.variable} ${_playfair.variable} ${_dmSans.variable} ${_dmSerif.variable} ${_bricolage.variable}`}
     >
       <head>
         {/* Preconnect to critical third-party domains */}

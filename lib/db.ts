@@ -522,8 +522,8 @@ export async function deleteProject(id: string): Promise<void> {
   }
 
   // Unlink meetings belonging to this project (GSI + org fallback for pre-GSI rows)
-  let projectMeetings = (await MeetingsEntity.query.byProject({ projectId: id }).go({ limit: 500 }))
-    .data ?? [];
+  let projectMeetings =
+    (await MeetingsEntity.query.byProject({ projectId: id }).go({ limit: 500 })).data ?? [];
   if (projectMeetings.length === 0) {
     const project = await getProjectById(id);
     if (project?.org_id) {

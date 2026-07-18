@@ -10,11 +10,13 @@ export const DOC_SEO: Record<string, { title: string; description: string }> = {
   },
   trial: {
     title: 'Free Trial',
-    description: 'How the Syntheon Hub free trial works, what’s included, and what happens after it ends.',
+    description:
+      'How the Syntheon Hub free trial works, what’s included, and what happens after it ends.',
   },
   dashboard: {
     title: 'Dashboard',
-    description: 'Overview of your meetings, tickets, and project activity in the Syntheon Hub dashboard.',
+    description:
+      'Overview of your meetings, tickets, and project activity in the Syntheon Hub dashboard.',
   },
   sidebar: {
     title: 'Sidebar Navigation',
@@ -26,11 +28,13 @@ export const DOC_SEO: Record<string, { title: string; description: string }> = {
   },
   notifications: {
     title: 'Notifications',
-    description: 'Stay on top of assignments, mentions, and status changes with Syntheon Hub notifications.',
+    description:
+      'Stay on top of assignments, mentions, and status changes with Syntheon Hub notifications.',
   },
   meetings: {
     title: 'Meetings',
-    description: 'Send the Syntheon Hub bot to Google Meet, Zoom, or Teams and capture action items automatically.',
+    description:
+      'Send the Syntheon Hub bot to Google Meet, Zoom, or Teams and capture action items automatically.',
   },
   'meeting-states': {
     title: 'Meeting States',
@@ -38,7 +42,8 @@ export const DOC_SEO: Record<string, { title: string; description: string }> = {
   },
   transcripts: {
     title: 'Transcripts',
-    description: 'Review speaker-labeled transcripts and how they feed ticket extraction in Syntheon Hub.',
+    description:
+      'Review speaker-labeled transcripts and how they feed ticket extraction in Syntheon Hub.',
   },
   'ticket-extraction': {
     title: 'AI Ticket Extraction',
@@ -46,7 +51,8 @@ export const DOC_SEO: Record<string, { title: string; description: string }> = {
   },
   'ticket-fields': {
     title: 'Ticket Fields',
-    description: 'Priorities, estimates, labels, assignees, and other ticket fields in Syntheon Hub.',
+    description:
+      'Priorities, estimates, labels, assignees, and other ticket fields in Syntheon Hub.',
   },
   'ticket-badges': {
     title: 'Ticket Badges',
