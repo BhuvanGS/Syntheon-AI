@@ -1,0 +1,2 @@
+# Syntheon Hub — optional machine-readable companion to /llms.txt
+# Primary AI summary: https://syntheonhub.com/llms.txt

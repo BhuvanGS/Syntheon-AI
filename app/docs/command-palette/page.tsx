@@ -1,4 +1,8 @@
+import type { Metadata } from 'next';
 import MiniCommandPalette from '@/components/docs/mini-command-palette';
+import { docsMetadata } from '@/lib/docs-seo';
+
+export const metadata: Metadata = docsMetadata('command-palette');
 
 export default function CommandPalettePage() {
   return (

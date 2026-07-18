@@ -1,4 +1,8 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
+import { docsMetadata } from '@/lib/docs-seo';
+
+export const metadata: Metadata = docsMetadata('getting-started');
 
 const APP_URL = 'https://app.syntheonhub.com';
 

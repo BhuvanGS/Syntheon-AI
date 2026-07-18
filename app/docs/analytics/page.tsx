@@ -1,4 +1,8 @@
+import type { Metadata } from 'next';
 import MiniAnalytics from '@/components/docs/mini-analytics';
+import { docsMetadata } from '@/lib/docs-seo';
+
+export const metadata: Metadata = docsMetadata('analytics');
 
 export default function AnalyticsPage() {
   return (

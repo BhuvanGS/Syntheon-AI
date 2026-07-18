@@ -1,5 +1,7 @@
 'use client';
 
+import { BrandLogo } from '@/components/brand-logo';
+
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'motion/react';
@@ -102,13 +104,7 @@ export default function ContactPage() {
           href="/"
           style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', textDecoration: 'none' }}
         >
-          <img
-            src="/syntheon-logo.png"
-            alt="Syntheon Hub"
-            width={28}
-            height={28}
-            style={{ borderRadius: '6px', objectFit: 'cover' }}
-          />
+          <BrandLogo size={28} />
           <span
             style={{
               fontFamily: "'Space Grotesk', sans-serif",
@@ -424,13 +420,7 @@ export default function ContactPage() {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
-          <img
-            src="/syntheon-logo.png"
-            alt="Syntheon Hub"
-            width={24}
-            height={24}
-            style={{ borderRadius: '4px' }}
-          />
+          <BrandLogo size={24} />
           <span
             style={{
               fontFamily: "'Space Grotesk', sans-serif",

@@ -1,5 +1,7 @@
 'use client';
 
+import { BrandLogo } from '@/components/brand-logo';
+
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { usePathname, useRouter } from 'next/navigation';
@@ -141,14 +143,7 @@ export function Sidebar({
               href="/dashboard"
               className="flex items-center gap-2.5 flex-1 min-w-0 group rounded-md py-1 hover:bg-accent/40"
             >
-              <img
-                src="/syntheon-logo.png"
-                alt="Syntheon Hub"
-                className="w-[30px] h-[30px] object-contain shrink-0 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                }}
-              />
+              <BrandLogo size={30} className="transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3" />
               <div className="min-w-0">
                 <span className="font-[family-name:var(--font-space-grotesk)] text-[1.05rem] text-primary tracking-tight block truncate">
                   Syntheon Hub
@@ -170,14 +165,7 @@ export function Sidebar({
           </>
         )}
         {collapsed && (
-          <img
-            src="/syntheon-logo.png"
-            alt="Syntheon Hub"
-            className="w-[30px] h-[30px] object-contain shrink-0"
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = 'none';
-            }}
-          />
+          <BrandLogo size={30} />
         )}
       </div>
 

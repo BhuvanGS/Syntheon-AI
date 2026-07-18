@@ -1,5 +1,7 @@
 'use client';
 
+import { BrandLogo } from '@/components/brand-logo';
+
 import Link from 'next/link';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Bot, Sparkles, GitBranch, Layers, Zap, Menu, X, Calendar } from 'lucide-react';
@@ -107,13 +109,7 @@ function Nav({
           href="/"
           style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', textDecoration: 'none' }}
         >
-          <img
-            src="/syntheon-logo.png"
-            alt="Syntheon Hub logo"
-            width={28}
-            height={28}
-            style={{ borderRadius: '6px', objectFit: 'cover' }}
-          />
+          <BrandLogo size={28} />
           <span
             style={{
               fontFamily: "'Space Grotesk', sans-serif",
@@ -832,13 +828,7 @@ function Footer() {
               marginBottom: '1.25rem',
             }}
           >
-            <img
-              src="/syntheon-logo.png"
-              alt="Syntheon Hub"
-              width={28}
-              height={28}
-              style={{ borderRadius: '6px', objectFit: 'cover' }}
-            />
+            <BrandLogo size={28} />
             <span
               style={{
                 fontFamily: "'Space Grotesk', sans-serif",

@@ -1,4 +1,8 @@
+import type { Metadata } from 'next';
 import MiniVelocityChart from '@/components/docs/mini-velocity-chart';
+import { docsMetadata } from '@/lib/docs-seo';
+
+export const metadata: Metadata = docsMetadata('velocity');
 
 export default function VelocityPage() {
   return (

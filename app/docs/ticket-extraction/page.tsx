@@ -1,3 +1,8 @@
+import type { Metadata } from 'next';
+import { docsMetadata } from '@/lib/docs-seo';
+
+export const metadata: Metadata = docsMetadata('ticket-extraction');
+
 export default function TicketExtractionPage() {
   return (
     <>

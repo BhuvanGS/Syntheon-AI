@@ -1,4 +1,8 @@
+import type { Metadata } from 'next';
 import MiniTrialBanner from '@/components/docs/mini-trial-banner';
+import { docsMetadata } from '@/lib/docs-seo';
+
+export const metadata: Metadata = docsMetadata('trial');
 
 export default function TrialPage() {
   return (

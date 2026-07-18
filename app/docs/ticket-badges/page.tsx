@@ -1,4 +1,8 @@
+import type { Metadata } from 'next';
 import MiniTicketCard from '@/components/docs/mini-ticket-card';
+import { docsMetadata } from '@/lib/docs-seo';
+
+export const metadata: Metadata = docsMetadata('ticket-badges');
 
 export default function TicketBadgesPage() {
   return (

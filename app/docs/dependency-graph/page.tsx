@@ -1,4 +1,8 @@
+import type { Metadata } from 'next';
 import MiniDependencyGraph from '@/components/docs/mini-dependency-graph';
+import { docsMetadata } from '@/lib/docs-seo';
+
+export const metadata: Metadata = docsMetadata('dependency-graph');
 
 export default function DependencyGraphPage() {
   return (

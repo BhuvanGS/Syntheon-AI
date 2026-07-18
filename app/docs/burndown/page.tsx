@@ -1,4 +1,8 @@
+import type { Metadata } from 'next';
 import MiniBurndownChart from '@/components/docs/mini-burndown-chart';
+import { docsMetadata } from '@/lib/docs-seo';
+
+export const metadata: Metadata = docsMetadata('burndown');
 
 export default function BurndownPage() {
   return (

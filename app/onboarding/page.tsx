@@ -1,5 +1,7 @@
 'use client';
 
+import { BrandLogo } from '@/components/brand-logo';
+
 import { useState, useEffect, useCallback } from 'react';
 import { useOrganizationList, useUser } from '@clerk/nextjs';
 import {
@@ -234,13 +236,7 @@ export default function OnboardingPage() {
           transition={{ duration: 0.4 }}
           className="flex items-center gap-2.5 mb-12"
         >
-          <img
-            src="/syntheon-logo.png"
-            alt="Syntheon Hub"
-            width={32}
-            height={32}
-            style={{ borderRadius: '6px', objectFit: 'cover' }}
-          />
+          <BrandLogo size={32} />
           <span className="font-playfair text-xl font-bold text-foreground">Syntheon Hub</span>
         </motion.div>
         <motion.div
@@ -275,13 +271,7 @@ export default function OnboardingPage() {
           transition={{ duration: 0.4 }}
           className="flex items-center gap-2.5 mb-12"
         >
-          <img
-            src="/syntheon-logo.png"
-            alt="Syntheon Hub"
-            width={32}
-            height={32}
-            style={{ borderRadius: '6px', objectFit: 'cover' }}
-          />
+          <BrandLogo size={32} />
           <span className="font-playfair text-xl font-bold text-foreground">Syntheon Hub</span>
         </motion.div>
         <motion.div
@@ -311,13 +301,7 @@ export default function OnboardingPage() {
         }}
       >
         <div className="flex items-center gap-2.5 mb-12">
-          <img
-            src="/syntheon-logo.png"
-            alt="Syntheon Hub"
-            width={32}
-            height={32}
-            style={{ borderRadius: '6px', objectFit: 'cover' }}
-          />
+          <BrandLogo size={32} />
           <span className="font-playfair text-xl font-bold text-foreground">Syntheon Hub</span>
         </div>
         <motion.div
@@ -405,13 +389,7 @@ export default function OnboardingPage() {
       }}
     >
       <div className="flex items-center gap-2.5 mb-12">
-        <img
-          src="/syntheon-logo.png"
-          alt="Syntheon Hub"
-          width={32}
-          height={32}
-          style={{ borderRadius: '6px', objectFit: 'cover' }}
-        />
+        <BrandLogo size={32} />
         <span className="font-playfair text-xl font-bold text-foreground">Syntheon Hub</span>
       </div>
 

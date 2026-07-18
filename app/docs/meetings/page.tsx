@@ -1,4 +1,8 @@
+import type { Metadata } from 'next';
 import MiniMeetingCard from '@/components/docs/mini-meeting-card';
+import { docsMetadata } from '@/lib/docs-seo';
+
+export const metadata: Metadata = docsMetadata('meetings');
 
 export default function MeetingsPage() {
   return (

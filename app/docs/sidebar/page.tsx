@@ -1,4 +1,8 @@
+import type { Metadata } from 'next';
 import MiniSidebar from '@/components/docs/mini-sidebar';
+import { docsMetadata } from '@/lib/docs-seo';
+
+export const metadata: Metadata = docsMetadata('sidebar');
 
 export default function SidebarPage() {
   return (

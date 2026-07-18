@@ -1,3 +1,4 @@
+import { BrandLogo } from '@/components/brand-logo';
 import { SignUp } from '@clerk/nextjs';
 import { PreAuthConsent } from '@/components/pre-auth-consent';
 import { BetaOverMessage } from '@/components/beta-over-message';
@@ -25,13 +26,7 @@ export default function SignUpPage() {
       >
         <div className="relative z-10 max-w-lg">
           <div className="flex items-center gap-2.5 mb-12">
-            <img
-              src="/syntheon-logo.png"
-              alt="Syntheon Hub"
-              width={32}
-              height={32}
-              style={{ borderRadius: '6px', objectFit: 'cover' }}
-            />
+            <BrandLogo size={32} />
             <span
               style={{
                 fontFamily: "'Space Grotesk', sans-serif",

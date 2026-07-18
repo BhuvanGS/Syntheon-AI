@@ -1,4 +1,8 @@
+import type { Metadata } from 'next';
 import MiniRoles from '@/components/docs/mini-roles';
+import { docsMetadata } from '@/lib/docs-seo';
+
+export const metadata: Metadata = docsMetadata('roles');
 
 export default function RolesPage() {
   return (

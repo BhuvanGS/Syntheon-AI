@@ -1,4 +1,8 @@
+import type { Metadata } from 'next';
 import MiniNotificationBell from '@/components/docs/mini-notification-bell';
+import { docsMetadata } from '@/lib/docs-seo';
+
+export const metadata: Metadata = docsMetadata('notifications');
 
 export default function NotificationsPage() {
   return (

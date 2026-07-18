@@ -1,4 +1,8 @@
+import type { Metadata } from 'next';
 import MiniGantt from '@/components/docs/mini-gantt';
+import { docsMetadata } from '@/lib/docs-seo';
+
+export const metadata: Metadata = docsMetadata('future-viz');
 
 export default function FutureVizPage() {
   return (

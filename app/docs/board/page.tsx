@@ -1,4 +1,8 @@
+import type { Metadata } from 'next';
 import MiniKanban from '@/components/docs/mini-kanban';
+import { docsMetadata } from '@/lib/docs-seo';
+
+export const metadata: Metadata = docsMetadata('board');
 
 export default function BoardPage() {
   return (

@@ -12,6 +12,12 @@ import { ClerkProvider } from '@clerk/nextjs';
 import { shadcn } from '@clerk/ui/themes';
 import { ToastProvider } from '@/components/island-toast';
 import { ThemeProvider } from '@/components/theme-provider';
+import {
+  JsonLd,
+  ORGANIZATION_JSON_LD,
+  SOFTWARE_JSON_LD,
+  WEBSITE_JSON_LD,
+} from '@/components/seo/json-ld';
 import './globals.css';
 
 const _geist = Geist({
@@ -86,10 +92,10 @@ export const metadata: Metadata = {
       'Syntheon Hub joins your meetings, extracts action items, and creates organized tickets automatically. AI-powered project management that works while you talk.',
     images: [
       {
-        url: '/syntheon-logo.png',
+        url: '/og-image.png',
         width: 1200,
         height: 630,
-        alt: 'Syntheon Hub',
+        alt: 'Syntheon Hub — Turn meetings into tickets, automatically',
       },
     ],
   },
@@ -98,7 +104,7 @@ export const metadata: Metadata = {
     title: 'Syntheon Hub — Turn meetings into tickets, automatically',
     description:
       'AI-powered project management that joins your meetings and creates tickets automatically.',
-    images: ['/syntheon-logo.png'],
+    images: ['/og-image.png'],
   },
   robots: {
     index: true,
@@ -108,15 +114,20 @@ export const metadata: Metadata = {
       follow: true,
       'max-image-preview': 'large',
       'max-snippet': -1,
+      'max-video-preview': -1,
     },
   },
   icons: {
     icon: [
-      { url: '/favicon.ico', sizes: '16x16 32x32 48x48 64x64' },
-      { url: '/syntheon-logo-light.png', media: '(prefers-color-scheme: light)', sizes: '512x512' },
-      { url: '/syntheon-logo-dark.png', media: '(prefers-color-scheme: dark)', sizes: '512x512' },
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/icon-light-32x32.png', type: 'image/png', sizes: '32x32' },
+      { url: '/syntheon-logo.png', type: 'image/png', sizes: '512x512' },
     ],
-    apple: '/apple-icon.png',
+    apple: [{ url: '/apple-icon.png', sizes: '180x180' }],
+  },
+  manifest: '/site.webmanifest',
+  alternates: {
+    canonical: 'https://syntheonhub.com',
   },
 };
 
@@ -139,6 +150,9 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body className="font-sans antialiased bg-background text-foreground">
+        <JsonLd data={ORGANIZATION_JSON_LD} />
+        <JsonLd data={SOFTWARE_JSON_LD} />
+        <JsonLd data={WEBSITE_JSON_LD} />
         <ClerkProvider
           appearance={{ theme: shadcn }}
           signInUrl="/sign-in"

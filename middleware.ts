@@ -27,6 +27,8 @@ const isMarketingRoute = createRouteMatcher([
   '/promo',
   '/docs(.*)',
   '/faq',
+  '/contact',
+  '/cookie-policy',
 ]);
 
 const isAppOnlyRoute = createRouteMatcher([
@@ -39,6 +41,8 @@ const isAppOnlyRoute = createRouteMatcher([
   '/sso-callback(.*)',
   '/accept-invite(.*)',
   '/onboarding(.*)',
+  '/waitlist(.*)',
+  '/admin(.*)',
 ]);
 
 const isApiRoute = createRouteMatcher(['/api/(.*)']);
@@ -65,6 +69,14 @@ const isPublicAppRoute = createRouteMatcher([
 export default clerkMiddleware(async (auth, request) => {
   const hostname = getHostname(request);
   const pathname = request.nextUrl.pathname;
+
+  // Prefer apex host so Google doesn't split indexing across www + non-www
+  if (hostname === `www.${MARKETING_DOMAIN}`) {
+    const url = request.nextUrl.clone();
+    url.host = MARKETING_DOMAIN;
+    url.protocol = 'https:';
+    return NextResponse.redirect(url, 308);
+  }
 
   // ─── Subdomain routing logic ──────────────────────────────────
   if (isMarketingDomain(hostname)) {

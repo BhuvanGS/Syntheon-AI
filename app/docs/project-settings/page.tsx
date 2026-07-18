@@ -1,3 +1,8 @@
+import type { Metadata } from 'next';
+import { docsMetadata } from '@/lib/docs-seo';
+
+export const metadata: Metadata = docsMetadata('project-settings');
+
 export default function ProjectSettingsPage() {
   return (
     <>

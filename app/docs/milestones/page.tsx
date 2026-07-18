@@ -1,3 +1,8 @@
+import type { Metadata } from 'next';
+import { docsMetadata } from '@/lib/docs-seo';
+
+export const metadata: Metadata = docsMetadata('milestones');
+
 export default function MilestonesPage() {
   return (
     <>

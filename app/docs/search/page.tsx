@@ -1,4 +1,8 @@
+import type { Metadata } from 'next';
 import MiniSearchBar from '@/components/docs/mini-search-bar';
+import { docsMetadata } from '@/lib/docs-seo';
+
+export const metadata: Metadata = docsMetadata('search');
 
 export default function SearchPage() {
   return (
