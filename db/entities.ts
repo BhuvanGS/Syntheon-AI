@@ -92,6 +92,11 @@ export const ApiKeysEntity = makeEntity(
       sk: { field: 'sk', template: 'apiKey' },
     },
     byId: { index: 'gsi1', pk: { field: 'gsi1pk', composite: ['id'] } },
+    byKeyHash: {
+      index: 'gsi2',
+      pk: { field: 'gsi2pk', composite: ['keyHash'] },
+      sk: { field: 'gsi2sk', template: 'apiKey' },
+    },
   }
 );
 
@@ -137,6 +142,11 @@ export const MeetingsEntity = makeEntity(
       index: 'gsi3',
       pk: { field: 'gsi3pk', composite: ['botId'] },
       sk: { field: 'gsi3sk', composite: ['id'] },
+    },
+    byProject: {
+      index: 'gsi4',
+      pk: { field: 'gsi4pk', composite: ['projectId'] },
+      sk: { field: 'gsi4sk', composite: ['date'] },
     },
   }
 );
@@ -278,6 +288,11 @@ export const ProjectsEntity = makeEntity(
       index: 'gsi2',
       pk: { field: 'gsi2pk', composite: ['orgId'] },
       sk: { field: 'gsi2sk', composite: ['createdAt'] },
+    },
+    byRepo: {
+      index: 'gsi3',
+      pk: { field: 'gsi3pk', composite: ['repo'] },
+      sk: { field: 'gsi3sk', composite: ['id'] },
     },
   }
 );
@@ -517,6 +532,11 @@ export const OrganizationMetadataEntity = makeEntity(
       pk: { field: 'pk', composite: ['orgId'] },
       sk: { field: 'sk', template: 'orgMetadata' },
     },
+    byJoinCode: {
+      index: 'gsi1',
+      pk: { field: 'gsi1pk', composite: ['joinCode'] },
+      sk: { field: 'gsi1sk', template: 'orgMetadata' },
+    },
   }
 );
 
@@ -590,6 +610,11 @@ export const NotificationsEntity = makeEntity(
     primary: {
       pk: { field: 'pk', composite: ['userId'] },
       sk: { field: 'sk', composite: ['orgId', 'createdAt'] },
+    },
+    byId: {
+      index: 'gsi1',
+      pk: { field: 'gsi1pk', composite: ['id'] },
+      sk: { field: 'gsi1sk', template: 'notification' },
     },
   }
 );
@@ -755,6 +780,27 @@ export const ConsentRecordsEntity = makeEntity(
       index: 'gsi2',
       pk: { field: 'gsi2pk', composite: ['status'] },
       sk: { field: 'gsi2sk', composite: ['givenAt'] },
+    },
+  }
+);
+
+// ─── SSE Events (cross-instance fan-out) ──────────────────────────
+export const SseEventsEntity = makeEntity(
+  'sh-sse-events',
+  'SH_SSE_EVENTS',
+  'sseEvent',
+  {
+    channelId: { type: 'string', required: true },
+    eventKey: { type: 'string', required: true },
+    type: { type: 'string', required: true },
+    payload: { type: 'string', default: '{}' },
+    createdAt: { type: 'string', required: true },
+    expireAt: { type: 'number', required: true },
+  },
+  {
+    primary: {
+      pk: { field: 'pk', composite: ['channelId'] },
+      sk: { field: 'sk', composite: ['eventKey'] },
     },
   }
 );

@@ -4,8 +4,46 @@ import path from 'path';
 
 const PROMPT_PATH = path.join(process.cwd(), 'prompts/devPrompt.txt');
 
+let cachedSystemPrompt: string | null = null;
+
 function loadSystemPrompt(): string {
-  return fs.readFileSync(PROMPT_PATH, 'utf-8').trim();
+  if (cachedSystemPrompt) return cachedSystemPrompt;
+  cachedSystemPrompt = fs.readFileSync(PROMPT_PATH, 'utf-8').trim();
+  return cachedSystemPrompt;
+}
+
+const MAX_FILES_IN_CONTEXT = 12;
+const MAX_FILE_CHARS = 6_000;
+const MAX_TOTAL_FILE_CHARS = 40_000;
+
+function truncateFileContent(content: string, maxChars = MAX_FILE_CHARS): string {
+  if (content.length <= maxChars) return content;
+  return `${content.slice(0, maxChars)}\n\n/* … truncated (${content.length - maxChars} chars omitted) */`;
+}
+
+function buildExistingFilesBlock(existingFiles: Record<string, string>): string {
+  const entries = Object.entries(existingFiles).slice(0, MAX_FILES_IN_CONTEXT);
+  let used = 0;
+  const parts: string[] = [];
+
+  for (const [filePath, content] of entries) {
+    const remaining = MAX_TOTAL_FILE_CHARS - used;
+    if (remaining <= 0) {
+      parts.push(`### ${filePath}\n\`\`\`\n/* omitted — context budget exhausted */\n\`\`\``);
+      continue;
+    }
+    const truncated = truncateFileContent(content, Math.min(MAX_FILE_CHARS, remaining));
+    used += truncated.length;
+    parts.push(`### ${filePath}\n\`\`\`\n${truncated}\n\`\`\``);
+  }
+
+  if (Object.keys(existingFiles).length > MAX_FILES_IN_CONTEXT) {
+    parts.push(
+      `… and ${Object.keys(existingFiles).length - MAX_FILES_IN_CONTEXT} more files omitted from context`
+    );
+  }
+
+  return parts.join('\n\n');
 }
 
 export interface LinearSubtask {
@@ -166,26 +204,30 @@ export async function planFollowUpChanges(
   notes: Record<string, string> = {}
 ): Promise<PlannerResponse> {
   const notesList = Object.values(notes).filter(Boolean);
+  const cappedFiles = projectContext.files.slice(0, 200);
+  const cappedSpecs = projectContext.specs.slice(-40);
+  const cappedNewSpecs = newSpecs.slice(0, 30);
 
   const prompt = `You are a senior software engineer analyzing an existing project.
 
 PROJECT MEMORY:
 Name: ${projectContext.name}
-Purpose: ${projectContext.context}
+Purpose: ${projectContext.context.slice(0, 2000)}
 Previously built specs:
-${projectContext.specs.map((s, i) => `  ${i + 1}. ${s}`).join('\n')}
+${cappedSpecs.map((s, i) => `  ${i + 1}. ${s}`).join('\n')}
 
-Files currently in the repo:
-${projectContext.files.map((f) => `  - ${f}`).join('\n')}
+Files currently in the repo (${projectContext.files.length} total, showing up to 200):
+${cappedFiles.map((f) => `  - ${f}`).join('\n')}
 
 NEW SPECS TO IMPLEMENT:
-${newSpecs.map((s, i) => `  ${i + 1}. ${s}`).join('\n')}
+${cappedNewSpecs.map((s, i) => `  ${i + 1}. ${s}`).join('\n')}
 ${notesList.length > 0 ? `\nAdditional notes:\n${notesList.map((n) => `  - ${n}`).join('\n')}` : ''}
 
 TASK:
 Analyze which files need to be modified and which new files need to be created.
 Do NOT include .github/workflows files.
 Be precise — only include files that actually need to change.
+Limit filesToModify to at most ${MAX_FILES_IN_CONTEXT} paths.
 
 Respond ONLY with valid JSON in this format:
 {
@@ -239,24 +281,25 @@ export async function generateFollowUpPlan(
   const notesList = Object.values(notes).filter(Boolean);
   const systemPrompt = loadSystemPrompt();
 
-  const existingFilesContent = Object.entries(existingFiles)
-    .map(([path, content]) => `### ${path}\n\`\`\`\n${content}\n\`\`\``)
-    .join('\n\n');
+  const existingFilesContent = buildExistingFilesBlock(existingFiles);
+
+  const cappedSpecs = projectContext.specs.slice(-40);
+  const cappedNewSpecs = newSpecs.slice(0, 30);
 
   const prompt = `You are working on an EXISTING project. Do not rewrite everything from scratch.
 
 PROJECT CONTEXT:
 Name: ${projectContext.name}
-Purpose: ${projectContext.context}
-Previously built: ${projectContext.specs.join(', ')}
+Purpose: ${projectContext.context.slice(0, 2000)}
+Previously built: ${cappedSpecs.join(', ')}
 
 EXISTING FILE CONTENTS:
 ${existingFilesContent}
 
 NEW SPECS TO ADD:
-${newSpecs.map((s, i) => `${i + 1}. ${s}`).join('\n')}
+${cappedNewSpecs.map((s, i) => `${i + 1}. ${s}`).join('\n')}
 ${notesList.length > 0 ? `\nNotes:\n${notesList.map((n) => `- ${n}`).join('\n')}` : ''}
-${filesToCreate.length > 0 ? `\nNew files to create: ${filesToCreate.join(', ')}` : ''}
+${filesToCreate.length > 0 ? `\nNew files to create: ${filesToCreate.slice(0, 20).join(', ')}` : ''}
 
 IMPORTANT RULES:
 - Only include files that actually changed or are new

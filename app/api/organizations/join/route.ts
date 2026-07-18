@@ -13,9 +13,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Join code is required' }, { status: 400 });
   }
 
-  // Scan for org metadata with matching join code
-  const scanRes = await OrganizationMetadataEntity.scan.go();
-  const meta = (scanRes.data ?? []).find((m: any) => m.joinCode === joinCode.trim());
+  // Lookup org by join code GSI (scan fallback for pre-GSI records)
+  const code = joinCode.trim();
+  let meta: any = null;
+  const byCode = await OrganizationMetadataEntity.query.byJoinCode({ joinCode: code }).go({
+    limit: 1,
+  });
+  meta = byCode.data?.[0] ?? null;
+
+  if (!meta) {
+    const scanRes = await OrganizationMetadataEntity.scan.go();
+    meta = (scanRes.data ?? []).find((m: any) => m.joinCode === code) ?? null;
+    if (meta?.joinCode) {
+      try {
+        await OrganizationMetadataEntity.update({ orgId: meta.orgId })
+          .set({ joinCode: meta.joinCode, updatedAt: new Date().toISOString() })
+          .go();
+      } catch {
+        // ignore backfill errors
+      }
+    }
+  }
 
   if (!meta) {
     return NextResponse.json({ error: 'Invalid join code' }, { status: 404 });

@@ -156,6 +156,16 @@ function entityToMeeting(e: any): Meeting {
   };
 }
 
+/** List DTO — excludes heavy transcript/file/summary payloads. */
+function entityToMeetingSummary(e: any): Meeting {
+  return {
+    ...entityToMeeting(e),
+    transcript: '',
+    filePath: '',
+    summary: undefined,
+  };
+}
+
 function entityToTicket(e: any): Ticket {
   return {
     id: e.id,
@@ -286,9 +296,28 @@ export async function saveMeeting(meeting: Meeting): Promise<void> {
 }
 
 export async function getMeetings(userId: string): Promise<Meeting[]> {
-  const res = await MeetingsEntity.query.byUser({ userId }).go();
+  const res = await MeetingsEntity.query.byUser({ userId }).go({
+    attributes: [
+      'id',
+      'userId',
+      'orgId',
+      'projectId',
+      'projectName',
+      'meetingId',
+      'meetingUrl',
+      'platform',
+      'specsDetected',
+      'status',
+      'botId',
+      'branchName',
+      'deployUrl',
+      'date',
+      'createdAt',
+      'updatedAt',
+    ],
+  });
   return (res.data ?? [])
-    .map(entityToMeeting)
+    .map(entityToMeetingSummary)
     .sort((a: Meeting, b: Meeting) => b.date.localeCompare(a.date));
 }
 
@@ -492,10 +521,21 @@ export async function deleteProject(id: string): Promise<void> {
     await TicketsEntity.delete({ id: ticket.id }).go();
   }
 
-  // Unlink meetings
-  const meetingsRes = await MeetingsEntity.scan.go();
-  for (const meeting of (meetingsRes.data ?? []).filter((m: any) => m.projectId === id)) {
-    await MeetingsEntity.update({ id: meeting.id }).set({ projectId: undefined }).go();
+  // Unlink meetings belonging to this project (GSI + org fallback for pre-GSI rows)
+  let projectMeetings = (await MeetingsEntity.query.byProject({ projectId: id }).go({ limit: 500 }))
+    .data ?? [];
+  if (projectMeetings.length === 0) {
+    const project = await getProjectById(id);
+    if (project?.org_id) {
+      const orgMeetings = await MeetingsEntity.query.byOrg({ orgId: project.org_id }).go({
+        limit: 500,
+        attributes: ['id', 'projectId'],
+      });
+      projectMeetings = (orgMeetings.data ?? []).filter((m: any) => m.projectId === id);
+    }
+  }
+  for (const meeting of projectMeetings) {
+    await MeetingsEntity.update({ id: meeting.id }).remove(['projectId']).go();
   }
 
   // Delete project
@@ -1158,15 +1198,38 @@ export async function getTicketsPaginated(
   } = {}
 ): Promise<{ tickets: Ticket[]; total: number }> {
   const { projectId, meetingId, limit = 50, offset = 0 } = options;
-  const res = await TicketsEntity.query.byOrg({ orgId }).go();
-  let tickets = (res.data ?? []).map(entityToTicket);
+  const fetchLimit = Math.min(offset + limit, 500);
 
-  if (projectId) tickets = tickets.filter((t: Ticket) => t.projectId === projectId);
-  if (meetingId) tickets = tickets.filter((t: Ticket) => t.meeting_id === meetingId);
+  // Prefer specialized GSIs so we don't load the entire org partition.
+  let res: { data?: any[]; cursor?: string | null };
+  if (meetingId) {
+    res = await TicketsEntity.query.byMeeting({ meetingId }).go({
+      limit: fetchLimit,
+      order: 'desc',
+    });
+  } else if (projectId) {
+    res = await TicketsEntity.query.byProject({ projectId }).go({
+      limit: fetchLimit,
+      order: 'desc',
+    });
+  } else {
+    res = await TicketsEntity.query.byOrg({ orgId }).go({
+      limit: fetchLimit,
+      order: 'desc',
+    });
+  }
+
+  let tickets = (res.data ?? []).map(entityToTicket);
+  if (orgId) tickets = tickets.filter((t: Ticket) => t.org_id === orgId);
+  if (projectId && meetingId) {
+    tickets = tickets.filter((t: Ticket) => t.projectId === projectId);
+  }
 
   tickets.sort((a: Ticket, b: Ticket) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
-  const total = tickets.length;
-  return { tickets: tickets.slice(offset, offset + limit), total };
+  const page = tickets.slice(offset, offset + limit);
+  // Exact totals require a full partition read; approximate when truncated.
+  const total = res.cursor ? offset + page.length + 1 : tickets.length;
+  return { tickets: page, total };
 }
 
 // ─── Stale Ticket Detection ────────────────────────────────────
@@ -1189,25 +1252,103 @@ export async function getStaleTickets(
   cutoff.setDate(cutoff.getDate() - staleDays);
   const cutoffStr = cutoff.toISOString();
 
-  const res = await TicketsEntity.query.byOrg({ orgId }).go();
+  const res = projectId
+    ? await TicketsEntity.query.byProject({ projectId }).go({ limit: 500, order: 'desc' })
+    : await TicketsEntity.query.byOrg({ orgId }).go({ limit: 500, order: 'desc' });
   let tickets = (res.data ?? []).map(entityToTicket);
   tickets = tickets.filter((t: Ticket) => t.status !== 'done' && (t.updatedAt ?? '') < cutoffStr);
-  if (projectId) tickets = tickets.filter((t: Ticket) => t.projectId === projectId);
+  if (orgId) tickets = tickets.filter((t: Ticket) => t.org_id === orgId);
   tickets.sort((a: Ticket, b: Ticket) => (a.updatedAt ?? '').localeCompare(b.updatedAt ?? ''));
   return tickets;
 }
+
+const MEETING_LIST_ATTRIBUTES = [
+  'id',
+  'userId',
+  'orgId',
+  'projectId',
+  'projectName',
+  'meetingId',
+  'meetingUrl',
+  'platform',
+  'specsDetected',
+  'status',
+  'botId',
+  'branchName',
+  'deployUrl',
+  'date',
+  'createdAt',
+  'updatedAt',
+] as const;
 
 export async function getMeetingsPaginated(
   orgId: string,
   options: { projectId?: string | null; limit?: number; offset?: number } = {}
 ): Promise<{ meetings: Meeting[]; total: number }> {
   const { projectId, limit = 50, offset = 0 } = options;
-  const res = await MeetingsEntity.query.byOrg({ orgId }).go();
-  let meetings = (res.data ?? []).map(entityToMeeting);
-  if (projectId) meetings = meetings.filter((m: Meeting) => m.projectId === projectId);
+  const fetchLimit = Math.min(offset + limit, 500);
+
+  const res = projectId
+    ? await MeetingsEntity.query.byProject({ projectId }).go({
+        limit: fetchLimit,
+        order: 'desc',
+        attributes: [...MEETING_LIST_ATTRIBUTES],
+      })
+    : await MeetingsEntity.query.byOrg({ orgId }).go({
+        limit: fetchLimit,
+        order: 'desc',
+        attributes: [...MEETING_LIST_ATTRIBUTES],
+      });
+
+  let meetings = (res.data ?? []).map(entityToMeetingSummary);
+  if (orgId) meetings = meetings.filter((m: Meeting) => m.org_id === orgId);
   meetings.sort((a: Meeting, b: Meeting) => b.date.localeCompare(a.date));
-  const total = meetings.length;
-  return { meetings: meetings.slice(offset, offset + limit), total };
+  const page = meetings.slice(offset, offset + limit);
+  const total = res.cursor ? offset + page.length + 1 : meetings.length;
+  return { meetings: page, total };
+}
+
+/** Count org meetings on/after `sinceIso` without loading transcripts. Stops early at `cap`. */
+export async function countMeetingsSince(
+  orgId: string,
+  sinceIso: string,
+  cap = 100
+): Promise<number> {
+  let count = 0;
+  let cursor: string | null | undefined = undefined;
+  do {
+    const res: { data?: any[]; cursor?: string | null } = await MeetingsEntity.query
+      .byOrg({ orgId })
+      .gte({ date: sinceIso })
+      .go({
+        limit: Math.min(50, cap - count + 1),
+        cursor: cursor ?? undefined,
+        attributes: ['id', 'date'],
+        order: 'asc',
+      });
+    count += (res.data ?? []).length;
+    cursor = res.cursor;
+  } while (cursor && count <= cap);
+  return count;
+}
+
+/** Count org tickets up to `cap` without loading full partition when possible. */
+export async function countTicketsForOrg(orgId: string, cap = 100): Promise<number> {
+  let count = 0;
+  let cursor: string | null | undefined = undefined;
+  do {
+    const res: { data?: any[]; cursor?: string | null } = await TicketsEntity.query
+      .byOrg({ orgId })
+      .go({
+        limit: Math.min(50, cap - count + 1),
+        cursor: cursor ?? undefined,
+        attributes: ['id'],
+        order: 'desc',
+      });
+    count += (res.data ?? []).length;
+    cursor = res.cursor;
+  } while (cursor && count <= cap);
+  return count;
 }
 
 export async function saveProjectForOrg(project: Project & { org_id: string }): Promise<void> {
@@ -1343,6 +1484,7 @@ export async function createNotification(
     message: values.message,
     ticketId: values.ticket_id,
     read: false,
+    createdAt: now,
   }).go();
   const notification: Notification = {
     id,
@@ -1386,10 +1528,16 @@ export async function getUnreadNotificationCount(userId: string, orgId: string):
   return all.filter((n: Notification) => n.org_id === orgId && !n.read).length;
 }
 
-export async function markNotificationAsRead(id: string): Promise<void> {
-  // Need to fetch first to get the key components
-  const allRes = await NotificationsEntity.scan.go();
-  const notif = (allRes.data ?? []).find((n: any) => n.id === id);
+export async function markNotificationAsRead(id: string, userId?: string): Promise<void> {
+  // Prefer byId GSI; fall back to user partition when userId is known.
+  const byId = await NotificationsEntity.query.byId({ id }).go({ limit: 1 });
+  let notif = byId.data?.[0];
+
+  if (!notif && userId) {
+    const res = await NotificationsEntity.query.primary({ userId }).go();
+    notif = (res.data ?? []).find((n: any) => n.id === id);
+  }
+
   if (!notif) return;
   await NotificationsEntity.update({
     userId: notif.userId,

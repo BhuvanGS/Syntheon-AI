@@ -66,14 +66,14 @@ export function TrialBanner() {
 
     async function loadUsage() {
       try {
-        const res = await fetch('/api/meetings?limit=500');
+        const res = await fetch('/api/usage');
         if (!res.ok) return;
         const data = await res.json();
-        const now = new Date();
-        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-        const meetings = (data.meetings ?? []).filter((m: any) => m.date >= monthStart);
         if (!cancelled)
-          setUsage({ meetingsUsed: meetings.length, meetingsLimit: FREE_MEETING_LIMIT });
+          setUsage({
+            meetingsUsed: data.meetingsUsed ?? 0,
+            meetingsLimit: data.meetingsLimit ?? FREE_MEETING_LIMIT,
+          });
       } catch {
         // silent
       }

@@ -63,7 +63,7 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Notification id required' }, { status: 400 });
     }
 
-    await markNotificationAsRead(id);
+    await markNotificationAsRead(id, userId);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Failed to mark notification as read:', error);

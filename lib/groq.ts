@@ -200,72 +200,35 @@ Return JSON: {"title": "Meeting Title", "tickets": [{"id": "${meetingId}-ticket-
   try {
     const parsed = JSON.parse(clean);
     if (!Array.isArray(parsed.tickets)) throw new Error('tickets must be an array');
-    const rawTickets = parsed.tickets
-      .map((ticket: any) => ({
-        id: randomUUID(),
-        title: ticket.title,
-        description: ticket.description ?? '',
-        status: normalizeTicketStatus(ticket.status),
-        assignee: ticket.assignee ?? null,
-        assignee_user_id: ticket.assignee_user_id ?? null,
-        project_id: ticket.project_id ?? null,
-        meeting_id: ticket.meeting_id ?? meetingId,
-        dependency_ticket_id: ticket.dependency_ticket_id ?? null,
-      }))
+    const tickets = parsed.tickets
+      .map((ticket: any) => {
+        const dueDate =
+          typeof ticket.due_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(ticket.due_date)
+            ? ticket.due_date
+            : null;
+        return {
+          id: randomUUID(),
+          title: ticket.title,
+          description: ticket.description ?? '',
+          status: normalizeTicketStatus(ticket.status),
+          assignee: ticket.assignee ?? null,
+          assignee_user_id: ticket.assignee_user_id ?? null,
+          project_id: ticket.project_id ?? null,
+          meeting_id: ticket.meeting_id ?? meetingId,
+          dependency_ticket_id: ticket.dependency_ticket_id ?? null,
+          due_date: dueDate,
+        };
+      })
       .filter((ticket: TicketBlock) => isMeaningfulTicketTitle(ticket.title)) as TicketBlock[];
-
-    const ticketsWithDueDates = await mergeDueDates(transcript, rawTickets);
 
     return {
       title: parsed.title || 'Untitled Meeting',
-      tickets: ticketsWithDueDates,
+      tickets,
     };
   } catch (err) {
     console.error('[Groq] Failed to parse response. Raw (first 800 chars):', raw?.slice(0, 800));
     console.error('[Groq] Extracted JSON (first 800 chars):', clean?.slice(0, 800));
     throw new Error('Groq returned invalid JSON');
-  }
-}
-
-async function mergeDueDates(transcript: string, tickets: TicketBlock[]): Promise<TicketBlock[]> {
-  if (tickets.length === 0) return tickets;
-
-  try {
-    const response = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
-      messages: [
-        {
-          role: 'system',
-          content: `You extract deadlines from meeting transcripts. Return ONLY valid JSON.
-Today is ${new Date().toISOString().split('T')[0]}.
-Given a transcript and a list of task titles, identify which tasks have explicit deadlines and output them as ISO dates (YYYY-MM-DD).
-If a deadline is relative (e.g., "by Friday", "next week"), calculate the actual calendar date based on today's date.
-Use null when no deadline is mentioned for a task.`,
-        },
-        {
-          role: 'user',
-          content: `Transcript:\n${transcript}\n\nTask titles:\n${tickets.map((t, i) => `${i + 1}. ${t.title}`).join('\n')}\n\nReturn JSON: { "deadlines": [{"index": 1, "due_date": "2026-06-27"}, ...] }`,
-        },
-      ],
-      temperature: 0.2,
-      max_tokens: 1000,
-      response_format: { type: 'json_object' },
-    });
-
-    const raw = response.choices[0].message.content?.trim() ?? '';
-    const parsed = JSON.parse(raw);
-    const deadlines = Array.isArray(parsed?.deadlines) ? parsed.deadlines : [];
-
-    return tickets.map((ticket, idx) => {
-      const match = deadlines.find((d: any) => d.index === idx + 1);
-      if (match?.due_date && /^\d{4}-\d{2}-\d{2}$/.test(match.due_date)) {
-        return { ...ticket, due_date: match.due_date };
-      }
-      return ticket;
-    });
-  } catch (err) {
-    console.error('[Groq] Due-date merge failed, skipping:', err);
-    return tickets;
   }
 }
 

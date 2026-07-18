@@ -23,6 +23,7 @@ const TABLE_NAMES = [
   'sh-deletion-requests',
   'sh-consent-records',
   'sh-beta-waitlist',
+  'sh-sse-events',
 ] as const;
 
 const FIELDS = {
@@ -58,6 +59,7 @@ export function createDynamoTables(): DynamoTableMap {
       fields: { ...FIELDS },
       primaryIndex: { hashKey: 'pk', rangeKey: 'sk' },
       globalIndexes: { ...GLOBAL_INDEXES },
+      ...(name === 'sh-sse-events' ? { ttl: 'expireAt' } : {}),
     });
     const envVar = name.replace(/-/g, '_').toUpperCase();
     tables[name] = { resource, envVar };

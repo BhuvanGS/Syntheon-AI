@@ -96,22 +96,15 @@ export function BillingTab() {
 
     void (async () => {
       try {
-        const [meetingsRes, ticketsRes, projectsRes] = await Promise.all([
-          fetch('/api/meetings?limit=500').then((r) => r.json().catch(() => ({ meetings: [] }))),
-          fetch('/api/tickets?limit=1').then((r) => r.json().catch(() => ({ total: 0 }))),
+        const [usageRes, projectsRes] = await Promise.all([
+          fetch('/api/usage').then((r) => r.json().catch(() => ({}))),
           fetch('/api/projects?limit=100').then((r) => r.json().catch(() => ({ projects: [] }))),
         ]);
 
-        const now = new Date();
-        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-        const meetingsThisMonth = (meetingsRes.meetings ?? []).filter(
-          (m: any) => m.date >= monthStart
-        ).length;
-
         if (!cancelled) {
           setUsage({
-            meetingsUsed: meetingsThisMonth,
-            ticketsUsed: ticketsRes.total ?? (ticketsRes.tickets ?? []).length ?? 0,
+            meetingsUsed: usageRes.meetingsUsed ?? 0,
+            ticketsUsed: usageRes.ticketsUsed ?? 0,
             projectsUsed: (projectsRes.projects ?? []).length,
           });
         }

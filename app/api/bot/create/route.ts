@@ -19,10 +19,20 @@ import { checkMeetingLimit, limitErrorResponse } from '@/lib/billing-limits';
 async function getUserFromApiKey(apiKey: string) {
   const hash = crypto.createHash('sha256').update(apiKey).digest('hex');
 
-  // Scan for key hash — API keys table uses userId as PK, so we scan
+  const byHash = await ApiKeysEntity.query.byKeyHash({ keyHash: hash }).go({ limit: 1 });
+  if (byHash.data?.[0]?.userId) return byHash.data[0].userId;
+
+  // Migration fallback for keys written before byKeyHash GSI existed
   const allKeys = await ApiKeysEntity.scan.go();
   const row = (allKeys.data ?? []).find((k: any) => k.keyHash === hash);
-
+  if (row?.userId && row.keyHash) {
+    // Backfill GSI attribute via update
+    try {
+      await ApiKeysEntity.update({ userId: row.userId }).set({ keyHash: row.keyHash }).go();
+    } catch {
+      // ignore backfill errors
+    }
+  }
   return row?.userId || null;
 }
 

@@ -1,7 +1,7 @@
 // app/api/deploy/webhook/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { updateMeetingDeployUrl } from '@/lib/db';
-import { MeetingsEntity } from '@/db/entities';
+import { MeetingsEntity, ProjectsEntity } from '@/db/entities';
 import { verifyWebhookSignature } from '@/lib/webhook';
 
 const GITHUB_WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET;
@@ -56,12 +56,22 @@ export async function POST(req: NextRequest) {
     }
 
     const deployUrl = getGithubPagesUrl(owner, repo);
+    const repoSlug = `${owner}/${repo}`;
 
-    // Find most recent meeting with branchName but no deployUrl
-    const scanRes = await MeetingsEntity.scan.go();
-    const meeting = (scanRes.data ?? [])
-      .filter((m: any) => m.branchName && !m.deployUrl)
-      .sort((a: any, b: any) => (b.date || '').localeCompare(a.date || ''))[0];
+    // Prefer project→meetings lookup over full table scan
+    const projectsRes = await ProjectsEntity.query.byRepo({ repo: repoSlug }).go({ limit: 5 });
+    let meeting: any = null;
+
+    for (const project of projectsRes.data ?? []) {
+      const meetingsRes = await MeetingsEntity.query
+        .byProject({ projectId: project.id })
+        .go({ limit: 50, order: 'desc', attributes: ['id', 'branchName', 'deployUrl', 'date'] });
+      meeting =
+        (meetingsRes.data ?? [])
+          .filter((m: any) => m.branchName && !m.deployUrl)
+          .sort((a: any, b: any) => (b.date || '').localeCompare(a.date || ''))[0] ?? null;
+      if (meeting) break;
+    }
 
     if (!meeting) {
       return NextResponse.json({ ok: true });

@@ -1,8 +1,8 @@
 import { auth } from '@clerk/nextjs/server';
 import {
   getMeetings,
-  getMeetingsPaginated,
-  getTicketsPaginated,
+  countMeetingsSince,
+  countTicketsForOrg,
   getProjectsByOrg,
   getProjectsForMember,
 } from '@/lib/db';
@@ -70,18 +70,17 @@ export async function checkMeetingLimit(
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
-  let meetings: any[] = [];
+  let used = 0;
   if (orgId) {
-    const res = await getMeetingsPaginated(orgId, { limit: 500 });
-    meetings = res.meetings;
+    used = await countMeetingsSince(orgId, monthStart, limit + units);
   } else {
-    meetings = await getMeetings(userId);
+    const meetings = await getMeetings(userId);
+    used = meetings.filter((m: any) => m.date >= monthStart).length;
   }
 
-  const thisMonth = meetings.filter((m: any) => m.date >= monthStart);
   return {
-    allowed: thisMonth.length + units <= limit,
-    used: thisMonth.length,
+    allowed: used + units <= limit,
+    used,
     limit,
     resource: 'meetings',
     plan: tier,
@@ -119,10 +118,9 @@ export async function checkTicketLimit(
 
   let total = 0;
   if (orgId) {
-    const res = await getTicketsPaginated(orgId, { limit: 1, offset: 0 });
-    total = res.total;
+    total = await countTicketsForOrg(orgId, limit + units);
   } else {
-    const userRes = await TicketsEntity.query.byUser({ userId }).go();
+    const userRes = await TicketsEntity.query.byUser({ userId }).go({ attributes: ['id'] });
     total = (userRes.data ?? []).length;
   }
 

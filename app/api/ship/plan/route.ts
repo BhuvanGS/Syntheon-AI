@@ -4,6 +4,7 @@ import { auth } from '@clerk/nextjs/server';
 import { generatePlan, planFollowUpChanges, generateFollowUpPlan } from '@/lib/shipai/ai';
 import { getProjectById, getTicketsByProjectId } from '@/lib/db';
 import { getRepoFileTree, getFileContents, getRepoInfo } from '@/lib/shipai/github';
+import { aiRateLimit } from '@/lib/rate-limit';
 
 export const maxDuration = 60;
 
@@ -11,6 +12,9 @@ export async function POST(req: NextRequest) {
   try {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const limited = await aiRateLimit(req, userId);
+    if (limited) return limited;
 
     const { tickets, specs, meetingTitle, notes = {}, projectId } = await req.json();
 
@@ -59,7 +63,9 @@ export async function POST(req: NextRequest) {
 
       console.log('Planner:', plannerResult.reasoning);
 
-      const relevantFiles = plannerResult.filesToModify.filter((f) => fileTree.includes(f));
+      const relevantFiles = plannerResult.filesToModify
+        .filter((f) => fileTree.includes(f))
+        .slice(0, 12);
       const existingFiles = await getFileContents(relevantFiles, repoInfo);
 
       plan = await generateFollowUpPlan(

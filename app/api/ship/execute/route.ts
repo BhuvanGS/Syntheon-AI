@@ -25,6 +25,7 @@ import {
   getProjectById,
   getProjectByMeetingId,
 } from '@/lib/db';
+import { aiRateLimit } from '@/lib/rate-limit';
 
 export const maxDuration = 60;
 
@@ -32,6 +33,9 @@ export async function POST(req: NextRequest) {
   try {
     const { userId, orgId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const limited = await aiRateLimit(req, userId);
+    if (limited) return limited;
 
     const {
       plan,

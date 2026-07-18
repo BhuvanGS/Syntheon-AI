@@ -8,6 +8,26 @@ import {
   getMeetingById,
 } from '@/lib/db';
 
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { userId, orgId } = await auth();
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { id } = await params;
+    const meeting = await getMeetingById(id);
+    if (!meeting || (orgId && meeting.org_id !== orgId)) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(meeting, {
+      headers: { 'Cache-Control': 'no-store' },
+    });
+  } catch (error) {
+    console.error('Failed to fetch meeting:', error);
+    return NextResponse.json({ error: 'Failed to fetch meeting' }, { status: 500 });
+  }
+}
+
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { userId, orgId } = await auth();
