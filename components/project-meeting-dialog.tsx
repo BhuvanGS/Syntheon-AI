@@ -284,7 +284,7 @@ export function ProjectMeetingDialog({
                   </div>
                   <p className="font-medium text-foreground">Google Calendar not connected</p>
                   <p className="text-sm text-muted-foreground">
-                    Connect Google Calendar in Settings to create Meet links directly from Syntheon
+                    Connect Google Calendar in Settings to create Meet links directly from Syntheon Hub
                     Hub.
                   </p>
                   <Button
@@ -365,7 +365,7 @@ export function ProjectMeetingDialog({
             </div>
             <div className="space-y-2">
               <p className="font-playfair text-2xl text-foreground">
-                Syntheon - AI will shortly join the meeting
+                Syntheon Hub will shortly join the meeting
               </p>
               <p className="text-sm text-muted-foreground">
                 You can close this popup now or wait for the meeting to connect.

@@ -1,29 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { recordConsent, hasValidConsent, CURRENT_CONSENT_VERSION } from '@/lib/db';
+import { TERMS_ACCEPTANCE_PURPOSES } from '@/lib/consent-constants';
 
 export async function POST(req: NextRequest) {
   const { userId } = await auth();
   if (!userId) {
-    console.warn('[consent] Unauthorized POST request');
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
-    const body = await req.json();
-    const { purposes } = body as { purposes?: string[] };
+    const body = (await req.json().catch(() => ({}))) as {
+      purposes?: string[];
+      source?: string;
+    };
 
-    if (!purposes || !Array.isArray(purposes) || purposes.length === 0) {
-      return NextResponse.json(
-        { error: 'At least one consent purpose is required' },
-        { status: 400 }
-      );
-    }
+    const purposes =
+      body.purposes && Array.isArray(body.purposes) && body.purposes.length > 0
+        ? body.purposes
+        : [...TERMS_ACCEPTANCE_PURPOSES];
 
     const forwarded = req.headers.get('x-forwarded-for');
     const ipAddress = forwarded?.split(',')[0]?.trim() ?? 'unknown';
     const userAgent = req.headers.get('user-agent') ?? 'unknown';
-    const deviceId = req.headers.get('x-device-id') ?? 'unknown';
+    const deviceId = req.headers.get('x-device-id') ?? body.source ?? 'auth';
+
+    // Idempotent: skip if already accepted
+    if (await hasValidConsent(userId)) {
+      return NextResponse.json({ success: true, alreadyRecorded: true });
+    }
 
     const record = await recordConsent({
       userId,
@@ -36,7 +41,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, record });
   } catch (err) {
-    console.error('[consent] Failed to record consent:', err);
+    console.error('[consent] Failed to record terms acceptance:', err);
     return NextResponse.json({ error: 'Failed to record consent' }, { status: 500 });
   }
 }
@@ -44,7 +49,6 @@ export async function POST(req: NextRequest) {
 export async function GET() {
   const { userId } = await auth();
   if (!userId) {
-    console.warn('[consent] Unauthorized GET request');
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

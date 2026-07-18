@@ -1,4 +1,4 @@
-// popup/popup.js — Syntheon AI Meeting Assistant
+// popup/popup.js — Syntheon Hub Meeting Assistant
 
 class SyntheonPopup {
   constructor() {
@@ -95,7 +95,7 @@ class SyntheonPopup {
         this.platformName.textContent = stored.botState.platform;
         this.sendBotButton.disabled = false;
         this.sendBotText.textContent = 'Bot Active — Click to Reset';
-        this.updateStatus('Syntheon - AI will join shortly', 'success');
+        this.updateStatus('Syntheon Hub will join shortly', 'success');
         return;
       }
 
@@ -178,7 +178,7 @@ class SyntheonPopup {
 
       this.sendBotButton.disabled = false;
       this.sendBotText.textContent = 'Bot Active — Click to Reset';
-      this.updateStatus('Syntheon - AI will join shortly', 'success');
+      this.updateStatus('Syntheon Hub will join shortly', 'success');
     } catch (error) {
       console.error('Failed to send bot:', error);
       this.updateStatus(error.message || 'Failed to send bot', 'error');

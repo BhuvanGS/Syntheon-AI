@@ -7,7 +7,7 @@ export const ORGANIZATION_JSON_LD = {
   '@context': 'https://schema.org',
   '@type': 'Organization',
   name: 'Syntheon Hub',
-  alternateName: 'Syntheon AI',
+  alternateName: 'Syntheon Hub',
   url: BASE,
   logo: `${BASE}/syntheon-logo.png`,
   image: `${BASE}/og-image.png`,

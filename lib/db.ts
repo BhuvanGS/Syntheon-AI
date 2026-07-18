@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { broadcast } from '@/lib/event-bus';
+import { CURRENT_CONSENT_VERSION } from '@/lib/consent-constants';
 import {
   UsersEntity,
   ApiKeysEntity,
@@ -22,6 +23,8 @@ import {
   SprintsEntity,
   ConsentRecordsEntity,
 } from '@/db/entities';
+
+export { CURRENT_CONSENT_VERSION };
 
 // ─── Types ─────────────────────────────────────────────────────
 export interface Meeting {
@@ -1883,7 +1886,7 @@ export async function deleteSprint(id: string): Promise<void> {
   await SprintsEntity.delete({ id }).go();
 }
 
-// ─── Consent Records (DPDP Act 2023) ────────────────────────────
+// ─── Consent / terms acceptance records ────────────────────────────
 export interface ConsentRecord {
   id: string;
   userId: string;
@@ -1896,8 +1899,6 @@ export interface ConsentRecord {
   withdrawnAt?: string;
   status: 'active' | 'withdrawn';
 }
-
-export const CURRENT_CONSENT_VERSION = 'dpdp-2023-v1';
 
 export async function recordConsent(input: {
   userId: string;
@@ -1953,8 +1954,9 @@ export async function getActiveConsentByUser(userId: string): Promise<ConsentRec
 
 export async function hasValidConsent(userId: string): Promise<boolean> {
   const record = await getActiveConsentByUser(userId);
-  if (!record) return false;
-  return record.consentVersion === CURRENT_CONSENT_VERSION && record.status === 'active';
+  // Any active acceptance counts — terms-on-login stamps `terms-v1`;
+  // older DPDP rows remain valid so users aren't gated after removing the form.
+  return !!record && record.status === 'active';
 }
 
 export async function withdrawConsent(userId: string): Promise<void> {

@@ -1,6 +1,6 @@
 {
   "name": "Syntheon Hub",
-  "short_name": "Syntheon",
+  "short_name": "Syntheon Hub",
   "description": "Turn meetings into tickets, automatically.",
   "start_url": "/",
   "display": "standalone",

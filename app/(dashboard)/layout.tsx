@@ -1,7 +1,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 import { SseProvider } from '@/components/sse-provider';
-import { ConsentGate } from '@/components/consent-gate';
+import { TermsAcceptanceStamp } from '@/components/auth/terms-acceptance-stamp';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { userId, orgId } = await auth();
@@ -16,7 +16,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <SseProvider>
-      <ConsentGate>{children}</ConsentGate>
+      <TermsAcceptanceStamp>{children}</TermsAcceptanceStamp>
     </SseProvider>
   );
 }

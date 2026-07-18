@@ -1,4 +1,4 @@
-// content.js — Syntheon AI Meeting Assistant
+// content.js — Syntheon Hub Meeting Assistant
 
 class SyntheonContentScript {
   constructor() {
@@ -17,7 +17,7 @@ class SyntheonContentScript {
   }
 
   init() {
-    console.log(`Syntheon AI loaded on ${this.platform}`);
+    console.log(`Syntheon Hub loaded on ${this.platform}`);
     this.addMeetingUI();
     this.setupMeetingDetection();
 
@@ -106,7 +106,7 @@ class SyntheonContentScript {
     indicator.id = 'syntheon-indicator';
     indicator.innerHTML = `
       <div id="syntheon-indicator-dot"></div>
-      <span>Syntheon recording</span>
+      <span>Syntheon Hub recording</span>
     `;
     document.body.appendChild(indicator);
   }
@@ -171,7 +171,7 @@ class SyntheonContentScript {
   }
 
   onMeetingStart() {
-    console.log(`Syntheon: ${this.platform} meeting detected`);
+    console.log(`Syntheon Hub: ${this.platform} meeting detected`);
     chrome.runtime.sendMessage({
       action: 'meetingStarted',
       platform: this.platform,

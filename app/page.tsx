@@ -364,7 +364,7 @@ function WasteSection() {
                     marginBottom: 8,
                   }}
                 >
-                  With Syntheon
+                  With Syntheon Hub
                 </span>
                 <p
                   style={{
@@ -677,7 +677,7 @@ function ChapterDone({ pageOrigin }: { pageOrigin: number }) {
           >
             By the time you scrolled here,
             <br />
-            Syntheon had already arranged the tickets.
+            Syntheon Hub had already arranged the tickets.
           </motion.h2>
 
           <motion.p

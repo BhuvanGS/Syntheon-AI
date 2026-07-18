@@ -1,6 +1,6 @@
 # Icons Directory
 
-This directory contains icons for the Syntheon AI browser extension.
+This directory contains icons for the Syntheon Hub browser extension.
 
 ## Required Icons
 

@@ -174,7 +174,7 @@ export default function SettingsPage() {
               <div className="rounded-xl border border-border/60 bg-card/20 overflow-hidden">
                 <iframe
                   src="/legal?embed=1"
-                  title="Syntheon Legal"
+                  title="Syntheon Hub Legal"
                   className="w-full h-[78vh] bg-background"
                 />
               </div>

@@ -3,7 +3,7 @@
 > AI project management that joins your meetings, extracts action items, and creates organized tickets automatically.
 
 ## Product
-Syntheon Hub (also called Syntheon AI) is a web application at https://syntheonhub.com.
+Syntheon Hub is a web application at https://syntheonhub.com.
 The app lives at https://app.syntheonhub.com.
 
 Syntheon Hub sends a bot into Google Meet, Zoom, or Microsoft Teams meetings. After the call, AI extracts implementation-ready tickets (title, description, priority, labels, assignee, due dates, dependencies) onto a Kanban board with sprints, analytics, and organization/role management.

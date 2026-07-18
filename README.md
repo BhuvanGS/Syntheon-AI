@@ -2,7 +2,7 @@
 
 An AI-powered project management platform that turns meeting conversations into actionable tickets, sprints, and milestones — automatically.
 
-## What Syntheon Does
+## What Syntheon Hub Does
 
 1. **Bot joins your Google Meet** via Skribby, transcribes the conversation
 2. **Webhook fires** → Groq AI extracts tickets from the transcript

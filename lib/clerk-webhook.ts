@@ -6,7 +6,7 @@ import { randomUUID } from 'crypto';
 
 export async function handleClerkWebhook(evt: any) {
   if (evt.type === 'user.created') {
-    const { id, email_addresses, first_name, last_name, unsafe_metadata } = evt.data;
+    const { id, email_addresses, first_name, last_name } = evt.data;
     const email = email_addresses[0]?.email_address ?? '';
     const name = `${first_name ?? ''} ${last_name ?? ''}`.trim() || 'User';
 
@@ -17,23 +17,20 @@ export async function handleClerkWebhook(evt: any) {
 
     console.log('[webhook] User created in DB:', id, email);
 
-    // Stamp consent record if user passed pre-auth consent
-    const consentPurposes = unsafe_metadata?.consentPurposes;
-    if (Array.isArray(consentPurposes) && consentPurposes.length > 0) {
-      const now = new Date().toISOString();
-      await ConsentRecordsEntity.create({
-        id: randomUUID(),
-        userId: id,
-        consentVersion: CURRENT_CONSENT_VERSION,
-        purposes: consentPurposes,
-        ipAddress: 'unknown',
-        deviceId: 'unknown',
-        userAgent: 'unknown',
-        givenAt: now,
-        status: 'active',
-      }).go();
-      console.log('[webhook] Consent record stamped for user:', id);
-    }
+    // Stamp terms acceptance (auth page legal line = agreement on sign-up)
+    const now = new Date().toISOString();
+    await ConsentRecordsEntity.create({
+      id: randomUUID(),
+      userId: id,
+      consentVersion: CURRENT_CONSENT_VERSION,
+      purposes: ['terms_of_service', 'privacy_policy'],
+      ipAddress: 'unknown',
+      deviceId: 'clerk_webhook',
+      userAgent: 'clerk_webhook',
+      givenAt: now,
+      status: 'active',
+    }).go();
+    console.log('[webhook] Terms acceptance stamped for user:', id);
 
     if (email && isPublicDomainEmail(email)) {
       await createPersonalOrg(id, email, name);

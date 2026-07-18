@@ -5,7 +5,7 @@ import { FAQ_ITEMS } from '@/lib/faq-content';
 export const metadata: Metadata = {
   title: 'FAQ',
   description:
-    'Frequently asked questions about Syntheon — how it works, pricing, integrations, and more.',
+    'Frequently asked questions about Syntheon Hub — how it works, pricing, integrations, and more.',
   alternates: { canonical: 'https://syntheonhub.com/faq' },
   openGraph: {
     title: 'Syntheon Hub FAQ — Frequently asked questions',

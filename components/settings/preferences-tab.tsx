@@ -247,7 +247,7 @@ export function PreferencesTab() {
               <div>
                 <CardTitle className="text-sm font-semibold">Your data rights</CardTitle>
                 <CardDescription className="text-xs mt-0.5">
-                  Manage your personal data and consent under DPDP Act 2023
+                  Manage your personal data under applicable privacy law
                 </CardDescription>
               </div>
             </div>
@@ -257,7 +257,7 @@ export function PreferencesTab() {
             <DataAction
               icon={Download}
               title="Request a copy of your data"
-              description="Export all personal data we hold about you, including tickets, meetings, and consent records."
+              description="Export all personal data we hold about you, including tickets, meetings, and legal records."
               action="Export data"
               onClick={() =>
                 alert('Data export request submitted. We will email you within 7 days.')
@@ -266,12 +266,12 @@ export function PreferencesTab() {
             />
             <DataAction
               icon={FileText}
-              title="Manage consent"
-              description="Review or withdraw your consent for AI processing and data collection."
-              action="Review consent"
-              onClick={() =>
-                alert('Consent review request submitted. We will email you within 48 hours.')
-              }
+              title="Terms & legal"
+              description="View the Terms of Service, Privacy Policy, and other legal notices you agreed to at sign-in."
+              action="Open legal"
+              onClick={() => {
+                window.location.href = '/legal';
+              }}
               tone="primary"
             />
             <DataAction

@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Syntheon AI Meeting Assistant",
+  "name": "Syntheon Hub Meeting Assistant",
   "version": "1.0.0",
   "description": "AI-powered meeting bot for Google Meet, Zoom, and Teams",
   "permissions": ["activeTab", "tabs", "storage", "scripting"],
@@ -28,7 +28,7 @@
   ],
   "action": {
     "default_popup": "popup/popup.html",
-    "default_title": "Syntheon AI"
+    "default_title": "Syntheon Hub"
   },
   "icons": {
     "16": "icons/icon16.png",

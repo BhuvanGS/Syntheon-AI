@@ -1,4 +1,4 @@
-// background.js — Syntheon AI Meeting Assistant
+// background.js — Syntheon Hub Meeting Assistant
 importScripts('config.js');
 
 // ─── Message Handler ───────────────────────────────────────────────────────────

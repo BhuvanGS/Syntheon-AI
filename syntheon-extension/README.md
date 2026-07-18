@@ -1,4 +1,4 @@
-# Syntheon AI Browser Extension
+# Syntheon Hub Browser Extension
 
 A Chrome browser extension that provides AI-powered meeting recording and transcription for Google Meet, Zoom, and Microsoft Teams.
 
@@ -28,7 +28,7 @@ Package the extension and publish to the Chrome Web Store.
 ## Usage
 
 1. Navigate to a supported meeting platform (Google Meet, Zoom, or Teams)
-2. Click the Syntheon AI extension icon in your browser toolbar
+2. Click the Syntheon Hub extension icon in your browser toolbar
 3. Click "Start Recording" to begin recording the meeting
 4. Click "Stop Recording" when finished
 5. Access your recordings and statistics from the popup
