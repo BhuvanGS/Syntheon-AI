@@ -60,7 +60,7 @@ function FieldDropdown({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-3 py-2 rounded-none border border-border bg-muted/30 text-sm hover:bg-muted/50 transition-colors"
+        className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-border bg-background text-sm hover:bg-white/[0.04] transition-colors h-10"
       >
         <span className="text-muted-foreground text-xs">{label}</span>
         <span className="flex items-center gap-1.5 text-foreground text-xs font-medium">
@@ -69,7 +69,7 @@ function FieldDropdown({
         </span>
       </button>
       {open && (
-        <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-popover border border-border rounded-none shadow-lg py-1 max-h-[280px] overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 mt-1.5 z-50 bg-popover border border-border rounded-xl shadow-lg py-1 max-h-[280px] overflow-y-auto">
           {children(() => setOpen(false))}
         </div>
       )}
@@ -228,45 +228,35 @@ export function TicketMetadataEditor({
       {/* Time tracking */}
       {onTimeEstimateChange && onTimeSpentChange && (
         <div className="grid grid-cols-3 gap-3">
-          <div className="relative">
-            <div className="flex items-center justify-between px-3 py-2 rounded-none border border-border bg-muted/30">
-              <span className="text-muted-foreground text-xs">Estimate (h)</span>
-              <input
-                type="number"
-                min={0}
-                step={0.5}
-                value={timeEstimate ?? ''}
-                onChange={(e) =>
-                  onTimeEstimateChange(e.target.value ? Number(e.target.value) : null)
-                }
-                className="w-16 text-right bg-transparent text-foreground text-xs font-medium outline-none"
-                placeholder="0"
-              />
-            </div>
+          <div className="flex h-10 items-center justify-between gap-2 rounded-xl border border-border bg-background px-3.5">
+            <span className="shrink-0 text-[11px] text-muted-foreground">Estimate (h)</span>
+            <input
+              type="number"
+              min={0}
+              step={0.5}
+              value={timeEstimate ?? ''}
+              onChange={(e) => onTimeEstimateChange(e.target.value ? Number(e.target.value) : null)}
+              className="w-14 bg-transparent text-right text-xs font-medium text-foreground outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              placeholder="0"
+            />
           </div>
-          <div className="relative">
-            <div className="flex items-center justify-between px-3 py-2 rounded-none border border-border bg-muted/30">
-              <span className="text-muted-foreground text-xs">Spent (h)</span>
-              <input
-                type="number"
-                min={0}
-                step={0.5}
-                value={timeSpent ?? ''}
-                onChange={(e) => onTimeSpentChange(e.target.value ? Number(e.target.value) : null)}
-                className="w-16 text-right bg-transparent text-foreground text-xs font-medium outline-none"
-                placeholder="0"
-              />
-            </div>
+          <div className="flex h-10 items-center justify-between gap-2 rounded-xl border border-border bg-background px-3.5">
+            <span className="shrink-0 text-[11px] text-muted-foreground">Spent (h)</span>
+            <input
+              type="number"
+              min={0}
+              step={0.5}
+              value={timeSpent ?? ''}
+              onChange={(e) => onTimeSpentChange(e.target.value ? Number(e.target.value) : null)}
+              className="w-14 bg-transparent text-right text-xs font-medium text-foreground outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              placeholder="0"
+            />
           </div>
-          <div className="flex items-center justify-between px-3 py-2 rounded-none border border-border bg-muted/30">
-            <span className="text-muted-foreground text-xs">Remaining</span>
+          <div className="flex h-10 items-center justify-between gap-2 rounded-xl border border-border bg-background px-3.5">
+            <span className="shrink-0 text-[11px] text-muted-foreground">Remaining</span>
             <span
-              className={`text-xs font-medium ${
-                (timeEstimate ?? 0) - (timeSpent ?? 0) < 0
-                  ? 'text-red-500'
-                  : (timeEstimate ?? 0) - (timeSpent ?? 0) === 0 && timeEstimate
-                    ? 'text-green-500'
-                    : 'text-foreground'
+              className={`text-xs font-medium tabular-nums ${
+                (timeEstimate ?? 0) - (timeSpent ?? 0) < 0 ? 'text-red-400' : 'text-foreground'
               }`}
             >
               {timeEstimate != null && timeSpent != null
@@ -281,7 +271,7 @@ export function TicketMetadataEditor({
 
       {/* Labels */}
       <div ref={labelRef} className="relative">
-        <div className="flex items-center gap-2 flex-wrap min-h-[36px] px-3 py-2 rounded-none border border-border bg-muted/30">
+        <div className="flex min-h-10 items-center gap-2 flex-wrap rounded-xl border border-border bg-background px-3.5 py-2">
           <Tag className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
           {selectedLabels.map((label) => (
             <span
@@ -323,7 +313,7 @@ export function TicketMetadataEditor({
         </div>
 
         {labelSearchOpen && (
-          <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-popover border border-border rounded-none shadow-lg py-1 max-h-[200px] overflow-y-auto">
+          <div className="absolute top-full left-0 right-0 mt-1.5 z-50 bg-popover border border-border rounded-xl shadow-lg py-1 max-h-[200px] overflow-y-auto">
             {unselectedLabels.length === 0 && availableLabels.length === 0 && (
               <div className="px-3 py-2 text-xs text-muted-foreground">
                 No labels available. {onManageLabels && 'Create some in Manage.'}

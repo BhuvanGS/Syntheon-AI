@@ -20,10 +20,9 @@ import {
   PanelLeftOpen,
   MessageSquare,
 } from 'lucide-react';
-import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useUser, useOrganization, useAuth } from '@clerk/nextjs';
+import { useUser, useOrganization } from '@clerk/nextjs';
 import { useSearchParams } from 'next/navigation';
 
 interface SidebarProps {
@@ -103,7 +102,6 @@ export function Sidebar({
   const searchParams = useSearchParams();
   const { user } = useUser();
   const { membership, organization } = useOrganization();
-  const { isLoaded, has } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
 
   const isAdmin = membership?.role === 'org:admin';
@@ -126,14 +124,13 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        'h-screen flex flex-col bg-sidebar border-r border-sidebar-border animate-fade-in transition-all duration-300',
-        collapsed ? 'w-[52px] min-w-[52px]' : 'w-[220px] min-w-[220px]'
+        'app flex h-screen flex-col border-r border-sidebar-border bg-sidebar transition-[width] duration-300',
+        collapsed ? 'w-[56px] min-w-[56px]' : 'w-[232px] min-w-[232px]'
       )}
     >
-      {/* Logo + Org + Collapse */}
       <div
         className={cn(
-          'h-14 flex items-center px-3 shrink-0 gap-2',
+          'flex h-14 shrink-0 items-center gap-2 px-3',
           collapsed && 'justify-center px-0'
         )}
       >
@@ -141,18 +138,18 @@ export function Sidebar({
           <>
             <Link
               href="/dashboard"
-              className="flex items-center gap-2.5 flex-1 min-w-0 group rounded-md py-1 hover:bg-accent/40"
+              className="group flex min-w-0 flex-1 items-center gap-2.5 rounded-xl py-1.5 pl-1 pr-2 hover:bg-white/[0.04]"
             >
               <BrandLogo
-                size={30}
-                className="transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3"
+                size={28}
+                className="transition-transform duration-300 group-hover:scale-105"
               />
               <div className="min-w-0">
-                <span className="font-[family-name:var(--font-space-grotesk)] text-[1.05rem] text-primary tracking-tight block truncate">
+                <span className="block truncate text-[15px] font-semibold tracking-[-0.02em] text-foreground">
                   Syntheon Hub
                 </span>
                 {organization?.name && (
-                  <span className="text-[10px] text-muted-foreground truncate block leading-none">
+                  <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
                     {organization.name}
                   </span>
                 )}
@@ -160,35 +157,30 @@ export function Sidebar({
             </Link>
             <button
               onClick={() => setCollapsed(!collapsed)}
-              className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0"
+              className="shrink-0 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
               title="Collapse sidebar"
             >
               <PanelLeftClose className="h-4 w-4" />
             </button>
           </>
         )}
-        {collapsed && <BrandLogo size={30} />}
+        {collapsed && <BrandLogo size={28} />}
       </div>
 
-      <Separator />
+      <div className="mx-3 h-px bg-border" />
 
-      {/* Projects first */}
-      <div className="px-2 pt-2 shrink-0 flex flex-col">
+      <div className="flex shrink-0 flex-col px-2 pt-3">
         <div
           className={cn(
-            'flex items-center justify-between px-2 mb-2 shrink-0',
+            'mb-2 flex shrink-0 items-center justify-between px-2',
             collapsed && 'justify-center'
           )}
         >
-          {!collapsed && (
-            <span className="text-[10px] font-semibold tracking-[0.1em] uppercase text-muted-foreground">
-              Projects
-            </span>
-          )}
+          {!collapsed && <span className="app-eyebrow">Projects</span>}
           {isAdmin && (!collapsed ? projects.length > 0 : true) && (
             <button
               onClick={onCreateProject}
-              className="text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md p-0.5 transition-colors"
+              className="rounded-md p-0.5 text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
               title="Create project"
             >
               <Plus className="h-3.5 w-3.5" />
@@ -196,23 +188,25 @@ export function Sidebar({
           )}
         </div>
 
-        <ScrollArea className="max-h-[35vh] -mx-1 px-1">
+        <ScrollArea className="-mx-1 max-h-[35vh] px-1">
           {projects.length === 0 ? (
             isAdmin && !collapsed ? (
               <div className="mx-1">
                 <button
                   onClick={onCreateProject}
-                  className="w-full flex items-center justify-center gap-1.5 rounded-full border border-dashed border-border bg-muted/30 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-colors"
+                  className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border px-3 py-2.5 text-[12px] font-medium text-muted-foreground transition-colors hover:border-foreground/20 hover:bg-white/[0.03] hover:text-foreground"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   Create project
                 </button>
               </div>
             ) : collapsed ? null : (
-              <p className="text-xs text-muted-foreground px-2 py-4 text-center">No projects yet</p>
+              <p className="px-2 py-4 text-center text-[12px] text-muted-foreground">
+                No projects yet
+              </p>
             )
           ) : (
-            <div className="space-y-0.5 pb-2 stagger-children">
+            <div className="space-y-0.5 pb-2">
               {projects.slice(0, 8).map((project) => {
                 const active = pathname === '/project' && project.id === selectedProjectId;
                 return (
@@ -223,20 +217,15 @@ export function Sidebar({
                       onSelectProject?.(project.id);
                     }}
                     className={cn(
-                      'group w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-left press-down',
+                      'group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left',
                       collapsed && 'justify-center px-0',
                       active
-                        ? 'bg-accent text-foreground font-medium'
-                        : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                        ? 'bg-white/[0.08] font-medium text-foreground'
+                        : 'text-muted-foreground hover:bg-white/[0.04] hover:text-foreground'
                     )}
                     title={collapsed ? project.name : undefined}
                   >
-                    <FolderKanban
-                      className={cn(
-                        'h-3.5 w-3.5 shrink-0 text-primary/70 transition-transform duration-200',
-                        active ? 'scale-110' : 'group-hover:scale-110'
-                      )}
-                    />
+                    <FolderKanban className="h-3.5 w-3.5 shrink-0 opacity-70" />
                     {!collapsed && <span className="truncate text-[13px]">{project.name}</span>}
                   </button>
                 );
@@ -246,10 +235,9 @@ export function Sidebar({
         </ScrollArea>
       </div>
 
-      <Separator className="mt-2" />
+      <div className="mx-3 mt-2 h-px bg-border" />
 
-      {/* Main nav */}
-      <nav className={cn('px-2 pt-2 space-y-0.5 shrink-0 stagger-children', collapsed && 'px-1')}>
+      <nav className={cn('shrink-0 space-y-0.5 px-2 pt-3', collapsed && 'px-1.5')}>
         {navItems.map((item) => {
           const Icon = item.icon;
           const currentView = searchParams.get('view');
@@ -262,63 +250,56 @@ export function Sidebar({
               key={item.id}
               onClick={() => router.push(item.href)}
               className={cn(
-                'group relative w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm press-down',
+                'group flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-[13px]',
                 collapsed && 'justify-center px-0',
                 active
-                  ? 'bg-primary text-primary-foreground font-medium shadow-sm'
-                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                  ? 'bg-white/[0.08] font-medium text-foreground'
+                  : 'text-muted-foreground hover:bg-white/[0.04] hover:text-foreground'
               )}
               title={collapsed ? item.label : undefined}
             >
-              <Icon
-                className={cn(
-                  'h-4 w-4 shrink-0 transition-transform duration-200',
-                  !active && 'group-hover:scale-110'
-                )}
-              />
+              <Icon className="h-4 w-4 shrink-0 opacity-80" />
               {!collapsed && <span className="truncate">{item.label}</span>}
             </button>
           );
         })}
       </nav>
 
-      {/* Spacer pushes footer to bottom */}
       <div className="flex-1" />
 
-      {/* Footer / User */}
-      <Separator />
-      <div className={cn('p-3 shrink-0', collapsed && 'p-2 flex flex-col items-center gap-2')}>
+      <div className="mx-3 h-px bg-border" />
+      <div className={cn('shrink-0 p-3', collapsed && 'flex flex-col items-center gap-2 p-2')}>
         {collapsed ? (
           <>
-            <Avatar className="h-7 w-7 shrink-0 ring-2 ring-transparent hover:ring-primary/20 transition-all duration-200">
+            <Avatar className="h-7 w-7 shrink-0">
               <AvatarImage src={user?.imageUrl} />
-              <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+              <AvatarFallback className="bg-white/[0.08] text-[11px] font-semibold text-foreground">
                 {userInitial}
               </AvatarFallback>
             </Avatar>
             <button
               onClick={() => router.push('/settings')}
-              className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors flex items-center justify-center"
+              className="flex items-center justify-center rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
               title="Settings"
             >
               <Settings className="h-4 w-4" />
             </button>
           </>
         ) : (
-          <div className="group flex items-center gap-2.5 px-2 py-2 rounded-md hover:bg-accent cursor-pointer w-full">
-            <Avatar className="h-7 w-7 shrink-0 ring-2 ring-transparent group-hover:ring-primary/20 transition-all duration-200">
+          <div className="group flex w-full items-center gap-2.5 rounded-xl px-2 py-2 hover:bg-white/[0.04]">
+            <Avatar className="h-7 w-7 shrink-0">
               <AvatarImage src={user?.imageUrl} />
-              <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+              <AvatarFallback className="bg-white/[0.08] text-[11px] font-semibold text-foreground">
                 {userInitial}
               </AvatarFallback>
             </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="text-[12px] font-medium text-foreground truncate">{userName}</p>
-              <p className="text-[11px] text-muted-foreground truncate">{userEmail}</p>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[12px] font-medium text-foreground">{userName}</p>
+              <p className="truncate text-[11px] text-muted-foreground">{userEmail}</p>
             </div>
             <button
               onClick={() => router.push('/settings')}
-              className="p-1 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+              className="rounded-lg p-1 text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
               title="Settings"
             >
               <Settings className="h-3.5 w-3.5" />
@@ -327,11 +308,10 @@ export function Sidebar({
         )}
       </div>
 
-      {/* Expand button when collapsed */}
       {collapsed && (
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0 flex items-center justify-center self-center mb-2"
+          className="mb-2 flex shrink-0 items-center justify-center self-center rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
           title="Expand sidebar"
         >
           <PanelLeftOpen className="h-4 w-4" />

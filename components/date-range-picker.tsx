@@ -52,7 +52,7 @@ export function DateRangePicker({
         <Button
           variant="outline"
           className={cn(
-            'w-full justify-start text-left font-normal rounded-none h-9 bg-zinc-100 dark:bg-zinc-800',
+            'w-full justify-start text-left font-normal rounded-xl h-10 bg-background border-border hover:bg-white/[0.04]',
             !dueDate && 'text-muted-foreground'
           )}
           disabled={disabled}

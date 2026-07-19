@@ -53,6 +53,7 @@ import { MentionEditor } from '@/components/mention-editor';
 import { useToast } from '@/components/island-toast';
 import { ProjectTicketImportDialog } from '@/components/project-ticket-import-dialog';
 import { ProjectMeetingDialog } from '@/components/project-meeting-dialog';
+import { BoardCreateDialog } from '@/components/board-create-dialog';
 import { MeetingCalendar } from '@/components/meeting-calendar';
 import {
   TicketBadges,
@@ -450,6 +451,7 @@ export function ProjectsWorkspace({
   const [hydratedProjectId, setHydratedProjectId] = useState<string | null>(null);
   const [isStageDialogOpen, setIsStageDialogOpen] = useState(false);
   const [isAddingStageInline, setIsAddingStageInline] = useState(false);
+  const [isBoardCreateOpen, setIsBoardCreateOpen] = useState(false);
   const [stageForm, setStageForm] = useState<{
     id: string | null;
     label: string;
@@ -469,6 +471,7 @@ export function ProjectsWorkspace({
   const [newChildDraft, setNewChildDraft] = useState({ title: '' });
   const [isAddingSubtask, setIsAddingSubtask] = useState(false);
   const [subtasksExpanded, setSubtasksExpanded] = useState(true);
+  const [propertiesExpanded, setPropertiesExpanded] = useState(true);
   const [savingTicketId, setSavingTicketId] = useState<string | null>(null);
   const [isSavingProject, setIsSavingProject] = useState(false);
   const [subtasksPopupTicket, setSubtasksPopupTicket] = useState<Ticket | null>(null);
@@ -858,6 +861,10 @@ export function ProjectsWorkspace({
     return true;
   }
 
+  function openCreateBoardDialog() {
+    setIsBoardCreateOpen(true);
+  }
+
   function openAddStageDialog() {
     setStageForm({
       id: null,
@@ -866,6 +873,12 @@ export function ProjectsWorkspace({
       stageType: 'backlog',
     });
     setIsAddingStageInline(true);
+  }
+
+  function createBoard(columns: { id: string; label: string; color: string; status: string }[]) {
+    setStages(columns);
+    setIsBoardCreateOpen(false);
+    setIsAddingStageInline(false);
   }
 
   function openEditStageDialog(stage: StageConfig) {
@@ -2292,160 +2305,22 @@ export function ProjectsWorkspace({
             <div className="mt-2">
               {effectiveStages.length === 0 &&
               projectTickets.filter((t) => !t.dependency_ticket_id).length === 0 ? (
-                isAddingStageInline ? (
-                  <div className="rounded-2xl border-2 border-primary/40 bg-muted/40 p-6 max-w-md mx-auto space-y-4">
-                    <div className="flex items-center gap-2">
-                      <LayoutGrid className="h-5 w-5 text-primary" />
-                      <p className="text-sm font-semibold text-foreground">Create your board</p>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Add columns for your board. Tickets will be organized into these columns.
-                    </p>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="text-xs font-medium text-foreground mb-1.5 block">
-                          Column name
-                        </label>
-                        <Input
-                          value={stageForm.label}
-                          onChange={(e) =>
-                            setStageForm((prev) => ({ ...prev, label: e.target.value }))
-                          }
-                          placeholder="e.g. To Do, In Progress, Done"
-                          className="bg-white"
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              saveStageDetails();
-                            }
-                            if (e.key === 'Escape') {
-                              setIsAddingStageInline(false);
-                            }
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium text-foreground mb-1.5 block">
-                          Color
-                        </label>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {[
-                            '#64748b',
-                            '#3b82f6',
-                            '#22c55e',
-                            '#eab308',
-                            '#f97316',
-                            '#ef4444',
-                            '#a855f7',
-                            '#ec4899',
-                          ].map((color) => (
-                            <button
-                              key={color}
-                              type="button"
-                              onClick={() => setStageForm((prev) => ({ ...prev, color }))}
-                              className={`w-6 h-6 rounded-full transition-transform ${
-                                stageForm.color === color
-                                  ? 'ring-2 ring-offset-2 ring-foreground scale-110'
-                                  : 'hover:scale-110'
-                              }`}
-                              style={{ backgroundColor: color }}
-                              aria-label={`Select color ${color}`}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium text-foreground mb-1.5 block">
-                          Set stage as
-                        </label>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          {(
-                            [
-                              { value: 'backlog', label: 'Backlog', color: '#f59e0b' },
-                              { value: 'in_progress', label: 'In Progress', color: '#3b82f6' },
-                              { value: 'done', label: 'Done', color: '#10b981' },
-                              { value: 'blocked', label: 'Blocked', color: '#ef4444' },
-                            ] as const
-                          ).map((opt) => (
-                            <button
-                              key={opt.value}
-                              type="button"
-                              onClick={() =>
-                                setStageForm((prev) => ({ ...prev, stageType: opt.value }))
-                              }
-                              className={`px-2.5 py-1 text-xs font-medium rounded-full border transition-colors ${
-                                stageForm.stageType === opt.value
-                                  ? 'border-foreground bg-foreground text-background'
-                                  : 'border-border text-muted-foreground hover:bg-muted/50'
-                              }`}
-                            >
-                              <span
-                                className="inline-block w-2 h-2 rounded-full mr-1.5 align-middle"
-                                style={{ backgroundColor: opt.color }}
-                              />
-                              {opt.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 pt-2">
-                      <Button
-                        type="button"
-                        onClick={saveStageDetails}
-                        disabled={!stageForm.label.trim()}
-                        className="rounded-lg"
-                      >
-                        Create column
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => setIsAddingStageInline(false)}
-                        className="rounded-lg"
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                    {effectiveStages.length > 0 && (
-                      <div className="border-t border-border pt-3 mt-3">
-                        <p className="text-xs text-muted-foreground mb-2">Columns created:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {effectiveStages.map((s) => (
-                            <span
-                              key={s.id}
-                              className="inline-flex items-center gap-1.5 px-2 py-1 text-xs border border-border bg-background"
-                            >
-                              <span
-                                className="w-2 h-2 rounded-full"
-                                style={{ backgroundColor: s.color }}
-                              />
-                              {s.label}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-border bg-muted/50 p-12 text-center">
-                    <LayoutGrid className="h-10 w-10 text-muted-foreground/40 mx-auto mb-4" />
-                    <p className="font-medium text-foreground mb-2">No board yet</p>
-                    <p className="text-sm text-muted-foreground mb-5 max-w-sm mx-auto">
-                      Create your board with columns before you add tickets. You can add more
-                      columns later.
-                    </p>
-                    <Button
-                      type="button"
-                      onClick={openAddStageDialog}
-                      className="rounded-none gap-2"
-                    >
-                      <PlusCircle className="h-4 w-4" />
-                      Create board
-                    </Button>
-                  </div>
-                )
+                <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
+                  <LayoutGrid className="mx-auto mb-4 h-10 w-10 text-muted-foreground/40" />
+                  <p className="mb-2 font-medium text-foreground">No board yet</p>
+                  <p className="mx-auto mb-6 max-w-sm text-[13px] leading-relaxed text-muted-foreground">
+                    Create your board with columns before you add tickets. You can add more columns
+                    later.
+                  </p>
+                  <Button
+                    type="button"
+                    onClick={openCreateBoardDialog}
+                    className="rounded-full gap-2"
+                  >
+                    <PlusCircle className="h-4 w-4" />
+                    Create board
+                  </Button>
+                </div>
               ) : ticketsViewMode === 'list' ? (
                 <div className="rounded-2xl border border-border bg-muted/30 overflow-hidden">
                   <div className="grid grid-cols-[1fr_120px_120px_120px_40px] items-center px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground border-b border-border/60 bg-muted/40">
@@ -2810,17 +2685,17 @@ export function ProjectsWorkspace({
               ) : (
                 <div ref={kanbanScrollRef} className="flex gap-4 overflow-x-auto pb-4 items-start">
                   {effectiveStages.length === 0 && !isAddingStageInline && (
-                    <div className="flex flex-col items-center justify-center w-full py-20 text-center">
-                      <LayoutGrid className="h-12 w-12 text-muted-foreground/40 mb-4" />
-                      <p className="text-lg font-semibold text-foreground mb-1">No board yet</p>
-                      <p className="text-sm text-muted-foreground mb-6 max-w-sm">
+                    <div className="flex w-full flex-col items-center justify-center py-20 text-center">
+                      <LayoutGrid className="mb-4 h-12 w-12 text-muted-foreground/40" />
+                      <p className="mb-1 text-lg font-semibold text-foreground">No board yet</p>
+                      <p className="mb-6 max-w-sm text-[13px] leading-relaxed text-muted-foreground">
                         Create your board with columns to start organizing tickets. You can add more
                         columns later.
                       </p>
                       <Button
                         type="button"
-                        onClick={openAddStageDialog}
-                        className="rounded-none gap-2"
+                        onClick={openCreateBoardDialog}
+                        className="rounded-full gap-2"
                       >
                         <PlusCircle className="h-4 w-4" />
                         Create board
@@ -3034,122 +2909,123 @@ export function ProjectsWorkspace({
                     );
                   })}
 
-                  {isAddingStageInline ? (
-                    <div className="min-w-[280px] w-[280px] rounded-2xl border-2 border-primary/40 bg-muted/40 p-4 space-y-3">
-                      <div className="text-sm font-medium text-foreground">New column</div>
-                      <Input
-                        value={stageForm.label}
-                        onChange={(e) =>
-                          setStageForm((prev) => ({ ...prev, label: e.target.value }))
-                        }
-                        placeholder="Column name (e.g. To Do)"
-                        className="bg-white"
-                        autoFocus
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            saveStageDetails();
+                  {effectiveStages.length > 0 &&
+                    (isAddingStageInline ? (
+                      <div className="min-w-[280px] w-[280px] rounded-2xl border-2 border-primary/40 bg-muted/40 p-4 space-y-3">
+                        <div className="text-sm font-medium text-foreground">New column</div>
+                        <Input
+                          value={stageForm.label}
+                          onChange={(e) =>
+                            setStageForm((prev) => ({ ...prev, label: e.target.value }))
                           }
-                          if (e.key === 'Escape') {
-                            setIsAddingStageInline(false);
-                          }
-                        }}
-                      />
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {[
-                          '#64748b',
-                          '#3b82f6',
-                          '#22c55e',
-                          '#eab308',
-                          '#f97316',
-                          '#ef4444',
-                          '#a855f7',
-                          '#ec4899',
-                        ].map((color) => (
-                          <button
-                            key={color}
-                            type="button"
-                            onClick={() => setStageForm((prev) => ({ ...prev, color }))}
-                            className={`w-5 h-5 rounded-full transition-transform ${
-                              stageForm.color === color
-                                ? 'ring-2 ring-offset-2 ring-foreground scale-110'
-                                : 'hover:scale-110'
-                            }`}
-                            style={{ backgroundColor: color }}
-                            aria-label={`Select color ${color}`}
-                          />
-                        ))}
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium text-foreground mb-1 block">
-                          Set stage as
-                        </label>
-                        <div className="flex items-center gap-1 flex-wrap">
-                          {(
-                            [
-                              { value: 'backlog', label: 'Backlog', color: '#f59e0b' },
-                              { value: 'in_progress', label: 'In Progress', color: '#3b82f6' },
-                              { value: 'done', label: 'Done', color: '#10b981' },
-                              { value: 'blocked', label: 'Blocked', color: '#ef4444' },
-                            ] as const
-                          ).map((opt) => (
+                          placeholder="Column name (e.g. To Do)"
+                          className="bg-white"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              saveStageDetails();
+                            }
+                            if (e.key === 'Escape') {
+                              setIsAddingStageInline(false);
+                            }
+                          }}
+                        />
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {[
+                            '#64748b',
+                            '#3b82f6',
+                            '#22c55e',
+                            '#eab308',
+                            '#f97316',
+                            '#ef4444',
+                            '#a855f7',
+                            '#ec4899',
+                          ].map((color) => (
                             <button
-                              key={opt.value}
+                              key={color}
                               type="button"
-                              onClick={() =>
-                                setStageForm((prev) => ({ ...prev, stageType: opt.value }))
-                              }
-                              className={`px-2 py-0.5 text-[10px] font-medium rounded-full border transition-colors ${
-                                stageForm.stageType === opt.value
-                                  ? 'border-foreground bg-foreground text-background'
-                                  : 'border-border text-muted-foreground hover:bg-muted/50'
+                              onClick={() => setStageForm((prev) => ({ ...prev, color }))}
+                              className={`w-5 h-5 rounded-full transition-transform ${
+                                stageForm.color === color
+                                  ? 'ring-2 ring-offset-2 ring-foreground scale-110'
+                                  : 'hover:scale-110'
                               }`}
-                            >
-                              <span
-                                className="inline-block w-1.5 h-1.5 rounded-full mr-1 align-middle"
-                                style={{ backgroundColor: opt.color }}
-                              />
-                              {opt.label}
-                            </button>
+                              style={{ backgroundColor: color }}
+                              aria-label={`Select color ${color}`}
+                            />
                           ))}
                         </div>
+                        <div>
+                          <label className="text-xs font-medium text-foreground mb-1 block">
+                            Set stage as
+                          </label>
+                          <div className="flex items-center gap-1 flex-wrap">
+                            {(
+                              [
+                                { value: 'backlog', label: 'Backlog', color: '#f59e0b' },
+                                { value: 'in_progress', label: 'In Progress', color: '#3b82f6' },
+                                { value: 'done', label: 'Done', color: '#10b981' },
+                                { value: 'blocked', label: 'Blocked', color: '#ef4444' },
+                              ] as const
+                            ).map((opt) => (
+                              <button
+                                key={opt.value}
+                                type="button"
+                                onClick={() =>
+                                  setStageForm((prev) => ({ ...prev, stageType: opt.value }))
+                                }
+                                className={`px-2 py-0.5 text-[10px] font-medium rounded-full border transition-colors ${
+                                  stageForm.stageType === opt.value
+                                    ? 'border-foreground bg-foreground text-background'
+                                    : 'border-border text-muted-foreground hover:bg-muted/50'
+                                }`}
+                              >
+                                <span
+                                  className="inline-block w-1.5 h-1.5 rounded-full mr-1 align-middle"
+                                  style={{ backgroundColor: opt.color }}
+                                />
+                                {opt.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={saveStageDetails}
+                            disabled={!stageForm.label.trim()}
+                            className="rounded-full"
+                          >
+                            Create column
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setIsAddingStageInline(false)}
+                            className="rounded-full"
+                          >
+                            Cancel
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={saveStageDetails}
-                          disabled={!stageForm.label.trim()}
-                          className="rounded-none"
-                        >
-                          Create column
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setIsAddingStageInline(false)}
-                          className="rounded-none"
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={openAddStageDialog}
-                      className="min-w-[280px] w-[280px] rounded-2xl border border-dashed border-border bg-muted/50 text-left p-4 hover:border-primary/40 hover:bg-muted/70 transition-colors"
-                    >
-                      <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                        <PlusCircle className="h-4 w-4 text-primary" />
-                        Add column
-                      </div>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Create a new column at the end.
-                      </p>
-                    </button>
-                  )}
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={openAddStageDialog}
+                        className="min-w-[280px] w-[280px] rounded-2xl border border-dashed border-border bg-muted/50 text-left p-4 hover:border-primary/40 hover:bg-muted/70 transition-colors"
+                      >
+                        <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                          <PlusCircle className="h-4 w-4 text-primary" />
+                          Add column
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Create a new column at the end.
+                        </p>
+                      </button>
+                    ))}
                 </div>
               )}
             </div>
@@ -3266,16 +3142,16 @@ export function ProjectsWorkspace({
 
             return (
               <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
+                <div className="app-section-head">
+                  <div className="app-section-head-copy">
                     <h2 className="font-playfair text-2xl font-bold text-foreground">
                       Project Analytics
                     </h2>
-                    <p className="text-sm text-muted-foreground mt-0.5">
+                    <p className="text-[13px] leading-relaxed text-muted-foreground">
                       {selectedProject?.name} — health, throughput, and workload
                     </p>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
                     {(() => {
                       const statusColors: Record<string, string> = {
                         on_track: 'bg-green-500',
@@ -5326,9 +5202,11 @@ export function ProjectsWorkspace({
           <div className="space-y-6 max-w-2xl">
             <h2 className="font-playfair text-2xl font-bold text-foreground">Project Settings</h2>
 
-            <div className="rounded-2xl border border-border bg-muted/50 p-6 space-y-5">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Project name</label>
+            <div className="rounded-2xl border border-border bg-card p-6 space-y-8">
+              <div className="app-field">
+                <div className="app-field-head">
+                  <label className="app-field-label">Project name</label>
+                </div>
                 <Input
                   value={projectNameDraft}
                   onChange={(e) => setProjectNameDraft(e.target.value)}
@@ -5336,8 +5214,10 @@ export function ProjectsWorkspace({
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Context</label>
+              <div className="app-field">
+                <div className="app-field-head">
+                  <label className="app-field-label">Context</label>
+                </div>
                 <Textarea
                   value={projectContextDraft}
                   onChange={(e) => setProjectContextDraft(e.target.value)}
@@ -5346,12 +5226,14 @@ export function ProjectsWorkspace({
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Project Lead</label>
-                <p className="text-xs text-muted-foreground mb-2">
-                  The lead is responsible for this project's direction. Shown next to the project
-                  name.
-                </p>
+              <div className="app-field">
+                <div className="app-field-head">
+                  <label className="app-field-label">Project Lead</label>
+                  <p className="app-field-hint">
+                    The lead is responsible for this project&apos;s direction. Shown next to the
+                    project name.
+                  </p>
+                </div>
                 <select
                   value={selectedProject.leadUserId ?? ''}
                   onChange={async (e) => {
@@ -5364,7 +5246,7 @@ export function ProjectsWorkspace({
                     });
                     await onRefresh?.();
                   }}
-                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground cursor-pointer hover:bg-muted/50"
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground cursor-pointer hover:bg-white/[0.03]"
                 >
                   <option value="">No lead assigned</option>
                   {projectMembers.map((pm) => {
@@ -5387,13 +5269,15 @@ export function ProjectsWorkspace({
                 </select>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Project Status</label>
-                <p className="text-xs text-muted-foreground mb-2">
-                  Health indicator shown next to the project name. Use AI to get a suggestion or set
-                  manually.
-                </p>
-                <div className="flex items-center gap-3">
+              <div className="app-field">
+                <div className="app-field-head">
+                  <label className="app-field-label">Project Status</label>
+                  <p className="app-field-hint">
+                    Health indicator shown next to the project name. Use AI to get a suggestion or
+                    set manually.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
                   {(() => {
                     const statusColors: Record<string, string> = {
                       on_track: 'bg-green-500',
@@ -5424,7 +5308,7 @@ export function ProjectsWorkspace({
                             });
                             await onRefresh?.();
                           }}
-                          className="rounded-lg border border-border bg-background px-4 py-2 text-sm text-foreground cursor-pointer hover:bg-muted/50"
+                          className="rounded-full border border-border bg-background px-4 py-2 text-sm text-foreground cursor-pointer hover:bg-white/[0.03]"
                         >
                           {statusOptions.map((opt) => (
                             <option key={opt.value} value={opt.value}>
@@ -5466,8 +5350,8 @@ export function ProjectsWorkspace({
                   </Button>
                 </div>
                 {aiHealthSuggestion && (
-                  <div className="mt-2 rounded-lg border border-border bg-muted/40 p-3 space-y-2">
-                    <div className="flex items-center justify-between">
+                  <div className="rounded-xl border border-border bg-muted/40 p-4 space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
                       <div className="flex items-center gap-2">
                         <span
                           className={`h-2 w-2 rounded-full ${
@@ -5511,7 +5395,9 @@ export function ProjectsWorkspace({
                         </Button>
                       </div>
                     </div>
-                    <p className="text-xs text-muted-foreground">{aiHealthSuggestion.reason}</p>
+                    <p className="text-[13px] leading-relaxed text-muted-foreground">
+                      {aiHealthSuggestion.reason}
+                    </p>
                   </div>
                 )}
               </div>
@@ -5534,9 +5420,9 @@ export function ProjectsWorkspace({
 
             {isAdmin && (
               <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-6 space-y-4">
-                <div>
+                <div className="app-field-head">
                   <h3 className="text-sm font-semibold text-destructive">Danger Zone</h3>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="app-field-hint">
                     Permanently delete this project and unlink all meetings and tickets.
                   </p>
                 </div>
@@ -5553,6 +5439,12 @@ export function ProjectsWorkspace({
           </div>
         )}
       </div>
+
+      <BoardCreateDialog
+        open={isBoardCreateOpen}
+        onOpenChange={setIsBoardCreateOpen}
+        onCreate={createBoard}
+      />
 
       <ProjectMeetingDialog
         open={isMeetingDialogOpen}
@@ -5572,9 +5464,11 @@ export function ProjectsWorkspace({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Stage name</label>
+          <div className="space-y-5 py-2">
+            <div className="app-field">
+              <div className="app-field-head">
+                <label className="app-field-label">Stage name</label>
+              </div>
               <Input
                 value={stageForm.label}
                 onChange={(e) =>
@@ -5587,8 +5481,10 @@ export function ProjectsWorkspace({
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Color</label>
+            <div className="app-field">
+              <div className="app-field-head">
+                <label className="app-field-label">Color</label>
+              </div>
               <input
                 type="color"
                 value={stageForm.color}
@@ -5598,12 +5494,17 @@ export function ProjectsWorkspace({
                     color: e.target.value,
                   }))
                 }
-                className="h-10 w-full rounded-lg border border-border bg-background px-2"
+                className="h-10 w-full rounded-xl border border-border bg-background px-2"
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Set stage as</label>
+            <div className="app-field">
+              <div className="app-field-head">
+                <label className="app-field-label">Set stage as</label>
+                <p className="app-field-hint">
+                  This maps your column to a system status for analytics.
+                </p>
+              </div>
               <div className="flex items-center gap-2 flex-wrap">
                 {(
                   [
@@ -5631,9 +5532,6 @@ export function ProjectsWorkspace({
                   </button>
                 ))}
               </div>
-              <p className="text-xs text-muted-foreground/70">
-                This maps your column to a system status for analytics.
-              </p>
             </div>
           </div>
 
@@ -5673,8 +5571,10 @@ export function ProjectsWorkspace({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Destination stage</label>
+          <div className="app-field py-2">
+            <div className="app-field-head">
+              <label className="app-field-label">Destination stage</label>
+            </div>
             <Select
               value={relocateStageId}
               onValueChange={(value) => setRelocateStageId(value)}
@@ -5839,67 +5739,69 @@ export function ProjectsWorkspace({
       >
         <SheetContent
           side="right"
-          className="w-[680px] sm:max-w-[680px] p-0 overflow-hidden bg-zinc-100 dark:bg-zinc-900"
+          className="app flex h-full w-full flex-col gap-0 overflow-hidden border-l border-border bg-background p-0 sm:max-w-[720px]"
           showCloseButton={!Boolean(ticketToEdit?.dependency_ticket_id)}
         >
-          <SheetHeader className="border-b border-border px-6 py-4">
-            <div className="flex items-center justify-between gap-2">
-              <SheetTitle className="text-lg">
-                {ticketToEdit?.dependency_ticket_id ? 'Edit subticket' : 'Edit ticket'}
-              </SheetTitle>
+          <SheetHeader className="shrink-0 space-y-0 border-b border-border px-6 py-5 text-left sm:px-8">
+            <div className="flex items-start justify-between gap-3 pr-8">
+              <div className="min-w-0">
+                <p className="app-eyebrow">
+                  {ticketToEdit?.dependency_ticket_id ? 'Subtask' : 'Ticket'}
+                </p>
+                <SheetTitle className="mt-1.5 text-xl font-semibold tracking-[-0.02em] text-foreground">
+                  {ticketToEdit?.dependency_ticket_id ? 'Edit subtask' : 'Edit ticket'}
+                </SheetTitle>
+                <SheetDescription className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
+                  {ticketToEdit?.dependency_ticket_id
+                    ? 'Update details, status, and dependencies for this subtask.'
+                    : 'Update details, properties, subtasks, and dependencies.'}
+                </SheetDescription>
+              </div>
               {ticketEditorHistory.length > 0 && (
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
                   onClick={goBackTicketEditor}
-                  className="rounded-none"
+                  className="shrink-0 rounded-full gap-1.5 text-muted-foreground hover:text-foreground"
                 >
-                  Go back
+                  <ChevronLeft className="h-4 w-4" />
+                  Back
                 </Button>
               )}
             </div>
-            <SheetDescription>
-              {ticketToEdit?.dependency_ticket_id
-                ? 'Describe subticket and update assignee, status, and dependencies.'
-                : 'Update ticket fields, manage child tickets, and adjust dependencies.'}
-            </SheetDescription>
           </SheetHeader>
 
-          <div className="border-b border-border px-6 pt-2">
-            <div className="flex gap-1">
+          <div className="shrink-0 border-b border-border px-6 sm:px-8">
+            <div className="flex gap-1 overflow-x-auto py-3">
               {(() => {
-                // Only parent tickets (not subtickets) get the Activity tab
                 const isSubtask = Boolean(ticketToEdit?.dependency_ticket_id);
                 const tabs = isSubtask
-                  ? ['details', 'attachments', 'comments', 'timeline']
-                  : ['details', 'attachments', 'comments', 'activity', 'timeline'];
+                  ? (['details', 'attachments', 'comments', 'timeline'] as const)
+                  : (['details', 'attachments', 'comments', 'activity', 'timeline'] as const);
                 return tabs.map((tab) => (
                   <button
                     key={tab}
                     type="button"
-                    onClick={() =>
-                      setTicketEditTab(
-                        tab as 'details' | 'attachments' | 'comments' | 'activity' | 'timeline'
-                      )
-                    }
-                    className={`px-3 py-2 text-sm font-medium transition-colors rounded-t-lg ${
+                    onClick={() => setTicketEditTab(tab)}
+                    className={cn(
+                      'shrink-0 rounded-full px-3.5 py-1.5 text-[13px] font-medium capitalize transition-colors',
                       ticketEditTab === tab
-                        ? 'text-primary border-b-2 border-primary'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
+                        ? 'bg-white/[0.08] text-foreground'
+                        : 'text-muted-foreground hover:bg-white/[0.04] hover:text-foreground'
+                    )}
                   >
-                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    {tab}
                   </button>
                 ));
               })()}
             </div>
           </div>
 
-          <div key={ticketToEdit?.id} className="flex-1 overflow-auto px-6 py-5 animate-fade-in">
+          <div key={ticketToEdit?.id} className="min-h-0 flex-1 overflow-y-auto px-6 py-6 sm:px-8">
             {ticketEditTab === 'details' && (
-              <>
-                <div className="bg-zinc-100 dark:bg-zinc-800 border border-border px-4 py-3">
+              <div className="space-y-8">
+                <div className="app-field">
                   <input
                     value={ticketEditForm.title}
                     onChange={(e) =>
@@ -5909,14 +5811,14 @@ export function ProjectsWorkspace({
                       }))
                     }
                     placeholder="Ticket title"
-                    className="w-full text-2xl font-semibold bg-transparent border-none outline-none text-foreground placeholder:text-muted-foreground/50 px-0 focus:ring-0"
+                    className="w-full border-none bg-transparent px-0 text-[1.75rem] font-semibold tracking-[-0.03em] text-foreground outline-none placeholder:text-muted-foreground/40 focus:ring-0"
                   />
                 </div>
 
-                <div className="space-y-2 mt-1.5">
-                  <label className="text-xs font-medium text-muted-foreground block">
-                    Description
-                  </label>
+                <div className="app-field">
+                  <div className="app-field-head">
+                    <label className="app-field-label">Description</label>
+                  </div>
                   <MentionEditor
                     content={ticketEditForm.description}
                     onChange={(html) =>
@@ -5945,179 +5847,208 @@ export function ProjectsWorkspace({
                   />
                 </div>
 
-                <div className="grid grid-cols-4 gap-4 mt-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-medium text-muted-foreground block">
-                      Assignee
-                    </label>
-                    <AssigneePicker
-                      value={ticketEditForm.assignee}
-                      onChange={(val) => setTicketEditForm((prev) => ({ ...prev, assignee: val }))}
+                <div className="app-panel overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setPropertiesExpanded((prev) => !prev)}
+                    className="flex w-full items-center gap-2 px-5 py-4 text-left transition-colors hover:bg-white/[0.03]"
+                  >
+                    <ChevronRight
+                      className={cn(
+                        'h-4 w-4 text-muted-foreground transition-transform duration-200',
+                        propertiesExpanded && 'rotate-90'
+                      )}
                     />
-                  </div>
+                    <h3 className="text-[13px] font-semibold text-foreground">Properties</h3>
+                    <span className="text-[11px] text-muted-foreground">
+                      Assignee, status, estimate, and planning
+                    </span>
+                  </button>
 
-                  <div className="space-y-2">
-                    <label className="text-xs font-medium text-muted-foreground block">
-                      Status
-                    </label>
-                    <Select
-                      value={ticketEditForm.status}
-                      onValueChange={(value) =>
-                        setTicketEditForm((prev) => ({
-                          ...prev,
-                          status: value,
-                        }))
-                      }
-                    >
-                      <SelectTrigger className="rounded-none bg-zinc-100 dark:bg-zinc-800">
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="backlog">Backlog</SelectItem>
-                        <SelectItem value="in_progress">In Progress</SelectItem>
-                        <SelectItem value="done">Done</SelectItem>
-                        <SelectItem value="blocked">Blocked</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <div
+                    className="grid transition-all duration-200 ease-out"
+                    style={{
+                      gridTemplateRows: propertiesExpanded ? '1fr' : '0fr',
+                    }}
+                  >
+                    <div className="overflow-hidden">
+                      <div className="space-y-5 border-t border-border px-5 py-5">
+                        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                          <div className="app-field">
+                            <div className="app-field-head">
+                              <label className="app-field-label">Assignee</label>
+                            </div>
+                            <AssigneePicker
+                              value={ticketEditForm.assignee}
+                              onChange={(val) =>
+                                setTicketEditForm((prev) => ({ ...prev, assignee: val }))
+                              }
+                            />
+                          </div>
 
-                  <div className="space-y-2">
-                    <label className="text-xs font-medium text-muted-foreground block">Stage</label>
-                    <Select
-                      value={
-                        ticketToEdit
-                          ? (ticketStageMap[ticketToEdit.id] ??
-                            effectiveStages.find((s) => s.status === ticketEditForm.status)?.id ??
-                            '')
-                          : ''
-                      }
-                      onValueChange={(value) => {
-                        if (!ticketToEdit) return;
-                        const stage = effectiveStages.find((s) => s.id === value);
-                        if (stage) {
-                          setTicketStageMap((prev) => ({
-                            ...prev,
-                            [ticketToEdit.id]: stage.id,
-                          }));
-                          setTicketEditForm((prev) => ({
-                            ...prev,
-                            status: stage.status,
-                          }));
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="rounded-none bg-zinc-100 dark:bg-zinc-800">
-                        <SelectValue placeholder="Select stage" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {effectiveStages.map((stage) => (
-                          <SelectItem key={stage.id} value={stage.id}>
-                            {stage.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                          <div className="app-field">
+                            <div className="app-field-head">
+                              <label className="app-field-label">Status</label>
+                            </div>
+                            <Select
+                              value={ticketEditForm.status}
+                              onValueChange={(value) =>
+                                setTicketEditForm((prev) => ({
+                                  ...prev,
+                                  status: value,
+                                }))
+                              }
+                            >
+                              <SelectTrigger className="h-10 w-full rounded-xl border-border bg-background dark:bg-background hover:bg-white/[0.04] dark:hover:bg-white/[0.04]">
+                                <SelectValue placeholder="Select status" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="backlog">Backlog</SelectItem>
+                                <SelectItem value="in_progress">In Progress</SelectItem>
+                                <SelectItem value="done">Done</SelectItem>
+                                <SelectItem value="blocked">Blocked</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
 
-                  <div className="space-y-2">
-                    <label className="text-xs font-medium text-muted-foreground block">
-                      Due date
-                    </label>
-                    <DateRangePicker
-                      dueDate={ticketEditForm.due_date || undefined}
-                      deadlineTime={ticketEditForm.deadline_time || undefined}
-                      onDueDateChange={(date) =>
-                        setTicketEditForm((prev) => ({
-                          ...prev,
-                          due_date: date || '',
-                        }))
-                      }
-                      onDeadlineTimeChange={(time) =>
-                        setTicketEditForm((prev) => ({
-                          ...prev,
-                          deadline_time: time || '',
-                        }))
-                      }
-                      disabled={Boolean(savingTicketId)}
-                    />
-                  </div>
-                </div>
+                          <div className="app-field">
+                            <div className="app-field-head">
+                              <label className="app-field-label">Stage</label>
+                            </div>
+                            <Select
+                              value={
+                                ticketToEdit
+                                  ? (ticketStageMap[ticketToEdit.id] ??
+                                    effectiveStages.find((s) => s.status === ticketEditForm.status)
+                                      ?.id ??
+                                    '')
+                                  : ''
+                              }
+                              onValueChange={(value) => {
+                                if (!ticketToEdit) return;
+                                const stage = effectiveStages.find((s) => s.id === value);
+                                if (stage) {
+                                  setTicketStageMap((prev) => ({
+                                    ...prev,
+                                    [ticketToEdit.id]: stage.id,
+                                  }));
+                                  setTicketEditForm((prev) => ({
+                                    ...prev,
+                                    status: stage.status,
+                                  }));
+                                }
+                              }}
+                            >
+                              <SelectTrigger className="h-10 w-full rounded-xl border-border bg-background dark:bg-background hover:bg-white/[0.04] dark:hover:bg-white/[0.04]">
+                                <SelectValue placeholder="Select stage" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {effectiveStages.map((stage) => (
+                                  <SelectItem key={stage.id} value={stage.id}>
+                                    {stage.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
 
-                <div className="border-t border-border/60 pt-3 mt-4">
-                  <details className="group">
-                    <summary className="flex items-center gap-2 cursor-pointer select-none list-none">
-                      <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-90" />
-                      <p className="text-sm font-medium text-foreground">Properties</p>
-                    </summary>
-                    <div className="mt-3">
-                      <TicketMetadataEditor
-                        priority={metaPriority}
-                        type={metaType}
-                        estimate={metaEstimate}
-                        labels={metaLabels}
-                        timeEstimate={metaTimeEstimate}
-                        timeSpent={metaTimeSpent}
-                        onPriorityChange={setMetaPriority}
-                        onTypeChange={setMetaType}
-                        onEstimateChange={setMetaEstimate}
-                        onLabelsChange={setMetaLabels}
-                        onTimeEstimateChange={setMetaTimeEstimate}
-                        onTimeSpentChange={setMetaTimeSpent}
-                        availableLabels={labels}
-                        onManageLabels={() => setLabelManagerOpen(true)}
-                      />
-                      <div className="grid grid-cols-2 gap-3 mt-3">
-                        <div className="space-y-1">
-                          <label className="text-xs font-medium text-muted-foreground">
-                            Milestone
-                          </label>
-                          <select
-                            value={metaMilestoneId ?? ''}
-                            onChange={(e) => setMetaMilestoneId(e.target.value || null)}
-                            className="w-full border border-border bg-background px-2.5 py-1.5 text-sm text-foreground"
-                          >
-                            <option value="">None</option>
-                            {milestones.map((ms) => (
-                              <option key={ms.id} value={ms.id}>
-                                {ms.name}
-                              </option>
-                            ))}
-                          </select>
+                          <div className="app-field">
+                            <div className="app-field-head">
+                              <label className="app-field-label">Due date</label>
+                            </div>
+                            <DateRangePicker
+                              dueDate={ticketEditForm.due_date || undefined}
+                              deadlineTime={ticketEditForm.deadline_time || undefined}
+                              onDueDateChange={(date) =>
+                                setTicketEditForm((prev) => ({
+                                  ...prev,
+                                  due_date: date || '',
+                                }))
+                              }
+                              onDeadlineTimeChange={(time) =>
+                                setTicketEditForm((prev) => ({
+                                  ...prev,
+                                  deadline_time: time || '',
+                                }))
+                              }
+                              disabled={Boolean(savingTicketId)}
+                            />
+                          </div>
                         </div>
-                        <div className="space-y-1">
-                          <label className="text-xs font-medium text-muted-foreground">
-                            Sprint
-                          </label>
-                          <select
-                            value={metaSprintId ?? ''}
-                            onChange={(e) => setMetaSprintId(e.target.value || null)}
-                            className="w-full border border-border bg-background px-2.5 py-1.5 text-sm text-foreground"
-                          >
-                            <option value="">None</option>
-                            {sprints.map((sp) => (
-                              <option key={sp.id} value={sp.id}>
-                                {sp.name}
-                              </option>
-                            ))}
-                          </select>
+
+                        <TicketMetadataEditor
+                          priority={metaPriority}
+                          type={metaType}
+                          estimate={metaEstimate}
+                          labels={metaLabels}
+                          timeEstimate={metaTimeEstimate}
+                          timeSpent={metaTimeSpent}
+                          onPriorityChange={setMetaPriority}
+                          onTypeChange={setMetaType}
+                          onEstimateChange={setMetaEstimate}
+                          onLabelsChange={setMetaLabels}
+                          onTimeEstimateChange={setMetaTimeEstimate}
+                          onTimeSpentChange={setMetaTimeSpent}
+                          availableLabels={labels}
+                          onManageLabels={() => setLabelManagerOpen(true)}
+                        />
+
+                        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                          <div className="app-field">
+                            <div className="app-field-head">
+                              <label className="app-field-label">Milestone</label>
+                            </div>
+                            <select
+                              value={metaMilestoneId ?? ''}
+                              onChange={(e) => setMetaMilestoneId(e.target.value || null)}
+                              className="h-10 w-full rounded-xl border border-border bg-background px-3.5 text-sm text-foreground"
+                            >
+                              <option value="">None</option>
+                              {milestones.map((ms) => (
+                                <option key={ms.id} value={ms.id}>
+                                  {ms.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="app-field">
+                            <div className="app-field-head">
+                              <label className="app-field-label">Sprint</label>
+                            </div>
+                            <select
+                              value={metaSprintId ?? ''}
+                              onChange={(e) => setMetaSprintId(e.target.value || null)}
+                              className="h-10 w-full rounded-xl border border-border bg-background px-3.5 text-sm text-foreground"
+                            >
+                              <option value="">None</option>
+                              {sprints.map((sp) => (
+                                <option key={sp.id} value={sp.id}>
+                                  {sp.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </details>
+                  </div>
                 </div>
 
                 {ticketToEdit && (
-                  <div className="border border-border bg-muted/50 overflow-hidden mt-4">
+                  <div className="app-panel overflow-hidden">
                     <button
                       type="button"
                       onClick={() => setSubtasksExpanded((prev) => !prev)}
-                      className="flex items-center gap-2 px-3 py-2.5 cursor-pointer select-none w-full text-left hover:bg-muted/30 transition-colors"
+                      className="flex w-full items-center gap-2 px-5 py-4 text-left transition-colors hover:bg-white/[0.03]"
                     >
                       <ChevronRight
-                        className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${subtasksExpanded ? 'rotate-90' : ''}`}
+                        className={cn(
+                          'h-4 w-4 text-muted-foreground transition-transform duration-200',
+                          subtasksExpanded && 'rotate-90'
+                        )}
                       />
-                      <h3 className="text-sm font-semibold text-foreground">Subtasks</h3>
-                      <span className="border border-border bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                      <h3 className="text-[13px] font-semibold text-foreground">Subtasks</h3>
+                      <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[11px] tabular-nums text-muted-foreground">
                         {(childrenByParentId[ticketToEdit.id] ?? []).length}
                       </span>
                     </button>
@@ -6129,9 +6060,9 @@ export function ProjectsWorkspace({
                       }}
                     >
                       <div className="overflow-hidden">
-                        <div>
+                        <div className="border-t border-border">
                           {(childrenByParentId[ticketToEdit.id] ?? []).length === 0 ? (
-                            <p className="border-t border-border/60 px-3 py-2 text-xs text-muted-foreground">
+                            <p className="px-5 py-3 text-[13px] text-muted-foreground">
                               No subtasks yet.
                             </p>
                           ) : (
@@ -6142,9 +6073,9 @@ export function ProjectsWorkspace({
                         </div>
 
                         {isAddingSubtask && (
-                          <div className="border-t border-border/60 bg-primary/5 px-2 py-2">
+                          <div className="border-t border-border bg-white/[0.02] px-4 py-3">
                             <div className="flex items-center gap-2">
-                              <Circle className="h-4 w-4 text-muted-foreground" />
+                              <Circle className="h-4 w-4 shrink-0 text-muted-foreground" />
                               <Input
                                 value={newChildDraft.title}
                                 onChange={(e) =>
@@ -6153,7 +6084,7 @@ export function ProjectsWorkspace({
                                     title: e.target.value,
                                   }))
                                 }
-                                className="flex-1 h-8 rounded-none"
+                                className="h-9 flex-1 rounded-xl"
                                 placeholder="Subtask name"
                                 autoFocus
                                 onKeyDown={(e) => {
@@ -6166,6 +6097,7 @@ export function ProjectsWorkspace({
                               <Button
                                 type="button"
                                 size="icon"
+                                className="rounded-xl"
                                 onClick={handleCreateChildTicket}
                                 disabled={!newChildDraft.title.trim() || Boolean(savingTicketId)}
                               >
@@ -6178,7 +6110,7 @@ export function ProjectsWorkspace({
                         <button
                           type="button"
                           onClick={() => setIsAddingSubtask(true)}
-                          className="w-full border-t border-border/60 px-3 py-2 text-left text-sm font-medium text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                          className="w-full border-t border-border px-5 py-3 text-left text-[13px] font-medium text-muted-foreground transition-colors hover:bg-white/[0.03] hover:text-foreground"
                         >
                           Add subtask
                         </button>
@@ -6188,7 +6120,7 @@ export function ProjectsWorkspace({
                 )}
 
                 {ticketToEdit && ticketToEdit.projectId && (
-                  <div className="border-t border-border/60 pt-4 mt-4">
+                  <div className="app-panel app-panel-pad">
                     <TicketDependencyPanel
                       ticketId={ticketToEdit.id}
                       projectId={ticketToEdit.projectId}
@@ -6200,7 +6132,7 @@ export function ProjectsWorkspace({
                     />
                   </div>
                 )}
-              </>
+              </div>
             )}
 
             {ticketEditTab === 'attachments' && ticketToEdit && (
@@ -6223,34 +6155,40 @@ export function ProjectsWorkspace({
             )}
           </div>
 
-          <SheetFooter className="border-t border-border px-6 py-4 flex-row justify-end gap-2">
+          <SheetFooter className="shrink-0 flex-row items-center justify-between gap-3 border-t border-border px-6 py-4 sm:px-8">
             <Button
               type="button"
-              variant="destructive"
+              variant="ghost"
               onClick={() => {
                 if (!ticketToEdit) return;
                 promptDeleteTicket(ticketToEdit);
                 closeTicketEditor();
               }}
               disabled={Boolean(savingTicketId)}
+              className="rounded-full text-red-400 hover:bg-red-500/10 hover:text-red-300"
             >
-              {ticketToEdit?.dependency_ticket_id ? 'Delete subtask' : 'Delete ticket'}
+              {ticketToEdit?.dependency_ticket_id ? 'Delete subtask' : 'Delete'}
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={closeTicketEditor}
-              disabled={Boolean(savingTicketId)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={handleSaveTicketEdit}
-              disabled={Boolean(savingTicketId) || ticketEditForm.title.trim().length === 0}
-            >
-              Save changes
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={closeTicketEditor}
+                disabled={Boolean(savingTicketId)}
+                className="rounded-full"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSaveTicketEdit}
+                disabled={Boolean(savingTicketId) || ticketEditForm.title.trim().length === 0}
+                className="rounded-full gap-2"
+              >
+                {savingTicketId ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Save changes
+              </Button>
+            </div>
           </SheetFooter>
         </SheetContent>
       </Sheet>
@@ -6303,8 +6241,10 @@ export function ProjectsWorkspace({
 
           {/* Reassign dropdown */}
           {deleteMode === 'reassign' && (
-            <div className="py-1 space-y-2">
-              <label className="text-sm font-medium text-foreground">Move subtasks to</label>
+            <div className="app-field py-1">
+              <div className="app-field-head">
+                <label className="app-field-label">Move subtasks to</label>
+              </div>
               <Select
                 value={subtaskReassignTargetId}
                 onValueChange={(value) => setSubtaskReassignTargetId(value)}

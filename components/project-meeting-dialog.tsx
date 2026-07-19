@@ -284,8 +284,8 @@ export function ProjectMeetingDialog({
                   </div>
                   <p className="font-medium text-foreground">Google Calendar not connected</p>
                   <p className="text-sm text-muted-foreground">
-                    Connect Google Calendar in Settings to create Meet links directly from Syntheon Hub
-                    Hub.
+                    Connect Google Calendar in Settings to create Meet links directly from Syntheon
+                    Hub Hub.
                   </p>
                   <Button
                     type="button"

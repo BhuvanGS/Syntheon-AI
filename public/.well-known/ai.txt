@@ -1,2 +1,5 @@
 # Syntheon Hub — optional machine-readable companion to /llms.txt
 # Primary AI summary: https://syntheonhub.com/llms.txt
+#
+# Founder: Bhuvan GS (BHUVAN G S). Product: Syntheon Hub (syntheonhub.com).
+# Not affiliated with unrelated companies named only “Syntheon”.

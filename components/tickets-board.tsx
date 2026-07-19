@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useUser, useOrganization } from '@clerk/nextjs';
-import { stripHtml } from '@/lib/utils';
+import { stripHtml, cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,8 +43,8 @@ import {
   Square,
   Tag,
   SlidersHorizontal,
-  ChevronRight,
   Plus,
+  ChevronRight,
 } from 'lucide-react';
 import { AssigneePicker, type AssigneeValue } from '@/components/assignee-picker';
 import { TicketDependencyPanel } from '@/components/ticket-dependency-panel';
@@ -119,6 +119,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
   const [bulkMode, setBulkMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [labelManagerOpen, setLabelManagerOpen] = useState(false);
+  const [propertiesExpanded, setPropertiesExpanded] = useState(true);
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
   const [toolbarOpen, setToolbarOpen] = useState(false);
   const [metaPriority, setMetaPriority] = useState<TicketPriority>('none');
@@ -1052,19 +1053,24 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
       >
         <SheetContent
           side="right"
-          className="w-[680px] sm:max-w-[680px] p-0 overflow-hidden bg-zinc-100 dark:bg-zinc-900"
+          className="app flex h-full w-full flex-col gap-0 overflow-hidden border-l border-border bg-background p-0 sm:max-w-[720px]"
         >
-          <SheetHeader className="border-b border-border px-6 py-4">
-            <SheetTitle className="font-playfair text-2xl text-foreground">
-              {ticketToEdit?.dependency_ticket_id ? 'Edit subticket' : 'Edit ticket'}
-            </SheetTitle>
-            <SheetDescription className="text-muted-foreground">
-              Edit name, description, assignee, and status before confirming.
-            </SheetDescription>
+          <SheetHeader className="shrink-0 space-y-0 border-b border-border px-6 py-5 text-left sm:px-8">
+            <div className="min-w-0 pr-8">
+              <p className="app-eyebrow">
+                {ticketToEdit?.dependency_ticket_id ? 'Subtask' : 'Ticket'}
+              </p>
+              <SheetTitle className="mt-1.5 text-xl font-semibold tracking-[-0.02em] text-foreground">
+                {ticketToEdit?.dependency_ticket_id ? 'Edit subtask' : 'Edit ticket'}
+              </SheetTitle>
+              <SheetDescription className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
+                Update title, description, assignee, status, and properties.
+              </SheetDescription>
+            </div>
           </SheetHeader>
 
-          <div className="flex-1 overflow-auto px-6 py-5">
-            <div className="bg-zinc-100 dark:bg-zinc-800 border border-border px-4 py-3">
+          <div className="min-h-0 flex-1 space-y-8 overflow-y-auto px-6 py-6 sm:px-8">
+            <div className="app-field">
               <input
                 value={ticketEditForm.title}
                 onChange={(e) =>
@@ -1074,12 +1080,14 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                   }))
                 }
                 placeholder="Ticket title"
-                className="w-full text-2xl font-semibold bg-transparent border-none outline-none text-foreground placeholder:text-muted-foreground/50 px-0 focus:ring-0"
+                className="w-full border-none bg-transparent px-0 text-[1.75rem] font-semibold tracking-[-0.03em] text-foreground outline-none placeholder:text-muted-foreground/40 focus:ring-0"
               />
             </div>
 
-            <div className="space-y-2 mt-1.5">
-              <label className="text-xs font-medium text-muted-foreground block">Description</label>
+            <div className="app-field">
+              <div className="app-field-head">
+                <label className="app-field-label">Description</label>
+              </div>
               <MentionEditor
                 content={ticketEditForm.description}
                 onChange={(html) =>
@@ -1103,84 +1111,112 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
               />
             </div>
 
-            <div className="grid grid-cols-3 gap-4 mt-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground block">Assignee</label>
-                <AssigneePicker
-                  value={ticketEditForm.assignee}
-                  onChange={(val) => setTicketEditForm((prev) => ({ ...prev, assignee: val }))}
+            <div className="app-panel overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setPropertiesExpanded((prev) => !prev)}
+                className="flex w-full items-center gap-2 px-5 py-4 text-left transition-colors hover:bg-white/[0.03]"
+              >
+                <ChevronRight
+                  className={cn(
+                    'h-4 w-4 text-muted-foreground transition-transform duration-200',
+                    propertiesExpanded && 'rotate-90'
+                  )}
                 />
-              </div>
+                <h3 className="text-[13px] font-semibold text-foreground">Properties</h3>
+                <span className="text-[11px] text-muted-foreground">
+                  Assignee, status, estimate, and labels
+                </span>
+              </button>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground block">Status</label>
-                <Select
-                  value={ticketEditForm.status}
-                  onValueChange={(value) =>
-                    setTicketEditForm((prev) => ({
-                      ...prev,
-                      status: value,
-                    }))
-                  }
-                >
-                  <SelectTrigger className="rounded-none bg-zinc-100 dark:bg-zinc-800">
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {columns.map((col) => (
-                      <SelectItem key={col.key} value={col.key}>
-                        {col.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <div
+                className="grid transition-all duration-200 ease-out"
+                style={{
+                  gridTemplateRows: propertiesExpanded ? '1fr' : '0fr',
+                }}
+              >
+                <div className="overflow-hidden">
+                  <div className="space-y-5 border-t border-border px-5 py-5">
+                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+                      <div className="app-field">
+                        <div className="app-field-head">
+                          <label className="app-field-label">Assignee</label>
+                        </div>
+                        <AssigneePicker
+                          value={ticketEditForm.assignee}
+                          onChange={(val) =>
+                            setTicketEditForm((prev) => ({ ...prev, assignee: val }))
+                          }
+                        />
+                      </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground block">Due date</label>
-                <DateRangePicker
-                  dueDate={ticketEditForm.due_date || undefined}
-                  deadlineTime={ticketEditForm.deadline_time || undefined}
-                  onDueDateChange={(date) =>
-                    setTicketEditForm((prev) => ({ ...prev, due_date: date || '' }))
-                  }
-                  onDeadlineTimeChange={(time) =>
-                    setTicketEditForm((prev) => ({ ...prev, deadline_time: time || '' }))
-                  }
-                  disabled={Boolean(updatingTicketId)}
-                />
-              </div>
-            </div>
+                      <div className="app-field">
+                        <div className="app-field-head">
+                          <label className="app-field-label">Status</label>
+                        </div>
+                        <Select
+                          value={ticketEditForm.status}
+                          onValueChange={(value) =>
+                            setTicketEditForm((prev) => ({
+                              ...prev,
+                              status: value,
+                            }))
+                          }
+                        >
+                          <SelectTrigger className="h-10 w-full rounded-xl border-border bg-background dark:bg-background hover:bg-white/[0.04] dark:hover:bg-white/[0.04]">
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {columns.map((col) => (
+                              <SelectItem key={col.key} value={col.key}>
+                                {col.title}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-            <div className="border-t border-border/60 pt-3 mt-4">
-              <details className="group">
-                <summary className="flex items-center gap-2 cursor-pointer select-none list-none mb-2">
-                  <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-90" />
-                  <p className="text-sm font-medium text-foreground">Properties</p>
-                </summary>
-                <div className="mt-3">
-                  <TicketMetadataEditor
-                    priority={metaPriority}
-                    type={metaType}
-                    estimate={metaEstimate}
-                    labels={metaLabels}
-                    timeEstimate={metaTimeEstimate}
-                    timeSpent={metaTimeSpent}
-                    onPriorityChange={setMetaPriority}
-                    onTypeChange={setMetaType}
-                    onEstimateChange={setMetaEstimate}
-                    onLabelsChange={setMetaLabels}
-                    onTimeEstimateChange={setMetaTimeEstimate}
-                    onTimeSpentChange={setMetaTimeSpent}
-                    availableLabels={labels}
-                    onManageLabels={() => setLabelManagerOpen(true)}
-                  />
+                      <div className="app-field">
+                        <div className="app-field-head">
+                          <label className="app-field-label">Due date</label>
+                        </div>
+                        <DateRangePicker
+                          dueDate={ticketEditForm.due_date || undefined}
+                          deadlineTime={ticketEditForm.deadline_time || undefined}
+                          onDueDateChange={(date) =>
+                            setTicketEditForm((prev) => ({ ...prev, due_date: date || '' }))
+                          }
+                          onDeadlineTimeChange={(time) =>
+                            setTicketEditForm((prev) => ({ ...prev, deadline_time: time || '' }))
+                          }
+                          disabled={Boolean(updatingTicketId)}
+                        />
+                      </div>
+                    </div>
+
+                    <TicketMetadataEditor
+                      priority={metaPriority}
+                      type={metaType}
+                      estimate={metaEstimate}
+                      labels={metaLabels}
+                      timeEstimate={metaTimeEstimate}
+                      timeSpent={metaTimeSpent}
+                      onPriorityChange={setMetaPriority}
+                      onTypeChange={setMetaType}
+                      onEstimateChange={setMetaEstimate}
+                      onLabelsChange={setMetaLabels}
+                      onTimeEstimateChange={setMetaTimeEstimate}
+                      onTimeSpentChange={setMetaTimeSpent}
+                      availableLabels={labels}
+                      onManageLabels={() => setLabelManagerOpen(true)}
+                    />
+                  </div>
                 </div>
-              </details>
+              </div>
             </div>
 
             {ticketToEdit && (
-              <div className="border-t border-border/60 pt-4 mt-4">
+              <div className="app-panel app-panel-pad">
                 <TicketDependencyPanel
                   ticketId={ticketToEdit.id}
                   projectId={ticketToEdit.projectId}
@@ -1192,37 +1228,37 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
             )}
           </div>
 
-          <div className="border-t border-border px-6 py-4 flex items-center justify-between gap-2">
+          <div className="shrink-0 flex items-center justify-between gap-3 border-t border-border px-6 py-4 sm:px-8">
             <Button
               type="button"
-              variant="destructive"
+              variant="ghost"
               onClick={() => {
                 if (!ticketToEdit) return;
                 setTicketToDelete(ticketToEdit);
                 setTicketToEdit(null);
               }}
-              className="rounded-full"
+              className="rounded-full text-red-400 hover:bg-red-500/10 hover:text-red-300"
               disabled={Boolean(updatingTicketId)}
             >
-              {ticketToEdit?.dependency_ticket_id ? 'Delete subtask' : 'Delete ticket'}
+              {ticketToEdit?.dependency_ticket_id ? 'Delete subtask' : 'Delete'}
             </Button>
             <div className="flex items-center gap-2">
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 onClick={() => setTicketToEdit(null)}
                 className="rounded-full"
                 disabled={Boolean(updatingTicketId)}
               >
-                Discard
+                Cancel
               </Button>
               <Button
                 type="button"
                 onClick={handleSaveTicketEdit}
-                className="rounded-full"
+                className="rounded-full gap-2"
                 disabled={Boolean(updatingTicketId) || ticketEditForm.title.trim().length === 0}
               >
-                {updatingTicketId ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                {updatingTicketId ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 Save changes
               </Button>
             </div>

@@ -49,7 +49,7 @@ export function AssigneePicker({ value, onChange, disabled }: AssigneePickerProp
       <DropdownMenuTrigger asChild disabled={disabled}>
         <Button
           variant="outline"
-          className="w-full justify-start gap-2 font-normal text-sm rounded-none h-9 bg-zinc-100 dark:bg-zinc-800"
+          className="w-full justify-start gap-2 font-normal text-sm rounded-xl h-10 bg-background border-border hover:bg-white/[0.04]"
         >
           <UserCircle2 className="h-4 w-4 text-muted-foreground shrink-0" />
           <span className="truncate">{value ? value.displayName : 'Unassigned'}</span>

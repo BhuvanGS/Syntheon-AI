@@ -26,10 +26,7 @@ export function AuthShell({
       : 'Create your free account. Join meetings; leave with a board that is already current.';
 
   return (
-    <div
-      className="min-h-screen flex bg-[#050505] text-white"
-      style={{ fontFamily: DISPLAY }}
-    >
+    <div className="min-h-screen flex bg-[#050505] text-white" style={{ fontFamily: DISPLAY }}>
       {/* Brand panel */}
       <div
         className="hidden md:flex md:w-[48%] lg:w-[52%] relative flex-col justify-between px-12 lg:px-16 py-12 overflow-hidden"
@@ -84,17 +81,16 @@ export function AuthShell({
           </p>
         </div>
 
-        <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)', position: 'relative', zIndex: 10 }}>
+        <p
+          style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)', position: 'relative', zIndex: 10 }}
+        >
           © {new Date().getFullYear()} Syntheon Hub
         </p>
       </div>
 
       {/* Form panel */}
       <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-10 relative">
-        <div
-          aria-hidden
-          className="md:hidden absolute top-6 left-6 flex items-center gap-2"
-        >
+        <div aria-hidden className="md:hidden absolute top-6 left-6 flex items-center gap-2">
           <BrandLogo size={26} />
           <span style={{ fontSize: 16, fontWeight: 600 }}>Syntheon Hub</span>
         </div>
@@ -141,18 +137,39 @@ function LegalAgreeLine({ mode }: { mode: 'sign-in' | 'sign-up' }) {
       }}
     >
       By {verb}, you agree to our{' '}
-      <Link href="/legal#terms" style={{ color: 'rgba(255,255,255,0.75)', textDecoration: 'underline', textUnderlineOffset: 3 }}>
+      <Link
+        href="/legal#terms"
+        style={{
+          color: 'rgba(255,255,255,0.75)',
+          textDecoration: 'underline',
+          textUnderlineOffset: 3,
+        }}
+      >
         Terms of Service
-      </Link>
-      {' '}and{' '}
-      <Link href="/legal#privacy" style={{ color: 'rgba(255,255,255,0.75)', textDecoration: 'underline', textUnderlineOffset: 3 }}>
+      </Link>{' '}
+      and{' '}
+      <Link
+        href="/legal#privacy"
+        style={{
+          color: 'rgba(255,255,255,0.75)',
+          textDecoration: 'underline',
+          textUnderlineOffset: 3,
+        }}
+      >
         Privacy Policy
       </Link>
       , and acknowledge our{' '}
-      <Link href="/legal" style={{ color: 'rgba(255,255,255,0.75)', textDecoration: 'underline', textUnderlineOffset: 3 }}>
+      <Link
+        href="/legal"
+        style={{
+          color: 'rgba(255,255,255,0.75)',
+          textDecoration: 'underline',
+          textUnderlineOffset: 3,
+        }}
+      >
         Legal
-      </Link>
-      {' '}notices.
+      </Link>{' '}
+      notices.
     </p>
   );
 }

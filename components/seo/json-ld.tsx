@@ -8,12 +8,25 @@ export const ORGANIZATION_JSON_LD = {
   '@type': 'Organization',
   name: 'Syntheon Hub',
   alternateName: 'Syntheon Hub',
+  legalName: 'BHUVAN G S',
   url: BASE,
   logo: `${BASE}/syntheon-logo.png`,
   image: `${BASE}/og-image.png`,
   description:
     'Syntheon Hub joins your meetings, extracts action items, and creates organized tickets automatically.',
   email: 'support@syntheonhub.com',
+  foundingDate: '2025',
+  founder: {
+    '@type': 'Person',
+    name: 'Bhuvan GS',
+    alternateName: 'BHUVAN G S',
+    jobTitle: 'Founder',
+    worksFor: {
+      '@type': 'Organization',
+      name: 'Syntheon Hub',
+      url: BASE,
+    },
+  },
   sameAs: [],
   contactPoint: {
     '@type': 'ContactPoint',
@@ -52,9 +65,16 @@ export const SOFTWARE_JSON_LD = {
     'Organization and role management',
   ],
   creator: {
-    '@type': 'Organization',
-    name: 'Syntheon Hub',
+    '@type': 'Person',
+    name: 'Bhuvan GS',
+    alternateName: 'BHUVAN G S',
+    jobTitle: 'Founder',
     url: BASE,
+  },
+  author: {
+    '@type': 'Person',
+    name: 'Bhuvan GS',
+    alternateName: 'BHUVAN G S',
   },
 };
 

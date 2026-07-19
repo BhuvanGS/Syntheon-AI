@@ -3,47 +3,22 @@
 import { useRouter } from 'next/navigation';
 import { useMemo } from 'react';
 import {
-  FolderKanban,
   Video,
-  Ticket,
   CheckCircle2,
-  Users,
-  Clock,
   ArrowUpRight,
+  Clock,
   Circle,
   AlertCircle,
   TrendingUp,
   TrendingDown,
-  Activity,
-  CalendarClock,
-  Flame,
   Minus,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  ChartLegend,
-  ChartLegendContent,
-} from '@/components/ui/chart';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import type { ChartConfig } from '@/components/ui/chart';
-import {
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-} from 'recharts';
+import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 interface Project {
   id: string;
@@ -107,34 +82,26 @@ interface DashboardGridProps {
 const statusConfig = {
   backlog: {
     label: 'Backlog',
-    color: 'text-amber-500',
-    fill: '#f59e0b',
-    bg: 'bg-amber-500/10',
-    border: 'border-amber-500/20',
+    color: 'text-muted-foreground',
+    fill: 'rgba(255,255,255,0.28)',
     Icon: Circle,
   },
   in_progress: {
     label: 'In Progress',
-    color: 'text-blue-500',
-    fill: '#3b82f6',
-    bg: 'bg-blue-500/10',
-    border: 'border-blue-500/20',
+    color: 'text-foreground',
+    fill: 'rgba(255,255,255,0.72)',
     Icon: Clock,
   },
   done: {
     label: 'Done',
-    color: 'text-emerald-500',
-    fill: '#10b981',
-    bg: 'bg-emerald-500/10',
-    border: 'border-emerald-500/20',
+    color: 'text-emerald-400',
+    fill: '#34d399',
     Icon: CheckCircle2,
   },
   blocked: {
     label: 'Blocked',
-    color: 'text-red-500',
-    fill: '#ef4444',
-    bg: 'bg-red-500/10',
-    border: 'border-red-500/20',
+    color: 'text-red-400',
+    fill: '#f87171',
     Icon: AlertCircle,
   },
 };
@@ -182,24 +149,23 @@ function ragStatus(pct: number, blockedCount: number): 'green' | 'amber' | 'red'
 const ragConfig = {
   green: {
     label: 'On Track',
-    color: 'text-emerald-600',
-    bg: 'bg-emerald-500/10',
-    dot: 'bg-emerald-500',
+    color: 'text-emerald-400',
+    dot: 'bg-emerald-400',
   },
-  amber: { label: 'At Risk', color: 'text-amber-600', bg: 'bg-amber-500/10', dot: 'bg-amber-500' },
-  red: { label: 'Blocked', color: 'text-red-600', bg: 'bg-red-500/10', dot: 'bg-red-500' },
+  amber: { label: 'At Risk', color: 'text-amber-400', dot: 'bg-amber-400' },
+  red: { label: 'Blocked', color: 'text-red-400', dot: 'bg-red-400' },
 };
 
 const throughputChartConfig = {
-  created: { label: 'Created', color: '#f59e0b' },
-  completed: { label: 'Completed', color: '#10b981' },
+  created: { label: 'Created', color: 'rgba(255,255,255,0.28)' },
+  completed: { label: 'Completed', color: 'rgba(255,255,255,0.85)' },
 } satisfies ChartConfig;
 
 const statusChartConfig = {
-  backlog: { label: 'Backlog', color: '#f59e0b' },
-  in_progress: { label: 'In Progress', color: '#3b82f6' },
-  done: { label: 'Done', color: '#10b981' },
-  blocked: { label: 'Blocked', color: '#ef4444' },
+  backlog: { label: 'Backlog', color: 'rgba(255,255,255,0.28)' },
+  in_progress: { label: 'In Progress', color: 'rgba(255,255,255,0.72)' },
+  done: { label: 'Done', color: '#34d399' },
+  blocked: { label: 'Blocked', color: '#f87171' },
 } satisfies ChartConfig;
 
 export function DashboardGrid({
@@ -255,9 +221,6 @@ export function DashboardGrid({
   }, [tickets]);
 
   const last7Created = throughputData.slice(7).reduce((s, d) => s + d.created, 0);
-  const prev7Created = throughputData.slice(0, 7).reduce((s, d) => s + d.created, 0);
-  const createdTrend =
-    last7Created === prev7Created ? 'flat' : last7Created > prev7Created ? 'up' : 'down';
 
   const last7Completed = throughputData.slice(7).reduce((s, d) => s + d.completed, 0);
   const prev7Completed = throughputData.slice(0, 7).reduce((s, d) => s + d.completed, 0);
@@ -358,264 +321,195 @@ export function DashboardGrid({
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-6xl mx-auto w-full">
-      <div>
-        <h2 className="text-xl font-semibold text-foreground">
-          {organizationName ?? 'Organization'} Overview
-        </h2>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Everything happening across your workspace
-        </p>
-      </div>
+    <div className="app-page">
+      <header>
+        <p className="app-eyebrow">Workspace</p>
+        <h2 className="app-title mt-2">{organizationName ?? 'Organization'}</h2>
+        <p className="app-subtitle">Everything happening across your team — at a glance.</p>
+      </header>
 
-      {/* Top KPI row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
         {[
           {
-            label: 'Active Projects',
+            label: 'Projects',
             value: projects.length,
             sub: `${tickets.filter((t) => t.status !== 'done').length} open tickets`,
-            Icon: FolderKanban,
-            color: 'text-primary',
-            bg: 'bg-primary/5',
             view: 'projects',
           },
           {
-            label: 'Throughput (7d)',
+            label: 'Completed · 7d',
             value: last7Completed,
             sub: `${last7Created} created`,
-            Icon: TrendingUp,
-            color:
-              completedTrend === 'up'
-                ? 'text-emerald-500'
-                : completedTrend === 'down'
-                  ? 'text-red-500'
-                  : 'text-muted-foreground',
-            bg: 'bg-emerald-500/5',
             view: 'tickets',
+            trend: completedTrend,
           },
           {
             label: 'Overdue',
             value: overdueTickets.length,
             sub: overdueTickets.length > 0 ? `${staleTickets.length} stale` : 'All on time',
-            Icon: CalendarClock,
-            color: overdueTickets.length > 0 ? 'text-red-500' : 'text-emerald-500',
-            bg: overdueTickets.length > 0 ? 'bg-red-500/5' : 'bg-emerald-500/5',
             view: 'tickets',
+            alert: overdueTickets.length > 0,
           },
           {
             label: 'Completion',
             value: `${completionPct}%`,
-            sub: `${statusCounts.done}/${tickets.length} done`,
-            Icon: CheckCircle2,
-            color: 'text-emerald-500',
-            bg: 'bg-emerald-500/5',
+            sub: `${statusCounts.done} of ${tickets.length} done`,
             view: 'tickets',
           },
-        ].map(({ label, value, sub, Icon, color, bg, view }) => (
-          <Card
+        ].map(({ label, value, sub, view, trend, alert }) => (
+          <button
             key={label}
-            className={cn(
-              'border-border/60 shadow-none hover:border-border/80 transition-colors cursor-pointer',
-              bg
-            )}
-            onClick={() => view && navigateTo(view)}
+            type="button"
+            onClick={() => navigateTo(view)}
+            className="app-kpi text-left"
           >
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-muted-foreground font-medium">{label}</span>
-                <Icon className={cn('h-4 w-4', color)} />
-              </div>
-              <p className="text-2xl font-semibold text-foreground">{value}</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">{sub}</p>
-            </CardContent>
-          </Card>
+            <div className="flex items-center justify-between gap-2">
+              <span className="app-kpi-label">{label}</span>
+              {trend === 'up' && <TrendingUp className="h-3.5 w-3.5 text-emerald-400" />}
+              {trend === 'down' && <TrendingDown className="h-3.5 w-3.5 text-red-400" />}
+              {trend === 'flat' && <Minus className="h-3.5 w-3.5 text-muted-foreground" />}
+            </div>
+            <p className={cn('app-kpi-value', alert && 'text-red-400')}>{value}</p>
+            <p className="app-kpi-sub">{sub}</p>
+          </button>
         ))}
       </div>
 
-      {/* Row 2: Throughput chart + Status donut */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Throughput Chart */}
-        <Card className="border-border/60 shadow-none lg:col-span-2">
-          <CardHeader className="pb-3 pt-5 px-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-muted-foreground" />
-                  Throughput
-                </CardTitle>
-                <CardDescription className="text-xs mt-0.5">
-                  Tickets created vs completed (14 days)
-                </CardDescription>
-              </div>
-              <div className="flex items-center gap-3 text-[11px]">
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-sm bg-amber-500" />
-                  <span className="text-muted-foreground">Created</span>
-                  <span className="font-medium text-foreground">{last7Created}</span>
-                  {createdTrend === 'up' && <TrendingUp className="h-3 w-3 text-emerald-500" />}
-                  {createdTrend === 'down' && <TrendingDown className="h-3 w-3 text-red-500" />}
-                  {createdTrend === 'flat' && <Minus className="h-3 w-3 text-muted-foreground" />}
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-sm bg-emerald-500" />
-                  <span className="text-muted-foreground">Completed</span>
-                  <span className="font-medium text-foreground">{last7Completed}</span>
-                  {completedTrend === 'up' && <TrendingUp className="h-3 w-3 text-emerald-500" />}
-                  {completedTrend === 'down' && <TrendingDown className="h-3 w-3 text-red-500" />}
-                  {completedTrend === 'flat' && <Minus className="h-3 w-3 text-muted-foreground" />}
-                </span>
-              </div>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
+        <section className="app-panel app-panel-pad lg:col-span-2">
+          <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="app-section-label">Throughput</h3>
+              <p className="app-section-hint">Created vs completed · last 14 days</p>
             </div>
-          </CardHeader>
-          <CardContent className="px-5 pb-5">
-            <ChartContainer config={throughputChartConfig} className="h-[200px] w-full">
-              <BarChart data={throughputData} barGap={2}>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  vertical={false}
-                  stroke="hsl(var(--border))"
-                  strokeOpacity={0.3}
-                />
-                <XAxis
-                  dataKey="label"
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fontSize: 10 }}
-                  interval={1}
-                />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fontSize: 10 }}
-                  allowDecimals={false}
-                />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar
-                  dataKey="created"
-                  fill="var(--color-created)"
-                  radius={[3, 3, 0, 0]}
-                  maxBarSize={20}
-                />
-                <Bar
-                  dataKey="completed"
-                  fill="var(--color-completed)"
-                  radius={[3, 3, 0, 0]}
-                  maxBarSize={20}
-                />
-              </BarChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
+            <div className="flex items-center gap-4 text-[12px]">
+              <span className="flex items-center gap-1.5 text-muted-foreground">
+                <span className="h-1.5 w-1.5 rounded-full bg-foreground/30" />
+                Created <span className="font-medium text-foreground">{last7Created}</span>
+              </span>
+              <span className="flex items-center gap-1.5 text-muted-foreground">
+                <span className="h-1.5 w-1.5 rounded-full bg-foreground" />
+                Done <span className="font-medium text-foreground">{last7Completed}</span>
+              </span>
+            </div>
+          </div>
+          <ChartContainer config={throughputChartConfig} className="h-[200px] w-full">
+            <BarChart data={throughputData} barGap={2}>
+              <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.06)" />
+              <XAxis
+                dataKey="label"
+                tickLine={false}
+                axisLine={false}
+                tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.4)' }}
+                interval={1}
+              />
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.4)' }}
+                allowDecimals={false}
+              />
+              <ChartTooltip content={<ChartTooltipContent />} />
+              <Bar
+                dataKey="created"
+                fill="var(--color-created)"
+                radius={[3, 3, 0, 0]}
+                maxBarSize={18}
+              />
+              <Bar
+                dataKey="completed"
+                fill="var(--color-completed)"
+                radius={[3, 3, 0, 0]}
+                maxBarSize={18}
+              />
+            </BarChart>
+          </ChartContainer>
+        </section>
 
-        {/* Status Donut */}
-        <Card
-          className="border-border/60 shadow-none bg-orange-500/[0.03] cursor-pointer hover:border-orange-500/30 transition-colors"
+        <section
+          className="app-panel app-panel-pad cursor-pointer transition-colors hover:bg-white/[0.03]"
           onClick={() => navigateTo('tickets')}
         >
-          <CardHeader className="pb-3 pt-5 px-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-sm font-semibold">Status Mix</CardTitle>
-                <CardDescription className="text-xs mt-0.5">
-                  {tickets.length} total tickets
-                </CardDescription>
-              </div>
-              <div className="h-8 w-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
-                <Ticket className="h-4 w-4 text-orange-500" />
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="px-5 pb-5">
-            <ChartContainer config={statusChartConfig} className="h-[160px] w-full">
-              <PieChart>
-                <ChartTooltip content={<ChartTooltipContent nameKey="backlog" />} />
-                <Pie
-                  data={statusPieData}
-                  dataKey="value"
-                  nameKey="name"
-                  innerRadius={40}
-                  outerRadius={65}
-                  paddingAngle={2}
+          <div className="mb-4">
+            <h3 className="app-section-label">Status</h3>
+            <p className="app-section-hint">{tickets.length} tickets in play</p>
+          </div>
+          <ChartContainer config={statusChartConfig} className="mx-auto h-[150px] w-full">
+            <PieChart>
+              <ChartTooltip content={<ChartTooltipContent nameKey="backlog" />} />
+              <Pie
+                data={statusPieData}
+                dataKey="value"
+                nameKey="name"
+                innerRadius={42}
+                outerRadius={62}
+                paddingAngle={3}
+                stroke="transparent"
+              >
+                {statusPieData.map((entry) => (
+                  <Cell key={entry.key} fill={entry.fill} />
+                ))}
+              </Pie>
+            </PieChart>
+          </ChartContainer>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            {(Object.keys(statusConfig) as Array<keyof typeof statusConfig>).map((status) => {
+              const config = statusConfig[status];
+              return (
+                <button
+                  key={status}
+                  type="button"
+                  onClick={(e) => handleStatusClick(status, e)}
+                  className="flex items-baseline justify-between gap-2 rounded-lg border border-border px-3 py-2 text-left transition-colors hover:bg-white/[0.04]"
                 >
-                  {statusPieData.map((entry) => (
-                    <Cell key={entry.key} fill={entry.fill} />
-                  ))}
-                </Pie>
-              </PieChart>
-            </ChartContainer>
-            <div className="grid grid-cols-2 gap-1.5 mt-3">
-              {(Object.keys(statusConfig) as Array<keyof typeof statusConfig>).map((status) => {
-                const config = statusConfig[status];
-                const Icon = config.Icon;
-                return (
-                  <button
-                    key={status}
-                    onClick={(e) => handleStatusClick(status, e)}
-                    className={cn(
-                      'flex items-center gap-2 px-2.5 py-1.5 rounded-lg border transition-all hover:shadow-sm',
-                      config.bg,
-                      config.border
-                    )}
-                  >
-                    <Icon className={cn('h-3.5 w-3.5', config.color)} />
-                    <span className="text-sm font-semibold text-foreground">
-                      {statusCounts[status]}
-                    </span>
-                    <span className={cn('text-[10px] font-medium', config.color)}>
-                      {config.label}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
+                  <span className={cn('text-[11px]', config.color)}>{config.label}</span>
+                  <span className="text-[15px] font-semibold tabular-nums tracking-tight text-foreground">
+                    {statusCounts[status]}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
       </div>
 
-      {/* Row 3: Overdue/Stale alerts + Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Overdue & Stale Tickets */}
-        <Card className="border-border/60 shadow-none lg:col-span-1 bg-red-500/[0.02]">
-          <CardHeader className="pb-3 pt-5 px-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <Flame className="h-4 w-4 text-red-500" />
-                  Needs Attention
-                </CardTitle>
-                <CardDescription className="text-xs mt-0.5">
-                  {overdueTickets.length} overdue · {staleTickets.length} stale
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="px-5 pb-5 max-h-[280px] overflow-y-auto">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
+        <section className="app-panel app-panel-pad">
+          <div className="mb-4">
+            <h3 className="app-section-label">Needs attention</h3>
+            <p className="app-section-hint">
+              {overdueTickets.length} overdue · {staleTickets.length} stale
+            </p>
+          </div>
+          <div className="max-h-[280px] space-y-0.5 overflow-y-auto">
             {overdueTickets.length === 0 && staleTickets.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <CheckCircle2 className="h-8 w-8 text-emerald-500/50 mb-2" />
-                <p className="text-sm text-muted-foreground">All tickets on track</p>
+              <div className="flex flex-col items-center justify-center py-10 text-center">
+                <CheckCircle2 className="mb-2 h-6 w-6 text-emerald-400/60" />
+                <p className="text-[13px] text-muted-foreground">All tickets on track</p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <>
                 {overdueTickets.slice(0, 4).map((t) => {
                   const m = memberMap.get(t.assignee_user_id || '');
                   const assigneeName = m ? getMemberName(m) : t.assignee || 'Unassigned';
                   return (
                     <button
                       key={t.id}
+                      type="button"
                       onClick={() => navigateTo('tickets')}
-                      className="w-full flex items-start gap-2.5 p-2.5 text-left rounded-lg border border-red-500/20 bg-red-500/5 hover:border-red-500/40 transition-all"
+                      className="app-row w-full text-left"
                     >
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-foreground truncate">{t.title}</p>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[13px] font-medium text-foreground">
+                          {t.title}
+                        </p>
+                        <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
                           {getProjectName(projects, t.projectId)} · {assigneeName}
                         </p>
                       </div>
-                      <Badge variant="destructive" className="text-[9px] shrink-0">
+                      <span className="shrink-0 text-[11px] font-medium text-red-400">
                         {Math.abs(hoursUntilDue(t.due_date!))}h overdue
-                      </Badge>
+                      </span>
                     </button>
                   );
                 })}
@@ -626,287 +520,224 @@ export function DashboardGrid({
                   return (
                     <button
                       key={`stale-${t.id}`}
+                      type="button"
                       onClick={() => navigateTo('tickets')}
-                      className="w-full flex items-start gap-2.5 p-2.5 text-left rounded-lg border border-amber-500/20 bg-amber-500/5 hover:border-amber-500/40 transition-all"
+                      className="app-row w-full text-left"
                     >
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-foreground truncate">{t.title}</p>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[13px] font-medium text-foreground">
+                          {t.title}
+                        </p>
+                        <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
                           {getProjectName(projects, t.projectId)} · {assigneeName}
                         </p>
                       </div>
-                      <Badge className="text-[9px] shrink-0 bg-amber-500/15 text-amber-600 border-amber-500/20">
+                      <span className="shrink-0 text-[11px] font-medium text-amber-400">
                         {daysAgo(ref)}d stale
-                      </Badge>
+                      </span>
                     </button>
                   );
                 })}
-              </div>
+              </>
             )}
-          </CardContent>
-        </Card>
-
-        {/* Recent Activity Feed */}
-        <Card className="border-border/60 shadow-none lg:col-span-2">
-          <CardHeader className="pb-3 pt-5 px-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-muted-foreground" />
-                  Recent Activity
-                </CardTitle>
-                <CardDescription className="text-xs mt-0.5">
-                  Latest ticket updates across the org
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="px-5 pb-5 max-h-[280px] overflow-y-auto">
-            {recentActivity.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">No recent activity</p>
-            ) : (
-              <div className="space-y-1">
-                {recentActivity.map((item, i) => (
-                  <div
-                    key={`${item.ticketId}-${item.kind}-${i}`}
-                    className="flex items-center gap-3 py-2 px-2 rounded-lg hover:bg-muted/50 transition-colors"
-                  >
-                    <div
-                      className={cn(
-                        'h-7 w-7 rounded-full flex items-center justify-center shrink-0',
-                        item.kind === 'completed' ? 'bg-emerald-500/10' : 'bg-blue-500/10'
-                      )}
-                    >
-                      {item.kind === 'completed' ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                      ) : (
-                        <Circle className="h-3.5 w-3.5 text-blue-500" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-foreground">
-                        <span className="font-medium">{item.assigneeName}</span>{' '}
-                        <span className="text-muted-foreground">
-                          {item.kind === 'completed' ? 'completed' : 'created'}
-                        </span>{' '}
-                        <span className="font-medium">{item.title}</span>
-                      </p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">
-                        {item.projectName} · {formatRelativeTime(item.timestamp)}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Row 4: Projects with RAG + Member Workload */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Projects with RAG status */}
-        <Card
-          className="border-border/60 shadow-none bg-primary/[0.03] cursor-pointer hover:border-primary/30 transition-colors"
-          onClick={() => navigateTo('projects')}
-        >
-          <CardHeader className="pb-3 pt-5 px-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-sm font-semibold">Project Health</CardTitle>
-                <CardDescription className="text-xs mt-0.5">RAG status & progress</CardDescription>
-              </div>
-              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                <FolderKanban className="h-4 w-4 text-primary" />
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="px-5 pb-5">
-            {projects.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No projects yet.</p>
-            ) : (
-              <div className="space-y-2">
-                {projects.slice(0, 5).map((project) => {
-                  const pTickets = tickets.filter((t) => t.projectId === project.id);
-                  const pDone = pTickets.filter((t) => t.status === 'done').length;
-                  const pBlocked = pTickets.filter((t) => t.status === 'blocked').length;
-                  const pPct = pTickets.length ? Math.round((pDone / pTickets.length) * 100) : 0;
-                  const rag = ragStatus(pPct, pBlocked);
-                  const ragC = ragConfig[rag];
-                  return (
-                    <button
-                      key={project.id}
-                      onClick={(e) => handleProjectClick(project.id, e)}
-                      className="w-full text-left rounded-lg border border-border/60 bg-muted/50 p-3 hover:border-primary/30 hover:shadow-sm transition-all group"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className={cn('h-2 w-2 rounded-full shrink-0', ragC.dot)} />
-                          <p className="text-sm font-semibold text-foreground truncate">
-                            {project.name}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className={cn('text-[10px] font-medium', ragC.color)}>
-                            {ragC.label}
-                          </span>
-                          <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </div>
-                      </div>
-                      <Progress value={pPct} className="h-1 mb-1.5" />
-                      <div className="flex items-center justify-between">
-                        <p className="text-[11px] text-muted-foreground">
-                          {pDone}/{pTickets.length} done
-                        </p>
-                        {pBlocked > 0 && (
-                          <span className="text-[10px] text-red-500 font-medium flex items-center gap-1">
-                            <AlertCircle className="h-3 w-3" />
-                            {pBlocked} blocked
-                          </span>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Member Workload — enhanced */}
-        <Card
-          className="border-border/60 shadow-none lg:col-span-2 bg-purple-500/[0.03] cursor-pointer hover:border-purple-500/30 transition-colors"
-          onClick={() => navigateTo('members')}
-        >
-          <CardHeader className="pb-3 pt-5 px-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-sm font-semibold">Team Workload</CardTitle>
-                <CardDescription className="text-xs mt-0.5">
-                  Open tickets & completion per member
-                </CardDescription>
-              </div>
-              <div className="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                <Users className="h-4 w-4 text-purple-500" />
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="px-5 pb-5">
-            {orgMembers.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No members yet.</p>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {orgMembers.slice(0, 6).map((m) => {
-                  const memberTickets = tickets.filter(
-                    (t) => t.assignee_user_id === m.publicUserData?.userId
-                  );
-                  const open = memberTickets.filter((t) => t.status !== 'done').length;
-                  const done = memberTickets.filter((t) => t.status === 'done').length;
-                  const blocked = memberTickets.filter((t) => t.status === 'blocked').length;
-                  const inProgress = memberTickets.filter((t) => t.status === 'in_progress').length;
-                  const pct = memberTickets.length
-                    ? Math.round((done / memberTickets.length) * 100)
-                    : 0;
-                  const name = getMemberName(m);
-                  return (
-                    <div
-                      key={m.id}
-                      className="flex items-center gap-3 p-3 rounded-lg border border-border/60 bg-muted/50"
-                    >
-                      <Avatar className="h-8 w-8 shrink-0">
-                        <AvatarImage src={m.publicUserData?.imageUrl} />
-                        <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
-                          {name[0]?.toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-medium text-foreground truncate">
-                            {name}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground shrink-0 ml-2">
-                            {open} open · {done} done
-                          </span>
-                        </div>
-                        <Progress value={pct} className="h-1.5 mb-1" />
-                        <div className="flex items-center gap-2 text-[10px]">
-                          {inProgress > 0 && (
-                            <span className="text-blue-500 flex items-center gap-0.5">
-                              <Clock className="h-2.5 w-2.5" />
-                              {inProgress}
-                            </span>
-                          )}
-                          {blocked > 0 && (
-                            <span className="text-red-500 flex items-center gap-0.5">
-                              <AlertCircle className="h-2.5 w-2.5" />
-                              {blocked}
-                            </span>
-                          )}
-                          {open === 0 && done === 0 && (
-                            <span className="text-muted-foreground">No tickets</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Row 5: Meetings (retained) */}
-      <Card
-        className="border-border/60 shadow-none bg-blue-500/[0.03] cursor-pointer hover:border-blue-500/30 transition-colors"
-        onClick={() => navigateTo('meetings')}
-      >
-        <CardHeader className="pb-3 pt-5 px-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-sm font-semibold">Recent Meetings</CardTitle>
-              <CardDescription className="text-xs mt-0.5">Click to view details</CardDescription>
-            </div>
-            <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
-              <Video className="h-4 w-4 text-blue-500" />
-            </div>
           </div>
-        </CardHeader>
-        <CardContent className="px-5 pb-5">
-          {meetings.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No meetings yet.</p>
+        </section>
+
+        <section className="app-panel app-panel-pad lg:col-span-2">
+          <div className="mb-4">
+            <h3 className="app-section-label">Recent activity</h3>
+            <p className="app-section-hint">Latest updates across the org</p>
+          </div>
+          <div className="max-h-[280px] space-y-0.5 overflow-y-auto">
+            {recentActivity.length === 0 ? (
+              <p className="py-8 text-center text-[13px] text-muted-foreground">
+                No recent activity
+              </p>
+            ) : (
+              recentActivity.map((item, i) => (
+                <div key={`${item.ticketId}-${item.kind}-${i}`} className="app-row">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/[0.06]">
+                    {item.kind === 'completed' ? (
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                    ) : (
+                      <Circle className="h-3.5 w-3.5 text-foreground/50" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13px] text-foreground">
+                      <span className="font-medium">{item.assigneeName}</span>{' '}
+                      <span className="text-muted-foreground">
+                        {item.kind === 'completed' ? 'completed' : 'created'}
+                      </span>{' '}
+                      <span className="font-medium">{item.title}</span>
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      {item.projectName} · {formatRelativeTime(item.timestamp)}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
+        <section className="app-panel app-panel-pad">
+          <button
+            type="button"
+            onClick={() => navigateTo('projects')}
+            className="mb-4 flex w-full items-start justify-between text-left"
+          >
+            <div>
+              <h3 className="app-section-label">Project health</h3>
+              <p className="app-section-hint">Progress and risk</p>
+            </div>
+            <ArrowUpRight className="mt-0.5 h-4 w-4 text-muted-foreground" />
+          </button>
+          {projects.length === 0 ? (
+            <p className="text-[13px] text-muted-foreground">No projects yet.</p>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-              {meetings.slice(0, 6).map((meeting) => (
-                <button
-                  key={meeting.id}
-                  onClick={(e) => handleMeetingClick(meeting.id, e)}
-                  className="w-full flex items-center gap-3 p-3 text-left rounded-lg border border-border/60 bg-muted/50 hover:border-primary/30 hover:shadow-sm transition-all group"
-                >
-                  <div className="h-9 w-9 rounded-md bg-primary/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                    <Video className="h-4 w-4 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">
-                      {meeting.projectName}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {meeting.platform} · {new Date(meeting.date).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <Badge
-                    variant={meeting.status === 'completed' ? 'default' : 'secondary'}
-                    className="text-[10px] shrink-0"
+            <div className="space-y-1">
+              {projects.slice(0, 5).map((project) => {
+                const pTickets = tickets.filter((t) => t.projectId === project.id);
+                const pDone = pTickets.filter((t) => t.status === 'done').length;
+                const pBlocked = pTickets.filter((t) => t.status === 'blocked').length;
+                const pPct = pTickets.length ? Math.round((pDone / pTickets.length) * 100) : 0;
+                const rag = ragStatus(pPct, pBlocked);
+                const ragC = ragConfig[rag];
+                return (
+                  <button
+                    key={project.id}
+                    type="button"
+                    onClick={(e) => handleProjectClick(project.id, e)}
+                    className="app-row group w-full text-left"
                   >
-                    {meeting.status}
-                  </Badge>
-                  <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                </button>
-              ))}
+                    <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', ragC.dot)} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="truncate text-[13px] font-medium text-foreground">
+                          {project.name}
+                        </p>
+                        <span className={cn('shrink-0 text-[11px]', ragC.color)}>{ragC.label}</span>
+                      </div>
+                      <div className="mt-2 flex items-center gap-2">
+                        <Progress value={pPct} className="h-1 flex-1" />
+                        <span className="text-[11px] tabular-nums text-muted-foreground">
+                          {pDone}/{pTickets.length}
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </section>
+
+        <section className="app-panel app-panel-pad lg:col-span-2">
+          <button
+            type="button"
+            onClick={() => navigateTo('members')}
+            className="mb-4 flex w-full items-start justify-between text-left"
+          >
+            <div>
+              <h3 className="app-section-label">Team workload</h3>
+              <p className="app-section-hint">Open tickets and completion</p>
+            </div>
+            <ArrowUpRight className="mt-0.5 h-4 w-4 text-muted-foreground" />
+          </button>
+          {orgMembers.length === 0 ? (
+            <p className="text-[13px] text-muted-foreground">No members yet.</p>
+          ) : (
+            <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+              {orgMembers.slice(0, 6).map((m) => {
+                const memberTickets = tickets.filter(
+                  (t) => t.assignee_user_id === m.publicUserData?.userId
+                );
+                const open = memberTickets.filter((t) => t.status !== 'done').length;
+                const done = memberTickets.filter((t) => t.status === 'done').length;
+                const blocked = memberTickets.filter((t) => t.status === 'blocked').length;
+                const inProgress = memberTickets.filter((t) => t.status === 'in_progress').length;
+                const pct = memberTickets.length
+                  ? Math.round((done / memberTickets.length) * 100)
+                  : 0;
+                const name = getMemberName(m);
+                return (
+                  <div key={m.id} className="app-row">
+                    <Avatar className="h-8 w-8 shrink-0">
+                      <AvatarImage src={m.publicUserData?.imageUrl} />
+                      <AvatarFallback className="bg-white/[0.08] text-[11px] text-foreground">
+                        {name[0]?.toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1.5 flex items-center justify-between gap-2">
+                        <span className="truncate text-[13px] font-medium text-foreground">
+                          {name}
+                        </span>
+                        <span className="shrink-0 text-[11px] text-muted-foreground">
+                          {open} open
+                        </span>
+                      </div>
+                      <Progress value={pct} className="h-1" />
+                      <div className="mt-1.5 flex gap-3 text-[11px] text-muted-foreground">
+                        {inProgress > 0 && <span>{inProgress} active</span>}
+                        {blocked > 0 && <span className="text-red-400">{blocked} blocked</span>}
+                        {done > 0 && <span>{done} done</span>}
+                        {open === 0 && done === 0 && <span>No tickets</span>}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      </div>
+
+      <section className="app-panel app-panel-pad">
+        <button
+          type="button"
+          onClick={() => navigateTo('meetings')}
+          className="mb-4 flex w-full items-start justify-between text-left"
+        >
+          <div>
+            <h3 className="app-section-label">Recent meetings</h3>
+            <p className="app-section-hint">Open a session to review tickets</p>
+          </div>
+          <ArrowUpRight className="mt-0.5 h-4 w-4 text-muted-foreground" />
+        </button>
+        {meetings.length === 0 ? (
+          <p className="text-[13px] text-muted-foreground">No meetings yet.</p>
+        ) : (
+          <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
+            {meetings.slice(0, 6).map((meeting) => (
+              <button
+                key={meeting.id}
+                type="button"
+                onClick={(e) => handleMeetingClick(meeting.id, e)}
+                className="app-row group w-full text-left"
+              >
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/[0.06]">
+                  <Video className="h-4 w-4 text-foreground/70" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[13px] font-medium text-foreground">
+                    {meeting.projectName}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    {meeting.platform} · {new Date(meeting.date).toLocaleDateString()}
+                  </p>
+                </div>
+                <span className="shrink-0 text-[11px] capitalize text-muted-foreground">
+                  {meeting.status.replace('_', ' ')}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

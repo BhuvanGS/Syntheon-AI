@@ -591,18 +591,19 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
           if (!open) setTicketToEdit(null);
         }}
       >
-        <DialogContent className="sm:max-w-2xl border-border bg-background shadow-2xl">
-          <DialogHeader>
-            <DialogTitle className="font-playfair text-2xl text-foreground">
-              Update ticket
+        <DialogContent className="app flex max-h-[90vh] w-[calc(100%-2rem)] flex-col gap-0 overflow-hidden rounded-2xl border-border bg-background p-0 sm:max-w-2xl">
+          <DialogHeader className="shrink-0 space-y-0 border-b border-border px-6 py-5 text-left sm:px-8">
+            <p className="app-eyebrow">Ticket</p>
+            <DialogTitle className="mt-1.5 text-xl font-semibold tracking-[-0.02em] text-foreground">
+              Edit ticket
             </DialogTitle>
-            <DialogDescription className="text-muted-foreground">
-              Edit title, description, assignee, and status before confirming.
+            <DialogDescription className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
+              Update title, description, assignee, and status.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-2">
-            <div className="space-y-1">
+          <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-6 py-6 sm:px-8">
+            <div className="app-field">
               <input
                 value={ticketEditForm.title}
                 onChange={(e) =>
@@ -612,12 +613,14 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
                   }))
                 }
                 placeholder="Ticket title"
-                className="w-full text-xl font-semibold bg-transparent border-none outline-none text-foreground placeholder:text-muted-foreground/50 px-0 focus:ring-0"
+                className="w-full border-none bg-transparent px-0 text-[1.5rem] font-semibold tracking-[-0.03em] text-foreground outline-none placeholder:text-muted-foreground/40 focus:ring-0"
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Description</label>
+            <div className="app-field">
+              <div className="app-field-head">
+                <label className="app-field-label">Description</label>
+              </div>
               <Textarea
                 value={ticketEditForm.description}
                 onChange={(e) =>
@@ -627,21 +630,25 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
                   }))
                 }
                 placeholder="Describe the ticket"
-                className="min-h-24"
+                className="min-h-28 rounded-xl"
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Assignee</label>
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <div className="app-field">
+                <div className="app-field-head">
+                  <label className="app-field-label">Assignee</label>
+                </div>
                 <AssigneePicker
                   value={ticketEditForm.assignee}
                   onChange={(val) => setTicketEditForm((prev) => ({ ...prev, assignee: val }))}
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Status</label>
+              <div className="app-field">
+                <div className="app-field-head">
+                  <label className="app-field-label">Status</label>
+                </div>
                 <Select
                   value={ticketEditForm.status}
                   onValueChange={(value) =>
@@ -651,7 +658,7 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
                     }))
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-10 w-full rounded-xl border-border bg-background dark:bg-background hover:bg-white/[0.04] dark:hover:bg-white/[0.04]">
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -678,7 +685,7 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
             </div>
 
             {ticketToEdit && (
-              <div className="border-t border-border/60 pt-4">
+              <div className="app-panel app-panel-pad">
                 <TicketDependencyPanel
                   ticketId={ticketToEdit.id}
                   projectId={ticketToEdit.projectId ?? meetingData?.projectId}
@@ -692,37 +699,39 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
             )}
           </div>
 
-          <DialogFooter className="pt-2">
+          <DialogFooter className="shrink-0 flex-row items-center justify-between gap-3 border-t border-border px-6 py-4 sm:px-8 sm:justify-between">
             <Button
               type="button"
-              variant="destructive"
+              variant="ghost"
               onClick={() => {
                 if (!ticketToEdit) return;
                 setTicketToDelete(ticketToEdit.id);
                 setTicketToEdit(null);
               }}
-              className="rounded-full"
+              className="rounded-full text-red-400 hover:bg-red-500/10 hover:text-red-300"
               disabled={Boolean(savingTicketId)}
             >
-              Delete ticket
+              Delete
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setTicketToEdit(null)}
-              className="rounded-full"
-              disabled={Boolean(savingTicketId)}
-            >
-              Discard changes
-            </Button>
-            <Button
-              type="button"
-              onClick={handleSaveTicketEdit}
-              className="rounded-full"
-              disabled={Boolean(savingTicketId) || ticketEditForm.title.trim().length === 0}
-            >
-              Confirm changes
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setTicketToEdit(null)}
+                className="rounded-full"
+                disabled={Boolean(savingTicketId)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSaveTicketEdit}
+                className="rounded-full"
+                disabled={Boolean(savingTicketId) || ticketEditForm.title.trim().length === 0}
+              >
+                Save changes
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

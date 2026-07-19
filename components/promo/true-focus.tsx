@@ -195,10 +195,7 @@ export default function TrueFocus({
   );
 }
 
-function corner(
-  borderColor: string,
-  pos: 'tl' | 'tr' | 'bl' | 'br'
-): CSSProperties {
+function corner(borderColor: string, pos: 'tl' | 'tr' | 'bl' | 'br'): CSSProperties {
   const base: CSSProperties = {
     position: 'absolute',
     width: 14,
@@ -209,8 +206,7 @@ function corner(
     borderWidth: 0,
     filter: `drop-shadow(0 0 4px ${borderColor})`,
   };
-  if (pos === 'tl')
-    return { ...base, top: -10, left: -10, borderTopWidth: 3, borderLeftWidth: 3 };
+  if (pos === 'tl') return { ...base, top: -10, left: -10, borderTopWidth: 3, borderLeftWidth: 3 };
   if (pos === 'tr')
     return { ...base, top: -10, right: -10, borderTopWidth: 3, borderRightWidth: 3 };
   if (pos === 'bl')

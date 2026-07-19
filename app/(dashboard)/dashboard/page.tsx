@@ -7,15 +7,9 @@ import {
   Video,
   Ticket,
   CheckCircle2,
-  ArrowUpRight,
   Users,
-  BarChart3,
   Clock,
   AlertCircle,
-  Plus,
-  TrendingUp,
-  TrendingDown,
-  Activity,
   CalendarClock,
   Flame,
   Circle,
@@ -374,7 +368,7 @@ function DashboardContent() {
   const orgMembers = memberships?.data ?? [];
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="app flex h-screen bg-background">
       <Sidebar
         currentView={currentView}
         projects={projects}
@@ -383,20 +377,19 @@ function DashboardContent() {
         onCreateProject={() => setIsProjectCreateOpen(true)}
       />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top header bar */}
-        <header className="h-14 border-b border-border flex items-center justify-between px-6 shrink-0 bg-background">
-          <h1 className="text-sm font-semibold text-foreground">
-            {currentView === 'dashboard' && (isAdmin ? 'Organization Dashboard' : 'My Dashboard')}
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-6 sm:px-8">
+          <h1 className="text-[13px] font-medium tracking-[-0.01em] text-muted-foreground">
+            {currentView === 'dashboard' && (isAdmin ? 'Organization' : 'Home')}
             {currentView === 'meetings' && 'Meetings'}
             {currentView === 'projects' && 'Projects'}
-            {currentView === 'tickets' && 'All Tickets'}
+            {currentView === 'tickets' && 'Tickets'}
             {currentView === 'members' && 'Members'}
             {currentView === 'calendar' && 'Future Viz'}
-            {currentView === 'ticket-detail' && 'Meeting Tickets'}
+            {currentView === 'ticket-detail' && 'Meeting tickets'}
             {currentView === 'feedback' && 'Feedback'}
           </h1>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <NotificationBell onNavigateToTicket={() => handleViewChange('tickets')} />
             <DynamicIslandSearch
               onSelectTicket={(id) => {
@@ -417,7 +410,7 @@ function DashboardContent() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-auto animate-fade-in-up">
+        <main className="flex-1 overflow-auto">
           {/* ── ADMIN DASHBOARD ── */}
           {currentView === 'dashboard' && isAdmin && (
             <DashboardGrid
@@ -431,283 +424,210 @@ function DashboardContent() {
 
           {/* ── MEMBER DASHBOARD ── */}
           {currentView === 'dashboard' && !isAdmin && (
-            <div className="p-6 space-y-5 max-w-4xl mx-auto w-full">
-              <div>
-                <h2 className="text-xl font-semibold text-foreground">
-                  Hey {user?.firstName ?? 'there'}
-                </h2>
-                <p className="text-sm text-muted-foreground mt-0.5">Here's your work at a glance</p>
-              </div>
+            <div className="app-page max-w-4xl">
+              <header>
+                <p className="app-eyebrow">Personal</p>
+                <h2 className="app-title mt-2">Hey {user?.firstName ?? 'there'}</h2>
+                <p className="app-subtitle">
+                  Your work at a glance — tickets, deadlines, and projects.
+                </p>
+              </header>
 
-              {/* My KPI Stats */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
                 {[
                   {
-                    label: 'My Tickets',
+                    label: 'My tickets',
                     value: myTickets.length,
                     sub: `${myBacklog} in backlog`,
-                    Icon: Ticket,
-                    color: 'text-orange-500',
-                    bg: 'bg-orange-500/5',
                   },
                   {
-                    label: 'In Progress',
+                    label: 'In progress',
                     value: myInProgress,
-                    sub: `${myBlocked} blocked`,
-                    Icon: Clock,
-                    color: myBlocked > 0 ? 'text-red-500' : 'text-blue-500',
-                    bg: myBlocked > 0 ? 'bg-red-500/5' : 'bg-blue-500/5',
+                    sub: myBlocked > 0 ? `${myBlocked} blocked` : 'None blocked',
+                    alert: myBlocked > 0,
                   },
                   {
-                    label: 'Completed (7d)',
+                    label: 'Completed · 7d',
                     value: myLast7Completed,
                     sub: `${myDone} all-time`,
-                    Icon: CheckCircle2,
-                    color: 'text-emerald-500',
-                    bg: 'bg-emerald-500/5',
                   },
                   {
                     label: 'Overdue',
                     value: myOverdue,
                     sub: myOverdue > 0 ? 'Needs attention' : 'All on time',
-                    Icon: AlertCircle,
-                    color: myOverdue > 0 ? 'text-red-500' : 'text-emerald-500',
-                    bg: myOverdue > 0 ? 'bg-red-500/5' : 'bg-emerald-500/5',
+                    alert: myOverdue > 0,
                   },
-                ].map(({ label, value, sub, Icon, color, bg }) => (
-                  <Card key={label} className={cn('border-border/60 shadow-none', bg)}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs text-muted-foreground font-medium">{label}</span>
-                        <Icon className={cn('h-4 w-4', color)} />
-                      </div>
-                      <p className="text-2xl font-semibold text-foreground">{value}</p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">{sub}</p>
-                    </CardContent>
-                  </Card>
+                ].map(({ label, value, sub, alert }) => (
+                  <div key={label} className="app-kpi">
+                    <span className="app-kpi-label">{label}</span>
+                    <p className={cn('app-kpi-value', alert && 'text-red-400')}>{value}</p>
+                    <p className="app-kpi-sub">{sub}</p>
+                  </div>
                 ))}
               </div>
 
-              {/* Blocked alert */}
               {myBlocked > 0 && (
-                <Card className="border-red-500/30 shadow-none bg-red-500/[0.03]">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Flame className="h-4 w-4 text-red-500" />
-                      <span className="text-sm font-semibold text-foreground">
-                        {myBlocked} ticket{myBlocked > 1 ? 's' : ''} blocked
-                      </span>
-                    </div>
-                    <div className="space-y-1.5">
-                      {myTickets
-                        .filter((t) => t.status === 'blocked')
-                        .slice(0, 3)
-                        .map((t) => (
-                          <div key={t.id} className="flex items-center gap-2 text-xs">
-                            <AlertCircle className="h-3.5 w-3.5 text-red-500 shrink-0" />
-                            <span className="text-foreground truncate flex-1">{t.title}</span>
-                            <span className="text-muted-foreground shrink-0">
-                              {projects.find((p) => p.id === t.projectId)?.name ?? 'Unassigned'}
-                            </span>
-                          </div>
-                        ))}
-                    </div>
-                  </CardContent>
-                </Card>
+                <section className="app-panel app-panel-pad">
+                  <h3 className="app-section-label">
+                    {myBlocked} ticket{myBlocked > 1 ? 's' : ''} blocked
+                  </h3>
+                  <p className="app-section-hint">Unblock these to keep momentum</p>
+                  <div className="mt-3 space-y-0.5">
+                    {myTickets
+                      .filter((t) => t.status === 'blocked')
+                      .slice(0, 3)
+                      .map((t) => (
+                        <div key={t.id} className="app-row">
+                          <AlertCircle className="h-3.5 w-3.5 shrink-0 text-red-400" />
+                          <span className="min-w-0 flex-1 truncate text-[13px] text-foreground">
+                            {t.title}
+                          </span>
+                          <span className="shrink-0 text-[11px] text-muted-foreground">
+                            {projects.find((p) => p.id === t.projectId)?.name ?? 'Unassigned'}
+                          </span>
+                        </div>
+                      ))}
+                  </div>
+                </section>
               )}
 
-              {/* Upcoming Deadlines + Recent Activity */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                {/* Upcoming Deadlines */}
-                <Card className="border-border/60 shadow-none">
-                  <CardHeader className="pb-3 pt-5 px-5">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                          <CalendarClock className="h-4 w-4 text-muted-foreground" />
-                          Upcoming Deadlines
-                        </CardTitle>
-                        <CardDescription className="text-xs mt-0.5">
-                          Next due tickets
-                        </CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="px-5 pb-5">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5">
+                <section className="app-panel app-panel-pad">
+                  <h3 className="app-section-label">Upcoming deadlines</h3>
+                  <p className="app-section-hint">Next due tickets</p>
+                  <div className="mt-3 space-y-0.5">
                     {myUpcoming.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-6 text-center">
-                        <CheckCircle2 className="h-7 w-7 text-emerald-500/50 mb-2" />
-                        <p className="text-sm text-muted-foreground">No upcoming deadlines</p>
+                      <div className="flex flex-col items-center justify-center py-8 text-center">
+                        <CheckCircle2 className="mb-2 h-6 w-6 text-emerald-400/60" />
+                        <p className="text-[13px] text-muted-foreground">No upcoming deadlines</p>
                       </div>
                     ) : (
-                      <div className="space-y-2">
-                        {myUpcoming.map((t) => {
-                          const daysLeft = Math.ceil(
-                            (new Date(t.due_date!).getTime() - Date.now()) / 86400000
-                          );
-                          return (
-                            <div
-                              key={t.id}
-                              className="flex items-center gap-3 p-2.5 rounded-lg border border-border/60 bg-card"
+                      myUpcoming.map((t) => {
+                        const daysLeft = Math.ceil(
+                          (new Date(t.due_date!).getTime() - Date.now()) / 86400000
+                        );
+                        return (
+                          <div key={t.id} className="app-row">
+                            <span
+                              className={cn(
+                                'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[11px] font-semibold tabular-nums',
+                                daysLeft <= 1
+                                  ? 'bg-red-500/10 text-red-400'
+                                  : daysLeft <= 3
+                                    ? 'bg-amber-500/10 text-amber-400'
+                                    : 'bg-white/[0.06] text-foreground'
+                              )}
                             >
-                              <div
-                                className={cn(
-                                  'h-8 w-8 rounded-lg flex items-center justify-center shrink-0 text-[10px] font-bold',
-                                  daysLeft <= 1
-                                    ? 'bg-red-500/10 text-red-500'
-                                    : daysLeft <= 3
-                                      ? 'bg-amber-500/10 text-amber-500'
-                                      : 'bg-blue-500/10 text-blue-500'
-                                )}
-                              >
-                                {daysLeft}d
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-xs font-medium text-foreground truncate">
-                                  {t.title}
-                                </p>
-                                <p className="text-[10px] text-muted-foreground mt-0.5">
-                                  {projects.find((p) => p.id === t.projectId)?.name ?? 'Unassigned'}{' '}
-                                  · {new Date(t.due_date!).toLocaleDateString()}
-                                </p>
-                              </div>
+                              {daysLeft}d
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-[13px] font-medium text-foreground">
+                                {t.title}
+                              </p>
+                              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                                {projects.find((p) => p.id === t.projectId)?.name ?? 'Unassigned'} ·{' '}
+                                {new Date(t.due_date!).toLocaleDateString()}
+                              </p>
                             </div>
-                          );
-                        })}
-                      </div>
+                          </div>
+                        );
+                      })
                     )}
-                  </CardContent>
-                </Card>
+                  </div>
+                </section>
 
-                {/* Recent Activity */}
-                <Card className="border-border/60 shadow-none">
-                  <CardHeader className="pb-3 pt-5 px-5">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                          <Activity className="h-4 w-4 text-muted-foreground" />
-                          My Recent Activity
-                        </CardTitle>
-                        <CardDescription className="text-xs mt-0.5">
-                          Latest ticket updates
-                        </CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="px-5 pb-5 max-h-[240px] overflow-y-auto">
+                <section className="app-panel app-panel-pad">
+                  <h3 className="app-section-label">Recent activity</h3>
+                  <p className="app-section-hint">Your latest ticket updates</p>
+                  <div className="mt-3 max-h-[240px] space-y-0.5 overflow-y-auto">
                     {myRecentActivity.length === 0 ? (
-                      <p className="text-sm text-muted-foreground py-4 text-center">
+                      <p className="py-8 text-center text-[13px] text-muted-foreground">
                         No recent activity
                       </p>
                     ) : (
-                      <div className="space-y-1">
-                        {myRecentActivity.map((item, i) => (
-                          <div
-                            key={`${item.id}-${i}`}
-                            className="flex items-center gap-3 py-2 px-2 rounded-lg hover:bg-muted/50 transition-colors"
-                          >
-                            <div
-                              className={cn(
-                                'h-6 w-6 rounded-full flex items-center justify-center shrink-0',
-                                item.kind === 'completed' ? 'bg-emerald-500/10' : 'bg-blue-500/10'
-                              )}
-                            >
-                              {item.kind === 'completed' ? (
-                                <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                              ) : (
-                                <Circle className="h-3 w-3 text-blue-500" />
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs text-foreground">
-                                <span className="text-muted-foreground">{item.kind}</span>{' '}
-                                <span className="font-medium">{item.title}</span>
-                              </p>
-                              <p className="text-[10px] text-muted-foreground mt-0.5">
-                                {item.projectName}
-                              </p>
-                            </div>
+                      myRecentActivity.map((item, i) => (
+                        <div key={`${item.id}-${i}`} className="app-row">
+                          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/[0.06]">
+                            {item.kind === 'completed' ? (
+                              <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                            ) : (
+                              <Circle className="h-3 w-3 text-foreground/50" />
+                            )}
                           </div>
-                        ))}
-                      </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-[13px] text-foreground">
+                              <span className="text-muted-foreground">{item.kind}</span>{' '}
+                              <span className="font-medium">{item.title}</span>
+                            </p>
+                            <p className="mt-0.5 text-[11px] text-muted-foreground">
+                              {item.projectName}
+                            </p>
+                          </div>
+                        </div>
+                      ))
                     )}
-                  </CardContent>
-                </Card>
+                  </div>
+                </section>
               </div>
 
-              {/* My Tickets */}
-              <Card className="border-border/60 shadow-none">
-                <CardHeader className="pb-3 pt-5 px-5">
-                  <CardTitle className="text-sm font-semibold">My Tickets</CardTitle>
-                  <CardDescription className="text-xs mt-0.5">
-                    Tickets assigned to you
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="px-5 pb-5">
+              <section className="app-panel app-panel-pad">
+                <h3 className="app-section-label">My tickets</h3>
+                <p className="app-section-hint">Assigned to you</p>
+                <div className="mt-3 space-y-0.5">
                   {myTickets.length === 0 ? (
-                    <div className="border border-dashed border-border rounded-lg p-8 text-center">
-                      <Ticket className="h-7 w-7 text-muted-foreground/40 mx-auto mb-2" />
-                      <p className="text-sm text-muted-foreground">
+                    <div className="rounded-xl border border-dashed border-border px-6 py-10 text-center">
+                      <Ticket className="mx-auto mb-2 h-6 w-6 text-muted-foreground/40" />
+                      <p className="text-[13px] text-muted-foreground">
                         No tickets assigned to you yet.
                       </p>
                     </div>
                   ) : (
-                    <div className="space-y-2">
-                      {myTickets.slice(0, 8).map((ticket) => (
-                        <div
-                          key={ticket.id}
-                          className="flex items-center gap-3 p-2.5 rounded-lg border border-border/60 bg-card"
-                        >
-                          <Badge
-                            variant="outline"
-                            className={cn('text-[10px] shrink-0', {
-                              'border-emerald-300 text-emerald-600 bg-emerald-50':
-                                ticket.status === 'done',
-                              'border-blue-300 text-blue-600 bg-blue-50':
-                                ticket.status === 'in_progress',
-                              'border-red-300 text-red-600 bg-red-50': ticket.status === 'blocked',
-                              'border-border text-muted-foreground': ticket.status === 'backlog',
-                            })}
-                          >
-                            {ticket.status.replace('_', ' ')}
-                          </Badge>
-                          <p className="text-sm text-foreground truncate flex-1">{ticket.title}</p>
-                          {ticket.due_date && (
-                            <span
-                              className={cn(
-                                'text-[11px] shrink-0 flex items-center gap-1',
-                                new Date(ticket.due_date) < new Date() && ticket.status !== 'done'
-                                  ? 'text-red-500'
-                                  : 'text-muted-foreground'
-                              )}
-                            >
-                              <Clock className="h-3 w-3" />
-                              {new Date(ticket.due_date).toLocaleDateString()}
-                            </span>
+                    myTickets.slice(0, 8).map((ticket) => (
+                      <div key={ticket.id} className="app-row">
+                        <span
+                          className={cn(
+                            'shrink-0 text-[11px] font-medium capitalize',
+                            ticket.status === 'done' && 'text-emerald-400',
+                            ticket.status === 'in_progress' && 'text-foreground',
+                            ticket.status === 'blocked' && 'text-red-400',
+                            ticket.status === 'backlog' && 'text-muted-foreground'
                           )}
-                        </div>
-                      ))}
-                    </div>
+                        >
+                          {ticket.status.replace('_', ' ')}
+                        </span>
+                        <p className="min-w-0 flex-1 truncate text-[13px] text-foreground">
+                          {ticket.title}
+                        </p>
+                        {ticket.due_date && (
+                          <span
+                            className={cn(
+                              'flex shrink-0 items-center gap-1 text-[11px]',
+                              new Date(ticket.due_date) < new Date() && ticket.status !== 'done'
+                                ? 'text-red-400'
+                                : 'text-muted-foreground'
+                            )}
+                          >
+                            <Clock className="h-3 w-3" />
+                            {new Date(ticket.due_date).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                    ))
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </section>
 
-              {/* My Projects */}
-              <Card className="border-border/60 shadow-none">
-                <CardHeader className="pb-3 pt-5 px-5">
-                  <CardTitle className="text-sm font-semibold">My Projects</CardTitle>
-                  <CardDescription className="text-xs mt-0.5">
-                    Projects you're part of
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="px-5 pb-5">
+              <section className="app-panel app-panel-pad">
+                <h3 className="app-section-label">My projects</h3>
+                <p className="app-section-hint">Projects you&apos;re part of</p>
+                <div className="mt-3">
                   {projects.length === 0 ? (
-                    <div className="border border-dashed border-border rounded-lg p-6 text-center">
-                      <FolderKanban className="h-6 w-6 text-muted-foreground/40 mx-auto mb-2" />
-                      <p className="text-sm text-muted-foreground">No projects assigned yet.</p>
+                    <div className="rounded-xl border border-dashed border-border px-6 py-8 text-center">
+                      <FolderKanban className="mx-auto mb-2 h-6 w-6 text-muted-foreground/40" />
+                      <p className="text-[13px] text-muted-foreground">No projects assigned yet.</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
                       {projects.slice(0, 4).map((project) => {
                         const pTickets = myTickets.filter((t) => t.projectId === project.id);
                         const pDone = pTickets.filter((t) => t.status === 'done').length;
@@ -717,37 +637,36 @@ function DashboardContent() {
                         return (
                           <button
                             key={project.id}
+                            type="button"
                             onClick={() => handleProjectSelect(project.id)}
-                            className="text-left rounded-lg border border-border/60 bg-card p-4 hover:border-primary/40 hover:shadow-sm transition-all"
+                            className="app-row w-full text-left"
                           >
-                            <div className="flex items-center gap-2.5 mb-2">
-                              <div className="h-7 w-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
-                                <FolderKanban className="h-3.5 w-3.5 text-primary" />
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <p className="text-sm font-semibold text-foreground truncate">
-                                  {project.name}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {pTickets.length} tickets assigned to me
-                                </p>
-                              </div>
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/[0.06]">
+                              <FolderKanban className="h-3.5 w-3.5 text-foreground/70" />
                             </div>
-                            {pTickets.length > 0 && (
-                              <>
-                                <Progress value={pPct} className="h-1 mb-1" />
-                                <p className="text-[10px] text-muted-foreground">
-                                  {pDone}/{pTickets.length} done
-                                </p>
-                              </>
-                            )}
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-[13px] font-medium text-foreground">
+                                {project.name}
+                              </p>
+                              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                                {pTickets.length} tickets assigned to me
+                              </p>
+                              {pTickets.length > 0 && (
+                                <div className="mt-2 flex items-center gap-2">
+                                  <Progress value={pPct} className="h-1 flex-1" />
+                                  <span className="text-[11px] tabular-nums text-muted-foreground">
+                                    {pDone}/{pTickets.length}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
                           </button>
                         );
                       })}
                     </div>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </section>
             </div>
           )}
 
@@ -1049,65 +968,60 @@ function DashboardContent() {
 
           {/* ── MEETINGS ── */}
           {currentView === 'meetings' && (
-            <div className="p-6">
-              <div className="max-w-5xl mx-auto">
-                <div className="mb-5">
-                  <h2 className="text-xl font-semibold text-foreground">Meetings</h2>
-                  <p className="text-sm text-muted-foreground mt-0.5">
-                    All your recorded meeting sessions
-                  </p>
-                </div>
-                <MeetingCards
-                  onSelectMeeting={handleMeetingSelect}
-                  onCreateTicket={handleMeetingTicketCreate}
-                />
-              </div>
+            <div className="app-page max-w-5xl">
+              <header>
+                <p className="app-eyebrow">Workspace</p>
+                <h2 className="app-title mt-2">Meetings</h2>
+                <p className="app-subtitle">All your recorded meeting sessions.</p>
+              </header>
+              <MeetingCards
+                onSelectMeeting={handleMeetingSelect}
+                onCreateTicket={handleMeetingTicketCreate}
+              />
             </div>
           )}
 
           {/* ── TICKETS ── */}
           {currentView === 'tickets' && (
-            <div className="p-6">
-              <div className="max-w-5xl mx-auto">
-                <div className="mb-5">
-                  <h2 className="text-xl font-semibold text-foreground">Tickets</h2>
-                  <p className="text-sm text-muted-foreground mt-0.5">
-                    All extracted tickets across every meeting
-                  </p>
+            <div className="app-page max-w-5xl">
+              <header className="space-y-5">
+                <div>
+                  <p className="app-eyebrow">Workspace</p>
+                  <h2 className="app-title mt-2">Tickets</h2>
+                  <p className="app-subtitle">All extracted tickets across every meeting.</p>
                 </div>
 
-                {/* Summary stats bar */}
-                <div className="flex items-center gap-2 mb-4 flex-wrap">
+                <div className="flex flex-wrap items-center gap-2">
                   {[
                     {
                       label: 'Total',
                       value: tickets.length,
                       color: 'text-foreground',
-                      bg: 'bg-muted',
+                      bg: 'bg-white/[0.06]',
                     },
                     {
                       label: 'In Progress',
                       value: tickets.filter((t) => t.status === 'in_progress').length,
-                      color: 'text-blue-600',
-                      bg: 'bg-blue-500/10',
+                      color: 'text-foreground',
+                      bg: 'bg-white/[0.06]',
                     },
                     {
                       label: 'Done',
                       value: tickets.filter((t) => t.status === 'done').length,
-                      color: 'text-emerald-600',
+                      color: 'text-emerald-400',
                       bg: 'bg-emerald-500/10',
                     },
                     {
                       label: 'Blocked',
                       value: tickets.filter((t) => t.status === 'blocked').length,
-                      color: 'text-red-600',
+                      color: 'text-red-400',
                       bg: 'bg-red-500/10',
                     },
                     {
                       label: 'Backlog',
                       value: tickets.filter((t) => t.status === 'backlog').length,
-                      color: 'text-amber-600',
-                      bg: 'bg-amber-500/10',
+                      color: 'text-muted-foreground',
+                      bg: 'bg-white/[0.06]',
                     },
                     {
                       label: 'Overdue',
@@ -1115,24 +1029,26 @@ function DashboardContent() {
                         (t) =>
                           t.due_date && new Date(t.due_date) < new Date() && t.status !== 'done'
                       ).length,
-                      color: 'text-red-600',
+                      color: 'text-red-400',
                       bg: 'bg-red-500/10',
                     },
                   ].map(({ label, value, color, bg }) => (
                     <div
                       key={label}
                       className={cn(
-                        'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium',
+                        'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium',
                         bg,
                         color
                       )}
                     >
                       {label}
-                      <span className="font-bold">{value}</span>
+                      <span className="font-semibold tabular-nums text-foreground">{value}</span>
                     </div>
                   ))}
                 </div>
+              </header>
 
+              <div className="mt-2">
                 <TicketsBoard
                   onSelectMeeting={handleMeetingSelect}
                   onSelectProject={handleProjectSelect}
@@ -1164,24 +1080,12 @@ function DashboardContent() {
 
           {/* ── PROJECTS ── */}
           {currentView === 'projects' && (
-            <div className="p-6 space-y-5 max-w-5xl mx-auto w-full">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold text-foreground">Projects</h2>
-                  <p className="text-sm text-muted-foreground mt-0.5">
-                    Manage your workspaces and teams
-                  </p>
-                </div>
-                {isAdmin && (
-                  <Button
-                    onClick={() => setIsProjectCreateOpen(true)}
-                    className="rounded-full gap-2"
-                  >
-                    <Plus className="h-4 w-4" />
-                    New project
-                  </Button>
-                )}
-              </div>
+            <div className="app-page max-w-5xl">
+              <header>
+                <p className="app-eyebrow">Workspace</p>
+                <h2 className="app-title mt-2">Projects</h2>
+                <p className="app-subtitle">Manage your workspaces and teams.</p>
+              </header>
               <ProjectsWorkspace
                 projects={projects}
                 meetings={meetings}

@@ -130,25 +130,31 @@ export function ProjectCreateDialog({ open, onOpenChange, onCreate }: ProjectCre
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-3">
-              <label className="text-sm font-medium text-foreground">Project name</label>
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Atlas Revamp"
-                className="bg-white"
-                autoFocus
-              />
-            </div>
+            <div className="space-y-5">
+              <div className="app-field">
+                <div className="app-field-head">
+                  <label className="app-field-label">Project name</label>
+                </div>
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Atlas Revamp"
+                  className="bg-white"
+                  autoFocus
+                />
+              </div>
 
-            <div className="space-y-3">
-              <label className="text-sm font-medium text-foreground">Context</label>
-              <Textarea
-                value={context}
-                onChange={(e) => setContext(e.target.value)}
-                placeholder="A short description of the project goals, scope, and constraints."
-                className="min-h-28 bg-white"
-              />
+              <div className="app-field">
+                <div className="app-field-head">
+                  <label className="app-field-label">Context</label>
+                </div>
+                <Textarea
+                  value={context}
+                  onChange={(e) => setContext(e.target.value)}
+                  placeholder="A short description of the project goals, scope, and constraints."
+                  className="min-h-28 bg-white"
+                />
+              </div>
             </div>
 
             {error && (

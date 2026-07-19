@@ -227,9 +227,11 @@ export function ManualTicketDialog({
             </div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-3">
-              <label className="text-sm font-medium text-foreground">Title</label>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="app-field">
+              <div className="app-field-head">
+                <label className="app-field-label">Title</label>
+              </div>
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -239,8 +241,10 @@ export function ManualTicketDialog({
               />
             </div>
 
-            <div className="space-y-3">
-              <label className="text-sm font-medium text-foreground">Description</label>
+            <div className="app-field">
+              <div className="app-field-head">
+                <label className="app-field-label">Description</label>
+              </div>
               <Textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -249,10 +253,12 @@ export function ManualTicketDialog({
               />
             </div>
 
-            <div className={`grid grid-cols-1 gap-4 ${projectOnly ? '' : 'sm:grid-cols-2'}`}>
+            <div className={`grid grid-cols-1 gap-5 ${projectOnly ? '' : 'sm:grid-cols-2'}`}>
               {!projectOnly && (
-                <div className="space-y-3">
-                  <label className="text-sm font-medium text-foreground">Meeting</label>
+                <div className="app-field">
+                  <div className="app-field-head">
+                    <label className="app-field-label">Meeting</label>
+                  </div>
                   <Select
                     value={resolvedMeetingId}
                     onValueChange={(value) => setMeetingId(value)}
@@ -278,8 +284,10 @@ export function ManualTicketDialog({
                 </div>
               )}
 
-              <div className="space-y-3">
-                <label className="text-sm font-medium text-foreground">Status</label>
+              <div className="app-field">
+                <div className="app-field-head">
+                  <label className="app-field-label">Status</label>
+                </div>
                 <Select value={status} onValueChange={(value) => setStatus(value as typeof status)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select status" />
@@ -294,24 +302,30 @@ export function ManualTicketDialog({
               </div>
             </div>
 
-            <div className="space-y-3">
-              <label className="text-sm font-medium text-foreground">Assignee</label>
+            <div className="app-field">
+              <div className="app-field-head">
+                <label className="app-field-label">Assignee</label>
+              </div>
               <AssigneePicker value={assignee} onChange={setAssignee} />
             </div>
 
-            <div className="border-t border-border/60 pt-3">
-              <p className="text-sm font-medium text-foreground mb-2">Properties</p>
-              <TicketMetadataEditor
-                priority={priority}
-                type={type}
-                estimate={estimate}
-                labels={labels}
-                onPriorityChange={setPriority}
-                onTypeChange={setType}
-                onEstimateChange={setEstimate}
-                onLabelsChange={setLabels}
-                availableLabels={availableLabels}
-              />
+            <div className="border-t border-border/60 pt-4">
+              <div className="app-field">
+                <div className="app-field-head">
+                  <p className="app-field-label">Properties</p>
+                </div>
+                <TicketMetadataEditor
+                  priority={priority}
+                  type={type}
+                  estimate={estimate}
+                  labels={labels}
+                  onPriorityChange={setPriority}
+                  onTypeChange={setType}
+                  onEstimateChange={setEstimate}
+                  onLabelsChange={setLabels}
+                  availableLabels={availableLabels}
+                />
+              </div>
             </div>
 
             {error && (

@@ -43,7 +43,7 @@ interface MentionEditorProps {
   tickets?: MentionTicket[];
 }
 
-// ─── Mark: @person (green pill) ─────────────────────────────────────────────
+// ─── Mark: @person ──────────────────────────────────────────────────────────
 const PersonMention = Mark.create({
   name: 'personMention',
   addAttributes() {
@@ -61,7 +61,7 @@ const PersonMention = Mark.create({
       {
         'data-mention-person': HTMLAttributes.userId,
         class:
-          'inline-flex items-center gap-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 text-xs font-medium mx-0.5 select-none',
+          'inline-flex items-center gap-0.5 rounded-full border border-border bg-white/[0.08] text-foreground px-2 py-0.5 text-xs font-medium mx-0.5 select-none',
       },
       0,
     ];
@@ -112,7 +112,7 @@ const TicketMention = Mark.create({
       {
         'data-mention-ticket': HTMLAttributes.ticketId,
         class:
-          'inline-flex items-center gap-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 px-2 py-0.5 text-xs font-medium mx-0.5 select-none',
+          'inline-flex items-center gap-0.5 rounded-full border border-border bg-white/[0.08] text-foreground px-2 py-0.5 text-xs font-medium mx-0.5 select-none',
       },
       0,
     ];
@@ -337,7 +337,7 @@ export function MentionEditor({
 
   if (!editor) {
     return (
-      <div className="min-h-[200px] border border-input bg-zinc-100 dark:bg-zinc-800 px-3 py-2 text-sm text-muted-foreground">
+      <div className="min-h-[200px] rounded-xl border border-border bg-background px-3 py-2 text-sm text-muted-foreground">
         Loading editor...
       </div>
     );
@@ -389,9 +389,12 @@ export function MentionEditor({
   };
 
   return (
-    <div ref={editorWrapRef} className="relative border border-input bg-zinc-100 dark:bg-zinc-800">
+    <div
+      ref={editorWrapRef}
+      className="relative overflow-hidden rounded-xl border border-border bg-background"
+    >
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-1 border-b border-input px-2 py-1">
+      <div className="flex flex-wrap items-center gap-1 border-b border-border bg-white/[0.02] px-2 py-1.5">
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleBold().run()}
           active={editor.isActive('bold')}
@@ -473,19 +476,19 @@ export function MentionEditor({
       {/* Editor body */}
       <EditorContent
         editor={editor}
-        className="px-3 py-2 [&_.ProseMirror]:min-h-[150px] [&_.ProseMirror]:outline-none [&_.ProseMirror]:relative [&_.ProseMirror_p.is-editor-empty:first-child]:relative [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_p.is-editor-empty:first-child::before]:absolute [&_.ProseMirror_p.is-editor-empty:first-child::before]:left-0 [&_.ProseMirror_p.is-editor-empty:first-child::before]:top-0 [&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-muted-foreground [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:my-2 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_blockquote]:border-l-4 [&_blockquote]:border-border [&_blockquote]:pl-4 [&_blockquote]:italic [&_code]:bg-muted [&_code]:px-1 [&_code]:rounded [&_a]:text-primary [&_a]:underline"
+        className="px-3 py-2 [&_.ProseMirror]:min-h-[150px] [&_.ProseMirror]:outline-none [&_.ProseMirror]:relative [&_.ProseMirror_p.is-editor-empty:first-child]:relative [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_p.is-editor-empty:first-child::before]:absolute [&_.ProseMirror_p.is-editor-empty:first-child::before]:left-0 [&_.ProseMirror_p.is-editor-empty:first-child::before]:top-0 [&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-muted-foreground [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:my-2 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:text-muted-foreground [&_code]:bg-muted [&_code]:px-1 [&_code]:rounded [&_a]:text-foreground [&_a]:underline"
       />
 
       {/* Hint strip */}
-      <div className="flex items-center gap-2 border-t border-input px-3 py-1.5">
-        <span className="text-[10px] text-muted-foreground">Type</span>
-        <span className="inline-flex items-center gap-0.5 rounded-full bg-green-100 text-green-700 px-2 py-0.5 text-[10px] font-medium select-none">
+      <div className="flex items-center gap-2 border-t border-border px-3 py-2">
+        <span className="text-[11px] text-muted-foreground">Type</span>
+        <span className="inline-flex items-center gap-0.5 rounded-full border border-border bg-white/[0.06] px-2 py-0.5 text-[10px] font-medium text-foreground select-none">
           <AtSign className="h-3 w-3" /> person
         </span>
-        <span className="inline-flex items-center gap-0.5 rounded-full bg-purple-100 text-purple-700 px-2 py-0.5 text-[10px] font-medium select-none">
+        <span className="inline-flex items-center gap-0.5 rounded-full border border-border bg-white/[0.06] px-2 py-0.5 text-[10px] font-medium text-foreground select-none">
           <Hash className="h-3 w-3" /> ticket
         </span>
-        <span className="text-[10px] text-muted-foreground">to mention</span>
+        <span className="text-[11px] text-muted-foreground">to mention</span>
       </div>
 
       {/* Mention popup */}
@@ -496,11 +499,11 @@ export function MentionEditor({
         >
           <div className="px-3 py-1.5 border-b border-border/60 flex items-center gap-1.5">
             {mentionType === '@' ? (
-              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-green-700">
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
                 <AtSign className="h-3 w-3" /> Mention person
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-purple-700">
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
                 <Hash className="h-3 w-3" /> Link ticket
               </span>
             )}
@@ -517,8 +520,8 @@ export function MentionEditor({
                     }}
                     className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors text-left ${
                       i === selectedIndex
-                        ? 'bg-green-50 dark:bg-green-900/20 text-green-700'
-                        : 'hover:bg-muted text-foreground'
+                        ? 'bg-white/[0.08] text-foreground'
+                        : 'hover:bg-white/[0.04] text-foreground'
                     }`}
                   >
                     {m.imageUrl ? (
@@ -528,7 +531,7 @@ export function MentionEditor({
                         className="h-5 w-5 rounded-full object-cover shrink-0"
                       />
                     ) : (
-                      <span className="h-5 w-5 rounded-full bg-green-200 text-green-700 text-[10px] font-bold flex items-center justify-center shrink-0">
+                      <span className="h-5 w-5 rounded-full bg-white/[0.1] text-foreground text-[10px] font-bold flex items-center justify-center shrink-0">
                         {m.displayName[0]?.toUpperCase()}
                       </span>
                     )}
@@ -545,11 +548,11 @@ export function MentionEditor({
                     }}
                     className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors text-left ${
                       i === selectedIndex
-                        ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-700'
-                        : 'hover:bg-muted text-foreground'
+                        ? 'bg-white/[0.08] text-foreground'
+                        : 'hover:bg-white/[0.04] text-foreground'
                     }`}
                   >
-                    <Hash className="h-3.5 w-3.5 shrink-0 text-purple-400" />
+                    <Hash className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                     <span className="truncate">{t.title}</span>
                     <span className="ml-auto text-[10px] text-muted-foreground capitalize shrink-0">
                       {t.status.replace('_', ' ')}

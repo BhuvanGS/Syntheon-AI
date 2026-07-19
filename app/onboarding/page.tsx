@@ -12,13 +12,13 @@ import {
   Sparkles,
   KeyRound,
   CheckCircle2,
-  ArrowLeft
-        } from 'lucide-react';
+  ArrowLeft,
+} from 'lucide-react';
 import {
   isPublicDomainEmail,
   generateOrgNameFromDomain,
-  generatePersonalOrgName
-        } from '@/lib/org-utils';
+  generatePersonalOrgName,
+} from '@/lib/org-utils';
 import { extractDomain } from '@/lib/public-domains';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,8 +26,8 @@ import {
   InputOTP,
   InputOTPGroup,
   InputOTPSlot,
-  InputOTPSeparator
-        } from '@/components/ui/input-otp';
+  InputOTPSeparator,
+} from '@/components/ui/input-otp';
 import { cn } from '@/lib/utils';
 import { LoadingMessage } from '@/components/loading-message';
 import { motion, AnimatePresence } from 'motion/react';
@@ -44,8 +44,8 @@ type DomainCheckResult = {
 export default function OnboardingPage() {
   const { user } = useUser();
   const { createOrganization, setActive, userMemberships } = useOrganizationList({
-    userMemberships: true
-        });
+    userMemberships: true,
+  });
 
   const [step, setStep] = useState<Step>('loading');
   const [orgName, setOrgName] = useState('');
@@ -174,9 +174,9 @@ export default function OnboardingPage() {
         credentials: 'include',
         body: JSON.stringify({
           name: orgName.trim(),
-          domain: emailDomain
-        })
-        });
+          domain: emailDomain,
+        }),
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to create organization');
       await setActive({ organization: data.id });
@@ -199,8 +199,8 @@ export default function OnboardingPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ joinCode })
-        });
+        body: JSON.stringify({ joinCode }),
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to join');
 
@@ -222,7 +222,7 @@ export default function OnboardingPage() {
       <div
         className="min-h-screen flex flex-col items-center justify-center p-6"
         style={{
-          backgroundColor: '#0a0a0a'
+          backgroundColor: '#0a0a0a',
         }}
       >
         <motion.div
@@ -252,7 +252,7 @@ export default function OnboardingPage() {
       <div
         className="min-h-screen flex flex-col items-center justify-center p-6"
         style={{
-          backgroundColor: '#0a0a0a'
+          backgroundColor: '#0a0a0a',
         }}
       >
         <motion.div
@@ -282,7 +282,7 @@ export default function OnboardingPage() {
       <div
         className="min-h-screen flex flex-col items-center justify-center p-6"
         style={{
-          backgroundColor: '#0a0a0a'
+          backgroundColor: '#0a0a0a',
         }}
       >
         <div className="flex items-center gap-2.5 mb-12">
@@ -321,9 +321,9 @@ export default function OnboardingPage() {
                       userEmail,
                       user?.fullName || user?.firstName || undefined
                     ),
-                    domain: null
-        })
-        });
+                    domain: null,
+                  }),
+                });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || 'Failed to create workspace');
                 if (data.id && setActive) {
@@ -365,7 +365,7 @@ export default function OnboardingPage() {
     <div
       className="min-h-screen flex flex-col items-center justify-center p-6"
       style={{
-        backgroundColor: '#0a0a0a'
+        backgroundColor: '#0a0a0a',
       }}
     >
       <div className="flex items-center gap-2.5 mb-12">

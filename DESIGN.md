@@ -1,4 +1,4 @@
-# Design system — Syntheon Hub (brand)
+# Design system — Syntheon Hub
 
 ## Voice
 
@@ -18,20 +18,32 @@ Strategy: restrained monochrome on near-black.
 
 No purple glow. No cream/terracotta. Accent = white on black.
 
+Dark app theme maps to the same canvas (`--background: #050505`, hairline borders, white primary).
+
 ## Typography
 
-One family on the entire landing surface (`.lp`), including nested demos:
+One family across brand and product:
 
 | Role                   | Family                                   |
 | ---------------------- | ---------------------------------------- |
-| All landing text       | Bricolage Grotesque (`--font-bricolage`) |
+| All UI + marketing     | Bricolage Grotesque (`--font-bricolage`) |
 | Mono only (ticket IDs) | system mono                              |
 
-Letter-spacing floor on display: `-0.03em`. Hero clamp max ≈ `5.5rem`.
+Letter-spacing floor on display: `-0.03em`. Product titles use fixed rem (not fluid clamp). Hero clamp max ≈ `5.5rem`.
+
+## Product / app (`.app`)
+
+- Shell: near-black canvas, hairline dividers, quiet active nav (surface tint — not solid color fills).
+- Density: Apple-like breathing room — large page titles, 13–15px body, KPI numbers ~1.75rem.
+- Panels: `.app-panel` with subtle surface lift; avoid tinted card backgrounds (no purple/blue/orange washes).
+- Forms: `.app-field` groups label + hint, then `gap-3` before controls — never jam description into pills/inputs.
+- Section heads: `.app-section-head` keeps title copy clear of action pills.
+- Semantic color only for state (overdue, blocked, done) — never as section decoration.
+- Motion: 150–250ms expo ease-out; no page-load choreography.
 
 ## Motion
 
-Expo ease-out `[0.16, 1, 0.3, 1]`. Signature: hero Talk→Work→Done stage cycle. Respect `prefers-reduced-motion`.
+Expo ease-out `[0.16, 1, 0.3, 1]`. Signature (marketing): hero Talk→Work→Done stage cycle. Respect `prefers-reduced-motion`.
 
 ## Layout
 

@@ -42,44 +42,46 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.145 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.439 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.269 0 0);
-  --sidebar-ring: oklch(0.439 0 0);
+  /* Dark precision — aligned with landing --lp-* */
+  --background: #050505;
+  --foreground: #ffffff;
+  --card: oklch(1 0 0 / 0.03);
+  --card-foreground: #ffffff;
+  --popover: #0a0a0a;
+  --popover-foreground: #ffffff;
+  --primary: #ffffff;
+  --primary-foreground: #050505;
+  --secondary: oklch(1 0 0 / 0.06);
+  --secondary-foreground: #ffffff;
+  --muted: oklch(1 0 0 / 0.05);
+  --muted-foreground: oklch(1 0 0 / 0.55);
+  --accent: oklch(1 0 0 / 0.06);
+  --accent-foreground: #ffffff;
+  --destructive: oklch(0.55 0.2 25);
+  --destructive-foreground: #ffffff;
+  --border: oklch(1 0 0 / 0.09);
+  --input: oklch(1 0 0 / 0.09);
+  --ring: oklch(1 0 0 / 0.28);
+  --chart-1: oklch(1 0 0 / 0.85);
+  --chart-2: oklch(1 0 0 / 0.4);
+  --chart-3: oklch(0.72 0.12 155);
+  --chart-4: oklch(0.7 0.14 55);
+  --chart-5: oklch(0.62 0.18 25);
+  --sidebar: #050505;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #ffffff;
+  --sidebar-primary-foreground: #050505;
+  --sidebar-accent: oklch(1 0 0 / 0.06);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: oklch(1 0 0 / 0.08);
+  --sidebar-ring: oklch(1 0 0 / 0.28);
 }
 
 @theme inline {
-  --font-sans: var(--font-inter), 'Inter', 'Geist', 'Geist Fallback';
-  --font-heading: var(--font-space-grotesk), 'Space Grotesk', sans-serif;
-  --font-mono: 'Geist Mono', 'Geist Mono Fallback';
+  --font-sans:
+    var(--font-bricolage), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-heading: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -123,12 +125,17 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
   .font-playfair {
-    font-family: var(--font-space-grotesk), 'Space Grotesk', sans-serif;
+    font-family: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
   }
 
   /* Buttery global transitions for interactive elements */
@@ -169,6 +176,112 @@
   ::selection {
     background: oklch(from var(--primary) l c h / 0.85);
     color: var(--primary-foreground);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   App surface — product UI using landing dark-precision language
+   ───────────────────────────────────────────────────────────────── */
+@layer components {
+  .app {
+    font-family:
+      var(--font-bricolage),
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      sans-serif;
+    letter-spacing: -0.01em;
+  }
+
+  .app-page {
+    @apply mx-auto w-full max-w-6xl space-y-10 px-6 py-8 sm:px-8 sm:py-10;
+  }
+
+  .app-eyebrow {
+    @apply text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground;
+  }
+
+  .app-title {
+    @apply text-[1.75rem] font-semibold leading-tight tracking-[-0.03em] text-foreground sm:text-[2rem];
+  }
+
+  .app-subtitle {
+    @apply mt-1.5 max-w-[42rem] text-[15px] leading-relaxed text-muted-foreground;
+  }
+
+  .app-panel {
+    @apply rounded-2xl border border-border bg-card;
+  }
+
+  .app-panel-pad {
+    @apply p-5 sm:p-6;
+  }
+
+  .app-section-label {
+    @apply text-[13px] font-semibold tracking-[-0.01em] text-foreground;
+  }
+
+  .app-section-hint {
+    @apply mt-0.5 text-[13px] text-muted-foreground;
+  }
+
+  .app-kpi {
+    @apply rounded-2xl border border-border bg-card px-5 py-4 transition-colors;
+  }
+
+  .app-kpi:hover {
+    background: oklch(1 0 0 / 0.045);
+  }
+
+  .app-kpi-label {
+    @apply text-[12px] font-medium text-muted-foreground;
+  }
+
+  .app-kpi-value {
+    @apply mt-2 text-[1.75rem] font-semibold tracking-[-0.03em] text-foreground tabular-nums;
+  }
+
+  .app-kpi-sub {
+    @apply mt-1 text-[12px] text-muted-foreground;
+  }
+
+  .app-row {
+    @apply flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors;
+  }
+
+  .app-row:hover {
+    background: oklch(1 0 0 / 0.04);
+  }
+
+  .app-divider {
+    @apply border-t border-border;
+  }
+
+  /* Form fields — label/hint grouped, clear gap before control */
+  .app-field {
+    @apply flex flex-col gap-3;
+  }
+
+  .app-field-head {
+    @apply flex flex-col gap-1.5;
+  }
+
+  .app-field-label {
+    @apply text-sm font-medium tracking-[-0.01em] text-foreground;
+  }
+
+  .app-field-hint {
+    @apply text-[13px] leading-relaxed text-muted-foreground;
+  }
+
+  /* Section title + actions (pills/buttons) — never jam */
+  .app-section-head {
+    @apply flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between;
+  }
+
+  .app-section-head-copy {
+    @apply min-w-0 space-y-1.5;
   }
 }
 
