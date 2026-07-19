@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
-import { OrganizationMetadataEntity, UsersEntity } from '@/db/entities';
+import { OrganizationMetadataEntity } from '@/db/entities';
 import { extractDomain } from '@/lib/public-domains';
 import { ensureUser } from '@/lib/ensureUser';
+import { isPublicDomainEmail } from '@/lib/org-utils';
 import { randomUUID } from 'crypto';
 
 export async function POST(req: NextRequest) {
@@ -21,61 +22,43 @@ export async function POST(req: NextRequest) {
   try {
     const client = await clerkClient();
 
-    // Ensure creator exists in DB for same-domain fallback detection
     const clerkUser = await client.users.getUser(session.userId);
-    const creatorEmail = clerkUser.emailAddresses[0]?.emailAddress ?? '';
+    const creatorEmail =
+      clerkUser.emailAddresses.find((e) => e.id === clerkUser.primaryEmailAddressId)
+        ?.emailAddress ??
+      clerkUser.emailAddresses[0]?.emailAddress ??
+      '';
     const creatorName =
       `${clerkUser.firstName ?? ''} ${clerkUser.lastName ?? ''}`.trim() || undefined;
     if (creatorEmail) {
       await ensureUser(session.userId, creatorEmail, creatorName);
     }
 
-    // Check if user already has an org (e.g. Clerk org was created but metadata failed)
-    let orgId: string;
-    let orgName: string;
+    const memberships = await client.users.getOrganizationMembershipList({
+      userId: session.userId,
+    });
 
-    try {
-      const memberships = await client.users.getOrganizationMembershipList({
-        userId: session.userId,
+    // Public-email users: personal org is created by webhook — reuse, don't duplicate
+    if (creatorEmail && isPublicDomainEmail(creatorEmail) && memberships.data.length > 0) {
+      const orgId = memberships.data[0].organization.id;
+      const existingOrg = await client.organizations.getOrganization({ organizationId: orgId });
+      const existingMeta = await OrganizationMetadataEntity.get({ orgId }).go();
+      return NextResponse.json({
+        id: orgId,
+        name: existingOrg.name,
+        joinCode: existingMeta.data?.joinCode,
+        success: true,
+        reused: true,
       });
-      if (memberships.data.length > 0) {
-        orgId = memberships.data[0].organization.id;
-        const existingOrg = await client.organizations.getOrganization({ organizationId: orgId });
-        orgName = existingOrg.name;
-
-        // Check if metadata already exists for this org
-        const existingMeta = await OrganizationMetadataEntity.get({ orgId }).go();
-        if (existingMeta.data) {
-          // Metadata already exists — update it with domain if missing
-          if (domain && !existingMeta.data.domain) {
-            await OrganizationMetadataEntity.update({ orgId }).set({ domain: domain.trim() }).go();
-          }
-          return NextResponse.json({
-            id: orgId,
-            name: orgName,
-            joinCode: existingMeta.data.joinCode,
-            success: true,
-          });
-        }
-        // Fall through to create metadata for existing org
-      } else {
-        // No existing org — create a new one
-        const created = await client.organizations.createOrganization({
-          name: name.trim(),
-          createdBy: session.userId,
-        });
-        orgId = created.id;
-        orgName = created.name;
-      }
-    } catch {
-      // Fallback: create new org
-      const created = await client.organizations.createOrganization({
-        name: name.trim(),
-        createdBy: session.userId,
-      });
-      orgId = created.id;
-      orgName = created.name;
     }
+
+    // Create a new org (B2B multi-org allowed; public path only reaches here with zero memberships)
+    const created = await client.organizations.createOrganization({
+      name: name.trim(),
+      createdBy: session.userId,
+    });
+    const orgId = created.id;
+    const orgName = created.name;
 
     const joinCode = Math.random().toString().slice(2, 10).padEnd(8, '0');
 
@@ -87,6 +70,7 @@ export async function POST(req: NextRequest) {
       domain: domain?.trim() || undefined,
       joinCode,
       allowAccessRequests: allowAccessRequests ?? false,
+      trialStartedAt: new Date().toISOString(),
     }).go();
 
     return NextResponse.json({
@@ -107,11 +91,19 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { searchParams } = new URL(req.url);
-  const email = searchParams.get('email');
+  // Always use the signed-in user's email — never trust a client-supplied email
+  const client = await clerkClient();
+  const clerkUser = await client.users.getUser(session.userId);
+  const email =
+    clerkUser.emailAddresses.find((e) => e.id === clerkUser.primaryEmailAddressId)?.emailAddress ??
+    clerkUser.emailAddresses[0]?.emailAddress;
 
   if (!email) {
     return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+  }
+
+  if (isPublicDomainEmail(email)) {
+    return NextResponse.json({ exists: false });
   }
 
   const domain = extractDomain(email);
@@ -119,81 +111,27 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid email' }, { status: 400 });
   }
 
-  // Scan for org metadata with matching domain
+  // Domain match via org metadata only (no user-table / cross-org member enumeration)
   const scanRes = await OrganizationMetadataEntity.scan.go();
-  const existing = (scanRes.data ?? []).find((m: any) => m.domain === domain);
+  const existing = (scanRes.data ?? []).find(
+    (m: { domain?: string }) => m.domain?.toLowerCase() === domain.toLowerCase()
+  );
 
-  if (existing) {
-    const client = await clerkClient();
-    try {
-      const org = await client.organizations.getOrganization({
-        organizationId: existing.orgId,
-      });
-      return NextResponse.json({
-        exists: true,
-        orgId: existing.orgId,
-        orgName: org.name,
-      });
-    } catch {
-      await OrganizationMetadataEntity.delete({ orgId: existing.orgId }).go();
-    }
+  if (!existing) {
+    return NextResponse.json({ exists: false });
   }
 
-  // Fallback: check if any other user in DB has the same email domain
-  const userScanRes = await UsersEntity.scan.go();
-  const sameDomainUsers = (userScanRes.data ?? [])
-    .filter((u: any) => u.email?.toLowerCase().endsWith(`@${domain}`))
-    .slice(0, 10);
-
-  if (sameDomainUsers.length > 0) {
-    const client = await clerkClient();
-    for (const u of sameDomainUsers) {
-      if (u.id === session.userId) continue;
-      try {
-        const memberships = await client.users.getOrganizationMembershipList({
-          userId: u.id,
-        });
-        if (memberships.data.length > 0) {
-          const orgId = memberships.data[0].organization.id;
-          const org = await client.organizations.getOrganization({ organizationId: orgId });
-          await OrganizationMetadataEntity.update({ orgId }).set({ domain }).go();
-          return NextResponse.json({
-            exists: true,
-            orgId,
-            orgName: org.name,
-          });
-        }
-      } catch {
-        // User may not have org memberships, skip
-      }
-    }
+  try {
+    const org = await client.organizations.getOrganization({
+      organizationId: existing.orgId,
+    });
+    return NextResponse.json({
+      exists: true,
+      orgId: existing.orgId,
+      orgName: org.name,
+    });
+  } catch {
+    await OrganizationMetadataEntity.delete({ orgId: existing.orgId }).go();
+    return NextResponse.json({ exists: false });
   }
-
-  // Fallback 2: scan all org metadata without a domain, check org members for same-domain match
-  // This handles the case where org was created in Clerk but metadata domain wasn't stored
-  const client = await clerkClient();
-  const allMeta = (scanRes.data ?? []).filter((m: any) => !m.domain);
-  for (const meta of allMeta) {
-    try {
-      const members = await client.organizations.getOrganizationMembershipList({
-        organizationId: meta.orgId,
-      });
-      const hasSameDomain = (members.data ?? []).some((m: any) =>
-        m.publicUserData?.identifier?.toLowerCase().endsWith(`@${domain}`)
-      );
-      if (hasSameDomain) {
-        const org = await client.organizations.getOrganization({ organizationId: meta.orgId });
-        await OrganizationMetadataEntity.update({ orgId: meta.orgId }).set({ domain }).go();
-        return NextResponse.json({
-          exists: true,
-          orgId: meta.orgId,
-          orgName: org.name,
-        });
-      }
-    } catch {
-      // Org may not exist, skip
-    }
-  }
-
-  return NextResponse.json({ exists: false });
 }

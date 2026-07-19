@@ -1,21 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth, clerkClient } from '@clerk/nextjs/server';
+import { clerkClient } from '@clerk/nextjs/server';
 import { OrganizationMetadataEntity } from '@/db/entities';
 import { randomUUID } from 'crypto';
+import { requireAuth, isOrgAdmin } from '@/lib/rbac';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ orgId: string }> }) {
-  const session = await auth();
-  if (!session.userId || !session.orgId) {
+  const ctx = await requireAuth();
+  if (!ctx) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const { orgId } = await params;
-  if (session.orgId !== orgId) {
+  if (ctx.orgId !== orgId || !isOrgAdmin(ctx)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
-
-  if (session.orgRole !== 'org:admin') {
-    return NextResponse.json({ error: 'Only admins can rotate join codes' }, { status: 403 });
   }
 
   const newJoinCode = Math.random().toString().slice(2, 10).padEnd(8, '0');
@@ -23,9 +20,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ org
   // Check if metadata exists, create if missing
   const existing = await OrganizationMetadataEntity.get({ orgId }).go();
   if (!existing.data) {
-    // Get org name from Clerk for domain extraction
     const client = await clerkClient();
-    const org = await client.organizations.getOrganization({ organizationId: orgId });
+    await client.organizations.getOrganization({ organizationId: orgId });
     await OrganizationMetadataEntity.create({
       id: randomUUID(),
       orgId,

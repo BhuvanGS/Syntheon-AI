@@ -1,18 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { getSprintsByProject, createSprint, getProjectById } from '@/lib/db';
+import { requireAuth } from '@/lib/rbac';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId, orgId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = await requireAuth();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id: projectId } = await params;
     const project = await getProjectById(projectId);
-    if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
-
-    const owned = orgId ? project.org_id === orgId : project.user_id === userId;
-    if (!owned) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (!project || project.org_id !== ctx.orgId) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
 
     const sprints = await getSprintsByProject(projectId);
     return NextResponse.json(sprints);
@@ -24,15 +23,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId, orgId } = await auth();
-    if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = await requireAuth();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id: projectId } = await params;
     const project = await getProjectById(projectId);
-    if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
-
-    const owned = orgId ? project.org_id === orgId : project.user_id === userId;
-    if (!owned) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (!project || project.org_id !== ctx.orgId) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
 
     const body = await req.json();
     const { name, startDate, endDate, goal } = body;
@@ -45,7 +43,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     const id = `sprint_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    const sprint = await createSprint(id, orgId, projectId, name, startDate, endDate, goal);
+    const sprint = await createSprint(id, ctx.orgId, projectId, name, startDate, endDate, goal);
     return NextResponse.json(sprint);
   } catch (error) {
     console.error('Failed to create sprint:', error);

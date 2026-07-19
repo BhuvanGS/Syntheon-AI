@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useRef, useCallback, useState } from 'react';
+import { useAuth } from '@clerk/nextjs';
 
 type SseEventCallback = (payload: Record<string, unknown>) => void;
 
@@ -19,6 +20,7 @@ export function useSse() {
 }
 
 export function SseProvider({ children }: { children: React.ReactNode }) {
+  const { orgId, userId } = useAuth();
   const [connected, setConnected] = useState(false);
   const sourceRef = useRef<EventSource | null>(null);
   const listenersRef = useRef<Map<string, Set<SseEventCallback>>>(new Map());
@@ -35,8 +37,18 @@ export function SseProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (!orgId || !userId) {
+      sourceRef.current?.close();
+      sourceRef.current = null;
+      setConnected(false);
+      return;
+    }
+
     function connect() {
-      if (sourceRef.current?.readyState === EventSource.OPEN) return;
+      if (sourceRef.current) {
+        sourceRef.current.close();
+        sourceRef.current = null;
+      }
 
       const source = new EventSource('/api/events');
       sourceRef.current = source;
@@ -44,70 +56,36 @@ export function SseProvider({ children }: { children: React.ReactNode }) {
       source.onopen = () => setConnected(true);
 
       source.onmessage = (e) => {
-        // Default message handler — not used since we use named events
         void e;
       };
 
       source.addEventListener('connected', () => setConnected(true));
 
-      source.addEventListener('meeting_ready', (e) => {
+      const forward = (eventName: string) => (e: Event) => {
         const data = JSON.parse((e as MessageEvent).data) as Record<string, unknown>;
-        listenersRef.current.get('meeting_ready')?.forEach((cb) => cb(data));
-      });
+        listenersRef.current.get(eventName)?.forEach((cb) => cb(data));
+      };
 
-      source.addEventListener('meeting_failed', (e) => {
-        const data = JSON.parse((e as MessageEvent).data) as Record<string, unknown>;
-        listenersRef.current.get('meeting_failed')?.forEach((cb) => cb(data));
-      });
-
-      source.addEventListener('ticket_updated', (e) => {
-        const data = JSON.parse((e as MessageEvent).data) as Record<string, unknown>;
-        listenersRef.current.get('ticket_updated')?.forEach((cb) => cb(data));
-      });
-
-      source.addEventListener('ticket_created', (e) => {
-        const data = JSON.parse((e as MessageEvent).data) as Record<string, unknown>;
-        listenersRef.current.get('ticket_created')?.forEach((cb) => cb(data));
-      });
-
-      source.addEventListener('ticket_deleted', (e) => {
-        const data = JSON.parse((e as MessageEvent).data) as Record<string, unknown>;
-        listenersRef.current.get('ticket_deleted')?.forEach((cb) => cb(data));
-      });
-
-      source.addEventListener('project_created', (e) => {
-        const data = JSON.parse((e as MessageEvent).data) as Record<string, unknown>;
-        listenersRef.current.get('project_created')?.forEach((cb) => cb(data));
-      });
-
-      source.addEventListener('project_updated', (e) => {
-        const data = JSON.parse((e as MessageEvent).data) as Record<string, unknown>;
-        listenersRef.current.get('project_updated')?.forEach((cb) => cb(data));
-      });
-
-      source.addEventListener('project_deleted', (e) => {
-        const data = JSON.parse((e as MessageEvent).data) as Record<string, unknown>;
-        listenersRef.current.get('project_deleted')?.forEach((cb) => cb(data));
-      });
-
+      source.addEventListener('meeting_ready', forward('meeting_ready'));
+      source.addEventListener('meeting_failed', forward('meeting_failed'));
+      source.addEventListener('ticket_updated', forward('ticket_updated'));
+      source.addEventListener('ticket_created', forward('ticket_created'));
+      source.addEventListener('ticket_deleted', forward('ticket_deleted'));
+      source.addEventListener('project_created', forward('project_created'));
+      source.addEventListener('project_updated', forward('project_updated'));
+      source.addEventListener('project_deleted', forward('project_deleted'));
       source.addEventListener('notification_new', (e) => {
         const data = JSON.parse((e as MessageEvent).data) as Record<string, unknown>;
+        // Defense in depth — only surface notifications for this user
+        if (data.userId && data.userId !== userId) return;
         listenersRef.current.get('notification_new')?.forEach((cb) => cb(data));
       });
-
-      source.addEventListener('meeting_status_changed', (e) => {
-        const data = JSON.parse((e as MessageEvent).data) as Record<string, unknown>;
-        listenersRef.current.get('meeting_status_changed')?.forEach((cb) => cb(data));
-      });
-
-      source.addEventListener('ping', () => {
-        // Keep-alive, ignore
-      });
+      source.addEventListener('meeting_status_changed', forward('meeting_status_changed'));
+      source.addEventListener('ping', () => {});
 
       source.onerror = () => {
         setConnected(false);
         source.close();
-        // Auto-reconnect after 3s
         if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = setTimeout(connect, 3000);
       };
@@ -115,17 +93,12 @@ export function SseProvider({ children }: { children: React.ReactNode }) {
 
     connect();
 
-    // Only reconnect on visibility change if connection was lost
-    // Don't aggressively close/reconnect - causes unnecessary refetches
     const handleVisibility = () => {
       if (!document.hidden) {
-        // Tab became visible - reconnect only if disconnected
         if (!sourceRef.current || sourceRef.current.readyState === EventSource.CLOSED) {
           connect();
         }
       }
-      // Don't close on hidden - let browser handle connection management
-      // This prevents refetches when switching tabs
     };
     document.addEventListener('visibilitychange', handleVisibility);
 
@@ -134,8 +107,9 @@ export function SseProvider({ children }: { children: React.ReactNode }) {
       if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
       sourceRef.current?.close();
       sourceRef.current = null;
+      setConnected(false);
     };
-  }, []);
+  }, [orgId, userId]);
 
   return <SseContext.Provider value={{ connected, on, off }}>{children}</SseContext.Provider>;
 }

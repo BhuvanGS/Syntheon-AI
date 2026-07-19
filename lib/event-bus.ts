@@ -82,7 +82,6 @@ interface Client {
 
 const clients = new Map<string, Client>();
 const locallyPublished = new Set<string>();
-const GLOBAL_CHANNEL = '__global__';
 const EVENT_TTL_SECONDS = 120;
 const POLL_INTERVAL_MS = 1500;
 
@@ -98,22 +97,45 @@ function sendToClient(client: Client, eventName: string, data: unknown) {
   }
 }
 
+function shouldDeliverToClient(client: Client, event: SseEvent, orgId?: string): boolean {
+  if (orgId && client.orgId !== orgId) return false;
+  if (event.type === 'notification_new' && event.payload.userId !== client.userId) return false;
+  return true;
+}
+
 function deliverLocal(event: SseEvent, orgId?: string) {
   const eventName = event.type;
   const data = 'payload' in event ? event.payload : {};
   for (const client of clients.values()) {
-    if (orgId && client.orgId !== orgId) continue;
+    if (!shouldDeliverToClient(client, event, orgId)) continue;
     sendToClient(client, eventName, data);
   }
 }
 
+function deliverLocalToUser(userId: string, event: SseEvent) {
+  const eventName = event.type;
+  const data = 'payload' in event ? event.payload : {};
+  for (const client of clients.values()) {
+    if (client.userId !== userId) continue;
+    if (event.type === 'notification_new' && event.payload.userId !== client.userId) continue;
+    sendToClient(client, eventName, data);
+  }
+}
+
+function userChannel(userId: string) {
+  return `user:${userId}`;
+}
+
 function advanceClientCursors(channelId: string, eventKey: string) {
   for (const client of clients.values()) {
-    const clientChannel = client.orgId || GLOBAL_CHANNEL;
-    if (channelId === GLOBAL_CHANNEL || clientChannel === channelId) {
-      if ((client.lastEventKey ?? '') < eventKey) {
-        client.lastEventKey = eventKey;
+    if (channelId.startsWith('user:')) {
+      if (client.userId && userChannel(client.userId) === channelId) {
+        if ((client.lastEventKey ?? '') < eventKey) client.lastEventKey = eventKey;
       }
+      continue;
+    }
+    if (client.orgId === channelId) {
+      if ((client.lastEventKey ?? '') < eventKey) client.lastEventKey = eventKey;
     }
   }
 }
@@ -148,14 +170,26 @@ export function removeClient(id: string) {
   clients.delete(id);
 }
 
+/** @deprecated Prefer broadcastToOrg / broadcastToUser — global fan-out leaks cross-tenant. */
 export function broadcast(event: SseEvent) {
+  if (event.type === 'notification_new') {
+    broadcastToUser(event.payload.userId, event);
+    return;
+  }
+  // Best-effort local-only delivery without persisting globally
   deliverLocal(event);
-  void persistEvent(GLOBAL_CHANNEL, event);
 }
 
 export function broadcastToOrg(orgId: string, event: SseEvent) {
+  if (!orgId) return;
   deliverLocal(event, orgId);
   void persistEvent(orgId, event);
+}
+
+export function broadcastToUser(userId: string, event: SseEvent) {
+  if (!userId) return;
+  deliverLocalToUser(userId, event);
+  void persistEvent(userChannel(userId), event);
 }
 
 async function pollChannel(
@@ -185,15 +219,19 @@ async function pollChannel(
 async function pollRemoteEvents() {
   if (clients.size === 0) return;
 
-  const channels = new Set<string>([GLOBAL_CHANNEL]);
+  const channels = new Set<string>();
   for (const client of clients.values()) {
     if (client.orgId) channels.add(client.orgId);
+    if (client.userId) channels.add(userChannel(client.userId));
   }
 
   for (const channelId of channels) {
-    const channelClients = [...clients.values()].filter((c) =>
-      channelId === GLOBAL_CHANNEL ? true : c.orgId === channelId
-    );
+    const channelClients = [...clients.values()].filter((c) => {
+      if (channelId.startsWith('user:')) {
+        return Boolean(c.userId && userChannel(c.userId) === channelId);
+      }
+      return c.orgId === channelId;
+    });
     if (channelClients.length === 0) continue;
 
     const minKey = channelClients.reduce(
@@ -209,6 +247,13 @@ async function pollRemoteEvents() {
       }
       for (const client of channelClients) {
         if ((client.lastEventKey ?? '') >= event.eventKey) continue;
+        if (
+          event.type === 'notification_new' &&
+          (event.payload as { userId?: string })?.userId !== client.userId
+        ) {
+          client.lastEventKey = event.eventKey;
+          continue;
+        }
         sendToClient(client, event.type, event.payload);
         client.lastEventKey = event.eventKey;
       }

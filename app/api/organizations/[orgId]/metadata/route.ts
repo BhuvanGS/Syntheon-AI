@@ -1,22 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth, clerkClient } from '@clerk/nextjs/server';
+import { clerkClient } from '@clerk/nextjs/server';
 import { OrganizationMetadataEntity } from '@/db/entities';
 import { randomUUID } from 'crypto';
+import { requireAuth, isOrgAdmin } from '@/lib/rbac';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ orgId: string }> }) {
-  const session = await auth();
-  if (!session.userId) {
+  const ctx = await requireAuth();
+  if (!ctx) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const { orgId } = await params;
+  if (ctx.orgId !== orgId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
   let res = await OrganizationMetadataEntity.get({ orgId }).go();
 
   // Auto-create metadata if missing (e.g. org was created in Clerk but metadata failed)
   if (!res.data) {
     try {
       const client = await clerkClient();
-      const org = await client.organizations.getOrganization({ organizationId: orgId });
+      await client.organizations.getOrganization({ organizationId: orgId });
       const joinCode = Math.random().toString().slice(2, 10).padEnd(8, '0');
       await OrganizationMetadataEntity.create({
         id: randomUUID(),
@@ -34,23 +39,31 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ orgI
     return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
   }
 
-  return NextResponse.json({
+  const payload: Record<string, unknown> = {
     orgId: res.data.orgId,
     companyName: res.data.companyName,
     managerName: res.data.managerName,
     domain: res.data.domain,
-    joinCode: res.data.joinCode,
     allowAccessRequests: res.data.allowAccessRequests,
-  });
+  };
+  if (isOrgAdmin(ctx)) {
+    payload.joinCode = res.data.joinCode;
+  }
+
+  return NextResponse.json(payload);
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ orgId: string }> }) {
-  const session = await auth();
-  if (!session.userId) {
+  const ctx = await requireAuth();
+  if (!ctx) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const { orgId } = await params;
+  if (ctx.orgId !== orgId || !isOrgAdmin(ctx)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
   const body = await req.json();
 
   const set: Record<string, any> = { updatedAt: new Date().toISOString() };
@@ -66,12 +79,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ or
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ orgId: string }> }) {
-  const session = await auth();
-  if (!session.userId) {
+  const ctx = await requireAuth();
+  if (!ctx) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const { orgId } = await params;
+  if (ctx.orgId !== orgId || !isOrgAdmin(ctx)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
   const body = await req.json();
 
   // Check if metadata exists

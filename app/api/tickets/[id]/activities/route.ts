@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { getActivitiesForTicket, createActivity, getTicketById } from '@/lib/db';
+import { requireAuth } from '@/lib/rbac';
 
 // GET /api/tickets/[id]/activities
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId, orgId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = await requireAuth();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id: ticketId } = await params;
 
     // Verify ticket exists and user has access
     const ticket = await getTicketById(ticketId);
-    if (!ticket || (orgId && ticket.org_id !== orgId)) {
+    if (!ticket || ticket.org_id !== ctx.orgId) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
@@ -27,8 +27,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 // POST /api/tickets/[id]/activities
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId, orgId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = await requireAuth();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id: ticketId } = await params;
     const body = await req.json();
@@ -40,13 +40,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     // Verify ticket exists and user has access
     const ticket = await getTicketById(ticketId);
-    if (!ticket || (orgId && ticket.org_id !== orgId)) {
+    if (!ticket || ticket.org_id !== ctx.orgId) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
     const activity = await createActivity({
       ticket_id: ticketId,
-      user_id: userId,
+      user_id: ctx.userId,
       action_type,
       metadata,
     });

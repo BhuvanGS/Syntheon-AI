@@ -1,23 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth, clerkClient } from '@clerk/nextjs/server';
+import { clerkClient } from '@clerk/nextjs/server';
 import { OrganizationAccessRequestsEntity } from '@/db/entities';
+import { requireAuth, isOrgAdmin } from '@/lib/rbac';
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ orgId: string; requestId: string }> }
 ) {
-  const session = await auth();
-  if (!session.userId || !session.orgId) {
+  const ctx = await requireAuth();
+  if (!ctx) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const { orgId, requestId } = await params;
-  if (session.orgId !== orgId) {
+  if (ctx.orgId !== orgId || !isOrgAdmin(ctx)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
-
-  if (session.orgRole !== 'org:admin') {
-    return NextResponse.json({ error: 'Only admins can manage access requests' }, { status: 403 });
   }
 
   const body = await req.json();
@@ -35,7 +32,7 @@ export async function POST(
       .set({
         status: 'approved',
         respondedAt: new Date().toISOString(),
-        respondedBy: session.userId,
+        respondedBy: ctx.userId,
       })
       .go();
 
@@ -58,7 +55,7 @@ export async function POST(
       .set({
         status: 'rejected',
         respondedAt: new Date().toISOString(),
-        respondedBy: session.userId,
+        respondedBy: ctx.userId,
       })
       .go();
 

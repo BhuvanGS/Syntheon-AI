@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { randomUUID } from 'crypto';
 import {
   getTicketsByMeetingId,
@@ -13,15 +12,16 @@ import {
   createNotification,
 } from '@/lib/db';
 import { checkTicketLimit, limitErrorResponse } from '@/lib/billing-limits';
+import { requireAuth } from '@/lib/rbac';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId, orgId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = await requireAuth();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
     const meeting = await getMeetingById(id);
-    if (!meeting || (orgId && meeting.org_id !== orgId)) {
+    if (!meeting || meeting.org_id !== ctx.orgId) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
@@ -35,12 +35,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId, orgId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = await requireAuth();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { userId, orgId } = ctx;
 
     const { id } = await params;
     const meetingCheck = await getMeetingById(id);
-    if (!meetingCheck || (orgId && meetingCheck.org_id !== orgId)) {
+    if (!meetingCheck || meetingCheck.org_id !== orgId) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
@@ -72,7 +73,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     // 🚦 Ticket limit check
-    const ticketCheck = await checkTicketLimit(orgId ?? null, userId);
+    const ticketCheck = await checkTicketLimit(orgId, userId);
     if (!ticketCheck.allowed) {
       return limitErrorResponse(ticketCheck) as NextResponse;
     }
@@ -103,7 +104,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       {
         id: ticketId,
         user_id: userId,
-        org_id: orgId ?? undefined,
+        org_id: orgId,
         meeting_id: id,
         projectId: resolvedProjectId,
         title,
@@ -129,7 +130,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (assigneeUserId && assigneeUserId !== userId) {
       await createNotification({
         user_id: assigneeUserId,
-        org_id: orgId ?? '',
+        org_id: orgId,
         type: 'assigned',
         title: 'New ticket assigned to you',
         message: `"${title}" was assigned to you`,
@@ -137,7 +138,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       });
       await createNotification({
         user_id: userId,
-        org_id: orgId ?? '',
+        org_id: orgId,
         type: 'assigned',
         title: 'Ticket assignment updated',
         message: `You assigned "${title}" to ${assignee}`,
@@ -154,12 +155,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId, orgId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = await requireAuth();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
     const meetingCheck = await getMeetingById(id);
-    if (!meetingCheck || (orgId && meetingCheck.org_id !== orgId)) {
+    if (!meetingCheck || meetingCheck.org_id !== ctx.orgId) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { randomUUID } from 'crypto';
 import {
   addMeetingToProject,
@@ -11,6 +10,7 @@ import {
   saveTickets,
 } from '@/lib/db';
 import { checkTicketLimit, limitErrorResponse } from '@/lib/billing-limits';
+import { requireAuth } from '@/lib/rbac';
 
 function ticketFingerprint(ticket: {
   title: string;
@@ -28,13 +28,13 @@ function ticketFingerprint(ticket: {
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId, orgId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = await requireAuth();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { userId, orgId } = ctx;
 
     const { id } = await params;
     const project = await getProjectById(id);
-    const owned = orgId ? project?.org_id === orgId : project?.user_id === userId;
-    if (!project || !owned) {
+    if (!project || project.org_id !== orgId) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     const meeting = await getMeetingById(sourceMeetingId);
-    if (!meeting) {
+    if (!meeting || meeting.org_id !== orgId) {
       return NextResponse.json({ error: 'Meeting not found' }, { status: 404 });
     }
 
@@ -74,11 +74,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       });
     }
 
-    const ticketCheck = await checkTicketLimit(
-      project.org_id ?? orgId ?? null,
-      userId,
-      sourceTicketsToImport.length
-    );
+    const ticketCheck = await checkTicketLimit(orgId, userId, sourceTicketsToImport.length);
     if (!ticketCheck.allowed) {
       return limitErrorResponse(ticketCheck) as NextResponse;
     }
@@ -88,7 +84,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       ...ticket,
       id: randomUUID(),
       user_id: userId,
-      org_id: project.org_id ?? orgId ?? undefined,
+      org_id: orgId,
       projectId: project.id,
       createdAt: now,
       updatedAt: now,

@@ -68,10 +68,36 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function createPersonalOrg(userId: string, email: string, userDisplayName?: string) {
   const client = await clerkClient();
+
+  // Avoid racing with onboarding POST — if membership already exists, skip
+  try {
+    const memberships = await client.users.getOrganizationMembershipList({ userId });
+    if (memberships.data.length > 0) {
+      console.log(
+        '[webhook] Personal org skipped — user already has org:',
+        memberships.data[0].organization.id
+      );
+      return;
+    }
+  } catch {
+    // Continue to create attempt
+  }
+
   const baseName = generatePersonalOrgName(email, userDisplayName);
 
   for (let attempt = 0; attempt < 8; attempt += 1) {
     if (attempt > 0) await sleep(2000);
+
+    // Re-check between retries in case onboarding created an org
+    try {
+      const memberships = await client.users.getOrganizationMembershipList({ userId });
+      if (memberships.data.length > 0) {
+        console.log('[webhook] Personal org skipped mid-retry — org exists');
+        return;
+      }
+    } catch {
+      // continue
+    }
 
     const name = attempt === 0 ? baseName : `${baseName}-${attempt}`;
     try {

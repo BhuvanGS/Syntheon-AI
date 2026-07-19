@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import DOMPurify from 'isomorphic-dompurify';
 import { deleteComment, updateComment, getTicketById, createActivity } from '@/lib/db';
+import { requireAuth } from '@/lib/rbac';
 
 const ALLOWED_TAGS = [
   'p',
@@ -28,12 +28,12 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; commentId: string }> }
 ) {
   try {
-    const { userId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = await requireAuth();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id: ticketId, commentId } = await params;
     const ticket = await getTicketById(ticketId);
-    if (!ticket) {
+    if (!ticket || ticket.org_id !== ctx.orgId) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
@@ -42,7 +42,7 @@ export async function DELETE(
     // Log activity
     await createActivity({
       ticket_id: ticketId,
-      user_id: userId,
+      user_id: ctx.userId,
       action_type: 'comment_deleted',
       metadata: { comment_id: commentId },
     });
@@ -51,7 +51,7 @@ export async function DELETE(
     if (ticket.parent_id) {
       await createActivity({
         ticket_id: ticket.parent_id,
-        user_id: userId,
+        user_id: ctx.userId,
         action_type: 'comment_deleted',
         metadata: { comment_id: commentId, subtask_id: ticketId },
       });
@@ -69,12 +69,12 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string; commentId: string }> }
 ) {
   try {
-    const { userId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = await requireAuth();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id: ticketId, commentId } = await params;
     const ticket = await getTicketById(ticketId);
-    if (!ticket) {
+    if (!ticket || ticket.org_id !== ctx.orgId) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 

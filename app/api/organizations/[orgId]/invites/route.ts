@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth, clerkClient } from '@clerk/nextjs/server';
+import { clerkClient } from '@clerk/nextjs/server';
 import { OrganizationInvitesEntity } from '@/db/entities';
 import { randomUUID } from 'crypto';
+import { requireAuth, isOrgAdmin } from '@/lib/rbac';
+import { FREE_ORG_SEAT_LIMIT, isOrganizationPaid } from '@/lib/org-plan';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ orgId: string }> }) {
-  const session = await auth();
-  if (!session.userId || !session.orgId) {
+  const ctx = await requireAuth();
+  if (!ctx) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const { orgId } = await params;
-  if (session.orgId !== orgId) {
+  if (ctx.orgId !== orgId || !isOrgAdmin(ctx)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
@@ -19,9 +21,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ org
     return NextResponse.json({ error: 'Email is required' }, { status: 400 });
   }
 
-  // Check org seat limit for free tier
-  const { has } = session;
-  const isPaidOrg = has?.({ plan: 'org:org_pro' }) || has?.({ plan: 'org:org_max' });
+  // Seat limit based on target org plan
+  const isPaidOrg = await isOrganizationPaid(orgId);
   if (!isPaidOrg) {
     const client = await clerkClient();
     const members = await client.organizations.getOrganizationMembershipList({
@@ -29,14 +30,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ org
     });
     const pendingInvites = await OrganizationInvitesEntity.query.primary({ orgId }).go();
     const pendingCount = (pendingInvites.data ?? []).filter(
-      (i: any) => i.status === 'pending'
+      (i: { status?: string }) => i.status === 'pending'
     ).length;
     const totalSeats = (members.data?.length ?? 0) + pendingCount;
-    if (totalSeats >= 3) {
+    if (totalSeats >= FREE_ORG_SEAT_LIMIT) {
       return NextResponse.json(
         {
-          error: 'Beta testing limit reached',
-          message: 'Organizations are limited to 3 members during the beta period.',
+          error: 'Seat limit reached',
+          message: `Organizations are limited to ${FREE_ORG_SEAT_LIMIT} members on the free plan.`,
         },
         { status: 403 }
       );
@@ -59,7 +60,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ org
     email: email.trim().toLowerCase(),
     status: 'pending',
     token,
-    invitedBy: session.userId,
+    invitedBy: ctx.userId,
   }).go();
 
   // Send invitation via Clerk
@@ -71,7 +72,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ org
       organizationId: orgId,
       emailAddress: email.trim().toLowerCase(),
       role: 'org:member',
-      inviterUserId: session.userId,
+      inviterUserId: ctx.userId,
       redirectUrl: `${origin}/accept-invite`,
     });
     inviteUrl = invitation.url ?? '';

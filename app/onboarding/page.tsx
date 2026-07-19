@@ -61,7 +61,70 @@ export default function OnboardingPage() {
   const isPublicDomain = userEmail ? isPublicDomainEmail(userEmail) : false;
   const emailDomain = userEmail ? extractDomain(userEmail) : null;
 
-  // Check if an org already exists for this user's private domain
+  useEffect(() => {
+    if (!user) return;
+    if (showWelcome) return;
+
+    // Single membership → activate and enter app
+    if (memberships.length === 1 && setActive) {
+      const onlyOrg = memberships[0];
+      setActive({ organization: onlyOrg.organization.id })
+        .then(() => window.location.assign('/dashboard'))
+        .catch(() => setStep(isPublicDomain ? 'error' : 'choose'));
+      return;
+    }
+
+    // Multiple memberships → let the user pick (don't auto-pick first)
+    if (memberships.length > 1) {
+      setStep('choose');
+      return;
+    }
+
+    // No memberships yet
+    if (isPublicDomain) {
+      let cancelled = false;
+      const startedAt = Date.now();
+      const pollMs = 2000;
+      const maxWaitMs = 15000;
+
+      const tick = async () => {
+        if (cancelled) return;
+        try {
+          await userMemberships.revalidate?.();
+        } catch {
+          // ignore
+        }
+        if (cancelled) return;
+        if (Date.now() - startedAt >= maxWaitMs) {
+          setStep('error');
+        }
+      };
+
+      const interval = setInterval(() => {
+        void tick();
+      }, pollMs);
+      // First check after a short delay for webhook
+      const initial = setTimeout(() => {
+        void tick();
+      }, 1500);
+
+      return () => {
+        cancelled = true;
+        clearInterval(interval);
+        clearTimeout(initial);
+      };
+    }
+
+    // B2B: domain check effect handles the step; fallback to choose
+    if (!isPublicDomain && domainCheck === null) {
+      const timeout = setTimeout(() => {
+        setStep((prev) => (prev === 'loading' ? 'choose' : prev));
+      }, 10000);
+      return () => clearTimeout(timeout);
+    }
+  }, [user, memberships, isPublicDomain, setActive, domainCheck, showWelcome, userMemberships]);
+
+  // Domain check no longer passes email — server uses session email
   useEffect(() => {
     if (!user || !userEmail || isPublicDomain || !emailDomain) return;
     if (memberships.length > 0) return;
@@ -69,7 +132,7 @@ export default function OnboardingPage() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`/api/organizations?email=${encodeURIComponent(userEmail)}`);
+        const res = await fetch('/api/organizations');
         const data = await res.json();
         if (!cancelled) {
           setDomainCheck(data);
@@ -92,53 +155,6 @@ export default function OnboardingPage() {
       cancelled = true;
     };
   }, [user, userEmail, isPublicDomain, emailDomain, memberships.length]);
-
-  useEffect(() => {
-    if (!user) return;
-    if (showWelcome) return;
-
-    if (memberships.length > 0 && setActive) {
-      const firstOrg = memberships[0];
-      setActive({ organization: firstOrg.organization.id })
-        .then(() => window.location.assign('/dashboard'))
-        .catch(() => {
-          if (isPublicDomain) {
-            setStep('error');
-          } else {
-            setStep('choose');
-          }
-        });
-      return;
-    }
-
-    if (isPublicDomain) {
-      const timeout = setTimeout(() => {
-        if (memberships.length === 0) {
-          setStep('error');
-        }
-      }, 5000);
-      return () => clearTimeout(timeout);
-    }
-
-    // B2B users: domain check effect handles setting the step
-    // Fallback: if domain check hasn't resolved in 10s, show choose
-    if (!isPublicDomain && domainCheck === null) {
-      const timeout = setTimeout(() => {
-        setStep((prev) => (prev === 'loading' ? 'choose' : prev));
-      }, 10000);
-      return () => clearTimeout(timeout);
-    }
-  }, [user, memberships, isPublicDomain, setActive, domainCheck, showWelcome]);
-
-  useEffect(() => {
-    if (showWelcome) return;
-    if (isPublicDomain && memberships.length > 0 && step === 'loading' && setActive) {
-      const org = memberships[0];
-      setActive({ organization: org.organization.id })
-        .then(() => window.location.assign('/dashboard'))
-        .catch(() => setStep('error'));
-    }
-  }, [isPublicDomain, memberships, step, setActive, showWelcome]);
 
   const handleSelectOrg = useCallback(
     (orgId: string) => {

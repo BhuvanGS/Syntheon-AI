@@ -1,22 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
-import {
-  getAttachmentsForTicket,
-  createAttachment,
-  deleteAttachment,
-  getTicketById,
-  createActivity,
-} from '@/lib/db';
-import { randomUUID } from 'crypto';
+import { getAttachmentsForTicket, createAttachment, getTicketById, createActivity } from '@/lib/db';
+import { requireAuth } from '@/lib/rbac';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId, orgId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = await requireAuth();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
     const ticket = await getTicketById(id);
-    if (!ticket || (orgId && ticket.org_id !== orgId)) {
+    if (!ticket || ticket.org_id !== ctx.orgId) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
@@ -30,12 +23,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId, orgId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = await requireAuth();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id: ticketId } = await params;
     const ticket = await getTicketById(ticketId);
-    if (!ticket || (orgId && ticket.org_id !== orgId)) {
+    if (!ticket || ticket.org_id !== ctx.orgId) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
@@ -55,7 +48,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const attachment = await createAttachment({
       ticket_id: ticketId,
       project_id: ticket.projectId ?? null,
-      user_id: userId,
+      user_id: ctx.userId,
       filename,
       file_url,
       file_size,
@@ -65,7 +58,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // Log activity
     await createActivity({
       ticket_id: ticketId,
-      user_id: userId,
+      user_id: ctx.userId,
       action_type: 'attachment_added',
       metadata: { filename, file_size },
     });
@@ -74,7 +67,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (ticket.parent_id) {
       await createActivity({
         ticket_id: ticket.parent_id,
-        user_id: userId,
+        user_id: ctx.userId,
         action_type: 'attachment_added',
         metadata: { filename, file_size, subtask_id: ticketId },
       });

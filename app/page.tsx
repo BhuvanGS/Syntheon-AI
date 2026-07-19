@@ -5,7 +5,15 @@ import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from 
 import { motion, useInView, useReducedMotion } from 'motion/react';
 import { BrandLogo } from '@/components/brand-logo';
 import { TalkWorkDoneStage } from '@/components/promo/talk-work-done-stage';
+import {
+  DoneModeHint,
+  DoneModeNoun,
+  DoneModeStage,
+  useDoneModeCycle,
+} from '@/components/promo/done-showcase';
+import { IsoStack } from '@/components/promo/iso-stack';
 import { InteractiveKanbanDemo } from '@/components/promo/interactive-kanban';
+import { ShowcaseMeetings } from '@/components/promo/showcase-meetings';
 import { SmoothScroll } from '@/components/promo/smooth-scroll';
 import TrueFocus from '@/components/promo/true-focus';
 import Noise from '@/components/promo/noise';
@@ -44,7 +52,7 @@ export default function LandingPage() {
         <Hero />
         <ProblemSection />
         <WasteSection />
-        <BeforeAfterSection />
+        <PipelineSection />
         <ChapterTalk />
         <ChapterWork />
         <ChapterDone pageOrigin={pageOrigin} />
@@ -237,58 +245,74 @@ function ProblemSection() {
       <motion.div
         initial={reduce ? false : { opacity: 0.35 }}
         whileInView={{ opacity: 1 }}
-        viewport={{ once: true, amount: 0.4 }}
+        viewport={{ once: true, amount: 0.35 }}
         transition={{ duration: 0.75, ease: EASE }}
-        style={{ maxWidth: 900, margin: '0 auto', position: 'relative' }}
+        className="lp-split"
+        style={{
+          maxWidth: 1100,
+          margin: '0 auto',
+          position: 'relative',
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1.05fr) minmax(0, 0.95fr)',
+          gap: 'clamp(2.5rem, 6vw, 4.5rem)',
+          alignItems: 'center',
+        }}
       >
-        <p style={chapterLabel}>The real cost</p>
-        <h2
-          style={{
-            ...display,
-            fontSize: 'clamp(2.25rem, 6vw, 4.25rem)',
-            fontWeight: 700,
-            lineHeight: 1.08,
-            margin: '1rem 0 1.5rem',
-            color: '#fff',
-          }}
-        >
-          Stop rewriting every call into a backlog by hand.
-        </h2>
-        <p
-          style={{
-            margin: 0,
-            fontSize: 'clamp(1.05rem, 2vw, 1.25rem)',
-            lineHeight: 1.65,
-            color: 'rgba(255,255,255,0.52)',
-            maxWidth: '46ch',
-          }}
-        >
-          The room aligns for forty minutes. Then someone becomes the unpaid project manager —
-          digging through notes, Slack threads, and half-remembered owners.
-        </p>
+        <div>
+          <p style={chapterLabel}>The real cost</p>
+          <h2
+            style={{
+              ...display,
+              fontSize: 'clamp(2.1rem, 5.2vw, 3.75rem)',
+              fontWeight: 700,
+              lineHeight: 1.08,
+              margin: '1rem 0 1.25rem',
+              color: '#fff',
+            }}
+          >
+            Stop rewriting every call into a backlog by hand.
+          </h2>
+          <p
+            style={{
+              margin: 0,
+              fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
+              lineHeight: 1.6,
+              color: 'rgba(255,255,255,0.52)',
+              maxWidth: '38ch',
+            }}
+          >
+            The room aligns. Then someone becomes the unpaid project manager.
+          </p>
+        </div>
+        <IsoStack
+          motif="handoff"
+          float={!reduce}
+          layers={[
+            { left: 'MEETING', right: 'TALK · DECISIONS · OWNERS' },
+            { left: 'TRANSCRIPT', right: 'NOTES · SCROLLBACK · NOISE' },
+            { left: 'HANDOFF', right: 'SLACK · CHAOS · SECOND SHIFT' },
+          ]}
+        />
       </motion.div>
     </section>
   );
 }
 
 function WasteSection() {
-  const wastes = [
-    {
-      kill: 'Copy-pasting action items into Linear at midnight',
-      keep: 'Owners and due dates attach themselves.',
-    },
-    {
-      kill: 'Decisions rotting in a Notion page no one opens',
-      keep: 'Every commitment becomes a tracked ticket.',
-    },
-    {
-      kill: 'Another “quick summary” that still needs translation',
-      keep: 'Structure — not another paragraph of notes.',
-    },
-    {
-      kill: 'Paying for transcription that stops at the transcript',
-      keep: 'The board fills. You stay in the room.',
-    },
+  const reduce = useReducedMotion();
+
+  const notes = [
+    'webhook stuff — jordan??',
+    'hold merge? chen said something',
+    'billing green before launch',
+    'smoke suite… staging?',
+    'who owns auth fix',
+  ];
+
+  const tickets = [
+    { title: 'Green billing webhooks for launch', meta: 'High · Jordan · Mon' },
+    { title: 'Staging smoke suite before merge', meta: 'Blocked · Chen' },
+    { title: 'Unblock launch path', meta: 'In progress · Priya' },
   ];
 
   return (
@@ -298,106 +322,211 @@ function WasteSection() {
         borderTop: '1px solid rgba(255,255,255,0.06)',
       }}
     >
-      <div style={{ maxWidth: 900, margin: '0 auto' }}>
-        <p style={chapterLabel}>Enough</p>
-        <h2
+      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+        <div
           style={{
-            ...display,
-            fontSize: 'clamp(1.85rem, 4vw, 2.75rem)',
-            fontWeight: 700,
-            lineHeight: 1.15,
-            margin: '0.75rem 0 2.5rem',
-            color: '#fff',
-            maxWidth: '22ch',
+            maxWidth: 520,
+            marginLeft: 'auto',
+            marginBottom: 'clamp(2.5rem, 5vh, 3.5rem)',
+            textAlign: 'right',
           }}
         >
-          You didn&apos;t hire yourself to be a human Jira bot.
-        </h2>
+          <p style={{ ...chapterLabel, color: 'rgba(255,255,255,0.55)' }}>Enough</p>
+          <h2
+            style={{
+              ...display,
+              fontSize: 'clamp(1.85rem, 4vw, 2.75rem)',
+              fontWeight: 700,
+              lineHeight: 1.15,
+              margin: '0.75rem 0 0',
+              color: '#fff',
+            }}
+          >
+            You didn&apos;t hire yourself to be a human Jira bot.
+          </h2>
+        </div>
 
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-          {wastes.map((w) => (
-            <li
-              key={w.kill}
+        <div
+          className="lp-iso-pair"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: 'clamp(1rem, 3vw, 1.5rem)',
+            alignItems: 'stretch',
+          }}
+        >
+          <motion.div
+            initial={reduce ? false : { opacity: 0, y: 14 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 0.65, ease: EASE }}
+          >
+            <p
               style={{
-                display: 'grid',
-                gridTemplateColumns: 'minmax(0, 1.1fr) minmax(0, 1fr)',
-                gap: '1.25rem 2rem',
-                padding: '1.5rem 0',
-                borderTop: '1px solid rgba(255,255,255,0.08)',
+                fontSize: 12,
+                letterSpacing: '0.16em',
+                textTransform: 'uppercase',
+                fontWeight: 600,
+                color: 'rgba(255,255,255,0.55)',
+                marginBottom: 12,
               }}
-              className="lp-waste-row"
             >
-              <div>
+              Without
+            </p>
+            <div
+              style={{
+                ...appChrome,
+                borderColor: 'rgba(255,255,255,0.08)',
+                background: '#070707',
+                boxShadow: '0 24px 48px rgba(0,0,0,0.55)',
+              }}
+            >
+              <div
+                style={{
+                  ...appChromeHead,
+                  borderBottomColor: 'rgba(255,255,255,0.06)',
+                  background: '#0b0b0b',
+                }}
+              >
                 <span
-                  style={{
-                    display: 'block',
-                    fontSize: 12,
-                    letterSpacing: '0.12em',
-                    textTransform: 'uppercase',
-                    color: 'rgba(255,255,255,0.28)',
-                    marginBottom: 8,
-                  }}
+                  style={{ ...appChromeTitle, color: 'rgba(255,255,255,0.72)', fontWeight: 500 }}
                 >
-                  Without
+                  Meeting notes
                 </span>
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
-                    lineHeight: 1.4,
-                    color: 'rgba(255,255,255,0.38)',
-                    textDecoration: 'line-through',
-                    textDecorationColor: 'rgba(255,255,255,0.25)',
-                  }}
-                >
-                  {w.kill}
-                </p>
               </div>
-              <div>
+              <div
+                style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}
+              >
+                {notes.map((line) => (
+                  <p
+                    key={line}
+                    style={{
+                      margin: 0,
+                      fontSize: 14,
+                      lineHeight: 1.45,
+                      color: 'rgba(255,255,255,0.58)',
+                      textDecoration: 'line-through',
+                      textDecorationColor: 'rgba(255,255,255,0.28)',
+                    }}
+                  >
+                    {line}
+                  </p>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={reduce ? false : { opacity: 0, y: 14 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 0.65, delay: 0.08, ease: EASE }}
+          >
+            <p
+              style={{
+                fontSize: 12,
+                letterSpacing: '0.16em',
+                textTransform: 'uppercase',
+                fontWeight: 600,
+                color: 'rgba(255,255,255,0.85)',
+                marginBottom: 12,
+              }}
+            >
+              With Syntheon Hub
+            </p>
+            <div
+              style={{
+                ...appChrome,
+                borderColor: 'rgba(255,255,255,0.16)',
+                background: '#0a0a0a',
+                boxShadow: '0 24px 48px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)',
+              }}
+            >
+              <div
+                style={{
+                  ...appChromeHead,
+                  borderBottomColor: 'rgba(255,255,255,0.1)',
+                  background: '#101010',
+                }}
+              >
                 <span
-                  style={{
-                    display: 'block',
-                    fontSize: 12,
-                    letterSpacing: '0.12em',
-                    textTransform: 'uppercase',
-                    color: 'rgba(255,255,255,0.45)',
-                    marginBottom: 8,
-                  }}
+                  style={{ ...appChromeTitle, color: 'rgba(255,255,255,0.88)', fontWeight: 500 }}
                 >
-                  With Syntheon Hub
+                  Tickets
                 </span>
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
-                    lineHeight: 1.4,
-                    color: 'rgba(255,255,255,0.88)',
-                  }}
-                >
-                  {w.keep}
-                </p>
               </div>
-            </li>
-          ))}
-        </ul>
+              <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {tickets.map((t) => (
+                  <div
+                    key={t.title}
+                    style={{
+                      ...workTicket,
+                      borderColor: 'rgba(255,255,255,0.12)',
+                      background: 'rgba(255,255,255,0.04)',
+                    }}
+                  >
+                    <span style={{ fontSize: 14, fontWeight: 500, color: '#fff' }}>{t.title}</span>
+                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.62)' }}>{t.meta}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        </div>
       </div>
     </section>
   );
 }
 
-function BeforeAfterSection() {
+function PipelineSection() {
+  const reduce = useReducedMotion();
+
+  const steps = [
+    {
+      n: '01',
+      label: 'In the call',
+      title: 'Listening live',
+      detail: 'Decisions, owners, and blockers tagged as they land.',
+      chrome: 'Live · Auth sync',
+      rows: [
+        { k: 'Priya', v: 'Billing webhooks block launch.' },
+        { k: 'Jordan', v: 'I’ll own the fix — Monday.' },
+      ],
+    },
+    {
+      n: '02',
+      label: 'As you talk',
+      title: 'Tickets form',
+      detail: 'Structured work — priority, owner, due — not a notes dump.',
+      chrome: 'Extracting · 3 items',
+      rows: [
+        { k: 'SYN-12', v: 'Green billing webhooks' },
+        { k: 'SYN-13', v: 'Staging smoke suite' },
+      ],
+    },
+    {
+      n: '03',
+      label: 'When it ends',
+      title: 'Already on the board',
+      detail: 'Columns filled. Nothing left to retype after the call.',
+      chrome: 'Board · Arranged',
+      rows: [
+        { k: 'Ready', v: 'Webhooks · Jordan' },
+        { k: 'Blocked', v: 'Smoke suite · Chen' },
+      ],
+    },
+  ];
+
   return (
     <section
       style={{
         padding: 'clamp(5rem, 12vh, 9rem) 5vw',
         borderTop: '1px solid rgba(255,255,255,0.06)',
-        background:
-          'linear-gradient(180deg, rgba(255,255,255,0.02) 0%, transparent 40%, transparent 100%)',
       }}
     >
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-        <div style={{ maxWidth: 720, marginBottom: '3.5rem' }}>
-          <p style={chapterLabel}>The gap</p>
+        <div style={{ maxWidth: 560, marginBottom: 'clamp(2.5rem, 5vh, 3.5rem)' }}>
+          <p style={chapterLabel}>The handoff</p>
           <h2
             style={{
               ...display,
@@ -408,76 +537,138 @@ function BeforeAfterSection() {
               color: '#fff',
             }}
           >
-            Meetings don&apos;t fail in the room. They fail in the handoff.
+            From talk to board before the call hangs up.
           </h2>
           <p
             style={{
               margin: 0,
               fontSize: '1.0625rem',
-              lineHeight: 1.65,
+              lineHeight: 1.6,
               color: 'rgba(255,255,255,0.5)',
-              maxWidth: '48ch',
+              maxWidth: '42ch',
             }}
           >
-            Notes, Notion dumps, and generic AI summaries still leave you translating conversation
-            into execution. That translation is where velocity dies.
+            One continuous path — capture, structure, ship-ready columns.
           </p>
         </div>
 
         <div
-          className="lp-gap-grid"
+          className="lp-pipeline"
           style={{
             display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: 16,
+            gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+            gap: 'clamp(1rem, 2.5vw, 1.35rem)',
+            alignItems: 'stretch',
           }}
         >
-          <div style={contrastPanel}>
-            <p
-              style={{ ...chapterLabel, marginBottom: '1.25rem', color: 'rgba(255,255,255,0.35)' }}
+          {steps.map((step, i) => (
+            <motion.div
+              key={step.n}
+              initial={reduce ? false : { opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.3 }}
+              transition={{ duration: 0.6, delay: i * 0.1, ease: EASE }}
+              style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}
             >
-              Still happening
-            </p>
-            <ul style={contrastList}>
-              {[
-                'Action items trapped in chat scrollback',
-                'Owners assigned by vibes, not by the board',
-                'Friday “what did we decide?” archaeology',
-                'Deep work sacrificed to cleanup docs',
-              ].map((line) => (
-                <li key={line} style={contrastItem}>
-                  <span aria-hidden style={contrastMarkBad}>
-                    —
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'baseline',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  marginBottom: 14,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 11,
+                    letterSpacing: '0.16em',
+                    textTransform: 'uppercase',
+                    color: 'rgba(255,255,255,0.4)',
+                    fontWeight: 500,
+                  }}
+                >
+                  {step.label}
+                </span>
+                <span
+                  style={{
+                    ...display,
+                    fontSize: 22,
+                    fontWeight: 700,
+                    color: 'rgba(255,255,255,0.22)',
+                    letterSpacing: '-0.03em',
+                  }}
+                >
+                  {step.n}
+                </span>
+              </div>
+              <h3
+                style={{
+                  ...display,
+                  fontSize: '1.25rem',
+                  fontWeight: 650,
+                  margin: '0 0 0.5rem',
+                  color: '#fff',
+                }}
+              >
+                {step.title}
+              </h3>
+              <p
+                style={{
+                  margin: '0 0 1.15rem',
+                  fontSize: 14,
+                  lineHeight: 1.5,
+                  color: 'rgba(255,255,255,0.48)',
+                  flex: '0 0 auto',
+                }}
+              >
+                {step.detail}
+              </p>
+              <div style={{ ...appChrome, flex: 1, background: '#080808' }}>
+                <div style={{ ...appChromeHead, background: '#0c0c0c' }}>
+                  <span style={{ ...appChromeTitle, color: 'rgba(255,255,255,0.7)' }}>
+                    {step.chrome}
                   </span>
-                  {line}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div
-            style={{
-              ...contrastPanel,
-              borderColor: 'rgba(255,255,255,0.18)',
-              background: 'rgba(255,255,255,0.04)',
-            }}
-          >
-            <p style={{ ...chapterLabel, marginBottom: '1.25rem' }}>What closes the gap</p>
-            <ul style={contrastList}>
-              {[
-                'Structured tickets from the live conversation',
-                'Owners, priorities, and dependencies attached',
-                'Work already on the Kanban when the call ends',
-                'You stay in the meeting — not the aftermath',
-              ].map((line) => (
-                <li key={line} style={contrastItem}>
-                  <span aria-hidden style={contrastMarkGood}>
-                    →
-                  </span>
-                  {line}
-                </li>
-              ))}
-            </ul>
-          </div>
+                </div>
+                <div
+                  style={{
+                    padding: '12px 14px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 10,
+                  }}
+                >
+                  {step.rows.map((row) => (
+                    <div
+                      key={row.v}
+                      style={{
+                        display: 'flex',
+                        gap: 10,
+                        alignItems: 'flex-start',
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 600,
+                          color: 'rgba(255,255,255,0.38)',
+                          minWidth: 52,
+                          paddingTop: 1,
+                        }}
+                      >
+                        {row.k}
+                      </span>
+                      <span
+                        style={{ fontSize: 13, color: 'rgba(255,255,255,0.82)', lineHeight: 1.4 }}
+                      >
+                        {row.v}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          ))}
         </div>
       </div>
     </section>
@@ -528,49 +719,137 @@ function ChapterTalk() {
       id="talk"
       label="Talk"
       title="It joins the meeting."
-      body="Syntheon Hub sits in the call, listens with you, and keeps every decision, blocker, and commitment."
+      body="Syntheon Hub sits in the call and keeps every decision, blocker, and commitment."
     >
-      <div style={demoFrame}>
-        <p style={demoLabel}>Live capture</p>
-        {[
-          { who: 'Priya', line: 'Launch is blocked until billing webhooks are green.' },
-          { who: 'Jordan', line: 'I’ll take the webhook fix — ship Monday.' },
-          { who: 'Chen', line: 'Hold merge until the staging smoke suite passes.' },
-        ].map((row) => (
-          <div key={row.line} style={transcriptRow}>
-            <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, minWidth: 48 }}>
-              {row.who}
-            </span>
-            <span style={{ color: 'rgba(255,255,255,0.88)', fontSize: 15 }}>{row.line}</span>
-          </div>
-        ))}
-      </div>
+      <ShowcaseMeetings hero />
     </Chapter>
   );
 }
 
 function ChapterWork() {
+  const reduce = useReducedMotion();
+
+  const tickets = [
+    { title: 'Green billing webhooks for launch', meta: 'High · Jordan · Mon' },
+    { title: 'Staging smoke suite before merge', meta: 'Blocked · Chen' },
+    { title: 'Unblock launch path', meta: 'In progress · Priya' },
+    { title: 'Attach owners from the call', meta: 'Medium · System' },
+  ];
+
   return (
-    <Chapter
+    <section
       id="work"
-      label="Work"
-      title="Talk crystallizes into tickets."
-      body="Action items, owners, priorities, and dependencies land as structured work — not a pile of notes."
-      invert
+      style={{
+        padding: 'clamp(5rem, 12vh, 9rem) 5vw',
+        borderTop: '1px solid rgba(255,255,255,0.06)',
+      }}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {[
-          { title: 'Green billing webhooks for launch', meta: 'High · Jordan · Mon' },
-          { title: 'Staging smoke suite before merge', meta: 'Blocked · Chen' },
-          { title: 'Unblock launch path', meta: 'In progress · Priya' },
-        ].map((t) => (
-          <div key={t.title} style={workTicket}>
-            <span style={{ fontSize: 15, fontWeight: 500, color: '#fff' }}>{t.title}</span>
-            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)' }}>{t.meta}</span>
-          </div>
-        ))}
-      </div>
-    </Chapter>
+      <motion.div
+        initial={reduce ? false : { opacity: 0.4 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true, amount: 0.25 }}
+        transition={{ duration: 0.7, ease: EASE }}
+        style={{ maxWidth: 1280, margin: '0 auto' }}
+      >
+        <div style={{ maxWidth: 560, marginBottom: 'clamp(2rem, 4vh, 3rem)' }}>
+          <p style={chapterLabel}>Work</p>
+          <h2
+            style={{
+              ...display,
+              fontSize: 'clamp(2rem, 4.5vw, 3.25rem)',
+              fontWeight: 700,
+              lineHeight: 1.1,
+              margin: '0.75rem 0 1rem',
+              color: '#fff',
+            }}
+          >
+            Talk crystallizes into tickets.
+          </h2>
+          <p
+            style={{
+              margin: 0,
+              fontSize: '1.0625rem',
+              lineHeight: 1.6,
+              color: 'rgba(255,255,255,0.52)',
+              maxWidth: '38ch',
+            }}
+          >
+            Owners, priorities, and dependencies land as structured work — not a pile of notes.
+          </p>
+        </div>
+
+        <div
+          className="lp-work-split"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(240px, 0.72fr) minmax(0, 1.6fr)',
+            gap: 'clamp(1rem, 3vw, 1.5rem)',
+            alignItems: 'stretch',
+          }}
+        >
+          <motion.div
+            initial={reduce ? false : { opacity: 0, y: 14 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 0.65, ease: EASE }}
+            style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}
+          >
+            <p
+              style={{
+                fontSize: 11,
+                letterSpacing: '0.16em',
+                textTransform: 'uppercase',
+                color: 'rgba(255,255,255,0.3)',
+                marginBottom: 12,
+              }}
+            >
+              From the call
+            </p>
+            <div style={{ ...appChrome, flex: 1 }}>
+              <div style={appChromeHead}>
+                <span style={appChromeTitle}>Tickets</span>
+              </div>
+              <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {tickets.map((t, i) => (
+                  <motion.div
+                    key={t.title}
+                    style={workTicket}
+                    initial={reduce ? false : { opacity: 0, y: 10 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.45, delay: 0.08 + i * 0.08, ease: EASE }}
+                  >
+                    <span style={{ fontSize: 14, fontWeight: 500, color: '#fff' }}>{t.title}</span>
+                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>{t.meta}</span>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={reduce ? false : { opacity: 0, y: 14 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 0.65, delay: 0.08, ease: EASE }}
+            style={{ minWidth: 0, width: '100%', display: 'flex', flexDirection: 'column' }}
+          >
+            <p
+              style={{
+                fontSize: 11,
+                letterSpacing: '0.16em',
+                textTransform: 'uppercase',
+                color: 'rgba(255,255,255,0.5)',
+                marginBottom: 12,
+              }}
+            >
+              On the board
+            </p>
+            <InteractiveKanbanDemo arranged compact />
+          </motion.div>
+        </div>
+      </motion.div>
+    </section>
   );
 }
 
@@ -582,6 +861,7 @@ function ChapterDone({ pageOrigin }: { pageOrigin: number }) {
   const inView = useInView(sectionRef, { once: true, amount: 0.28 });
   const [counterValue, setCounterValue] = useState(0);
   const [revealed, setRevealed] = useState(false);
+  const { mode } = useDoneModeCycle(inView);
 
   useEffect(() => {
     if (!inView) return;
@@ -612,7 +892,8 @@ function ChapterDone({ pageOrigin }: { pageOrigin: number }) {
         padding: 'clamp(4rem, 8vh, 6rem) 0 clamp(3rem, 6vh, 5rem)',
         borderTop: '1px solid rgba(255,255,255,0.06)',
         position: 'relative',
-        overflow: 'hidden',
+        // Do not clip display type / blur bleed — root already guards overflow-x
+        overflow: 'visible',
       }}
     >
       <div
@@ -630,9 +911,9 @@ function ChapterDone({ pageOrigin }: { pageOrigin: number }) {
         <div
           style={{
             textAlign: 'center',
-            maxWidth: 920,
+            maxWidth: 980,
             margin: '0 auto',
-            padding: '0 5vw 3rem',
+            padding: '0 clamp(1.25rem, 5vw, 2.5rem) 3rem',
           }}
         >
           <motion.p
@@ -646,10 +927,15 @@ function ChapterDone({ pageOrigin }: { pageOrigin: number }) {
 
           {revealed && (
             <motion.div
-              initial={reduce ? false : { opacity: 0, y: 18, filter: 'blur(8px)' }}
-              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              initial={reduce ? false : { opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.85, ease: EASE }}
-              style={{ margin: '1.75rem 0 0', textAlign: 'center' }}
+              style={{
+                margin: '1.75rem 0 0',
+                textAlign: 'center',
+                paddingTop: '0.15em',
+                overflow: 'visible',
+              }}
             >
               <ScrollSeconds
                 target={counterValue}
@@ -657,27 +943,32 @@ function ChapterDone({ pageOrigin }: { pageOrigin: number }) {
                   ...display,
                   fontSize: 'clamp(4.75rem, 15vw, 8.5rem)',
                   fontWeight: 700,
+                  lineHeight: 1,
                 }}
               />
             </motion.div>
           )}
 
           <motion.h2
-            initial={reduce ? false : { opacity: 0, y: 24, filter: 'blur(10px)' }}
-            animate={inView ? { opacity: 1, y: 0, filter: 'blur(0px)' } : { opacity: 0 }}
+            initial={reduce ? false : { opacity: 0, y: 24 }}
+            animate={inView ? { opacity: 1, y: 0 } : { opacity: 0 }}
             transition={{ duration: 0.95, delay: reduce ? 0 : 0.15, ease: EASE }}
             style={{
               ...display,
-              fontSize: 'clamp(2rem, 5.2vw, 3.75rem)',
+              fontSize: 'clamp(1.85rem, 4.6vw, 3.35rem)',
               fontWeight: 700,
-              lineHeight: 1.08,
+              lineHeight: 1.12,
               margin: '1.25rem 0 0',
               color: '#fff',
+              textWrap: 'pretty',
+              overflow: 'visible',
             }}
           >
             By the time you scrolled here,
             <br />
-            Syntheon Hub had already arranged the tickets.
+            Syntheon Hub had already arranged the
+            <br />
+            <DoneModeNoun mode={mode} reduce={reduce} />
           </motion.h2>
 
           <motion.p
@@ -686,13 +977,14 @@ function ChapterDone({ pageOrigin }: { pageOrigin: number }) {
             transition={{ duration: 0.7, delay: reduce ? 0 : 0.35, ease: EASE }}
             style={{
               margin: '1.35rem auto 0',
-              maxWidth: '38ch',
+              maxWidth: '40ch',
               fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
               lineHeight: 1.6,
               color: 'rgba(255,255,255,0.5)',
+              minHeight: '3.2em',
             }}
           >
-            You were still reading. The board was already current.
+            <DoneModeHint mode={mode} reduce={reduce} />
           </motion.p>
         </div>
 
@@ -706,10 +998,11 @@ function ChapterDone({ pageOrigin }: { pageOrigin: number }) {
             padding: '0 clamp(0.75rem, 2.5vw, 2rem)',
             maxWidth: 1480,
             margin: '0 auto',
+            overflow: 'visible',
           }}
         >
           {inView ? (
-            <InteractiveKanbanDemo majestic arranged />
+            <DoneModeStage mode={mode} reduce={reduce} />
           ) : (
             <div style={{ minHeight: '40vh' }} />
           )}
@@ -1163,71 +1456,36 @@ const chapterLabel: CSSProperties = {
   fontWeight: 500,
 };
 
-const demoFrame: CSSProperties = {
-  borderRadius: 20,
+const appChrome: CSSProperties = {
+  borderRadius: 16,
   border: '1px solid rgba(255,255,255,0.1)',
-  background: 'rgba(255,255,255,0.02)',
-  padding: '1.5rem',
+  background: '#0a0a0a',
+  overflow: 'hidden',
+  boxShadow: '0 24px 48px rgba(0,0,0,0.45)',
 };
 
-const demoLabel: CSSProperties = {
-  fontSize: 11,
-  letterSpacing: '0.14em',
-  textTransform: 'uppercase',
-  color: 'rgba(255,255,255,0.35)',
-  margin: '0 0 1rem',
-};
-
-const transcriptRow: CSSProperties = {
+const appChromeHead: CSSProperties = {
+  height: 44,
+  borderBottom: '1px solid rgba(255,255,255,0.1)',
+  background: '#0d0d0d',
   display: 'flex',
-  gap: 14,
-  padding: '12px 0',
-  borderTop: '1px solid rgba(255,255,255,0.06)',
+  alignItems: 'center',
+  padding: '0 16px',
+};
+
+const appChromeTitle: CSSProperties = {
+  fontSize: 13,
+  color: 'rgba(255,255,255,0.6)',
 };
 
 const workTicket: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: 6,
-  padding: '16px 18px',
-  borderRadius: 16,
+  padding: '14px 16px',
+  borderRadius: 12,
   border: '1px solid rgba(255,255,255,0.1)',
   background: 'rgba(255,255,255,0.03)',
-};
-
-const contrastPanel: CSSProperties = {
-  borderRadius: 20,
-  border: '1px solid rgba(255,255,255,0.1)',
-  background: 'rgba(255,255,255,0.015)',
-  padding: 'clamp(1.5rem, 3vw, 2.25rem)',
-};
-
-const contrastList: CSSProperties = {
-  listStyle: 'none',
-  padding: 0,
-  margin: 0,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 14,
-};
-
-const contrastItem: CSSProperties = {
-  display: 'flex',
-  gap: 12,
-  alignItems: 'flex-start',
-  fontSize: 15,
-  lineHeight: 1.5,
-  color: 'rgba(255,255,255,0.72)',
-};
-
-const contrastMarkBad: CSSProperties = {
-  color: 'rgba(255,255,255,0.28)',
-  flexShrink: 0,
-};
-
-const contrastMarkGood: CSSProperties = {
-  color: 'rgba(255,255,255,0.7)',
-  flexShrink: 0,
 };
 
 const landingCss = `
@@ -1255,14 +1513,21 @@ const landingCss = `
     .lp-chapter > div {
       order: unset !important;
     }
+    .lp-split {
+      grid-template-columns: 1fr !important;
+      gap: 2.5rem !important;
+    }
+    .lp-iso-pair {
+      grid-template-columns: 1fr !important;
+      gap: 2.75rem !important;
+    }
     .lp-footer-grid {
       grid-template-columns: 1fr 1fr !important;
     }
-    .lp-waste-row {
+    .lp-work-split {
       grid-template-columns: 1fr !important;
-      gap: 0.75rem !important;
     }
-    .lp-gap-grid {
+    .lp-pipeline {
       grid-template-columns: 1fr !important;
     }
     .lp-nav-links a:not(:last-child) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { OrganizationMetadataEntity } from '@/db/entities';
+import { FREE_ORG_SEAT_LIMIT, isOrganizationPaid } from '@/lib/org-plan';
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -60,18 +61,17 @@ export async function POST(req: NextRequest) {
 
   // Direct join (no waitlist during beta)
   try {
-    // Check org seat limit for free tier
-    const { has } = session;
-    const isPaidOrg = has?.({ plan: 'org:org_pro' }) || has?.({ plan: 'org:org_max' });
+    // Seat limit is based on the *target* org's plan, not the joiner's
+    const isPaidOrg = await isOrganizationPaid(meta.orgId);
     if (!isPaidOrg) {
       const members = await client.organizations.getOrganizationMembershipList({
         organizationId: meta.orgId,
       });
-      if ((members.data?.length ?? 0) >= 3) {
+      if ((members.data?.length ?? 0) >= FREE_ORG_SEAT_LIMIT) {
         return NextResponse.json(
           {
-            error: 'Beta testing limit reached',
-            message: 'This organization has reached the 3-member beta testing limit.',
+            error: 'Seat limit reached',
+            message: `This organization has reached the ${FREE_ORG_SEAT_LIMIT}-member limit.`,
           },
           { status: 403 }
         );

@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import DOMPurify from 'isomorphic-dompurify';
 import {
   getCommentsForTicket,
   createComment,
-  deleteComment,
   getTicketById,
   createActivity,
   createNotification,
 } from '@/lib/db';
+import { requireAuth } from '@/lib/rbac';
 
 const ALLOWED_TAGS = [
   'p',
@@ -32,12 +31,12 @@ const ALLOWED_ATTR = ['href', 'target', 'rel'];
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId, orgId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = await requireAuth();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
     const ticket = await getTicketById(id);
-    if (!ticket || (orgId && ticket.org_id !== orgId)) {
+    if (!ticket || ticket.org_id !== ctx.orgId) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
@@ -51,12 +50,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId, orgId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = await requireAuth();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id: ticketId } = await params;
     const ticket = await getTicketById(ticketId);
-    if (!ticket || (orgId && ticket.org_id !== orgId)) {
+    if (!ticket || ticket.org_id !== ctx.orgId) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
@@ -70,7 +69,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const comment = await createComment({
       ticket_id: ticketId,
       project_id: ticket.projectId ?? null,
-      user_id: userId,
+      user_id: ctx.userId,
       content: DOMPurify.sanitize(content.trim(), { ALLOWED_TAGS, ALLOWED_ATTR }),
     });
 
@@ -83,7 +82,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // Log activity
     await createActivity({
       ticket_id: ticketId,
-      user_id: userId,
+      user_id: ctx.userId,
       action_type: 'comment_added',
       metadata: { content: plainContent },
     });
@@ -92,7 +91,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (ticket.parent_id) {
       await createActivity({
         ticket_id: ticket.parent_id,
-        user_id: userId,
+        user_id: ctx.userId,
         action_type: 'comment_added',
         metadata: { content: plainContent, subtask_id: ticketId },
       });
@@ -104,14 +103,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     let match;
     while ((match = mentionRegex.exec(content)) !== null) {
       const mentionedUserId = match[2];
-      if (mentionedUserId && mentionedUserId !== userId) {
+      if (mentionedUserId && mentionedUserId !== ctx.userId) {
         mentions.add(mentionedUserId);
       }
     }
     for (const mentionedUserId of mentions) {
       await createNotification({
         user_id: mentionedUserId,
-        org_id: orgId ?? '',
+        org_id: ctx.orgId,
         type: 'mentioned',
         title: 'You were mentioned in a comment',
         message: `On "${ticket.title}"`,

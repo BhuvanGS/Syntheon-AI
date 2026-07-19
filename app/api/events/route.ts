@@ -7,24 +7,22 @@ export const maxDuration = 300;
 
 export async function GET(req: NextRequest) {
   const { userId, orgId } = await auth();
-  if (!userId) {
+  if (!userId || !orgId) {
     return new Response('Unauthorized', { status: 401 });
   }
 
-  const clientId = `${userId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const clientId = `${userId}-${orgId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
   let pingInterval: ReturnType<typeof setInterval> | null = null;
 
   const stream = new ReadableStream({
     start(controller) {
-      addClient({ id: clientId, controller, userId, orgId: orgId ?? undefined });
+      addClient({ id: clientId, controller, userId, orgId });
 
       const encoder = new TextEncoder();
 
-      // Send initial connected event
       controller.enqueue(encoder.encode(`event: connected\ndata: {"clientId":"${clientId}"}\n\n`));
 
-      // Heartbeat ping every 15s to keep connection alive (prevents gateway 504)
       pingInterval = setInterval(() => {
         try {
           controller.enqueue(encoder.encode(`event: ping\ndata: {}\n\n`));

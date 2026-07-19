@@ -1,21 +1,21 @@
 // app/api/meetings/[id]/summary/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { getMeetingById, updateMeetingSummary } from '@/lib/db';
 import { generateMeetingSummary } from '@/lib/groq';
 import { aiRateLimit } from '@/lib/rate-limit';
+import { requireAuth } from '@/lib/rbac';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId, orgId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = await requireAuth();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const limited = await aiRateLimit(req, userId);
+    const limited = await aiRateLimit(req, ctx.userId);
     if (limited) return limited;
 
     const { id } = await params;
     const meeting = await getMeetingById(id);
-    if (!meeting || (orgId && meeting.org_id !== orgId)) {
+    if (!meeting || meeting.org_id !== ctx.orgId) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
@@ -28,12 +28,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId, orgId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = await requireAuth();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
     const meeting = await getMeetingById(id);
-    if (!meeting || (orgId && meeting.org_id !== orgId)) {
+    if (!meeting || meeting.org_id !== ctx.orgId) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 

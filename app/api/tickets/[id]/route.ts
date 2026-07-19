@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import {
   deleteTicketById,
   updateTicket,
@@ -17,13 +16,14 @@ import { TicketsEntity } from '@/db/entities';
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId, orgId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = await requireAuth();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { userId, orgId } = ctx;
 
     const { id } = await params;
     // Single-row lookup instead of scanning the entire org's tickets
     const ticket = (await getTicketById(id)) ?? undefined;
-    if (!ticket || (orgId ? ticket.org_id !== orgId : ticket.user_id !== userId)) {
+    if (!ticket || ticket.org_id !== orgId) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
@@ -155,7 +155,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const previousStatus = ticket.status;
     const previousAssignee = ticket.assignee;
     await updateTicket(id, updates);
-    broadcastToOrg(orgId ?? '', {
+    broadcastToOrg(orgId, {
       type: 'ticket_updated',
       payload: {
         ticketId: id,
@@ -199,7 +199,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         try {
           await createNotification({
             user_id: newAssigneeUserId,
-            org_id: orgId ?? '',
+            org_id: orgId,
             type: 'assigned',
             title: 'New ticket assigned to you',
             message: `"${ticket.title}" was assigned to you`,
@@ -212,7 +212,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         try {
           await createNotification({
             user_id: userId,
-            org_id: orgId ?? '',
+            org_id: orgId,
             type: 'assigned',
             title: 'Ticket assignment updated',
             message: `You assigned "${ticket.title}" to ${newAssignee}`,
@@ -231,7 +231,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         try {
           await createNotification({
             user_id: targetUserId,
-            org_id: orgId ?? '',
+            org_id: orgId,
             type: 'blocked',
             title: 'Ticket moved to blocked',
             message: `"${ticket.title}" is now blocked`,

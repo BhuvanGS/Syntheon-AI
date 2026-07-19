@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { s3Client, S3_BUCKET } from '@/lib/s3';
 import { getTicketById } from '@/lib/db';
+import { requireAuth } from '@/lib/rbac';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId, orgId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = await requireAuth();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
     const { filename, ticketId, fileSize, fileType } = body;
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     }
 
     const ticket = await getTicketById(ticketId);
-    if (!ticket || (orgId && ticket.org_id !== orgId)) {
+    if (!ticket || ticket.org_id !== ctx.orgId) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
 
     const timestamp = Date.now();
     const sanitizedName = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const filePath = `${userId}/${ticketId}/${timestamp}_${sanitizedName}`;
+    const filePath = `${ctx.userId}/${ticketId}/${timestamp}_${sanitizedName}`;
 
     const signedUrl = await getSignedUrl(
       s3Client,

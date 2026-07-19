@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { getTicketsByIds, updateTicket } from '@/lib/db';
 import { broadcastToOrg } from '@/lib/event-bus';
+import { requireAuth } from '@/lib/rbac';
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId, orgId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = await requireAuth();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
     const ticketIds: string[] = Array.isArray(body?.ticketIds) ? body.ticketIds : [];
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No ticket IDs or updates provided' }, { status: 400 });
     }
 
-    const tickets = await getTicketsByIds(ticketIds, { orgId, userId });
+    const tickets = await getTicketsByIds(ticketIds, { orgId: ctx.orgId, userId: ctx.userId });
     const validIds = new Set(tickets.map((t) => t.id));
 
     if (validIds.size !== ticketIds.length) {
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
 
     for (const ticketId of ticketIds) {
       await updateTicket(ticketId, updates as any);
-      broadcastToOrg(orgId ?? '', {
+      broadcastToOrg(ctx.orgId, {
         type: 'ticket_updated',
         payload: {
           ticketId,

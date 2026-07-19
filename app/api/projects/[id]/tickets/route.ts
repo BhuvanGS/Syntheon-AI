@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { randomUUID } from 'crypto';
 import {
   addTicketsToProject,
@@ -12,17 +11,17 @@ import {
 } from '@/lib/db';
 import { broadcastToOrg } from '@/lib/event-bus';
 import { checkTicketLimit, limitErrorResponse } from '@/lib/billing-limits';
+import { requireAuth } from '@/lib/rbac';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId, orgId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = await requireAuth();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { userId, orgId } = ctx;
 
     const { id: projectId } = await params;
     const project = await getProjectById(projectId);
-    const owned = orgId ? project?.org_id === orgId : project?.user_id === userId;
-
-    if (!project || !owned) {
+    if (!project || project.org_id !== orgId) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
@@ -54,7 +53,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     // 🚦 Ticket limit check
-    const ticketCheck = await checkTicketLimit(orgId ?? null, userId);
+    const ticketCheck = await checkTicketLimit(orgId, userId);
     if (!ticketCheck.allowed) {
       return limitErrorResponse(ticketCheck) as NextResponse;
     }
@@ -74,11 +73,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     if (resolvedMeetingId) {
       const meeting = await getMeetingById(resolvedMeetingId);
-      if (
-        !meeting ||
-        meeting.projectId !== projectId ||
-        (meeting.user_id && meeting.user_id !== userId)
-      ) {
+      if (!meeting || meeting.projectId !== projectId || meeting.org_id !== orgId) {
         return NextResponse.json(
           { error: 'Meeting does not belong to this project' },
           { status: 400 }
@@ -92,7 +87,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       {
         id: ticketId,
         user_id: userId,
-        org_id: orgId ?? undefined,
+        org_id: orgId,
         meeting_id: resolvedMeetingId,
         projectId,
         title,
@@ -116,7 +111,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     await addTicketsToProject(projectId, [ticketId]);
 
-    broadcastToOrg(orgId ?? '', {
+    broadcastToOrg(orgId, {
       type: 'ticket_created',
       payload: { ticketId, projectId, meetingId: resolvedMeetingId, title },
     });
@@ -143,7 +138,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (assigneeUserId && assigneeUserId !== userId) {
       await createNotification({
         user_id: assigneeUserId,
-        org_id: orgId ?? '',
+        org_id: orgId,
         type: 'assigned',
         title: 'New ticket assigned to you',
         message: `"${title}" was assigned to you`,
@@ -152,7 +147,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       // Also notify creator
       await createNotification({
         user_id: userId,
-        org_id: orgId ?? '',
+        org_id: orgId,
         type: 'assigned',
         title: 'Ticket assignment updated',
         message: `You assigned "${title}" to ${assignee}`,

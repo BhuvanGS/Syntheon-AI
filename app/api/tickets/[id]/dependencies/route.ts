@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { randomUUID } from 'crypto';
 import {
   getTicketById,
@@ -9,18 +8,19 @@ import {
   type DependencyType,
   type DependencyStrength,
 } from '@/lib/db';
+import { requireAuth } from '@/lib/rbac';
 
 const DEP_TYPES = new Set<DependencyType>(['data', 'structural', 'logical', 'resource']);
 const DEP_STRENGTHS = new Set<DependencyStrength>(['soft', 'hard']);
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId, orgId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = await requireAuth();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
     const ticket = await getTicketById(id);
-    if (!ticket || (orgId && ticket.org_id !== orgId) || (!orgId && ticket.user_id !== userId)) {
+    if (!ticket || ticket.org_id !== ctx.orgId) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
@@ -34,12 +34,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId, orgId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = await requireAuth();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id: ticketId } = await params;
     const ticket = await getTicketById(ticketId);
-    if (!ticket || (orgId && ticket.org_id !== orgId) || (!orgId && ticket.user_id !== userId)) {
+    if (!ticket || ticket.org_id !== ctx.orgId) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
     if (!ticket.projectId) {
@@ -85,7 +85,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // Log activity
     await createActivity({
       ticket_id: ticketId,
-      user_id: userId,
+      user_id: ctx.userId,
       action_type: 'dependency_added',
       metadata: { depends_on_ticket_id, dependency_type, strength },
     });

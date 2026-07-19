@@ -124,9 +124,12 @@ export function InteractiveKanbanDemo({
   majestic = false,
   /** Skip the live arrange animation — show final columns immediately. */
   arranged = false,
+  /** Densify for side-by-side landing layouts — flexible columns, shorter board. */
+  compact = false,
 }: {
   majestic?: boolean;
   arranged?: boolean;
+  compact?: boolean;
 }) {
   const [tickets, setTickets] = useState<Record<string, Ticket[]>>(() =>
     arranged ? arrangedTickets() : getInitialTickets()
@@ -183,11 +186,12 @@ export function InteractiveKanbanDemo({
     };
   }, [mounted, arranged]);
 
-  const colMin = majestic ? 220 : 240;
-  const boardMinH = majestic ? 'min(72vh, 720px)' : '500px';
+  const colMin = compact ? 148 : majestic ? 220 : 240;
+  const boardMinH = compact ? 340 : majestic ? 'min(72vh, 720px)' : '500px';
+  const fluidCols = majestic || compact;
 
   return (
-    <div className="w-full">
+    <div className="w-full min-w-0">
       {!arranged && (
         <div
           className="rounded-xl mb-4"
@@ -272,21 +276,26 @@ export function InteractiveKanbanDemo({
           </div>
         </div>
 
-        <div className="flex gap-4 p-5 overflow-x-auto" style={{ minHeight: boardMinH }}>
+        <div
+          className={`flex overflow-x-auto ${compact ? 'gap-2.5 p-3' : 'gap-4 p-5'}`}
+          style={{ minHeight: boardMinH }}
+        >
           {COLUMNS.map((col) => (
             <div
               key={col.id}
               className="rounded-xl border border-white/10 bg-white/[0.02] flex flex-col flex-1"
               style={{
                 minWidth: colMin,
-                ...(majestic ? { flex: '1 1 0', width: 'auto' } : { width: colMin }),
+                ...(fluidCols ? { flex: '1 1 0', width: 'auto' } : { width: colMin }),
               }}
             >
-              <div className="px-4 pt-4 pb-3 flex items-center justify-between">
+              <div
+                className={`flex items-center justify-between ${compact ? 'px-3 pt-3 pb-2' : 'px-4 pt-4 pb-3'}`}
+              >
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full" style={{ backgroundColor: col.color }} />
                   <span
-                    className="text-xs font-semibold uppercase tracking-widest"
+                    className={`font-semibold uppercase tracking-widest ${compact ? 'text-[10px]' : 'text-xs'}`}
                     style={{ color: col.color }}
                   >
                     {col.label}
@@ -295,7 +304,7 @@ export function InteractiveKanbanDemo({
                 <span className="text-xs text-white/30 tabular-nums">{tickets[col.id].length}</span>
               </div>
 
-              <div className="px-3 pb-3 flex flex-col gap-2 flex-1">
+              <div className={`flex flex-col gap-2 flex-1 ${compact ? 'px-2 pb-2' : 'px-3 pb-3'}`}>
                 <AnimatePresence mode="popLayout">
                   {tickets[col.id].map((ticket) => (
                     <motion.div
@@ -305,7 +314,7 @@ export function InteractiveKanbanDemo({
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.85 }}
                       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                      className="group p-4 rounded-lg border transition-colors"
+                      className="group rounded-lg border transition-colors"
                       style={{
                         borderColor:
                           ticket.correctColumn === col.id
@@ -315,7 +324,7 @@ export function InteractiveKanbanDemo({
                           ticket.correctColumn === col.id
                             ? 'rgba(34,197,94,0.04)'
                             : 'rgba(255,255,255,0.03)',
-                        padding: majestic ? '1.1rem 1.15rem' : undefined,
+                        padding: compact ? '0.7rem 0.75rem' : majestic ? '1.1rem 1.15rem' : '1rem',
                       }}
                     >
                       <div className="flex items-start gap-2">
@@ -325,15 +334,19 @@ export function InteractiveKanbanDemo({
                         />
                         <span
                           className={
-                            majestic
-                              ? 'text-base text-white/90 font-medium leading-snug'
-                              : 'text-[15px] text-white/90 font-medium leading-snug'
+                            compact
+                              ? 'text-[13px] text-white/90 font-medium leading-snug'
+                              : majestic
+                                ? 'text-base text-white/90 font-medium leading-snug'
+                                : 'text-[15px] text-white/90 font-medium leading-snug'
                           }
                         >
                           {ticket.title}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between mt-2.5">
+                      <div
+                        className={`flex items-center justify-between ${compact ? 'mt-1.5' : 'mt-2.5'}`}
+                      >
                         <span className="text-[10px] text-white/30 font-mono">SYN-{ticket.id}</span>
                         {ticket.correctColumn === col.id && (
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
@@ -348,7 +361,7 @@ export function InteractiveKanbanDemo({
         </div>
       </div>
 
-      {isComplete && (
+      {isComplete && !compact && (
         <motion.div
           initial={arranged ? false : { opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}

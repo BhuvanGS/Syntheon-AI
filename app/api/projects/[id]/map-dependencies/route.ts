@@ -1,28 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { randomUUID } from 'crypto';
 import {
   createDependency,
   getProjectById,
   getTicketsByProjectId,
   getDependenciesForProject,
-  deleteDependency,
 } from '@/lib/db';
 import { inferProjectTicketDependencies } from '@/lib/groq';
 import { aiRateLimit } from '@/lib/rate-limit';
+import { requireAuth } from '@/lib/rbac';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId, orgId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = await requireAuth();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const limited = await aiRateLimit(req, userId);
+    const limited = await aiRateLimit(req, ctx.userId);
     if (limited) return limited;
 
     const { id } = await params;
     const project = await getProjectById(id);
-    const owned = orgId ? project?.org_id === orgId : project?.user_id === userId;
-    if (!project || !owned) {
+    if (!project || project.org_id !== ctx.orgId) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 

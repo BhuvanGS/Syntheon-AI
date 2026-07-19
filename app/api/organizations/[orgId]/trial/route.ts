@@ -1,17 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { randomUUID } from 'crypto';
 import { OrganizationMetadataEntity } from '@/db/entities';
+import { requireAuth } from '@/lib/rbac';
 
 const TRIAL_DAYS = 15;
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ orgId: string }> }) {
-  const session = await auth();
-  if (!session.userId) {
+  const ctx = await requireAuth();
+  if (!ctx) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const { orgId } = await params;
+  if (ctx.orgId !== orgId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
   const res = await OrganizationMetadataEntity.get({ orgId }).go();
 
   let trialStartedAt: string | undefined;

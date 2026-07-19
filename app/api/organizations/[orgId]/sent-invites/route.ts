@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { OrganizationInvitesEntity } from '@/db/entities';
+import { requireAuth, isOrgAdmin } from '@/lib/rbac';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ orgId: string }> }) {
-  const session = await auth();
-  if (!session.userId || !session.orgId) {
+  const ctx = await requireAuth();
+  if (!ctx) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const { orgId } = await params;
-  if (session.orgId !== orgId) {
+  if (ctx.orgId !== orgId || !isOrgAdmin(ctx)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 

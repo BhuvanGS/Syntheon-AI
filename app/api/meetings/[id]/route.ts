@@ -1,21 +1,21 @@
 // app/api/meetings/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import {
   deleteMeeting,
   deleteTicketsByMeetingId,
   deleteSpecsByMeetingId,
   getMeetingById,
 } from '@/lib/db';
+import { requireAuth } from '@/lib/rbac';
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId, orgId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = await requireAuth();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
     const meeting = await getMeetingById(id);
-    if (!meeting || (orgId && meeting.org_id !== orgId)) {
+    if (!meeting || meeting.org_id !== ctx.orgId) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
@@ -30,12 +30,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId, orgId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = await requireAuth();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
     const meeting = await getMeetingById(id);
-    if (!meeting || (orgId && meeting.org_id !== orgId)) {
+    if (!meeting || meeting.org_id !== ctx.orgId) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 

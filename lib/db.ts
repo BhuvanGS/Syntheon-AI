@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { broadcast } from '@/lib/event-bus';
+import { broadcastToOrg, broadcastToUser } from '@/lib/event-bus';
 import { CURRENT_CONSENT_VERSION } from '@/lib/consent-constants';
 import {
   UsersEntity,
@@ -336,7 +336,13 @@ export async function getMeetingByBotId(botId: string): Promise<Meeting | undefi
 
 export async function updateMeetingStatus(id: string, status: Meeting['status']): Promise<void> {
   await MeetingsEntity.update({ id }).set({ status, updatedAt: new Date().toISOString() }).go();
-  broadcast({ type: 'meeting_status_changed', payload: { meetingId: id, status } });
+  const meeting = await getMeetingById(id);
+  if (meeting?.org_id) {
+    broadcastToOrg(meeting.org_id, {
+      type: 'meeting_status_changed',
+      payload: { meetingId: id, status },
+    });
+  }
 }
 
 export async function updateMeetingSpecs(
@@ -1500,16 +1506,29 @@ export async function createNotification(
     read: false,
     created_at: now,
   };
-  broadcast({
-    type: 'notification_new',
-    payload: {
-      userId: values.user_id,
-      type: values.type,
-      title: values.title,
-      message: values.message,
-      ticketId: values.ticket_id ?? null,
-    },
-  });
+  if (values.org_id) {
+    broadcastToOrg(values.org_id, {
+      type: 'notification_new',
+      payload: {
+        userId: values.user_id,
+        type: values.type,
+        title: values.title,
+        message: values.message,
+        ticketId: values.ticket_id ?? null,
+      },
+    });
+  } else {
+    broadcastToUser(values.user_id, {
+      type: 'notification_new',
+      payload: {
+        userId: values.user_id,
+        type: values.type,
+        title: values.title,
+        message: values.message,
+        ticketId: values.ticket_id ?? null,
+      },
+    });
+  }
   return notification;
 }
 

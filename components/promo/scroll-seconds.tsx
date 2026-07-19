@@ -38,7 +38,7 @@ export function ScrollSeconds({ target, style }: { target: number; style?: CSSPr
         justifyContent: 'center',
         fontVariantNumeric: 'tabular-nums',
         letterSpacing: '-0.04em',
-        lineHeight: 0.95,
+        lineHeight: 1,
         color: '#fff',
         ...style,
       }}

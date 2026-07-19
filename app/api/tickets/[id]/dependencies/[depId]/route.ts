@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import {
   getTicketById,
   deleteDependency,
@@ -10,6 +9,7 @@ import {
   type DependencyStrength,
 } from '@/lib/db';
 import { TicketDependenciesEntity } from '@/db/entities';
+import { requireAuth, type AuthContext } from '@/lib/rbac';
 
 const DEP_TYPES = new Set<DependencyType>(['data', 'structural', 'logical', 'resource']);
 const DEP_STRENGTHS = new Set<DependencyStrength>(['soft', 'hard']);
@@ -17,12 +17,10 @@ const DEP_STRENGTHS = new Set<DependencyStrength>(['soft', 'hard']);
 async function getDepByIdForUser(
   ticketId: string,
   depId: string,
-  userId: string,
-  orgId?: string | null
+  ctx: AuthContext
 ): Promise<{ found: boolean }> {
   const ticket = await getTicketById(ticketId);
-  if (!ticket) return { found: false };
-  if (orgId ? ticket.org_id !== orgId : ticket.user_id !== userId) return { found: false };
+  if (!ticket || ticket.org_id !== ctx.orgId) return { found: false };
 
   const { parents, children } = await getDependenciesForTicket(ticketId);
   const dep = [...parents, ...children].find((d) => d.id === depId);
@@ -34,11 +32,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; depId: string }> }
 ) {
   try {
-    const { userId, orgId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = await requireAuth();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id: ticketId, depId } = await params;
-    const { found } = await getDepByIdForUser(ticketId, depId, userId, orgId);
+    const { found } = await getDepByIdForUser(ticketId, depId, ctx);
     if (!found) return NextResponse.json({ error: 'Dependency not found' }, { status: 404 });
 
     await deleteDependency(depId);
@@ -46,7 +44,7 @@ export async function DELETE(
     // Log activity
     await createActivity({
       ticket_id: ticketId,
-      user_id: userId,
+      user_id: ctx.userId,
       action_type: 'dependency_removed',
       metadata: { dependency_id: depId },
     });
@@ -63,11 +61,11 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string; depId: string }> }
 ) {
   try {
-    const { userId, orgId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = await requireAuth();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id: ticketId, depId } = await params;
-    const { found } = await getDepByIdForUser(ticketId, depId, userId, orgId);
+    const { found } = await getDepByIdForUser(ticketId, depId, ctx);
     if (!found) return NextResponse.json({ error: 'Dependency not found' }, { status: 404 });
 
     const body = await req.json();
@@ -107,7 +105,7 @@ export async function PATCH(
     // Log activity
     await createActivity({
       ticket_id: ticketId,
-      user_id: userId,
+      user_id: ctx.userId,
       action_type: 'dependency_updated',
       metadata: updates,
     });

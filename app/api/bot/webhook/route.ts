@@ -13,7 +13,7 @@ import {
   createNotification,
 } from '@/lib/db';
 import { verifyWebhookSignature } from '@/lib/webhook';
-import { broadcast } from '@/lib/event-bus';
+import { broadcastToOrg } from '@/lib/event-bus';
 import { buildSpeakerMap, extractSpeakerNames } from '@/lib/speaker-match';
 import { checkTicketLimit, limitErrorResponse } from '@/lib/billing-limits';
 import crypto from 'crypto';
@@ -172,14 +172,16 @@ export async function POST(req: NextRequest) {
         title: 'Meeting recording failed',
         message: `No transcript was captured for "${meeting.projectName}".`,
       });
-      broadcast({
-        type: 'meeting_failed',
-        payload: {
-          meetingId: meeting.id,
-          projectId: meeting.projectId,
-          title: meeting.projectName,
-        },
-      });
+      if (meeting.org_id) {
+        broadcastToOrg(meeting.org_id, {
+          type: 'meeting_failed',
+          payload: {
+            meetingId: meeting.id,
+            projectId: meeting.projectId,
+            title: meeting.projectName,
+          },
+        });
+      }
       return NextResponse.json({ ok: true });
     }
 
@@ -292,15 +294,17 @@ export async function POST(req: NextRequest) {
       title: 'Meeting tickets ready',
       message: `Extracted ${insertedTickets.length} ticket${insertedTickets.length === 1 ? '' : 's'} from "${title || meeting.projectName}".`,
     });
-    broadcast({
-      type: 'meeting_ready',
-      payload: {
-        meetingId: meeting.id,
-        projectId: meeting.projectId,
-        title: title || meeting.projectName,
-        ticketCount: insertedTickets.length,
-      },
-    });
+    if (meeting.org_id) {
+      broadcastToOrg(meeting.org_id, {
+        type: 'meeting_ready',
+        payload: {
+          meetingId: meeting.id,
+          projectId: meeting.projectId,
+          title: title || meeting.projectName,
+          ticketCount: insertedTickets.length,
+        },
+      });
+    }
 
     return NextResponse.json({ ok: true });
   } catch (err: any) {
@@ -315,14 +319,16 @@ export async function POST(req: NextRequest) {
         title: 'Meeting extraction failed',
         message: `Could not process tickets from "${meeting.projectName}".`,
       });
-      broadcast({
-        type: 'meeting_failed',
-        payload: {
-          meetingId: meeting.id,
-          projectId: meeting.projectId,
-          title: meeting.projectName,
-        },
-      });
+      if (meeting.org_id) {
+        broadcastToOrg(meeting.org_id, {
+          type: 'meeting_failed',
+          payload: {
+            meetingId: meeting.id,
+            projectId: meeting.projectId,
+            title: meeting.projectName,
+          },
+        });
+      }
     }
     return NextResponse.json({ error: 'Webhook failed' }, { status: 500 });
   }

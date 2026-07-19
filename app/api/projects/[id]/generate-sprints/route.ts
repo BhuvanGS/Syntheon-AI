@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { randomUUID } from 'crypto';
 import { generateSprints } from '@/lib/groq';
 import {
@@ -7,24 +6,28 @@ import {
   createSprint,
   updateTicket,
   getSprintsByProject,
+  getProjectById,
   Sprint,
 } from '@/lib/db';
 import { aiRateLimit } from '@/lib/rate-limit';
+import { requireAuth, canAdminProject } from '@/lib/rbac';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { userId } = await auth();
-  if (!userId) {
+  const ctx = await requireAuth();
+  if (!ctx) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const limited = await aiRateLimit(req, userId);
+  const limited = await aiRateLimit(req, ctx.userId);
   if (limited) return limited;
 
   const { id: projectId } = await params;
-  const { orgId } = await req.json();
-
-  if (!orgId) {
-    return NextResponse.json({ error: 'orgId required' }, { status: 400 });
+  const project = await getProjectById(projectId);
+  if (!project || project.org_id !== ctx.orgId) {
+    return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+  }
+  if (!(await canAdminProject(ctx, projectId))) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   const tickets = await getTicketsByProjectId(projectId);
@@ -66,7 +69,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       const sprintId = randomUUID();
       const sprint = await createSprint(
         sprintId,
-        orgId,
+        ctx.orgId,
         projectId,
         suggestion.name,
         suggestion.start_date,
