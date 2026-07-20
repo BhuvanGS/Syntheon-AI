@@ -11,7 +11,7 @@ import {
   DoneModeStage,
   useDoneModeCycle,
 } from '@/components/promo/done-showcase';
-import { IsoStack } from '@/components/promo/iso-stack';
+import { AsciiLogoProp } from '@/components/promo/ascii-logo-prop';
 import { InteractiveKanbanDemo } from '@/components/promo/interactive-kanban';
 import { ShowcaseMeetings } from '@/components/promo/showcase-meetings';
 import { SmoothScroll } from '@/components/promo/smooth-scroll';
@@ -284,15 +284,7 @@ function ProblemSection() {
             The room aligns. Then someone becomes the unpaid project manager.
           </p>
         </div>
-        <IsoStack
-          motif="handoff"
-          float={!reduce}
-          layers={[
-            { left: 'MEETING', right: 'TALK · DECISIONS · OWNERS' },
-            { left: 'TRANSCRIPT', right: 'NOTES · SCROLLBACK · NOISE' },
-            { left: 'HANDOFF', right: 'SLACK · CHAOS · SECOND SHIFT' },
-          ]}
-        />
+        <AsciiLogoProp />
       </motion.div>
     </section>
   );
@@ -367,7 +359,7 @@ function WasteSection() {
                 letterSpacing: '0.16em',
                 textTransform: 'uppercase',
                 fontWeight: 600,
-                color: 'rgba(255,255,255,0.55)',
+                color: '#f0a8a0',
                 marginBottom: 12,
               }}
             >
@@ -376,20 +368,21 @@ function WasteSection() {
             <div
               style={{
                 ...appChrome,
-                borderColor: 'rgba(255,255,255,0.08)',
-                background: '#070707',
+                borderColor: 'rgba(232,140,130,0.22)',
+                background:
+                  'linear-gradient(165deg, rgba(232,140,130,0.07) 0%, #070707 38%, #070707 100%)',
                 boxShadow: '0 24px 48px rgba(0,0,0,0.55)',
               }}
             >
               <div
                 style={{
                   ...appChromeHead,
-                  borderBottomColor: 'rgba(255,255,255,0.06)',
-                  background: '#0b0b0b',
+                  borderBottomColor: 'rgba(232,140,130,0.14)',
+                  background: 'rgba(232,140,130,0.05)',
                 }}
               >
                 <span
-                  style={{ ...appChromeTitle, color: 'rgba(255,255,255,0.72)', fontWeight: 500 }}
+                  style={{ ...appChromeTitle, color: 'rgba(255,220,214,0.9)', fontWeight: 500 }}
                 >
                   Meeting notes
                 </span>
@@ -404,9 +397,9 @@ function WasteSection() {
                       margin: 0,
                       fontSize: 14,
                       lineHeight: 1.45,
-                      color: 'rgba(255,255,255,0.58)',
+                      color: 'rgba(255,230,226,0.78)',
                       textDecoration: 'line-through',
-                      textDecorationColor: 'rgba(255,255,255,0.28)',
+                      textDecorationColor: 'rgba(232,140,130,0.4)',
                     }}
                   >
                     {line}
@@ -428,7 +421,7 @@ function WasteSection() {
                 letterSpacing: '0.16em',
                 textTransform: 'uppercase',
                 fontWeight: 600,
-                color: 'rgba(255,255,255,0.85)',
+                color: '#9fd4b8',
                 marginBottom: 12,
               }}
             >
@@ -437,20 +430,21 @@ function WasteSection() {
             <div
               style={{
                 ...appChrome,
-                borderColor: 'rgba(255,255,255,0.16)',
-                background: '#0a0a0a',
-                boxShadow: '0 24px 48px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)',
+                borderColor: 'rgba(120,200,160,0.28)',
+                background:
+                  'linear-gradient(165deg, rgba(120,200,160,0.08) 0%, #0a0a0a 38%, #0a0a0a 100%)',
+                boxShadow: '0 24px 48px rgba(0,0,0,0.55), inset 0 1px 0 rgba(120,200,160,0.08)',
               }}
             >
               <div
                 style={{
                   ...appChromeHead,
-                  borderBottomColor: 'rgba(255,255,255,0.1)',
-                  background: '#101010',
+                  borderBottomColor: 'rgba(120,200,160,0.16)',
+                  background: 'rgba(120,200,160,0.06)',
                 }}
               >
                 <span
-                  style={{ ...appChromeTitle, color: 'rgba(255,255,255,0.88)', fontWeight: 500 }}
+                  style={{ ...appChromeTitle, color: 'rgba(210,245,225,0.95)', fontWeight: 500 }}
                 >
                   Tickets
                 </span>
@@ -461,12 +455,14 @@ function WasteSection() {
                     key={t.title}
                     style={{
                       ...workTicket,
-                      borderColor: 'rgba(255,255,255,0.12)',
-                      background: 'rgba(255,255,255,0.04)',
+                      borderColor: 'rgba(120,200,160,0.18)',
+                      background: 'rgba(120,200,160,0.05)',
                     }}
                   >
-                    <span style={{ fontSize: 14, fontWeight: 500, color: '#fff' }}>{t.title}</span>
-                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.62)' }}>{t.meta}</span>
+                    <span style={{ fontSize: 14, fontWeight: 500, color: '#f2fbf6' }}>
+                      {t.title}
+                    </span>
+                    <span style={{ fontSize: 12, color: 'rgba(180,230,205,0.75)' }}>{t.meta}</span>
                   </div>
                 ))}
               </div>
@@ -488,6 +484,9 @@ function PipelineSection() {
       title: 'Listening live',
       detail: 'Decisions, owners, and blockers tagged as they land.',
       chrome: 'Live · Auth sync',
+      accent: '#8eb4e8',
+      accentSoft: 'rgba(142,180,232,0.1)',
+      accentBorder: 'rgba(142,180,232,0.28)',
       rows: [
         { k: 'Priya', v: 'Billing webhooks block launch.' },
         { k: 'Jordan', v: 'I’ll own the fix — Monday.' },
@@ -499,6 +498,9 @@ function PipelineSection() {
       title: 'Tickets form',
       detail: 'Structured work — priority, owner, due — not a notes dump.',
       chrome: 'Extracting · 3 items',
+      accent: '#d4b88a',
+      accentSoft: 'rgba(212,184,138,0.1)',
+      accentBorder: 'rgba(212,184,138,0.28)',
       rows: [
         { k: 'SYN-12', v: 'Green billing webhooks' },
         { k: 'SYN-13', v: 'Staging smoke suite' },
@@ -510,6 +512,9 @@ function PipelineSection() {
       title: 'Already on the board',
       detail: 'Columns filled. Nothing left to retype after the call.',
       chrome: 'Board · Arranged',
+      accent: '#9fd4b8',
+      accentSoft: 'rgba(120,200,160,0.1)',
+      accentBorder: 'rgba(120,200,160,0.28)',
       rows: [
         { k: 'Ready', v: 'Webhooks · Jordan' },
         { k: 'Blocked', v: 'Smoke suite · Chen' },
@@ -584,8 +589,8 @@ function PipelineSection() {
                     fontSize: 11,
                     letterSpacing: '0.16em',
                     textTransform: 'uppercase',
-                    color: 'rgba(255,255,255,0.4)',
-                    fontWeight: 500,
+                    color: step.accent,
+                    fontWeight: 600,
                   }}
                 >
                   {step.label}
@@ -595,7 +600,8 @@ function PipelineSection() {
                     ...display,
                     fontSize: 22,
                     fontWeight: 700,
-                    color: 'rgba(255,255,255,0.22)',
+                    color: step.accent,
+                    opacity: 0.35,
                     letterSpacing: '-0.03em',
                   }}
                 >
@@ -624,9 +630,22 @@ function PipelineSection() {
               >
                 {step.detail}
               </p>
-              <div style={{ ...appChrome, flex: 1, background: '#080808' }}>
-                <div style={{ ...appChromeHead, background: '#0c0c0c' }}>
-                  <span style={{ ...appChromeTitle, color: 'rgba(255,255,255,0.7)' }}>
+              <div
+                style={{
+                  ...appChrome,
+                  flex: 1,
+                  background: `linear-gradient(165deg, ${step.accentSoft} 0%, #080808 40%, #080808 100%)`,
+                  borderColor: step.accentBorder,
+                }}
+              >
+                <div
+                  style={{
+                    ...appChromeHead,
+                    background: step.accentSoft,
+                    borderBottomColor: step.accentBorder,
+                  }}
+                >
+                  <span style={{ ...appChromeTitle, color: step.accent, fontWeight: 500 }}>
                     {step.chrome}
                   </span>
                 </div>
@@ -651,7 +670,8 @@ function PipelineSection() {
                         style={{
                           fontSize: 11,
                           fontWeight: 600,
-                          color: 'rgba(255,255,255,0.38)',
+                          color: step.accent,
+                          opacity: 0.75,
                           minWidth: 52,
                           paddingTop: 1,
                         }}
