@@ -18,6 +18,10 @@ export function createSecrets() {
     ),
     googleOauthClientId: new sst.Secret('GoogleOauthClientId', process.env.GOOGLE_OAUTH_CLIENT_ID),
     tokenEncryptionKey: new sst.Secret('TokenEncryptionKey', process.env.TOKEN_ENCRYPTION_KEY),
+    privacyDeletionSecret: new sst.Secret(
+      'PrivacyDeletionSecret',
+      process.env.PRIVACY_DELETION_SECRET
+    ),
   };
 }
 

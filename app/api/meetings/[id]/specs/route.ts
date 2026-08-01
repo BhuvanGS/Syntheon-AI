@@ -7,7 +7,7 @@ import {
   updateTicketDependency,
   getMeetingById,
 } from '@/lib/db';
-import { requireAuth } from '@/lib/rbac';
+import { requireAuth, canAccessProjectResource } from '@/lib/rbac';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -17,6 +17,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const { id } = await params;
     const meeting = await getMeetingById(id);
     if (!meeting || meeting.org_id !== ctx.orgId) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+    if (!(await canAccessProjectResource(ctx, meeting.projectId))) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
@@ -36,6 +39,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const { id } = await params;
     const meeting = await getMeetingById(id);
     if (!meeting || meeting.org_id !== ctx.orgId) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+    if (!(await canAccessProjectResource(ctx, meeting.projectId))) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 

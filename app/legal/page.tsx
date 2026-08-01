@@ -5,16 +5,13 @@ import { MarketingSurface, MKT_FONT } from '@/components/promo/smooth-scroll';
 
 import { useState, useEffect, Suspense, type ReactNode } from 'react';
 import Link from 'next/link';
-import { useAuth } from '@clerk/nextjs';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 
 const APP_URL = 'https://app.syntheonhub.com';
 
 function LegalPageContent() {
   const [active, setActive] = useState('privacy');
   const [mounted, setMounted] = useState(false);
-  const { isLoaded, isSignedIn } = useAuth();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const isEmbed = searchParams.get('embed') === '1';
 
@@ -23,16 +20,6 @@ function LegalPageContent() {
     const hash = window.location.hash.replace('#', '');
     if (hash) setActive(hash);
   }, []);
-
-  useEffect(() => {
-    if (isLoaded && isSignedIn && !isEmbed) {
-      router.replace('/settings?tab=legal');
-    }
-  }, [isLoaded, isSignedIn, isEmbed, router]);
-
-  if (isLoaded && isSignedIn && !isEmbed) {
-    return null;
-  }
 
   const tabs = [
     { id: 'privacy', label: 'Privacy Policy' },

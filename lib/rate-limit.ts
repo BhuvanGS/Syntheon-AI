@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * In-memory rate limiter. Counts are per Lambda/Node process — not shared across
+ * instances — so limits are best-effort under concurrency. Prefer a shared store
+ * (Dynamo/Redis) if you need hard global caps.
+ */
 interface RateLimitEntry {
   count: number;
   resetTime: number;

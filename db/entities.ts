@@ -75,7 +75,7 @@ export const BetaWaitlistEntity = makeEntity(
   }
 );
 
-// ─── API Keys ────────────────────────────────────────────────────
+// ─── API Keys (legacy; Chrome extension removed — table kept, unused by app) ──
 export const ApiKeysEntity = makeEntity(
   'sh-api-keys',
   'SH_API_KEYS',

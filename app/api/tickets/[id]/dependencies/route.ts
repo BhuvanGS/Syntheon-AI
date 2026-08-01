@@ -8,7 +8,7 @@ import {
   type DependencyType,
   type DependencyStrength,
 } from '@/lib/db';
-import { requireAuth } from '@/lib/rbac';
+import { requireAuth, canAccessProjectResource } from '@/lib/rbac';
 
 const DEP_TYPES = new Set<DependencyType>(['data', 'structural', 'logical', 'resource']);
 const DEP_STRENGTHS = new Set<DependencyStrength>(['soft', 'hard']);
@@ -22,6 +22,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const ticket = await getTicketById(id);
     if (!ticket || ticket.org_id !== ctx.orgId) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+    }
+    if (!(await canAccessProjectResource(ctx, ticket.projectId))) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
     const deps = await getDependenciesForTicket(id);
@@ -41,6 +44,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const ticket = await getTicketById(ticketId);
     if (!ticket || ticket.org_id !== ctx.orgId) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+    }
+    if (!(await canAccessProjectResource(ctx, ticket.projectId))) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
     if (!ticket.projectId) {
       return NextResponse.json(

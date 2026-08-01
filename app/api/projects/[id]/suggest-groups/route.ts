@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getProjectById, getTicketsByProjectId } from '@/lib/db';
 import { suggestTicketGroupings } from '@/lib/groq-ai';
 import { aiRateLimit } from '@/lib/rate-limit';
-import { requireAuth } from '@/lib/rbac';
+import { requireAuth, requireProjectAccess } from '@/lib/rbac';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -16,6 +16,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const project = await getProjectById(projectId);
     if (!project || project.org_id !== ctx.orgId) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+    if (!(await requireProjectAccess(ctx, project.id))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const tickets = await getTicketsByProjectId(projectId);

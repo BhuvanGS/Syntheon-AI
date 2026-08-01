@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAttachmentsForTicket, createAttachment, getTicketById, createActivity } from '@/lib/db';
-import { requireAuth } from '@/lib/rbac';
+import { requireAuth, canAccessProjectResource } from '@/lib/rbac';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -11,6 +11,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const ticket = await getTicketById(id);
     if (!ticket || ticket.org_id !== ctx.orgId) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+    }
+    if (!(await canAccessProjectResource(ctx, ticket.projectId))) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
     const attachments = await getAttachmentsForTicket(id);
@@ -30,6 +33,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const ticket = await getTicketById(ticketId);
     if (!ticket || ticket.org_id !== ctx.orgId) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+    }
+    if (!(await canAccessProjectResource(ctx, ticket.projectId))) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
     const body = await req.json();

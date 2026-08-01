@@ -30,7 +30,7 @@ function forceScrollTop(lenis?: Lenis | null) {
     history.scrollRestoration = 'manual';
   }
 
-  // Drop hash so reload never jumps to #done / #pricing mid-page
+  // Drop hash so reload never jumps to #ship / #pricing mid-page
   if (window.location.hash) {
     history.replaceState(null, '', window.location.pathname + window.location.search);
   }

@@ -1,313 +1,483 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
-import { useAuth, useUser } from '@clerk/nextjs';
+import { useRouter } from 'next/navigation';
 import {
   Monitor,
   Moon,
   Sun,
-  Palette,
-  Shield,
   Download,
   Trash2,
   UserX,
   FileText,
+  AlertTriangle,
+  type LucideIcon,
 } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import {
+  SettingsBody,
+  SettingsHeader,
+  SettingsPanel,
+  SettingsPanelHead,
+  SettingsSectionLabel,
+} from '@/components/settings/settings-chrome';
 
-function generateConfirmCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz';
-  let result = '';
-  for (let i = 0; i < 8; i++) {
-    result += chars[Math.floor(Math.random() * chars.length)];
+type DeletionRequest = {
+  id: string;
+  scope: 'user';
+  status: string;
+  requestedAt: string;
+  warningDueAt: string;
+  scheduledFor: string;
+  warningSentAt?: string | null;
+  processedAt?: string | null;
+};
+
+function formatScheduleDate(iso: string) {
+  try {
+    return new Date(iso).toLocaleString(undefined, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    });
+  } catch {
+    return iso;
   }
-  return result;
 }
 
 export function PreferencesTab() {
   const { theme, setTheme } = useTheme();
-  const { orgRole } = useAuth();
-  const { user } = useUser();
-  const [deletionLoading, setDeletionLoading] = useState<'none' | 'user' | 'org'>('none');
+  const router = useRouter();
 
-  async function runEmailVerificationLayer(): Promise<boolean> {
+  const [exportLoading, setExportLoading] = useState(false);
+  const [mediaLoading, setMediaLoading] = useState(false);
+  const [deletionLoading, setDeletionLoading] = useState(false);
+  const [deletionRequests, setDeletionRequests] = useState<DeletionRequest[]>([]);
+  const [mediaDialogOpen, setMediaDialogOpen] = useState(false);
+  const [deletionDialogOpen, setDeletionDialogOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
+  const [deletionReason, setDeletionReason] = useState('');
+
+  const activeDeletionRequests = deletionRequests.filter(
+    (r) => r.scope === 'user' && (r.status === 'pending' || r.status === 'warning_sent')
+  );
+
+  const loadDeletionRequests = useCallback(async () => {
     try {
-      const email = user?.primaryEmailAddress;
-      if (!email) {
-        alert('No primary email address found for verification.');
-        return false;
-      }
-
-      await email.prepareVerification({ strategy: 'email_code' });
-      const enteredCode = window.prompt(
-        `We sent a Clerk verification code to ${email.emailAddress}. Enter that code to continue.`
-      );
-
-      if (enteredCode === null) {
-        alert('Deletion process cancelled.');
-        return false;
-      }
-
-      const verified = await email.attemptVerification({ code: enteredCode.trim() });
-      if (verified.verification?.status !== 'verified') {
-        alert('Email verification failed. Please try again.');
-        return false;
-      }
-
-      return true;
+      const res = await fetch('/api/privacy/deletion');
+      if (!res.ok) return;
+      const data = await res.json();
+      const requests = Array.isArray(data?.requests) ? data.requests : [];
+      setDeletionRequests(requests.filter((r: DeletionRequest) => r.scope === 'user'));
     } catch {
-      alert('Failed to complete Clerk email verification. Please try again.');
-      return false;
+      // Non-blocking; banner simply won't show until next successful fetch
     }
-  }
+  }, []);
 
-  function runAlphabetVerificationLayer(): boolean {
-    const confirmCode = generateConfirmCode();
-    const typedCode = window.prompt(
-      `Type this 8-character verification code exactly as shown:\n\n${confirmCode}`
-    );
+  useEffect(() => {
+    void loadDeletionRequests();
+  }, [loadDeletionRequests]);
 
-    if (typedCode === null) {
-      alert('Deletion process cancelled.');
-      return false;
-    }
-
-    if (typedCode.trim() !== confirmCode) {
-      alert('Verification code mismatch. Deletion process cancelled.');
-      return false;
-    }
-
-    return true;
-  }
-
-  function runTripleConfirmationLayer(scope: 'user' | 'org'): boolean {
-    for (let step = 1; step <= 3; step += 1) {
-      const ok = window.confirm(
-        `${scope === 'org' ? 'Organization' : 'Account'} deletion confirmation ${step}/3.\n\nPress OK to continue, or Cancel to abort the entire deletion process.`
-      );
-
-      if (!ok) {
-        alert('Deletion process cancelled.');
-        return false;
+  async function handleExport() {
+    if (exportLoading) return;
+    setExportLoading(true);
+    try {
+      const res = await fetch('/api/privacy/export', { method: 'POST' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        toast({
+          title: 'Export failed',
+          description: data?.error || 'Could not export your data.',
+          variant: 'destructive',
+        });
+        return;
       }
-    }
 
-    return true;
+      const blob = await res.blob();
+      const disposition = res.headers.get('Content-Disposition') || '';
+      const match = disposition.match(/filename="?([^"]+)"?/i);
+      const filename =
+        match?.[1] || `syntheon-data-export-${new Date().toISOString().slice(0, 10)}.json`;
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: 'Export ready',
+        description: 'Your personal data download has started.',
+      });
+    } catch {
+      toast({
+        title: 'Export failed',
+        description: 'Could not export your data.',
+        variant: 'destructive',
+      });
+    } finally {
+      setExportLoading(false);
+    }
   }
 
-  async function requestDeletion(scope: 'user' | 'org') {
-    if (deletionLoading !== 'none') return;
+  async function handleDeleteMedia() {
+    if (mediaLoading) return;
+    setMediaLoading(true);
+    try {
+      const res = await fetch('/api/privacy/delete-media', { method: 'POST' });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast({
+          title: 'Media deletion failed',
+          description: data?.error || 'Could not delete meeting media.',
+          variant: 'destructive',
+        });
+        return;
+      }
 
-    const emailVerified = await runEmailVerificationLayer();
-    if (!emailVerified) return;
+      const cleared = typeof data?.clearedMeetings === 'number' ? data.clearedMeetings : 0;
+      toast({
+        title: 'Media deleted',
+        description:
+          cleared === 0
+            ? 'No meeting transcripts or media files needed clearing.'
+            : `Cleared transcripts and media from ${cleared} meeting${cleared === 1 ? '' : 's'}.`,
+      });
+      setMediaDialogOpen(false);
+    } catch {
+      toast({
+        title: 'Media deletion failed',
+        description: 'Could not delete meeting media.',
+        variant: 'destructive',
+      });
+    } finally {
+      setMediaLoading(false);
+    }
+  }
 
-    const alphabetVerified = runAlphabetVerificationLayer();
-    if (!alphabetVerified) return;
+  function openDeletionDialog() {
+    if (deletionLoading) return;
+    setConfirmText('');
+    setDeletionReason('');
+    setDeletionDialogOpen(true);
+  }
 
-    const tripleConfirmed = runTripleConfirmationLayer(scope);
-    if (!tripleConfirmed) return;
-
-    const confirmText = window.prompt(
-      scope === 'org'
-        ? 'Type DELETE to request full organization deletion (all users and data).'
-        : 'Type DELETE to request account deletion.'
-    );
-
-    if (confirmText === null) return;
+  async function submitDeletion() {
+    if (deletionLoading) return;
     if (confirmText !== 'DELETE') {
-      alert('Confirmation text mismatch. Please type DELETE exactly.');
+      toast({
+        title: 'Confirmation required',
+        description: 'Type DELETE exactly to continue.',
+        variant: 'destructive',
+      });
       return;
     }
 
-    const reason = window.prompt('Optional: reason for deletion request') ?? undefined;
-
-    setDeletionLoading(scope);
+    setDeletionLoading(true);
     try {
       const res = await fetch('/api/privacy/deletion', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scope, confirmText, reason }),
+        body: JSON.stringify({
+          scope: 'user',
+          confirmText,
+          reason: deletionReason.trim() || undefined,
+        }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data?.error || 'Failed to submit deletion request');
+      const data = await res.json().catch(() => null);
+
+      if (res.status === 409) {
+        toast({
+          title: 'Request already pending',
+          description: data?.error || 'An active account deletion request already exists.',
+          variant: 'destructive',
+        });
+        await loadDeletionRequests();
         return;
       }
-      alert(data?.message || 'Deletion request submitted successfully.');
+
+      if (!res.ok) {
+        toast({
+          title: 'Deletion request failed',
+          description: data?.error || 'Failed to submit deletion request.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const scheduledFor = data?.request?.scheduledFor
+        ? formatScheduleDate(data.request.scheduledFor)
+        : null;
+
+      toast({
+        title: 'Account deletion scheduled',
+        description: scheduledFor
+          ? `${data?.message || 'Request submitted.'} Scheduled for ${scheduledFor}.`
+          : data?.message || 'Deletion request submitted successfully.',
+      });
+
+      setDeletionDialogOpen(false);
+      setConfirmText('');
+      setDeletionReason('');
+      await loadDeletionRequests();
     } catch {
-      alert('Failed to submit deletion request');
+      toast({
+        title: 'Deletion request failed',
+        description: 'Failed to submit deletion request.',
+        variant: 'destructive',
+      });
     } finally {
-      setDeletionLoading('none');
+      setDeletionLoading(false);
     }
   }
 
   const themes = [
-    { value: 'light', label: 'Light', icon: Sun, description: 'Light mode' },
-    { value: 'dark', label: 'Dark', icon: Moon, description: 'Dark mode' },
-    { value: 'system', label: 'System', icon: Monitor, description: 'Use system preference' },
+    { value: 'light', label: 'Light', icon: Sun, description: 'Bright canvas' },
+    { value: 'dark', label: 'Dark', icon: Moon, description: 'Near-black precision' },
+    { value: 'system', label: 'System', icon: Monitor, description: 'Match device' },
   ];
 
   return (
-    <div className="p-6 lg:p-10">
-      {/* Page Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="h-10 w-10 rounded-xl bg-purple-500/10 flex items-center justify-center shrink-0">
-            <Palette className="h-5 w-5 text-purple-500" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-playfair font-bold text-foreground">Preferences</h2>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Customize your workspace appearance
-            </p>
-          </div>
-        </div>
+    <SettingsBody>
+      <SettingsHeader
+        title="Preferences"
+        description="Appearance and data controls for your account."
+      />
+
+      <div className="space-y-3">
+        <SettingsSectionLabel>Appearance</SettingsSectionLabel>
+        <SettingsPanel>
+          <SettingsPanelHead title="Theme" hint="Choose how Syntheon Hub looks on this device." />
+          <RadioGroup value={theme} onValueChange={setTheme}>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              {themes.map((t) => {
+                const Icon = t.icon;
+                const isSelected = theme === t.value;
+                return (
+                  <label
+                    key={t.value}
+                    htmlFor={t.value}
+                    className={cn(
+                      'flex cursor-pointer flex-col items-start gap-3 rounded-xl border px-4 py-4 text-left transition-colors duration-150',
+                      isSelected
+                        ? 'border-white/20 bg-white/[0.06]'
+                        : 'border-border bg-transparent hover:bg-white/[0.03]'
+                    )}
+                  >
+                    <Icon
+                      className={cn(
+                        'h-4 w-4',
+                        isSelected ? 'text-foreground' : 'text-muted-foreground'
+                      )}
+                    />
+                    <div>
+                      <span className="text-sm font-medium text-foreground">{t.label}</span>
+                      <p className="mt-0.5 text-[12px] text-muted-foreground">{t.description}</p>
+                    </div>
+                    <RadioGroupItem value={t.value} id={t.value} className="sr-only" />
+                  </label>
+                );
+              })}
+            </div>
+          </RadioGroup>
+        </SettingsPanel>
       </div>
 
-      <div className="space-y-4">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Appearance
-        </p>
-
-        <Card className="border-border/60 shadow-none">
-          <CardHeader className="pb-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-purple-500/10 flex items-center justify-center shrink-0">
-                <Palette className="h-5 w-5 text-purple-500" />
-              </div>
-              <div>
-                <CardTitle className="text-sm font-semibold">Theme</CardTitle>
-                <CardDescription className="text-xs mt-0.5">
-                  Choose your preferred theme
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <Separator />
-          <CardContent className="pt-6">
-            <RadioGroup value={theme} onValueChange={setTheme}>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {themes.map((t) => {
-                  const Icon = t.icon;
-                  const isSelected = theme === t.value;
-                  return (
-                    <div
-                      key={t.value}
-                      className={cn(
-                        'flex flex-col items-center gap-3 rounded-xl border px-4 py-5 cursor-pointer transition-all duration-200',
-                        isSelected
-                          ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
-                          : 'border-border/60 hover:border-border hover:bg-muted/30'
-                      )}
-                      onClick={() => setTheme(t.value)}
-                    >
-                      <div
-                        className={cn(
-                          'h-12 w-12 rounded-xl flex items-center justify-center shrink-0 transition-colors',
-                          isSelected ? 'bg-primary/10' : 'bg-muted/50'
-                        )}
-                      >
-                        <Icon
-                          className={cn(
-                            'h-5 w-5',
-                            isSelected ? 'text-primary' : 'text-muted-foreground'
-                          )}
-                        />
-                      </div>
-                      <div className="text-center">
-                        <Label htmlFor={t.value} className="text-sm font-medium cursor-pointer">
-                          {t.label}
-                        </Label>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">{t.description}</p>
-                      </div>
-                      <RadioGroupItem value={t.value} id={t.value} className="sr-only" />
-                    </div>
-                  );
-                })}
-              </div>
-            </RadioGroup>
-          </CardContent>
-        </Card>
-
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground pt-4">
-          Data & Privacy
-        </p>
-
-        <Card className="border-border/60 shadow-none">
-          <CardHeader className="pb-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
-                <Shield className="h-5 w-5 text-emerald-500" />
-              </div>
-              <div>
-                <CardTitle className="text-sm font-semibold">Your data rights</CardTitle>
-                <CardDescription className="text-xs mt-0.5">
-                  Manage your personal data under applicable privacy law
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <Separator />
-          <CardContent className="pt-6 space-y-3">
+      <div className="space-y-3">
+        <SettingsSectionLabel>Data & privacy</SettingsSectionLabel>
+        <SettingsPanel padded={false}>
+          <div className="app-panel-pad pb-2">
+            <SettingsPanelHead
+              title="Your data rights"
+              hint="Export a copy of your data or review policies."
+            />
+          </div>
+          <div className="divide-y divide-border border-t border-border">
             <DataAction
               icon={Download}
               title="Request a copy of your data"
-              description="Export all personal data we hold about you, including tickets, meetings, and legal records."
-              action="Export data"
-              onClick={() =>
-                alert('Data export request submitted. We will email you within 7 days.')
-              }
-              tone="primary"
+              description="Download a personal data copy (account, transcripts, tickets, and consent records) immediately."
+              action={exportLoading ? 'Exporting…' : 'Export'}
+              onClick={() => void handleExport()}
+              disabled={exportLoading}
             />
             <DataAction
               icon={FileText}
               title="Terms & legal"
-              description="View the Terms of Service, Privacy Policy, and other legal notices you agreed to at sign-in."
-              action="Open legal"
-              onClick={() => {
-                window.location.href = '/legal';
-              }}
-              tone="primary"
+              description="Open Terms of Service, Privacy Policy, and related notices in Settings."
+              action="Open"
+              onClick={() => router.push('/settings?tab=legal')}
             />
+          </div>
+        </SettingsPanel>
+      </div>
+
+      <div className="space-y-3">
+        <SettingsSectionLabel>Danger zone</SettingsSectionLabel>
+
+        {activeDeletionRequests.length > 0 && (
+          <div
+            role="status"
+            className="flex gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3"
+          >
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+            <div className="min-w-0 space-y-2">
+              <p className="text-sm font-medium text-foreground">Deletion request pending</p>
+              {activeDeletionRequests.map((req) => (
+                <p key={req.id} className="text-[13px] leading-relaxed text-muted-foreground">
+                  Account erasure is scheduled for{' '}
+                  <span className="text-foreground">{formatScheduleDate(req.scheduledFor)}</span>
+                  {req.status === 'warning_sent'
+                    ? '. Final warning has been sent (48 hours before deletion).'
+                    : '. Final warning is sent 48 hours before deletion.'}
+                </p>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <SettingsPanel padded={false} className="border-red-500/25">
+          <div className="app-panel-pad pb-2">
+            <SettingsPanelHead
+              title="Irreversible actions"
+              hint="These permanently remove data or schedule account erasure."
+            />
+          </div>
+          <div className="divide-y divide-border border-t border-red-500/15">
             <DataAction
               icon={Trash2}
               title="Delete meeting transcripts and audio"
-              description="Remove all meeting transcripts and audio recordings from your account."
-              action="Delete media"
-              onClick={() =>
-                alert('Media deletion request submitted. We will process it within 30 days.')
-              }
+              description="Transcripts deleted immediately. Audio is already purged after transcription."
+              action={mediaLoading ? 'Deleting…' : 'Delete media'}
+              onClick={() => setMediaDialogOpen(true)}
+              disabled={mediaLoading || deletionLoading}
               tone="danger"
             />
             <DataAction
               icon={UserX}
               title="Delete your account"
-              description="Permanently delete your account and all associated data. This cannot be undone."
-              action={deletionLoading === 'user' ? 'Submitting...' : 'Delete account'}
-              onClick={() => requestDeletion('user')}
-              disabled={deletionLoading !== 'none'}
+              description="Account erasure runs after a 30-day grace period. Final warning 48 hours before deletion."
+              action={deletionLoading ? 'Submitting…' : 'Delete account'}
+              onClick={openDeletionDialog}
+              disabled={deletionLoading || mediaLoading}
               tone="danger"
             />
-            {orgRole === 'org:admin' && (
-              <DataAction
-                icon={Trash2}
-                title="Delete organization"
-                description="Permanently delete this organization, all projects, and all member data under this org."
-                action={deletionLoading === 'org' ? 'Submitting...' : 'Delete org'}
-                onClick={() => requestDeletion('org')}
-                disabled={deletionLoading !== 'none'}
-                tone="danger"
-              />
-            )}
-          </CardContent>
-        </Card>
+          </div>
+        </SettingsPanel>
       </div>
-    </div>
+
+      <Dialog open={mediaDialogOpen} onOpenChange={setMediaDialogOpen}>
+        <DialogContent className="border-red-500/20 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete meeting media?</DialogTitle>
+            <DialogDescription>
+              This clears transcripts and media file references from meetings you own. Tickets and
+              your account are not deleted. Audio is already purged after transcription.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setMediaDialogOpen(false)}
+              disabled={mediaLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => void handleDeleteMedia()}
+              disabled={mediaLoading}
+            >
+              {mediaLoading ? 'Deleting…' : 'Delete media'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={deletionDialogOpen}
+        onOpenChange={(open) => {
+          if (!open && !deletionLoading) {
+            setDeletionDialogOpen(false);
+            setConfirmText('');
+            setDeletionReason('');
+          }
+        }}
+      >
+        <DialogContent className="border-red-500/20 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete account?</DialogTitle>
+            <DialogDescription>
+              This schedules permanent deletion of your account and associated data after a 30-day
+              grace period. A final warning is sent 48 hours before deletion.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-1">
+            <div className="space-y-2">
+              <Label htmlFor="deletion-confirm">Type DELETE to confirm</Label>
+              <Input
+                id="deletion-confirm"
+                value={confirmText}
+                onChange={(e) => setConfirmText(e.target.value)}
+                placeholder="DELETE"
+                autoComplete="off"
+                disabled={deletionLoading}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="deletion-reason">Reason (optional)</Label>
+              <Textarea
+                id="deletion-reason"
+                value={deletionReason}
+                onChange={(e) => setDeletionReason(e.target.value)}
+                placeholder="Tell us why you're leaving (optional)"
+                rows={3}
+                disabled={deletionLoading}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeletionDialogOpen(false);
+                setConfirmText('');
+                setDeletionReason('');
+              }}
+              disabled={deletionLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => void submitDeletion()}
+              disabled={confirmText !== 'DELETE' || deletionLoading}
+            >
+              {deletionLoading ? 'Submitting…' : 'Delete account'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </SettingsBody>
   );
 }
 
@@ -318,43 +488,41 @@ function DataAction({
   action,
   onClick,
   disabled,
-  tone,
+  tone = 'default',
 }: {
-  icon: React.ElementType;
+  icon: LucideIcon;
   title: string;
   description: string;
   action: string;
   onClick: () => void;
   disabled?: boolean;
-  tone: 'primary' | 'danger';
+  tone?: 'default' | 'danger';
 }) {
   return (
-    <div className="flex items-start gap-3 p-3 rounded-lg border border-border/60 bg-muted/20 hover:bg-muted/40 transition-colors">
-      <div
-        className={cn(
-          'h-9 w-9 rounded-lg flex items-center justify-center shrink-0',
-          tone === 'danger' ? 'bg-red-500/10' : 'bg-primary/10'
-        )}
-      >
-        <Icon className={cn('h-4 w-4', tone === 'danger' ? 'text-red-500' : 'text-primary')} />
-      </div>
-      <div className="flex-1 min-w-0">
+    <div className="flex items-start gap-3 px-5 py-4 sm:px-6">
+      <Icon
+        className={
+          tone === 'danger'
+            ? 'mt-0.5 h-4 w-4 shrink-0 text-red-400'
+            : 'mt-0.5 h-4 w-4 shrink-0 text-muted-foreground'
+        }
+      />
+      <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-foreground">{title}</p>
-        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{description}</p>
+        <p className="mt-0.5 text-[13px] leading-relaxed text-muted-foreground">{description}</p>
       </div>
-      <button
+      <Button
+        variant={tone === 'danger' ? 'ghost' : 'outline'}
+        size="sm"
         onClick={onClick}
         disabled={disabled}
         className={cn(
-          'shrink-0 text-xs font-medium px-3 py-1.5 rounded-md transition-colors',
-          disabled && 'opacity-60 cursor-not-allowed',
-          tone === 'danger'
-            ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20'
-            : 'bg-primary/10 text-primary hover:bg-primary/15'
+          'shrink-0',
+          tone === 'danger' && 'text-red-400 hover:bg-red-500/10 hover:text-red-300'
         )}
       >
         {action}
-      </button>
+      </Button>
     </div>
   );
 }

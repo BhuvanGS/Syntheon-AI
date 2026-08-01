@@ -12,6 +12,7 @@ import { IntegrationsTab } from '@/components/settings/integrations-tab';
 import { OrganizationsTab } from '@/components/settings/organizations-tab';
 import { PreferencesTab } from '@/components/settings/preferences-tab';
 import { BillingTab } from '@/components/settings/billing-tab';
+import { SettingsHeader } from '@/components/settings/settings-chrome';
 
 type SettingsTab = 'integrations' | 'organizations' | 'preferences' | 'billing' | 'legal';
 
@@ -20,22 +21,22 @@ const tabs: Array<{ id: SettingsTab; label: string; icon: typeof Plug; descripti
     id: 'integrations',
     label: 'Integrations',
     icon: Plug,
-    description: 'Connect external services',
+    description: 'External services',
   },
   {
     id: 'organizations',
     label: 'Organizations',
     icon: Building2,
-    description: 'Manage your workspace',
+    description: 'Workspace & members',
   },
   {
     id: 'billing',
     label: 'Billing',
     icon: CreditCard,
-    description: 'Plan & subscription',
+    description: 'Plan & usage',
   },
-  { id: 'legal', label: 'Legal', icon: Scale, description: 'Privacy, terms & policies' },
-  { id: 'preferences', label: 'Preferences', icon: Sliders, description: 'Appearance & theme' },
+  { id: 'legal', label: 'Legal', icon: Scale, description: 'Policies & terms' },
+  { id: 'preferences', label: 'Preferences', icon: Sliders, description: 'Theme & privacy' },
 ];
 
 const VALID_TABS: SettingsTab[] = [
@@ -68,120 +69,110 @@ export default function SettingsPage() {
 
   if (!user || !organization) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-screen items-center justify-center bg-background">
         <LoadingMessage />
       </div>
     );
   }
 
-  const orgInitial = organization.name?.charAt(0)?.toUpperCase() ?? '?';
-
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
-      {/* Settings Sidebar */}
-      <aside className="w-72 border-r border-border/60 bg-card/30 flex flex-col shrink-0">
-        {/* Header */}
-        <div className="p-5 border-b border-border/40">
+    <div className="flex h-screen overflow-hidden bg-background">
+      <aside className="flex w-[15.5rem] shrink-0 flex-col border-r border-border bg-background sm:w-64">
+        <div className="border-b border-border px-4 py-4">
           <Button
             variant="ghost"
             size="sm"
-            className="w-full justify-start gap-2 px-2 text-muted-foreground hover:text-foreground mb-4 -ml-1"
+            className="-ml-2 mb-5 h-8 gap-2 px-2 text-[13px] text-muted-foreground hover:text-foreground"
             onClick={() => router.push('/dashboard')}
           >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Dashboard
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Dashboard
           </Button>
-          <h1 className="text-lg font-playfair font-bold text-foreground">Settings</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">Manage your workspace</p>
+          <p className="app-eyebrow">Workspace</p>
+          <h1 className="mt-1.5 text-lg font-semibold tracking-[-0.03em] text-foreground">
+            Settings
+          </h1>
+          <p className="mt-1 truncate text-[13px] text-muted-foreground">{organization.name}</p>
         </div>
 
-        {/* Navigation */}
-        <ScrollArea className="flex-1 px-3 py-4">
-          <nav className="space-y-1">
+        <ScrollArea className="flex-1 px-2 py-3">
+          <nav className="space-y-0.5" aria-label="Settings">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
               return (
                 <button
                   key={tab.id}
+                  type="button"
                   onClick={() => handleTabChange(tab.id)}
                   className={cn(
-                    'w-full flex items-start gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-200 group',
+                    'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors duration-150',
                     isActive
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                      ? 'bg-white/[0.06] text-foreground'
+                      : 'text-muted-foreground hover:bg-white/[0.035] hover:text-foreground'
                   )}
                 >
-                  <div
-                    className={cn(
-                      'h-8 w-8 rounded-lg flex items-center justify-center shrink-0 transition-colors',
-                      isActive
-                        ? 'bg-primary/15 text-primary'
-                        : 'bg-muted/50 text-muted-foreground group-hover:bg-muted group-hover:text-foreground'
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className={cn('text-sm font-medium', isActive && 'text-primary')}>
+                  <Icon
+                    className={cn('h-4 w-4 shrink-0', isActive ? 'text-foreground' : 'opacity-70')}
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-[13px] font-medium tracking-[-0.01em]">
                       {tab.label}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground truncate">{tab.description}</p>
-                  </div>
+                    </span>
+                    <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+                      {tab.description}
+                    </span>
+                  </span>
                 </button>
               );
             })}
           </nav>
         </ScrollArea>
 
-        {/* Logout footer */}
-        <div className="p-4 border-t border-border/40">
+        <div className="border-t border-border p-3">
           <Button
-            variant="outline"
-            className="w-full justify-center gap-2 border-red-500/30 text-red-500 hover:bg-red-500/10 hover:text-red-500"
+            variant="ghost"
+            className="h-9 w-full justify-start gap-2 px-3 text-[13px] text-muted-foreground hover:bg-red-500/10 hover:text-red-400"
             onClick={() => signOut({ redirectUrl: '/sign-in' })}
           >
-            <LogOut className="h-4 w-4" />
+            <LogOut className="h-3.5 w-3.5" />
             Log out
           </Button>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-auto">
-        <div className="max-w-5xl mx-auto">
-          {activeTab === 'integrations' && (
-            <Suspense
-              fallback={
-                <div className="flex items-center justify-center py-20">
-                  <LoadingMessage />
-                </div>
-              }
-            >
-              <IntegrationsTab />
-            </Suspense>
-          )}
-          {activeTab === 'organizations' && <OrganizationsTab />}
-          {activeTab === 'billing' && <BillingTab />}
-          {activeTab === 'legal' && (
-            <div className="p-5">
-              <div className="mb-3">
-                <h2 className="text-lg font-playfair font-bold text-foreground">Legal Center</h2>
-                <p className="text-sm text-muted-foreground">
-                  Privacy Policy, Terms, Cookies, DPDP and rights
-                </p>
+      <main className="min-w-0 flex-1 overflow-auto">
+        {activeTab === 'integrations' && (
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center py-20">
+                <LoadingMessage />
               </div>
-              <div className="rounded-xl border border-border/60 bg-card/20 overflow-hidden">
+            }
+          >
+            <IntegrationsTab />
+          </Suspense>
+        )}
+        {activeTab === 'organizations' && <OrganizationsTab />}
+        {activeTab === 'billing' && <BillingTab />}
+        {activeTab === 'legal' && (
+          <div className="px-6 py-8 sm:px-8 lg:px-10 lg:py-10">
+            <div className="mx-auto max-w-4xl space-y-6">
+              <SettingsHeader
+                title="Legal"
+                description="Privacy, terms, cookies, and data rights."
+              />
+              <div className="app-panel overflow-hidden">
                 <iframe
                   src="/legal?embed=1"
                   title="Syntheon Hub Legal"
-                  className="w-full h-[78vh] bg-background"
+                  className="h-[78vh] w-full bg-background"
                 />
               </div>
             </div>
-          )}
-          {activeTab === 'preferences' && <PreferencesTab />}
-        </div>
+          </div>
+        )}
+        {activeTab === 'preferences' && <PreferencesTab />}
       </main>
     </div>
   );

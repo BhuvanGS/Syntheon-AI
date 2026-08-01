@@ -18,11 +18,9 @@ import {
   RefreshCw,
   Link2,
 } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -36,6 +34,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/island-toast';
 import { cn } from '@/lib/utils';
 import { WelcomeDialog } from '@/components/welcome-dialog';
+import {
+  SettingsBody,
+  SettingsCallout,
+  SettingsHeader,
+  SettingsPanel,
+  SettingsPanelHead,
+} from '@/components/settings/settings-chrome';
 
 interface OrgMetadata {
   companyName: string;
@@ -303,172 +308,142 @@ export function OrganizationsTab() {
   }
 
   return (
-    <div className="p-6 lg:p-10">
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-            <Building2 className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-playfair font-bold text-foreground">Organizations</h2>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Manage your organization settings and memberships
-            </p>
-          </div>
-        </div>
-      </div>
+    <>
+      <SettingsBody>
+        <SettingsHeader
+          title="Organizations"
+          description="Workspace details, join links, and membership requests."
+        />
 
-      <Tabs defaultValue="my-org" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="my-org">My Organization</TabsTrigger>
-          <TabsTrigger value="joinable">Joinable</TabsTrigger>
-          {isAdmin && <TabsTrigger value="requests">Requests</TabsTrigger>}
-        </TabsList>
+        <Tabs defaultValue="my-org" className="space-y-6">
+          <TabsList className="grid h-auto w-full grid-cols-3 gap-1 rounded-xl border border-border bg-transparent p-1">
+            <TabsTrigger
+              value="my-org"
+              className="rounded-lg data-[state=active]:bg-white/[0.08] data-[state=active]:shadow-none"
+            >
+              My org
+            </TabsTrigger>
+            <TabsTrigger
+              value="joinable"
+              className="rounded-lg data-[state=active]:bg-white/[0.08] data-[state=active]:shadow-none"
+            >
+              Joinable
+            </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger
+                value="requests"
+                className="rounded-lg data-[state=active]:bg-white/[0.08] data-[state=active]:shadow-none"
+              >
+                Requests
+              </TabsTrigger>
+            )}
+          </TabsList>
 
-        {/* My Organization Tab */}
-        <TabsContent value="my-org" className="space-y-6">
-          <Card className="border-border/60 shadow-none">
-            <CardHeader className="pb-4">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                  <Building2 className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <CardTitle className="text-sm font-semibold">Organization Details</CardTitle>
-                  <CardDescription className="text-xs mt-0.5">
-                    Basic information about your organization
-                  </CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <Separator />
-            <CardContent className="pt-6 space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="org-name" className="text-xs">
-                  Organization Name
-                </Label>
-                <Input
-                  id="org-name"
-                  value={organization?.name || ''}
-                  disabled
-                  className="bg-muted/30"
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  Managed by Clerk. Contact support to change.
-                </p>
-              </div>
-
-              {isAdmin && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="company-name" className="text-xs">
-                      Company Name
+          {/* My Organization Tab */}
+          <TabsContent value="my-org" className="space-y-6">
+            <SettingsPanel>
+              <SettingsPanelHead
+                title="Organization details"
+                hint="Basic information about this workspace."
+              />
+              <div className="space-y-4">
+                <div className="app-field">
+                  <div className="app-field-head">
+                    <Label htmlFor="org-name" className="app-field-label">
+                      Organization name
                     </Label>
-                    <Input
-                      id="company-name"
-                      value={orgMetadata.companyName}
-                      onChange={(e) =>
-                        setOrgMetadata((prev) => ({ ...prev, companyName: e.target.value }))
-                      }
-                      placeholder="e.g. Acme Inc."
-                    />
+                    <p className="app-field-hint">Managed by Clerk. Contact support to change.</p>
                   </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="manager-name" className="text-xs">
-                      Organization Manager
-                    </Label>
-                    <Input
-                      id="manager-name"
-                      value={orgMetadata.managerName}
-                      onChange={(e) =>
-                        setOrgMetadata((prev) => ({ ...prev, managerName: e.target.value }))
-                      }
-                      placeholder="e.g. John Doe"
-                    />
-                  </div>
-
-                  <Separator className="my-4" />
-
-                  <div className="rounded-lg bg-muted/40 border border-border/60 p-3 text-xs text-muted-foreground">
-                    <p className="font-medium text-foreground mb-1">
-                      Joining always needs approval
-                    </p>
-                    <p>
-                      Share your join link from the Requests tab. New members wait in a lobby until
-                      an admin approves them.
-                    </p>
-                  </div>
-
-                  <Button
-                    onClick={handleSaveMetadata}
-                    disabled={saving}
-                    className="w-full rounded-full"
-                  >
-                    {saving ? 'Saving...' : 'Save Changes'}
-                  </Button>
-                </>
-              )}
-
-              {!isAdmin && (
-                <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3 text-xs text-amber-700">
-                  Only organization admins can edit these settings.
+                  <Input
+                    id="org-name"
+                    value={organization?.name || ''}
+                    disabled
+                    className="bg-white/[0.03]"
+                  />
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
 
-        {/* Joinable Organizations Tab */}
-        <TabsContent value="joinable" className="space-y-4">
-          <Card className="border-border/60 shadow-none">
-            <CardHeader className="pb-4">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
-                  <Users className="h-5 w-5 text-emerald-500" />
-                </div>
-                <div>
-                  <CardTitle className="text-sm font-semibold">Your Organizations</CardTitle>
-                  <CardDescription className="text-xs mt-0.5">
-                    Organizations you're a member of
-                  </CardDescription>
-                </div>
+                {isAdmin && (
+                  <>
+                    <div className="app-field">
+                      <div className="app-field-head">
+                        <Label htmlFor="company-name" className="app-field-label">
+                          Company name
+                        </Label>
+                      </div>
+                      <Input
+                        id="company-name"
+                        value={orgMetadata.companyName}
+                        onChange={(e) =>
+                          setOrgMetadata((prev) => ({ ...prev, companyName: e.target.value }))
+                        }
+                        placeholder="e.g. Acme Inc."
+                      />
+                    </div>
+
+                    <div className="app-field">
+                      <div className="app-field-head">
+                        <Label htmlFor="manager-name" className="app-field-label">
+                          Organization manager
+                        </Label>
+                      </div>
+                      <Input
+                        id="manager-name"
+                        value={orgMetadata.managerName}
+                        onChange={(e) =>
+                          setOrgMetadata((prev) => ({ ...prev, managerName: e.target.value }))
+                        }
+                        placeholder="e.g. John Doe"
+                      />
+                    </div>
+
+                    <SettingsCallout>
+                      <p className="font-medium text-foreground">Joining always needs approval</p>
+                      <p className="mt-1">
+                        Share your join link from the Requests tab. New members wait in a lobby
+                        until an admin approves them.
+                      </p>
+                    </SettingsCallout>
+
+                    <Button onClick={handleSaveMetadata} disabled={saving} className="w-full">
+                      {saving ? 'Saving…' : 'Save changes'}
+                    </Button>
+                  </>
+                )}
+
+                {!isAdmin && (
+                  <SettingsCallout tone="warn">
+                    Only organization admins can edit these settings.
+                  </SettingsCallout>
+                )}
               </div>
-            </CardHeader>
-            <Separator />
-            <CardContent className="pt-4">
+            </SettingsPanel>
+          </TabsContent>
+
+          {/* Joinable Organizations Tab */}
+          <TabsContent value="joinable" className="space-y-4">
+            <SettingsPanel>
+              <SettingsPanelHead title="Your organizations" hint="Workspaces you’re a member of." />
               {memberships.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="h-14 w-14 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-4">
-                    <Users className="h-7 w-7 text-muted-foreground/50" />
-                  </div>
-                  <p className="text-sm font-medium text-foreground mb-1">No organizations yet</p>
-                  <p className="text-xs text-muted-foreground">
+                <div className="py-12 text-center">
+                  <p className="text-sm font-medium text-foreground">No organizations yet</p>
+                  <p className="mt-1 text-[13px] text-muted-foreground">
                     Create or join an organization to get started
                   </p>
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="divide-y divide-border rounded-xl border border-border">
                   {memberships.map((m) => {
                     const isActive = m.organization.id === organization?.id;
                     const isSwitching = switchingOrgId === m.organization.id;
                     return (
-                      <div
-                        key={m.id}
-                        className="flex items-center justify-between rounded-lg border border-border/60 px-4 py-3"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                            <Building2 className="h-4 w-4 text-primary" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-foreground">
-                              {m.organization.name}
-                            </p>
-                            <p className="text-xs text-muted-foreground capitalize">
-                              {m.role === 'org:admin' ? 'Admin' : 'Member'}
-                            </p>
-                          </div>
+                      <div key={m.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-foreground">
+                            {m.organization.name}
+                          </p>
+                          <p className="text-[12px] text-muted-foreground capitalize">
+                            {m.role === 'org:admin' ? 'Admin' : 'Member'}
+                          </p>
                         </div>
                         <Button
                           size="sm"
@@ -476,36 +451,24 @@ export function OrganizationsTab() {
                           disabled={isActive || isSwitching}
                           onClick={() => handleSwitchOrganization(m.organization.id)}
                         >
-                          {isActive ? 'Active' : isSwitching ? 'Switching...' : 'Switch'}
+                          {isActive ? 'Active' : isSwitching ? 'Switching…' : 'Switch'}
                         </Button>
                       </div>
                     );
                   })}
                 </div>
               )}
+            </SettingsPanel>
+          </TabsContent>
 
-              <Separator className="my-4" />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Requests Tab (Admin Only) */}
-        {isAdmin && (
-          <TabsContent value="requests" className="space-y-4">
-            {/* Join Link Card */}
-            <Card className="border-border/60 shadow-none overflow-hidden">
-              <div className="relative bg-muted/30 p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                    <Link2 className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">Organization Join Link</p>
-                    <p className="text-xs text-muted-foreground">
-                      Share this link — joiners wait for your approval
-                    </p>
-                  </div>
-                </div>
+          {/* Requests Tab (Admin Only) */}
+          {isAdmin && (
+            <TabsContent value="requests" className="space-y-4">
+              <SettingsPanel>
+                <SettingsPanelHead
+                  title="Organization join link"
+                  hint="Share this link — joiners wait for your approval."
+                />
                 {orgMetadata.joinLink ? (
                   <div className="space-y-3">
                     <div className="rounded-2xl border border-border bg-muted/50 px-4 py-4">
@@ -518,7 +481,7 @@ export function OrganizationsTab() {
                         type="button"
                         onClick={() => setConfirmRotateLink(true)}
                         disabled={rotatingLink}
-                        className="flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors duration-200"
+                        className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium transition-colors hover:bg-white/[0.04]"
                       >
                         <RefreshCw className="h-4 w-4" />
                         <span>Rotate</span>
@@ -531,7 +494,7 @@ export function OrganizationsTab() {
                           showToast('Join link copied to clipboard', 'success');
                           setTimeout(() => setCopiedJoinLink(false), 2000);
                         }}
-                        className="flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg bg-primary/10 hover:bg-primary/15 transition-colors duration-200"
+                        className="flex items-center gap-1.5 rounded-lg border border-border bg-white/[0.06] px-3 py-2 text-sm font-medium transition-colors hover:bg-white/[0.09]"
                       >
                         {copiedJoinLink ? (
                           <>
@@ -573,7 +536,7 @@ export function OrganizationsTab() {
                       }
                     }}
                     disabled={rotatingLink}
-                    className="flex items-center justify-center gap-2 w-full rounded-2xl border-2 border-dashed border-primary/30 px-6 py-5 text-sm font-medium text-primary hover:bg-primary/5 transition-colors duration-200"
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border px-6 py-5 text-sm font-medium text-foreground hover:bg-white/[0.03] transition-colors"
                   >
                     {rotatingLink ? (
                       <>
@@ -588,26 +551,13 @@ export function OrganizationsTab() {
                     )}
                   </button>
                 )}
-              </div>
-            </Card>
+              </SettingsPanel>
 
-            {/* Invite Users by email */}
-            <Card className="border-border/60 shadow-none">
-              <CardHeader className="pb-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
-                    <UserPlus className="h-5 w-5 text-blue-500" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-sm font-semibold">Invite Users</CardTitle>
-                    <CardDescription className="text-xs mt-0.5">
-                      Email invitations skip the waiting room (direct invite)
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <Separator />
-              <CardContent className="pt-4">
+              <SettingsPanel>
+                <SettingsPanelHead
+                  title="Invite users"
+                  hint="Email invitations skip the waiting room."
+                />
                 <div className="space-y-3">
                   <div className="flex gap-2">
                     <Input
@@ -618,7 +568,6 @@ export function OrganizationsTab() {
                     />
                     <Button
                       size="sm"
-                      className="rounded-full"
                       onClick={handleSendInviteClick}
                       disabled={inviting || !inviteEmail.trim()}
                     >
@@ -656,153 +605,131 @@ export function OrganizationsTab() {
                     </div>
                   )}
                 </div>
-              </CardContent>
-            </Card>
+              </SettingsPanel>
 
-            <Tabs defaultValue="incoming" className="space-y-4">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="incoming">
-                  Incoming{' '}
-                  {pendingRequests.length > 0 && (
-                    <Badge variant="secondary" className="ml-2 text-[10px] px-1.5 py-0">
-                      {pendingRequests.length}
-                    </Badge>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="outgoing">Outgoing</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="incoming" className="space-y-4">
-                <Card className="border-border/60 shadow-none">
-                  <CardHeader className="pb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-orange-500/10 flex items-center justify-center shrink-0">
-                        <UserPlus className="h-5 w-5 text-orange-500" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-sm font-semibold">Incoming Requests</CardTitle>
-                        <CardDescription className="text-xs mt-0.5">
-                          Users requesting to join your organization
-                        </CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <Separator />
-                  <CardContent className="pt-4 space-y-4">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Search incoming requests..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-9"
-                      />
-                    </div>
-
-                    {requestsLoading ? (
-                      <div className="flex items-center justify-center py-8">
-                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                      </div>
-                    ) : accessRequests.length === 0 ? (
-                      <div className="text-center py-10">
-                        <div className="h-12 w-12 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-3">
-                          <Clock className="h-6 w-6 text-muted-foreground/50" />
-                        </div>
-                        <p className="text-sm font-medium text-foreground mb-1">
-                          No incoming requests
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Access requests will appear here
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {pendingRequests.length > 0 && (
-                          <div className="space-y-2">
-                            <p className="text-xs font-medium text-muted-foreground">Pending</p>
-                            {pendingRequests.map((req) => (
-                              <div
-                                key={req.id}
-                                className="flex items-center justify-between rounded-lg border border-border/60 px-4 py-3"
-                              >
-                                <div>
-                                  <p className="text-sm font-medium text-foreground">
-                                    {req.userName || 'Unknown User'}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">{req.userEmail}</p>
-                                  <p className="text-[11px] text-muted-foreground mt-1">
-                                    Requested {new Date(req.requestedAt).toLocaleDateString()}
-                                  </p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleAccessRequest(req.id, 'reject')}
-                                  >
-                                    <X className="h-3.5 w-3.5 mr-1" />
-                                    Reject
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    onClick={() => handleAccessRequest(req.id, 'approve')}
-                                  >
-                                    <Check className="h-3.5 w-3.5 mr-1" />
-                                    Approve
-                                  </Button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {completedRequests.length > 0 && (
-                          <div className="space-y-2">
-                            <p className="text-xs font-medium text-muted-foreground">Completed</p>
-                            {completedRequests.map((req) => (
-                              <div
-                                key={req.id}
-                                className="flex items-center justify-between rounded-lg border border-border/60 px-4 py-3 opacity-60"
-                              >
-                                <div>
-                                  <p className="text-sm font-medium text-foreground">
-                                    {req.userName || 'Unknown User'}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">{req.userEmail}</p>
-                                </div>
-                                <Badge
-                                  variant={req.status === 'approved' ? 'default' : 'secondary'}
-                                  className="text-xs capitalize"
-                                >
-                                  {req.status}
-                                </Badge>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+              <Tabs defaultValue="incoming" className="space-y-4">
+                <TabsList className="grid h-auto w-full grid-cols-2 gap-1 rounded-xl border border-border bg-transparent p-1">
+                  <TabsTrigger value="incoming">
+                    Incoming{' '}
+                    {pendingRequests.length > 0 && (
+                      <Badge variant="secondary" className="ml-2 text-[10px] px-1.5 py-0">
+                        {pendingRequests.length}
+                      </Badge>
                     )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
+                  </TabsTrigger>
+                  <TabsTrigger value="outgoing">Outgoing</TabsTrigger>
+                </TabsList>
 
-              <TabsContent value="outgoing" className="space-y-4">
-                <Card className="border-border/60 shadow-none">
-                  <CardHeader className="pb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
-                        <UserPlus className="h-5 w-5 text-blue-500" />
+                <TabsContent value="incoming" className="space-y-4">
+                  <SettingsPanel>
+                    <SettingsPanelHead
+                      title="Incoming requests"
+                      hint="Users requesting to join this organization."
+                    />
+                    <div className="space-y-4">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search incoming requests..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="pl-9"
+                        />
                       </div>
-                      <div>
-                        <CardTitle className="text-sm font-semibold">Outgoing Requests</CardTitle>
-                        <CardDescription className="text-xs mt-0.5">
-                          Invitations you've sent to join your organization
-                        </CardDescription>
-                      </div>
+
+                      {requestsLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : accessRequests.length === 0 ? (
+                        <div className="text-center py-10">
+                          <div className="h-12 w-12 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-3">
+                            <Clock className="h-6 w-6 text-muted-foreground/50" />
+                          </div>
+                          <p className="text-sm font-medium text-foreground mb-1">
+                            No incoming requests
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Access requests will appear here
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {pendingRequests.length > 0 && (
+                            <div className="space-y-2">
+                              <p className="text-xs font-medium text-muted-foreground">Pending</p>
+                              {pendingRequests.map((req) => (
+                                <div
+                                  key={req.id}
+                                  className="flex items-center justify-between rounded-lg border border-border/60 px-4 py-3"
+                                >
+                                  <div>
+                                    <p className="text-sm font-medium text-foreground">
+                                      {req.userName || 'Unknown User'}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">{req.userEmail}</p>
+                                    <p className="text-[11px] text-muted-foreground mt-1">
+                                      Requested {new Date(req.requestedAt).toLocaleDateString()}
+                                    </p>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleAccessRequest(req.id, 'reject')}
+                                    >
+                                      <X className="h-3.5 w-3.5 mr-1" />
+                                      Reject
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      onClick={() => handleAccessRequest(req.id, 'approve')}
+                                    >
+                                      <Check className="h-3.5 w-3.5 mr-1" />
+                                      Approve
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {completedRequests.length > 0 && (
+                            <div className="space-y-2">
+                              <p className="text-xs font-medium text-muted-foreground">Completed</p>
+                              {completedRequests.map((req) => (
+                                <div
+                                  key={req.id}
+                                  className="flex items-center justify-between rounded-lg border border-border/60 px-4 py-3 opacity-60"
+                                >
+                                  <div>
+                                    <p className="text-sm font-medium text-foreground">
+                                      {req.userName || 'Unknown User'}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">{req.userEmail}</p>
+                                  </div>
+                                  <Badge
+                                    variant={req.status === 'approved' ? 'default' : 'secondary'}
+                                    className="text-xs capitalize"
+                                  >
+                                    {req.status}
+                                  </Badge>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  </CardHeader>
-                  <Separator />
-                  <CardContent className="pt-4">
+                  </SettingsPanel>
+                </TabsContent>
+
+                <TabsContent value="outgoing" className="space-y-4">
+                  <SettingsPanel>
+                    <SettingsPanelHead
+                      title="Outgoing invites"
+                      hint="Invitations you’ve sent to join this organization."
+                    />
                     {sentInvitesLoading ? (
                       <div className="flex items-center justify-center py-8">
                         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -858,13 +785,13 @@ export function OrganizationsTab() {
                         ))}
                       </div>
                     )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
-          </TabsContent>
-        )}
-      </Tabs>
+                  </SettingsPanel>
+                </TabsContent>
+              </Tabs>
+            </TabsContent>
+          )}
+        </Tabs>
+      </SettingsBody>
 
       {/* Create Organization Dialog */}
       <Dialog
@@ -889,7 +816,7 @@ export function OrganizationsTab() {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label className="text-xs">Organization Name</Label>
+              <Label className="app-field-label">Organization Name</Label>
               <Input
                 value={newOrgForm.name}
                 onChange={(e) => setNewOrgForm((prev) => ({ ...prev, name: e.target.value }))}
@@ -897,7 +824,7 @@ export function OrganizationsTab() {
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-xs">Company Name</Label>
+              <Label className="app-field-label">Company Name</Label>
               <Input
                 value={newOrgForm.companyName}
                 onChange={(e) =>
@@ -907,7 +834,7 @@ export function OrganizationsTab() {
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-xs">Organization Manager</Label>
+              <Label className="app-field-label">Organization Manager</Label>
               <Input
                 value={newOrgForm.managerName}
                 onChange={(e) =>
@@ -1037,7 +964,7 @@ export function OrganizationsTab() {
       >
         <DialogContent className="sm:max-w-md border-border bg-background shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="font-playfair text-2xl text-foreground flex items-center gap-2">
+            <DialogTitle className="text-xl font-semibold tracking-[-0.03em] text-foreground flex items-center gap-2">
               <RefreshCw className="h-5 w-5 text-primary" />
               Rotate Join Link?
             </DialogTitle>
@@ -1100,6 +1027,6 @@ export function OrganizationsTab() {
           window.location.reload();
         }}
       />
-    </div>
+    </>
   );
 }

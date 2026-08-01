@@ -12,6 +12,13 @@ import {
 } from '@/lib/db';
 import { TicketsEntity } from '@/db/entities';
 import { broadcastToOrg } from '@/lib/event-bus';
+import {
+  requireAuth,
+  requireProjectAccess,
+  getAccessibleProjectIds,
+  isOrgAdmin,
+  canAccessProjectResource,
+} from '@/lib/rbac';
 
 function parsePositiveInt(value: string | null, fallback: number): number {
   const parsed = Number.parseInt(value ?? '', 10);
@@ -20,27 +27,21 @@ function parsePositiveInt(value: string | null, fallback: number): number {
 
 export async function GET(req: NextRequest) {
   try {
-    const { userId, orgId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = await requireAuth();
+    if (!ctx) {
+      const { userId } = await auth();
+      if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { searchParams } = new URL(req.url);
-    const projectId = searchParams.get('projectId');
-    const meetingId = searchParams.get('meetingId');
-    const limit = Math.min(parsePositiveInt(searchParams.get('limit'), 50), 100);
-    const offset = parsePositiveInt(searchParams.get('offset'), 0);
+      const { searchParams } = new URL(req.url);
+      const projectId = searchParams.get('projectId');
+      const meetingId = searchParams.get('meetingId');
+      const limit = Math.min(parsePositiveInt(searchParams.get('limit'), 50), 100);
+      const offset = parsePositiveInt(searchParams.get('offset'), 0);
 
-    const { tickets: allTickets, total } = await getTicketsPaginated(orgId || '', {
-      projectId: projectId || null,
-      meetingId: meetingId || null,
-      limit,
-      offset,
-    });
-
-    // If no orgId, fall back to user-scoped query
-    let tickets = allTickets;
-    if (!orgId) {
-      const userRes = await TicketsEntity.query.byUser({ userId }).go();
-      tickets = (userRes.data ?? []).map((t: any) => ({
+      const userRes = await TicketsEntity.query
+        .byUser({ userId })
+        .go({ limit: 200, order: 'desc' });
+      let tickets = (userRes.data ?? []).map((t: any) => ({
         id: t.id,
         user_id: t.userId ?? undefined,
         org_id: t.orgId ?? undefined,
@@ -67,9 +68,13 @@ export async function GET(req: NextRequest) {
         createdAt: t.createdAt ?? null,
         updatedAt: t.updatedAt ?? null,
       }));
-      if (projectId) tickets = tickets.filter((t) => t.projectId === projectId);
-      if (meetingId) tickets = tickets.filter((t) => t.meeting_id === meetingId);
-      tickets.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+      if (projectId)
+        tickets = tickets.filter((t: (typeof tickets)[number]) => t.projectId === projectId);
+      if (meetingId)
+        tickets = tickets.filter((t: (typeof tickets)[number]) => t.meeting_id === meetingId);
+      tickets.sort((a: (typeof tickets)[number], b: (typeof tickets)[number]) =>
+        (b.createdAt || '').localeCompare(a.createdAt || '')
+      );
       const sliced = tickets.slice(offset, offset + limit);
       return NextResponse.json(
         {
@@ -81,6 +86,32 @@ export async function GET(req: NextRequest) {
         },
         { headers: { 'Cache-Control': 'no-store' } }
       );
+    }
+
+    const { searchParams } = new URL(req.url);
+    const projectId = searchParams.get('projectId');
+    const meetingId = searchParams.get('meetingId');
+    const limit = Math.min(parsePositiveInt(searchParams.get('limit'), 50), 100);
+    const offset = parsePositiveInt(searchParams.get('offset'), 0);
+
+    if (projectId && !(await requireProjectAccess(ctx, projectId))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const { tickets: allTickets, total: rawTotal } = await getTicketsPaginated(ctx.orgId, {
+      projectId: projectId || null,
+      meetingId: meetingId || null,
+      limit,
+      offset,
+    });
+
+    let tickets = allTickets;
+    let total = rawTotal;
+    if (!projectId && !isOrgAdmin(ctx)) {
+      const allowed = await getAccessibleProjectIds(ctx);
+      const allowedSet = new Set(allowed === 'all' ? [] : allowed);
+      tickets = tickets.filter((t) => t.projectId && allowedSet.has(t.projectId));
+      total = tickets.length;
     }
 
     return NextResponse.json(
@@ -127,8 +158,13 @@ export async function GET(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const { userId, orgId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = await requireAuth();
+    if (!ctx) {
+      const { userId } = await auth();
+      if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'No organization' }, { status: 403 });
+    }
+    const { userId, orgId } = ctx;
 
     const body = await req.json();
     const changes = Array.isArray(body?.changes) ? body.changes : [];
@@ -157,6 +193,10 @@ export async function PATCH(req: NextRequest) {
 
     for (const ticketId of changeIds) {
       if (!userTicketIds.has(ticketId)) {
+        return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+      }
+      const ticket = ticketById.get(ticketId);
+      if (ticket && !(await canAccessProjectResource(ctx, ticket.projectId))) {
         return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
       }
     }

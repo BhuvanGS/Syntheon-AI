@@ -1,19 +1,13 @@
 import {
-  ApiKeysEntity,
   ConsentRecordsEntity,
   DeletionRequestsEntity,
   IntegrationsEntity,
-  LabelsEntity,
   MeetingsEntity,
-  MilestonesEntity,
   NotificationsEntity,
   OrganizationAccessRequestsEntity,
-  OrganizationInvitesEntity,
-  OrganizationMetadataEntity,
   ProjectMembersEntity,
   ProjectsEntity,
   SpecsEntity,
-  SprintsEntity,
   TicketActivitiesEntity,
   TicketAttachmentsEntity,
   TicketCommentsEntity,
@@ -25,7 +19,7 @@ import { randomUUID, createHash } from 'crypto';
 
 type ClerkClientLike = any;
 
-export type DeletionScope = 'user' | 'org';
+export type DeletionScope = 'user';
 export type DeletionStatus = 'pending' | 'warning_sent' | 'completed' | 'failed' | 'cancelled';
 
 const GRACE_DAYS = 30;
@@ -79,17 +73,10 @@ export async function getDeletionRequestsByUser(userId: string) {
   return res.data ?? [];
 }
 
-export async function hasActiveDeletionRequest(
-  userId: string,
-  scope: DeletionScope,
-  orgId?: string
-) {
+export async function hasActiveDeletionRequest(userId: string, scope: DeletionScope = 'user') {
   const rows = await getDeletionRequestsByUser(userId);
   return rows.some(
-    (r: any) =>
-      r.scope === scope &&
-      (scope !== 'org' || r.orgId === orgId) &&
-      (r.status === 'pending' || r.status === 'warning_sent')
+    (r: any) => r.scope === scope && (r.status === 'pending' || r.status === 'warning_sent')
   );
 }
 
@@ -183,12 +170,6 @@ export async function deleteUserPersonalData(userId: string) {
   }
 
   try {
-    await ApiKeysEntity.delete({ userId }).go();
-  } catch {
-    // no-op: key may not exist
-  }
-
-  try {
     await IntegrationsEntity.delete({ userId }).go();
   } catch {
     // no-op: integration may not exist
@@ -201,121 +182,23 @@ export async function deleteUserPersonalData(userId: string) {
   }
 }
 
-async function deleteTicketRelations(ticketId: string) {
-  const [depsA, depsB, attachments, comments, activities] = await Promise.all([
-    TicketDependenciesEntity.query.byTicket({ ticketId }).go(),
-    TicketDependenciesEntity.query.byDependsOn({ dependsOnTicketId: ticketId }).go(),
-    TicketAttachmentsEntity.query.byTicket({ ticketId }).go(),
-    TicketCommentsEntity.query.byTicket({ ticketId }).go(),
-    TicketActivitiesEntity.query.byTicket({ ticketId }).go(),
-  ]);
-
-  for (const row of depsA.data ?? []) await TicketDependenciesEntity.delete({ id: row.id }).go();
-  for (const row of depsB.data ?? []) await TicketDependenciesEntity.delete({ id: row.id }).go();
-  for (const row of attachments.data ?? [])
-    await TicketAttachmentsEntity.delete({ id: row.id }).go();
-  for (const row of comments.data ?? []) await TicketCommentsEntity.delete({ id: row.id }).go();
-  for (const row of activities.data ?? []) await TicketActivitiesEntity.delete({ id: row.id }).go();
-}
-
-async function deleteOrgData(orgId: string) {
-  const [projects, meetings, tickets, labels, sprints, milestones] = await Promise.all([
-    ProjectsEntity.query.byOrg({ orgId }).go(),
-    MeetingsEntity.query.byOrg({ orgId }).go(),
-    TicketsEntity.query.byOrg({ orgId }).go(),
-    LabelsEntity.query.byOrg({ orgId }).go(),
-    SprintsEntity.query.byOrg({ orgId }).go(),
-    MilestonesEntity.query.byOrg({ orgId }).go(),
-  ]);
-
-  for (const ticket of tickets.data ?? []) {
-    await deleteTicketRelations(ticket.id);
-    await TicketsEntity.delete({ id: ticket.id }).go();
-  }
-
-  for (const meeting of meetings.data ?? []) {
-    const specs = await SpecsEntity.query.byMeeting({ meetingId: meeting.meetingId }).go();
-    for (const spec of specs.data ?? []) {
-      await SpecsEntity.delete({ id: spec.id }).go();
-    }
-    await MeetingsEntity.delete({ id: meeting.id }).go();
-  }
-
-  for (const project of projects.data ?? []) {
-    await ProjectsEntity.delete({ id: project.id }).go();
-  }
-
-  for (const label of labels.data ?? []) await LabelsEntity.delete({ id: label.id }).go();
-  for (const sprint of sprints.data ?? []) await SprintsEntity.delete({ id: sprint.id }).go();
-  for (const milestone of milestones.data ?? [])
-    await MilestonesEntity.delete({ id: milestone.id }).go();
-
-  const members = await ProjectMembersEntity.query.byOrgUser({ orgId }).go();
-  for (const member of members.data ?? []) {
-    await ProjectMembersEntity.delete({ projectId: member.projectId, userId: member.userId }).go();
-  }
-
-  const invites = await OrganizationInvitesEntity.query.primary({ orgId }).go();
-  for (const row of invites.data ?? []) {
-    await OrganizationInvitesEntity.delete({ orgId: row.orgId, email: row.email }).go();
-  }
-
-  const access = await OrganizationAccessRequestsEntity.query.primary({ orgId }).go();
-  for (const row of access.data ?? []) {
-    await OrganizationAccessRequestsEntity.delete({ orgId: row.orgId, userId: row.userId }).go();
-  }
-
-  try {
-    await OrganizationMetadataEntity.delete({ orgId }).go();
-  } catch {
-    // no-op
-  }
-}
-
 export async function executeDeletionRequest(request: any, client: ClerkClientLike) {
   const receipts: Record<string, any> = {
     startedAt: new Date().toISOString(),
     scope: request.scope,
   };
 
-  if (request.scope === 'org') {
-    if (!request.orgId) {
-      throw new Error('Missing orgId for org deletion request');
-    }
+  if (request.scope !== 'user') {
+    throw new Error(`Unsupported deletion scope: ${request.scope}`);
+  }
 
-    const memberships = await client.organizations.getOrganizationMembershipList({
-      organizationId: request.orgId,
-    });
-    const memberIds = (memberships.data ?? [])
-      .map((m: any) => m.publicUserData?.userId)
-      .filter(Boolean);
+  await deleteUserPersonalData(request.userId);
 
-    await deleteOrgData(request.orgId);
-
-    for (const memberUserId of memberIds) {
-      await deleteUserPersonalData(memberUserId);
-      try {
-        const m = await client.users.getOrganizationMembershipList({ userId: memberUserId });
-        if ((m.data ?? []).length <= 1) {
-          await client.users.deleteUser(memberUserId);
-        }
-      } catch {
-        // no-op
-      }
-    }
-
-    await client.organizations.deleteOrganization(request.orgId);
-    receipts.orgDeleted = true;
-    receipts.membersProcessed = memberIds.length;
-  } else {
-    await deleteUserPersonalData(request.userId);
-
-    try {
-      await client.users.deleteUser(request.userId);
-      receipts.userDeletedFromClerk = true;
-    } catch {
-      receipts.userDeletedFromClerk = false;
-    }
+  try {
+    await client.users.deleteUser(request.userId);
+    receipts.userDeletedFromClerk = true;
+  } catch {
+    receipts.userDeletedFromClerk = false;
   }
 
   receipts.finishedAt = new Date().toISOString();
@@ -330,6 +213,7 @@ export async function processDeletionQueue(client: ClerkClientLike) {
 
   const pending = await DeletionRequestsEntity.query.byStatus({ status: 'pending' }).go();
   for (const req of pending.data ?? []) {
+    if (req.scope !== 'user') continue;
     if (!req.warningSentAt && req.warningDueAt <= now) {
       await DeletionRequestsEntity.update({ id: req.id })
         .set({ status: 'warning_sent', warningSentAt: now })
@@ -344,6 +228,7 @@ export async function processDeletionQueue(client: ClerkClientLike) {
     (await DeletionRequestsEntity.query.byStatus({ status: 'warning_sent' }).go()).data ?? [];
 
   for (const req of [...duePending, ...dueWarned]) {
+    if (req.scope !== 'user') continue;
     if (req.scheduledFor > now) continue;
 
     try {

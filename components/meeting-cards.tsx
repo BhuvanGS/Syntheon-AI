@@ -102,7 +102,7 @@ export function MeetingCards({ onSelectMeeting, onCreateTicket }: MeetingCardsPr
       <div className="bg-muted/50 rounded-2xl p-12 border border-border text-center animate-fade-in-up">
         <p className="text-2xl font-playfair font-bold text-foreground mb-2">No meetings yet</p>
         <p className="text-muted-foreground">
-          Start recording a meeting with the Syntheon Hub extension.
+          Start a meeting from a project — the bot joins your call automatically.
         </p>
       </div>
     );

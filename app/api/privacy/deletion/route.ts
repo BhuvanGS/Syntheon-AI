@@ -5,16 +5,23 @@ import {
   getDeletionRequestsByUser,
   hasActiveDeletionRequest,
 } from '@/lib/privacy-deletion';
+import { apiRateLimit } from '@/lib/rate-limit';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session.userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // In-memory per-instance limiter (see lib/rate-limit.ts). Not shared across Lambda instances.
+  const limited = await apiRateLimit(req, session.userId);
+  if (limited) return limited;
+
   const requests = await getDeletionRequestsByUser(session.userId);
+  // Only surface user-scope account deletion requests
+  const userRequests = requests.filter((r: any) => r.scope === 'user');
   return NextResponse.json({
-    requests: requests.map((r: any) => ({
+    requests: userRequests.map((r: any) => ({
       id: r.id,
       scope: r.scope,
       status: r.status,
@@ -23,7 +30,6 @@ export async function GET() {
       scheduledFor: r.scheduledFor,
       warningSentAt: r.warningSentAt ?? null,
       processedAt: r.processedAt ?? null,
-      orgId: r.orgId ?? null,
     })),
   });
 }
@@ -34,9 +40,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // In-memory per-instance limiter (see lib/rate-limit.ts). Not shared across Lambda instances.
+  const limited = await apiRateLimit(req, session.userId);
+  if (limited) return limited;
+
   try {
     const body = await req.json();
-    const scope = body?.scope === 'org' ? 'org' : 'user';
+    if (body?.scope === 'org') {
+      return NextResponse.json(
+        { error: 'Organization deletion is not supported' },
+        { status: 400 }
+      );
+    }
+
     const reason = typeof body?.reason === 'string' ? body.reason.trim() : undefined;
     const confirmText = typeof body?.confirmText === 'string' ? body.confirmText : '';
 
@@ -45,40 +61,6 @@ export async function POST(req: NextRequest) {
         { error: 'Confirmation text mismatch. Type DELETE to continue.' },
         { status: 400 }
       );
-    }
-
-    if (scope === 'org') {
-      if (!session.orgId) {
-        return NextResponse.json({ error: 'No active organization selected' }, { status: 400 });
-      }
-      if (session.orgRole !== 'org:admin') {
-        return NextResponse.json(
-          { error: 'Only organization admins can request full org deletion' },
-          { status: 403 }
-        );
-      }
-
-      const alreadyQueued = await hasActiveDeletionRequest(session.userId, 'org', session.orgId);
-      if (alreadyQueued) {
-        return NextResponse.json(
-          { error: 'An active org deletion request already exists' },
-          { status: 409 }
-        );
-      }
-
-      const requestRow = await createDeletionRequest({
-        userId: session.userId,
-        orgId: session.orgId,
-        scope: 'org',
-        reason,
-      });
-
-      return NextResponse.json({
-        success: true,
-        request: requestRow,
-        message:
-          'Organization deletion requested. We will issue a final warning 48 hours before deletion.',
-      });
     }
 
     const alreadyQueued = await hasActiveDeletionRequest(session.userId, 'user');

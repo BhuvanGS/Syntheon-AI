@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { OrganizationAccessRequestsEntity } from '@/db/entities';
 import { extractJoinToken, findOrgMetaByJoinToken, requestOrgAccess } from '@/lib/org-join';
+import { apiRateLimit } from '@/lib/rate-limit';
 
 async function resolveUserProfile(userId: string) {
   const client = await clerkClient();
@@ -60,6 +61,10 @@ export async function POST(req: NextRequest) {
   if (!session.userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  // In-memory per-instance limiter (see lib/rate-limit.ts). Not shared across Lambda instances.
+  const limited = await apiRateLimit(req, session.userId);
+  if (limited) return limited;
 
   const body = await req.json().catch(() => ({}));
   const tokenInput = typeof body.token === 'string' ? body.token : '';

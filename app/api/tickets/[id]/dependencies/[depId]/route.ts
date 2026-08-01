@@ -9,7 +9,7 @@ import {
   type DependencyStrength,
 } from '@/lib/db';
 import { TicketDependenciesEntity } from '@/db/entities';
-import { requireAuth, type AuthContext } from '@/lib/rbac';
+import { requireAuth, canAccessProjectResource, type AuthContext } from '@/lib/rbac';
 
 const DEP_TYPES = new Set<DependencyType>(['data', 'structural', 'logical', 'resource']);
 const DEP_STRENGTHS = new Set<DependencyStrength>(['soft', 'hard']);
@@ -21,6 +21,7 @@ async function getDepByIdForUser(
 ): Promise<{ found: boolean }> {
   const ticket = await getTicketById(ticketId);
   if (!ticket || ticket.org_id !== ctx.orgId) return { found: false };
+  if (!(await canAccessProjectResource(ctx, ticket.projectId))) return { found: false };
 
   const { parents, children } = await getDependenciesForTicket(ticketId);
   const dep = [...parents, ...children].find((d) => d.id === depId);

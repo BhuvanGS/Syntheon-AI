@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { updateProjectStatus, getProjectById } from '@/lib/db';
-import { requireAuth, canAdminProject } from '@/lib/rbac';
+import { requireAuth, canAdminProject, requireProjectAccess } from '@/lib/rbac';
 
 const VALID_STATUSES = ['on_track', 'at_risk', 'off_track', 'paused'];
 
@@ -13,6 +13,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const project = await getProjectById(projectId);
     if (!project || project.org_id !== ctx.orgId) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+    if (!(await requireProjectAccess(ctx, project.id))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
     if (!(await canAdminProject(ctx, projectId))) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

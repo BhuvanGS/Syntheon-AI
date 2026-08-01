@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import DOMPurify from 'isomorphic-dompurify';
 import { deleteComment, updateComment, getTicketById, createActivity } from '@/lib/db';
-import { requireAuth } from '@/lib/rbac';
+import { requireAuth, canAccessProjectResource } from '@/lib/rbac';
 
 const ALLOWED_TAGS = [
   'p',
@@ -35,6 +35,9 @@ export async function DELETE(
     const ticket = await getTicketById(ticketId);
     if (!ticket || ticket.org_id !== ctx.orgId) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+    }
+    if (!(await canAccessProjectResource(ctx, ticket.projectId))) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
     await deleteComment(commentId);
@@ -76,6 +79,9 @@ export async function PATCH(
     const ticket = await getTicketById(ticketId);
     if (!ticket || ticket.org_id !== ctx.orgId) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+    }
+    if (!(await canAccessProjectResource(ctx, ticket.projectId))) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
     const { content } = await req.json();

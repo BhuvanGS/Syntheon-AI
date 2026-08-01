@@ -342,7 +342,7 @@ function ModeMock({ mode }: { mode: DoneMode }) {
   return <TicketsMock />;
 }
 
-/** Cycling noun for the Done headline — swipe-down word change. */
+/** Cycling noun for the Ship headline — swipe-down word change. */
 export function DoneModeNoun({ mode, reduce }: { mode: DoneMode; reduce: boolean | null }) {
   return (
     <span

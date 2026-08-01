@@ -10,7 +10,7 @@ import {
   Sprint,
 } from '@/lib/db';
 import { aiRateLimit } from '@/lib/rate-limit';
-import { requireAuth, canAdminProject } from '@/lib/rbac';
+import { requireAuth, canAdminProject, requireProjectAccess } from '@/lib/rbac';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const ctx = await requireAuth();
@@ -25,6 +25,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const project = await getProjectById(projectId);
   if (!project || project.org_id !== ctx.orgId) {
     return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+  }
+  if (!(await requireProjectAccess(ctx, project.id))) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
   if (!(await canAdminProject(ctx, projectId))) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

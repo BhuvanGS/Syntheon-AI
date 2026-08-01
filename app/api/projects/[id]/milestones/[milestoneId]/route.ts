@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { updateMilestone, deleteMilestone, getProjectById } from '@/lib/db';
-import { requireAuth } from '@/lib/rbac';
+import { requireAuth, requireProjectAccess } from '@/lib/rbac';
 
 export async function PATCH(
   req: NextRequest,
@@ -14,6 +14,9 @@ export async function PATCH(
     const project = await getProjectById(projectId);
     if (!project || project.org_id !== ctx.orgId) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+    if (!(await requireProjectAccess(ctx, project.id))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const body = await req.json();
@@ -55,6 +58,9 @@ export async function DELETE(
     const project = await getProjectById(projectId);
     if (!project || project.org_id !== ctx.orgId) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+    if (!(await requireProjectAccess(ctx, project.id))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     await deleteMilestone(milestoneId);

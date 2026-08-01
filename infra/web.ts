@@ -41,6 +41,7 @@ export function createSite(args: {
       s.googleOauthClientSecret,
       s.googleOauthClientId,
       s.tokenEncryptionKey,
+      s.privacyDeletionSecret,
     ],
     environment: {
       ...tableEnvVars,
@@ -60,6 +61,7 @@ export function createSite(args: {
         ? 'https://app.syntheonhub.com/api/oauth/google/callback'
         : `${appUrl}/api/oauth/google/callback`,
       TOKEN_ENCRYPTION_KEY: s.tokenEncryptionKey.value,
+      PRIVACY_DELETION_SECRET: s.privacyDeletionSecret.value,
       NEXT_PUBLIC_CLERK_SIGN_IN_URL: process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL!,
       NEXT_PUBLIC_CLERK_SIGN_UP_URL: process.env.NEXT_PUBLIC_CLERK_SIGN_UP_URL!,
       NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL: process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL!,

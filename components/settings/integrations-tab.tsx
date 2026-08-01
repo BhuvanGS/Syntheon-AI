@@ -3,11 +3,16 @@
 import { useEffect, useState } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { useSearchParams } from 'next/navigation';
-import { Calendar, Loader2, Plug } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Calendar, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/components/island-toast';
+import {
+  SettingsBody,
+  SettingsHeader,
+  SettingsPanel,
+  SettingsPanelHead,
+  SettingsSectionLabel,
+} from '@/components/settings/settings-chrome';
 
 export function IntegrationsTab() {
   const { user } = useUser();
@@ -53,7 +58,7 @@ export function IntegrationsTab() {
       if (!res.ok) throw new Error('Failed to initiate Google OAuth');
       const { authorizationUrl } = await res.json();
       window.location.href = authorizationUrl;
-    } catch (error) {
+    } catch {
       showToast('Could not connect to Google Calendar', 'error');
     }
   }
@@ -64,94 +69,70 @@ export function IntegrationsTab() {
       if (!res.ok) throw new Error('Failed to disconnect');
       setGoogleConnected(false);
       showToast('Google Calendar has been disconnected', 'success');
-    } catch (error) {
+    } catch {
       showToast('Failed to disconnect. Please try again.', 'error');
     }
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <div className="p-6 lg:p-10">
-      {/* Page Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-            <Plug className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-playfair font-bold text-foreground">Integrations</h2>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Connect external services to enhance your workflow
-            </p>
-          </div>
-        </div>
-      </div>
+    <SettingsBody>
+      <SettingsHeader
+        title="Integrations"
+        description="Connect services so meetings and calendars stay in sync."
+      />
 
-      {/* Connected Integrations */}
-      <div className="space-y-4">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Available
-        </p>
-
-        <Card className="border-border/60 shadow-none overflow-hidden">
-          <CardHeader className="pb-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
-                <Calendar className="h-5 w-5 text-blue-500" />
+      <div className="space-y-3">
+        <SettingsSectionLabel>Available</SettingsSectionLabel>
+        <SettingsPanel>
+          <SettingsPanelHead
+            title="Google Calendar"
+            hint="Create meetings and sync events from your calendar."
+            action={
+              googleConnected ? (
+                <span className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-[11px] font-medium text-foreground">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  Connected
+                </span>
+              ) : null
+            }
+          />
+          <div className="app-divider -mx-5 sm:-mx-6" />
+          <div className="flex items-center justify-between gap-4 pt-5">
+            <div className="min-w-0 flex items-start gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.06]">
+                <Calendar className="h-4 w-4 text-foreground/80" />
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <CardTitle className="text-sm font-semibold">Google Calendar</CardTitle>
-                  {googleConnected && (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                      Connected
-                    </span>
-                  )}
-                </div>
-                <CardDescription className="text-xs mt-0.5">
-                  Create meetings and sync events
-                </CardDescription>
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  {googleConnected ? 'Calendar linked' : 'Not connected'}
+                </p>
+                <p className="mt-0.5 text-[13px] text-muted-foreground">
+                  {googleConnected
+                    ? 'Your Google Calendar is linked to this workspace.'
+                    : 'Connect to create Google Meet links from Syntheon Hub.'}
+                </p>
               </div>
             </div>
-          </CardHeader>
-          <Separator />
-          <CardContent className="pt-4">
             {googleConnected ? (
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-foreground">Connected</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Your Google Calendar is linked
-                  </p>
-                </div>
-                <Button variant="outline" size="sm" onClick={handleGoogleDisconnect}>
-                  Disconnect
-                </Button>
-              </div>
+              <Button variant="outline" size="sm" onClick={handleGoogleDisconnect}>
+                Disconnect
+              </Button>
             ) : (
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-foreground">Not connected</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Connect to create Google Meet links
-                  </p>
-                </div>
-                <Button size="sm" onClick={handleGoogleConnect}>
-                  Connect
-                </Button>
-              </div>
+              <Button size="sm" onClick={handleGoogleConnect}>
+                Connect
+              </Button>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </SettingsPanel>
       </div>
-    </div>
+    </SettingsBody>
   );
 }

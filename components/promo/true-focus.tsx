@@ -30,7 +30,7 @@ interface FocusRect {
  * Auto-cycles words with corner brackets; hover anytime to focus a word (interactive).
  */
 export default function TrueFocus({
-  sentence = 'Talk. Work. Done.',
+  sentence = 'Speak. Shape. Ship.',
   separator = ' ',
   manualMode = false,
   blurAmount = 5,

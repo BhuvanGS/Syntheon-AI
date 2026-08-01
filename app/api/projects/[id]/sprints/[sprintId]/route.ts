@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { updateSprint, deleteSprint } from '@/lib/db';
+import { requireAuth, requireProjectAccess } from '@/lib/rbac';
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; sprintId: string }> }
 ) {
   try {
-    const { userId, orgId } = await auth();
-    if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const { id: _projectId, sprintId } = await params;
+    const ctx = await requireAuth();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { id: projectId, sprintId } = await params;
+    if (!(await requireProjectAccess(ctx, projectId))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
     const body = await req.json();
     const updates: Record<string, unknown> = {};
 
@@ -38,10 +40,12 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; sprintId: string }> }
 ) {
   try {
-    const { userId, orgId } = await auth();
-    if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const { id: _projectId, sprintId } = await params;
+    const ctx = await requireAuth();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { id: projectId, sprintId } = await params;
+    if (!(await requireProjectAccess(ctx, projectId))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
     await deleteSprint(sprintId);
     return NextResponse.json({ ok: true });
   } catch (error) {

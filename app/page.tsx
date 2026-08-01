@@ -166,7 +166,7 @@ function Hero() {
             Stop wasting your best hours after the meeting ends.
           </p>
           <TrueFocus
-            sentence="Talk. Work. Done."
+            sentence="Speak. Shape. Ship."
             blurAmount={5}
             borderColor="rgba(255,255,255,0.85)"
             animationDuration={0.5}
@@ -494,7 +494,7 @@ function PipelineSection() {
     },
     {
       n: '02',
-      label: 'As you talk',
+      label: 'As you speak',
       title: 'Tickets form',
       detail: 'Structured work — priority, owner, due — not a notes dump.',
       chrome: 'Extracting · 3 items',
@@ -542,7 +542,7 @@ function PipelineSection() {
               color: '#fff',
             }}
           >
-            From talk to board before the call hangs up.
+            From speak to board before the call hangs up.
           </h2>
           <p
             style={{
@@ -726,7 +726,7 @@ function WhoSection() {
           }}
         >
           If your calendar is full and your board is empty — or full of tickets you typed yourself —
-          Syntheon Hub is the layer between talk and ship.
+          Syntheon Hub is the layer between speak and ship.
         </p>
       </div>
     </section>
@@ -736,8 +736,8 @@ function WhoSection() {
 function ChapterTalk() {
   return (
     <Chapter
-      id="talk"
-      label="Talk"
+      id="speak"
+      label="Speak"
       title="It joins the meeting."
       body="Syntheon Hub sits in the call and keeps every decision, blocker, and commitment."
     >
@@ -758,7 +758,7 @@ function ChapterWork() {
 
   return (
     <section
-      id="work"
+      id="shape"
       style={{
         padding: 'clamp(5rem, 12vh, 9rem) 5vw',
         borderTop: '1px solid rgba(255,255,255,0.06)',
@@ -772,7 +772,7 @@ function ChapterWork() {
         style={{ maxWidth: 1280, margin: '0 auto' }}
       >
         <div style={{ maxWidth: 560, marginBottom: 'clamp(2rem, 4vh, 3rem)' }}>
-          <p style={chapterLabel}>Work</p>
+          <p style={chapterLabel}>Shape</p>
           <h2
             style={{
               ...display,
@@ -783,7 +783,7 @@ function ChapterWork() {
               color: '#fff',
             }}
           >
-            Talk crystallizes into tickets.
+            Speak crystallizes into tickets.
           </h2>
           <p
             style={{
@@ -902,7 +902,7 @@ function ChapterDone({ pageOrigin }: { pageOrigin: number }) {
 
   return (
     <section
-      id="done"
+      id="ship"
       ref={sectionRef}
       style={{
         minHeight: '100vh',
@@ -942,7 +942,7 @@ function ChapterDone({ pageOrigin }: { pageOrigin: number }) {
             animate={inView ? { opacity: 1, y: 0 } : undefined}
             transition={{ duration: 0.6, ease: EASE }}
           >
-            Done
+            Ship
           </motion.p>
 
           {revealed && (
@@ -1347,7 +1347,7 @@ function Footer() {
             <span style={{ ...display, fontSize: 18, fontWeight: 600 }}>Syntheon Hub</span>
           </div>
           <p style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.42)', maxWidth: 280 }}>
-            Talk becomes work. Work lands done.
+            Speak. Shape. Ship.
           </p>
         </div>
         <FooterCol

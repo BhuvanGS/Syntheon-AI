@@ -11,7 +11,7 @@ import {
   notifyTicketStatusChanged,
 } from '@/lib/db';
 import { broadcastToOrg } from '@/lib/event-bus';
-import { requireAuth } from '@/lib/rbac';
+import { requireAuth, canAccessProjectResource } from '@/lib/rbac';
 import { TicketsEntity } from '@/db/entities';
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -24,6 +24,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     // Single-row lookup instead of scanning the entire org's tickets
     const ticket = (await getTicketById(id)) ?? undefined;
     if (!ticket || ticket.org_id !== orgId) {
+      return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+    }
+    if (!(await canAccessProjectResource(ctx, ticket.projectId))) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
@@ -292,6 +295,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const { id } = await params;
     const ticket = (await getTicketById(id)) ?? undefined;
     if (!ticket || ticket.org_id !== ctx.orgId) {
+      return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+    }
+    if (!(await canAccessProjectResource(ctx, ticket.projectId))) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 

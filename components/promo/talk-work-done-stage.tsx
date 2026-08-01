@@ -18,7 +18,7 @@ const TICKETS = [
 ];
 
 /**
- * Signature hero stage: Talk → Work → Done without stock imagery.
+ * Signature hero stage: Speak → Shape → Ship without stock imagery.
  */
 export function TalkWorkDoneStage() {
   const reduce = useReducedMotion();
@@ -29,7 +29,7 @@ export function TalkWorkDoneStage() {
       setPhase(2);
       return;
     }
-    // Play Talk → Work → Done once. Never loop the same phases.
+    // Play Speak → Shape → Ship once. Never loop the same phases.
     setPhase(0);
     const t1 = window.setTimeout(() => setPhase(1), 2600);
     const t2 = window.setTimeout(() => setPhase(2), 5200);
@@ -87,7 +87,7 @@ export function TalkWorkDoneStage() {
             color: 'rgba(255,255,255,0.35)',
           }}
         >
-          {phase === 0 ? 'Talk' : phase === 1 ? 'Work' : 'Done'}
+          {phase === 0 ? 'Speak' : phase === 1 ? 'Shape' : 'Ship'}
         </span>
       </div>
 
@@ -95,7 +95,7 @@ export function TalkWorkDoneStage() {
         <AnimatePresence mode="wait">
           {phase === 0 && (
             <motion.div
-              key="talk"
+              key="speak"
               initial={reduce ? false : { opacity: 0, filter: 'blur(8px)' }}
               animate={{ opacity: 1, filter: 'blur(0px)' }}
               exit={{ opacity: 0, filter: 'blur(6px)' }}
@@ -125,7 +125,7 @@ export function TalkWorkDoneStage() {
 
           {phase === 1 && (
             <motion.div
-              key="work"
+              key="shape"
               initial={reduce ? false : { opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0 }}
@@ -151,7 +151,7 @@ export function TalkWorkDoneStage() {
 
           {phase === 2 && (
             <motion.div
-              key="done"
+              key="ship"
               initial={reduce ? false : { opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}

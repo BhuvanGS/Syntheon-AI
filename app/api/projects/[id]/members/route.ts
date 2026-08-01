@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getProjectById, addProjectMember, removeProjectMember, getProjectMembers } from '@/lib/db';
-import { requireAuth, isOrgAdmin, canAdminProject } from '@/lib/rbac';
+import { requireAuth, isOrgAdmin, canAdminProject, requireProjectAccess } from '@/lib/rbac';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -11,6 +11,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const project = await getProjectById(id);
     if (!project || project.org_id !== ctx.orgId) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+    if (!(await requireProjectAccess(ctx, project.id))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const members = await getProjectMembers(id);
@@ -34,6 +37,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const project = await getProjectById(id);
     if (!project || project.org_id !== ctx.orgId) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+    if (!(await requireProjectAccess(ctx, project.id))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
     if (!(await canAdminProject(ctx, id))) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -64,6 +70,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const project = await getProjectById(id);
     if (!project || project.org_id !== ctx.orgId) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+    if (!(await requireProjectAccess(ctx, project.id))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const canAdmin = await canAdminProject(ctx, id);

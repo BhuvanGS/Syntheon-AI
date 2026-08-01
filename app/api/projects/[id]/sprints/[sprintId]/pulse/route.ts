@@ -1,21 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { sprintPulse } from '@/lib/groq-ai';
 import { getSprintsByProject } from '@/lib/db';
 import { aiRateLimit } from '@/lib/rate-limit';
+import { requireAuth, requireProjectAccess } from '@/lib/rbac';
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; sprintId: string }> }
 ) {
   try {
-    const { userId, orgId } = await auth();
-    if (!userId || !orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = await requireAuth();
+    if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const limited = await aiRateLimit(req, userId);
+    const limited = await aiRateLimit(req, ctx.userId);
     if (limited) return limited;
 
     const { id: projectId, sprintId } = await params;
+    if (!(await requireProjectAccess(ctx, projectId))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
     const body = await req.json();
 
     const {

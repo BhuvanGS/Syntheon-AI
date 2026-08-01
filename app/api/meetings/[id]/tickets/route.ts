@@ -12,7 +12,7 @@ import {
   createNotification,
 } from '@/lib/db';
 import { checkTicketLimit, limitErrorResponse } from '@/lib/billing-limits';
-import { requireAuth } from '@/lib/rbac';
+import { requireAuth, canAccessProjectResource } from '@/lib/rbac';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -22,6 +22,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const { id } = await params;
     const meeting = await getMeetingById(id);
     if (!meeting || meeting.org_id !== ctx.orgId) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+    if (!(await canAccessProjectResource(ctx, meeting.projectId))) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
@@ -42,6 +45,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const { id } = await params;
     const meetingCheck = await getMeetingById(id);
     if (!meetingCheck || meetingCheck.org_id !== orgId) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+    if (!(await canAccessProjectResource(ctx, meetingCheck.projectId))) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
@@ -161,6 +167,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const { id } = await params;
     const meetingCheck = await getMeetingById(id);
     if (!meetingCheck || meetingCheck.org_id !== ctx.orgId) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+    if (!(await canAccessProjectResource(ctx, meetingCheck.projectId))) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 

@@ -10,7 +10,7 @@ import {
   saveTickets,
 } from '@/lib/db';
 import { checkTicketLimit, limitErrorResponse } from '@/lib/billing-limits';
-import { requireAuth } from '@/lib/rbac';
+import { requireAuth, requireProjectAccess } from '@/lib/rbac';
 
 function ticketFingerprint(ticket: {
   title: string;
@@ -36,6 +36,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const project = await getProjectById(id);
     if (!project || project.org_id !== orgId) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+    if (!(await requireProjectAccess(ctx, project.id))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const body = await req.json();

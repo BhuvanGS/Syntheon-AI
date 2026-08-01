@@ -1,84 +1,27 @@
 // app/api/bot/create/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth, clerkClient } from '@clerk/nextjs/server';
-import crypto from 'crypto';
+import { auth } from '@clerk/nextjs/server';
 
 import { createBot } from '@/lib/skribby';
-import {
-  saveMeeting,
-  getActiveMeetingByUrl,
-  updateMeetingStatus,
-  getMeetings,
-  getMeetingsPaginated,
-} from '@/lib/db';
-import { ApiKeysEntity, MeetingsEntity } from '@/db/entities';
+import { saveMeeting, getActiveMeetingByUrl } from '@/lib/db';
+import { MeetingsEntity } from '@/db/entities';
 import { checkMeetingLimit, limitErrorResponse } from '@/lib/billing-limits';
-
-// 🔐 API key → user resolver
-async function getUserFromApiKey(apiKey: string) {
-  const hash = crypto.createHash('sha256').update(apiKey).digest('hex');
-
-  const byHash = await ApiKeysEntity.query.byKeyHash({ keyHash: hash }).go({ limit: 1 });
-  if (byHash.data?.[0]?.userId) return byHash.data[0].userId;
-
-  // Migration fallback for keys written before byKeyHash GSI existed
-  const allKeys = await ApiKeysEntity.scan.go();
-  const row = (allKeys.data ?? []).find((k: any) => k.keyHash === hash);
-  if (row?.userId && row.keyHash) {
-    // Backfill GSI attribute via update
-    try {
-      await ApiKeysEntity.update({ userId: row.userId }).set({ keyHash: row.keyHash }).go();
-    } catch {
-      // ignore backfill errors
-    }
-  }
-  return row?.userId || null;
-}
-
-// 🔐 Resolve a user's primary org from Clerk (first membership)
-async function getUserPrimaryOrgId(userId: string): Promise<string | null> {
-  try {
-    const client = await clerkClient();
-    const memberships = await client.users.getOrganizationMembershipList({ userId });
-    const list = memberships.data ?? [];
-    if (list.length === 0) return null;
-    // Prefer admin membership, else first
-    const admin = list.find((m) => m.role === 'org:admin');
-    return (admin ?? list[0]).organization.id;
-  } catch (err) {
-    console.error('Failed to resolve user primary org:', err);
-    return null;
-  }
-}
+import { apiRateLimit } from '@/lib/rate-limit';
 
 export async function POST(req: NextRequest) {
   try {
-    const authHeader = req.headers.get('authorization');
-
-    let userId: string | null = null;
-    let orgId: string | null = null;
-
-    // 🔥 API key auth (extension)
-    if (authHeader?.startsWith('Bearer syn_')) {
-      const apiKey = authHeader.replace('Bearer ', '');
-      userId = await getUserFromApiKey(apiKey);
-      // Extension has no org context — resolve user's primary org from Clerk
-      if (userId) {
-        orgId = await getUserPrimaryOrgId(userId);
-      }
-    }
-
-    // 🔥 Clerk auth (dashboard)
-    if (!userId) {
-      const session = await auth();
-      userId = session.userId;
-      orgId = session.orgId ?? null;
-    }
+    const session = await auth();
+    const userId = session.userId;
+    const orgId = session.orgId ?? null;
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    // In-memory per-instance limiter (see lib/rate-limit.ts). Not shared across Lambda instances.
+    const limited = await apiRateLimit(req, userId);
+    if (limited) return limited;
 
     // 🚦 Rate limit check for free tier
     const meetingCheck = await checkMeetingLimit(orgId, userId);

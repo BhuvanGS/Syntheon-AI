@@ -12,12 +12,18 @@ import {
   Mail,
   Trash2,
 } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import {
+  SettingsBody,
+  SettingsCallout,
+  SettingsEmpty,
+  SettingsHeader,
+  SettingsPanel,
+  SettingsPanelHead,
+} from '@/components/settings/settings-chrome';
 import {
   Dialog,
   DialogContent,
@@ -259,72 +265,43 @@ export function OrganizationDomainsTab() {
   }
 
   return (
-    <div className="p-6 lg:p-10">
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
-            <Shield className="h-5 w-5 text-emerald-500" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-playfair font-bold text-foreground">Verified Domains</h2>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Manage email domains for automatic organization membership
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <Card className="border-border/60 shadow-none">
-        <CardHeader className="pb-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
-                <Shield className="h-5 w-5 text-emerald-500" />
-              </div>
-              <div>
-                <CardTitle className="text-sm font-semibold">Domain-Based Access</CardTitle>
-                <CardDescription className="text-xs mt-0.5">
-                  Users with verified email domains can automatically join
-                </CardDescription>
-              </div>
-            </div>
-            {isAdmin && (
-              <Button size="sm" className="rounded-full" onClick={handleAddDomainClick}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Domain
+    <>
+      <SettingsBody>
+        <SettingsHeader
+          title="Verified domains"
+          description="Email domains for organization membership enrollment."
+          action={
+            isAdmin ? (
+              <Button size="sm" onClick={handleAddDomainClick}>
+                <Plus className="mr-1.5 h-4 w-4" />
+                Add domain
               </Button>
-            )}
-          </div>
-        </CardHeader>
-        <Separator />
-        <CardContent className="pt-4">
+            ) : null
+          }
+        />
+
+        <SettingsPanel>
+          <SettingsPanelHead
+            title="Domain-based access"
+            hint="Users on verified domains can enroll based on your mode."
+          />
           {!isAdmin && (
-            <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3 text-xs text-amber-700 mb-4">
+            <SettingsCallout tone="warn">
               Only organization admins can manage verified domains.
-            </div>
+            </SettingsCallout>
           )}
 
           {domains.length === 0 ? (
-            <div className="text-center py-16">
-              <div className="h-14 w-14 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-4">
-                <Shield className="h-7 w-7 text-muted-foreground/50" />
-              </div>
-              <p className="text-sm font-medium text-foreground mb-1">No verified domains</p>
-              <p className="text-xs text-muted-foreground">
-                Add a domain to enable automatic organization membership
-              </p>
-            </div>
+            <SettingsEmpty
+              title="No verified domains"
+              description="Add a domain to enable organization membership by email."
+            />
           ) : (
-            <div className="space-y-3">
+            <div className="divide-y divide-border rounded-xl border border-border">
               {domains.map((domain) => (
-                <div
-                  key={domain.id}
-                  className="flex items-center justify-between rounded-lg border border-border/60 px-4 py-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                      <Mail className="h-4 w-4 text-primary" />
-                    </div>
+                <div key={domain.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
                     <div>
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-medium text-foreground">@{domain.name}</p>
@@ -362,17 +339,18 @@ export function OrganizationDomainsTab() {
           )}
 
           {isAdmin && domains.length > 0 && (
-            <div className="mt-4 rounded-lg bg-blue-500/10 border border-blue-500/20 p-3 text-xs text-blue-700">
-              <p className="font-medium mb-1">How it works</p>
-              <p>
-                Users signing up with an email from a verified domain will automatically be invited
-                to join this organization. Auto-join domains allow immediate access, while manual
-                approval requires admin confirmation.
-              </p>
+            <div className="mt-4">
+              <SettingsCallout>
+                <p className="font-medium text-foreground">How it works</p>
+                <p className="mt-1">
+                  Users signing up with an email from a verified domain can enroll based on your
+                  mode. Auto-join allows immediate access; manual approval needs an admin.
+                </p>
+              </SettingsCallout>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </SettingsPanel>
+      </SettingsBody>
 
       {/* Add Domain Dialog */}
       <Dialog open={addDomainDialogOpen} onOpenChange={setAddDomainDialogOpen}>
@@ -600,6 +578,6 @@ export function OrganizationDomainsTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }

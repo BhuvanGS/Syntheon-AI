@@ -18,10 +18,10 @@ export function AuthShell({
   children: ReactNode;
   mode: 'sign-in' | 'sign-up';
 }) {
-  const headline = mode === 'sign-in' ? 'Welcome back.' : 'Start shipping from talk.';
+  const headline = mode === 'sign-in' ? 'Welcome back.' : 'Start shipping from speak.';
   const support =
     mode === 'sign-in'
-      ? 'Sign in to your workspace. Meetings become tickets — Talk. Work. Done.'
+      ? 'Sign in to your workspace. Meetings become tickets — Speak. Shape. Ship.'
       : 'Create your free account. Join meetings; leave with a board that is already current.';
 
   return (
@@ -53,7 +53,7 @@ export function AuthShell({
               fontWeight: 500,
             }}
           >
-            Talk · Work · Done
+            Speak · Shape · Ship
           </p>
           <h1
             style={{
