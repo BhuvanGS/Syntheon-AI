@@ -14,6 +14,7 @@ import {
   useBulkTicketsMutation,
   useUpdateTicketRanksMutation,
 } from '@/hooks/use-ticket-mutations';
+import { usePrefetchTicketPanels } from '@/hooks/use-ticket-panel-queries';
 
 const ORG_QUERY_CONFIG = {
   memberships: { infinite: true, pageSize: 50 },
@@ -257,6 +258,7 @@ export function ProjectsWorkspace({
   const { has } = useAuth();
   const isAdmin = membership?.role === 'org:admin';
   const { labels, labelMap, invalidate: invalidateLabels } = useLabels();
+  const prefetchTicketPanels = usePrefetchTicketPanels();
   const [kanbanAssigneeFilter, setKanbanAssigneeFilter] = useState<'all' | 'unassigned' | 'mine'>(
     'all'
   );
@@ -1089,6 +1091,7 @@ export function ProjectsWorkspace({
       setTicketEditorHistory([]);
     }
 
+    prefetchTicketPanels(ticket.id);
     setTicketToEdit(ticket);
     setTicketEditForm({
       title: ticket.title,

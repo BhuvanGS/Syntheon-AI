@@ -57,7 +57,7 @@ const isClerkSessionTask = createRouteMatcher(['/sign-up/tasks(.*)', '/sign-in/t
 
 const isOnboardingRoute = createRouteMatcher(['/onboarding(.*)', '/join(.*)']);
 
-/** Keep infra webhooks alive while the product UI is locked. */
+/** Keep infra webhooks alive while the app UI is locked. */
 const isAllowedWhileClosed = createRouteMatcher([
   '/beta-closed',
   '/api/bot/webhook(.*)',
@@ -98,9 +98,21 @@ function redirectToOnboarding(request: NextRequest) {
   return NextResponse.redirect(new URL('/onboarding', request.url));
 }
 
-function lockIfClosed(request: NextRequest) {
+/**
+ * Lock the app experience when closed — not the marketing site.
+ * - syntheonhub.com / www: never locked
+ * - app.syntheonhub.com: app pages + APIs locked (webhooks allowlisted)
+ * - localhost / preview: same path split so marketing pages stay reachable
+ */
+function lockIfClosed(request: NextRequest, hostname: string) {
   if (!isAppClosed()) return null;
   if (isAllowedWhileClosed(request)) return null;
+
+  // Marketing host stays fully open
+  if (isMarketingDomain(hostname)) return null;
+
+  // Dual-domain: marketing paths belong on the marketing host (redirect later)
+  if (isMarketingRoute(request) && !isApiRoute(request)) return null;
 
   if (isApiRoute(request)) {
     return NextResponse.json(
@@ -139,9 +151,6 @@ function requireOrgOrRedirect(
 }
 
 export default clerkMiddleware(async (auth, request) => {
-  const closed = lockIfClosed(request);
-  if (closed) return closed;
-
   const hostname = getHostname(request);
   const pathname = request.nextUrl.pathname;
 
@@ -152,6 +161,10 @@ export default clerkMiddleware(async (auth, request) => {
     url.protocol = 'https:';
     return NextResponse.redirect(url, 308);
   }
+
+  // App lock only — marketing host is never gated
+  const closed = lockIfClosed(request, hostname);
+  if (closed) return closed;
 
   // ─── Subdomain routing logic ──────────────────────────────────
   if (isMarketingDomain(hostname)) {

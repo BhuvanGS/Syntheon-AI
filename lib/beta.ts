@@ -67,7 +67,11 @@ export function isBetaExpired(now = new Date()): boolean {
   return status.enabled && status.isExpired;
 }
 
-/** Site-wide lock (prod closed screen). Local stays open unless FORCE_BETA_CLOSED=true. */
+/**
+ * App lock flag (prod closed screen on the app host).
+ * Marketing stays open; only app.syntheonhub.com is gated in proxy.
+ * Local stays open unless FORCE_BETA_CLOSED=true.
+ */
 export function isAppClosed(now = new Date()): boolean {
   const force = parseBoolean(
     process.env.FORCE_BETA_CLOSED ?? process.env.NEXT_PUBLIC_FORCE_BETA_CLOSED

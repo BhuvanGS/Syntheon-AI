@@ -1,6 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState } from 'react';
+import { useAuth } from '@clerk/nextjs';
+import { useQueryClient } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,20 +15,14 @@ import {
 } from '@/components/ui/select';
 import { Loader2, Plus, Trash2, AlertTriangle, ArrowRight, Link2, Pencil } from 'lucide-react';
 import { useToast } from '@/components/island-toast';
+import {
+  useTicketDependenciesQuery,
+  type TicketDependency,
+} from '@/hooks/use-ticket-panel-queries';
+import { queryKeys } from '@/lib/query/keys';
 
 type DependencyType = 'data' | 'structural' | 'logical' | 'resource';
 type DependencyStrength = 'soft' | 'hard';
-
-interface TicketDependency {
-  id: string;
-  ticket_id: string;
-  depends_on_ticket_id: string;
-  dependency_type: DependencyType;
-  strength: DependencyStrength;
-  note?: string | null;
-  ignore_count: number;
-  escalated: boolean;
-}
 
 interface ProjectTicket {
   id: string;
@@ -59,9 +55,15 @@ export function TicketDependencyPanel({
   projectId,
   projectTickets,
 }: TicketDependencyPanelProps) {
-  const [parents, setParents] = useState<TicketDependency[]>([]);
-  const [children, setChildren] = useState<TicketDependency[]>([]);
-  const [loading, setLoading] = useState(false);
+  const { orgId } = useAuth();
+  const queryClient = useQueryClient();
+  const {
+    data,
+    isLoading: loading,
+    isFetching,
+  } = useTicketDependenciesQuery(ticketId, Boolean(projectId));
+  const parents = data?.parents ?? [];
+  const children = data?.children ?? [];
   const [showAddForm, setShowAddForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
@@ -83,23 +85,20 @@ export function TicketDependencyPanel({
     note: '',
   });
 
-  const fetchDeps = useCallback(async () => {
-    if (!ticketId) return;
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/tickets/${ticketId}/dependencies`);
-      if (!res.ok) return;
-      const data = await res.json();
-      setParents(data.parents ?? []);
-      setChildren(data.children ?? []);
-    } finally {
-      setLoading(false);
+  async function invalidateDeps() {
+    if (!orgId) return;
+    await queryClient.invalidateQueries({
+      queryKey: queryKeys.tickets.dependencies(orgId, ticketId),
+    });
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.tickets.activities(orgId, ticketId),
+    });
+    if (projectId) {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.projects.dependencies(orgId, projectId),
+      });
     }
-  }, [ticketId]);
-
-  useEffect(() => {
-    fetchDeps();
-  }, [fetchDeps]);
+  }
 
   async function handleAddDep() {
     if (!newDep.depends_on_ticket_id) return;
@@ -116,9 +115,9 @@ export function TicketDependencyPanel({
           note: newDep.note.trim() || null,
         }),
       });
-      const data = await res.json();
+      const body = await res.json();
       if (!res.ok) {
-        const errorMsg = data?.error ?? 'Failed to add dependency';
+        const errorMsg = body?.error ?? 'Failed to add dependency';
         setError(errorMsg);
         showToast(errorMsg, 'error');
         return;
@@ -130,7 +129,7 @@ export function TicketDependencyPanel({
         strength: 'soft',
         note: '',
       });
-      await fetchDeps();
+      await invalidateDeps();
       showToast('Dependency added', 'success');
     } finally {
       setSubmitting(false);
@@ -145,7 +144,6 @@ export function TicketDependencyPanel({
       strength: dep.strength,
       note: dep.note ?? '',
     });
-    // Scroll to edit form after a short delay to let it render
     setTimeout(() => {
       const editForm = document.getElementById('dependency-edit-form');
       editForm?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -166,15 +164,15 @@ export function TicketDependencyPanel({
           note: editDep.note.trim() || null,
         }),
       });
-      const data = await res.json().catch(() => ({}));
+      const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const errorMsg = data?.error ?? 'Failed to update dependency';
+        const errorMsg = body?.error ?? 'Failed to update dependency';
         setEditError(errorMsg);
         showToast(errorMsg, 'error');
         return;
       }
       setEditingDepId(null);
-      await fetchDeps();
+      await invalidateDeps();
       showToast('Dependency updated', 'success');
     } finally {
       setSavingEdit(false);
@@ -185,7 +183,7 @@ export function TicketDependencyPanel({
     setRemovingId(depId);
     try {
       await fetch(`/api/tickets/${ticketId}/dependencies/${depId}`, { method: 'DELETE' });
-      await fetchDeps();
+      await invalidateDeps();
       showToast('Dependency removed', 'success');
     } finally {
       setRemovingId(null);
@@ -194,13 +192,13 @@ export function TicketDependencyPanel({
 
   const otherTickets = projectTickets.filter((t) => t.id !== ticketId);
   const usedParentIds = new Set(parents.map((d) => d.depends_on_ticket_id));
-  // Also filter out children (tickets that depend on current) to prevent cycles
   const childrenIds = new Set(children.map((d) => d.ticket_id));
   const availableTickets = otherTickets.filter(
     (t) => !usedParentIds.has(t.id) && !childrenIds.has(t.id)
   );
 
   const ticketById = new Map(projectTickets.map((t) => [t.id, t]));
+  const showLoading = loading || isFetching;
 
   if (!projectId) {
     return (
@@ -217,7 +215,7 @@ export function TicketDependencyPanel({
           <Link2 className="w-4 h-4 text-primary" />
           Dependencies
         </div>
-        {loading && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
+        {showLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
         {!showAddForm && (
           <button
             type="button"
@@ -365,14 +363,11 @@ export function TicketDependencyPanel({
           className="rounded-none border border-primary/20 bg-primary/5 p-3 space-y-3"
         >
           {(() => {
-            const editingDep = [...parents, ...children].find((d) => d.id === editingDepId);
-            const depTicket = editingDep
-              ? ticketById.get(
-                  parents.find((d) => d.id === editingDepId)?.depends_on_ticket_id ??
-                    children.find((d) => d.id === editingDepId)?.ticket_id ??
-                    ''
-                )
-              : null;
+            const depTicket = ticketById.get(
+              parents.find((d) => d.id === editingDepId)?.depends_on_ticket_id ??
+                children.find((d) => d.id === editingDepId)?.ticket_id ??
+                ''
+            );
             const isParent = parents.some((d) => d.id === editingDepId);
             return (
               <div className="flex items-center gap-2">

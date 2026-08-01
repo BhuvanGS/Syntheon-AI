@@ -1,30 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useAuth, useOrganization } from '@clerk/nextjs';
 import { AlertTriangle, Sparkles, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
-
-interface TrialStatus {
-  isTrial: boolean;
-  daysLeft: number | null;
-  expired: boolean;
-  trialDays?: number;
-}
-
-interface UsageData {
-  meetingsUsed: number;
-  meetingsLimit: number;
-}
+import { useTrialQuery, useUsageQuery } from '@/hooks/use-workspace-queries';
 
 const FREE_MEETING_LIMIT = 10;
 
 export function TrialBanner() {
   const { organization, isLoaded: orgLoaded } = useOrganization();
   const { isLoaded: authLoaded, has } = useAuth();
-  const [trial, setTrial] = useState<TrialStatus | null>(null);
-  const [usage, setUsage] = useState<UsageData | null>(null);
 
   const isPaid =
     has?.({ plan: 'user_pro' }) ||
@@ -38,52 +24,14 @@ export function TrialBanner() {
         ? 'Pro'
         : 'Free';
 
-  useEffect(() => {
-    if (!organization?.id) return;
-    let cancelled = false;
-
-    async function load() {
-      try {
-        const res = await fetch(`/api/organizations/${organization!.id}/trial`);
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!cancelled) setTrial(data);
-      } catch {
-        // silent
+  const { data: trial } = useTrialQuery(Boolean(organization?.id));
+  const { data: usageRaw } = useUsageQuery(authLoaded && !isPaid);
+  const usage = usageRaw
+    ? {
+        meetingsUsed: usageRaw.meetingsUsed ?? 0,
+        meetingsLimit: usageRaw.meetingsLimit ?? FREE_MEETING_LIMIT,
       }
-    }
-
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [organization?.id]);
-
-  useEffect(() => {
-    if (!authLoaded) return;
-    if (isPaid) return;
-    let cancelled = false;
-
-    async function loadUsage() {
-      try {
-        const res = await fetch('/api/usage');
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!cancelled)
-          setUsage({
-            meetingsUsed: data.meetingsUsed ?? 0,
-            meetingsLimit: data.meetingsLimit ?? FREE_MEETING_LIMIT,
-          });
-      } catch {
-        // silent
-      }
-    }
-
-    void loadUsage();
-    return () => {
-      cancelled = true;
-    };
-  }, [authLoaded, isPaid]);
+    : null;
 
   if (!orgLoaded || !authLoaded) return null;
 

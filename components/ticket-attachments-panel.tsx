@@ -1,18 +1,13 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef, type DragEvent } from 'react';
+import { useState, useRef, type DragEvent } from 'react';
+import { useAuth } from '@clerk/nextjs';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Paperclip, X, Upload, FileText, Image, File } from 'lucide-react';
 import { useToast } from '@/components/island-toast';
-
-interface Attachment {
-  id: string;
-  filename: string;
-  file_url: string;
-  file_size: number;
-  file_type?: string | null;
-  created_at: string;
-}
+import { useTicketAttachmentsQuery, type TicketAttachment } from '@/hooks/use-ticket-panel-queries';
+import { queryKeys } from '@/lib/query/keys';
 
 interface TicketAttachmentsPanelProps {
   ticketId: string;
@@ -33,30 +28,24 @@ function getFileIcon(fileType?: string | null) {
 }
 
 export function TicketAttachmentsPanel({ ticketId }: TicketAttachmentsPanelProps) {
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { orgId } = useAuth();
+  const queryClient = useQueryClient();
+  const { data: attachments = [], isLoading } = useTicketAttachmentsQuery(ticketId);
   const [uploading, setUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const dragCounterRef = useRef(0);
   const { showToast } = useToast();
 
-  const fetchAttachments = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/tickets/${ticketId}/attachments`);
-      if (!res.ok) throw new Error('Failed to fetch attachments');
-      const data = await res.json();
-      setAttachments(data);
-    } catch (err) {
-      console.error('Error fetching attachments:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [ticketId]);
-
-  useEffect(() => {
-    fetchAttachments();
-  }, [fetchAttachments]);
+  async function invalidateAttachments() {
+    if (!orgId) return;
+    await queryClient.invalidateQueries({
+      queryKey: queryKeys.tickets.attachments(orgId, ticketId),
+    });
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.tickets.activities(orgId, ticketId),
+    });
+  }
 
   async function uploadFile(file: File) {
     const maxSize = 15 * 1024 * 1024;
@@ -110,7 +99,7 @@ export function TicketAttachmentsPanel({ ticketId }: TicketAttachmentsPanelProps
 
       if (!attachmentRes.ok) throw new Error('Failed to create attachment record');
 
-      await fetchAttachments();
+      await invalidateAttachments();
       showToast('File uploaded', 'success');
     } catch (err) {
       console.error('Error uploading file:', err);
@@ -161,7 +150,15 @@ export function TicketAttachmentsPanel({ ticketId }: TicketAttachmentsPanelProps
 
       if (!res.ok) throw new Error('Failed to delete attachment');
 
-      setAttachments((prev) => prev.filter((a) => a.id !== attachmentId));
+      if (orgId) {
+        queryClient.setQueryData<TicketAttachment[]>(
+          queryKeys.tickets.attachments(orgId, ticketId),
+          (prev) => (prev ?? []).filter((a) => a.id !== attachmentId)
+        );
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.tickets.activities(orgId, ticketId),
+        });
+      }
       showToast('File deleted', 'success');
     } catch (err) {
       console.error('Error deleting attachment:', err);
@@ -177,7 +174,7 @@ export function TicketAttachmentsPanel({ ticketId }: TicketAttachmentsPanelProps
     fileInputRef.current?.click();
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
         <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full" />

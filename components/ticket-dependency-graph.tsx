@@ -1,9 +1,13 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { useAuth } from '@clerk/nextjs';
+import { useQueryClient } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, GitBranch, ZoomIn, ZoomOut, RotateCcw, Network } from 'lucide-react';
 import { useToast } from '@/components/island-toast';
+import { useProjectDependenciesGraphQuery } from '@/hooks/use-ticket-panel-queries';
+import { queryKeys } from '@/lib/query/keys';
 
 interface GraphTicket {
   id: string;
@@ -122,9 +126,11 @@ export function TicketDependencyGraph({
   subtaskCounts = {},
   onTicketClick,
 }: TicketDependencyGraphProps) {
-  const [tickets, setTickets] = useState<GraphTicket[]>([]);
-  const [deps, setDeps] = useState<GraphDependency[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { orgId } = useAuth();
+  const queryClient = useQueryClient();
+  const { data, isLoading: loading } = useProjectDependenciesGraphQuery(projectId);
+  const tickets = data?.tickets ?? [];
+  const deps = data?.dependencies ?? [];
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 40, y: 0 });
   const [dragging, setDragging] = useState(false);
@@ -138,23 +144,6 @@ export function TicketDependencyGraph({
 
   const [mapping, setMapping] = useState(false);
   const { showToast } = useToast();
-
-  const fetchGraph = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/projects/${projectId}/dependencies`);
-      if (!res.ok) return;
-      const data = await res.json();
-      setTickets(data.tickets ?? []);
-      setDeps(data.dependencies ?? []);
-    } finally {
-      setLoading(false);
-    }
-  }, [projectId]);
-
-  useEffect(() => {
-    fetchGraph();
-  }, [fetchGraph]);
 
   const positions = layoutNodes(tickets, deps);
 
@@ -198,12 +187,12 @@ export function TicketDependencyGraph({
       const res = await fetch(`/api/projects/${projectId}/map-dependencies`, {
         method: 'POST',
       });
-      const data = await res.json().catch(() => ({}));
+      const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        showToast(data?.error || 'Failed to map dependencies', 'error');
+        showToast(body?.error || 'Failed to map dependencies', 'error');
         return;
       }
-      const mapped = typeof data?.mapped === 'number' ? data.mapped : 0;
+      const mapped = typeof body?.mapped === 'number' ? body.mapped : 0;
       if (mapped === 0) {
         showToast('No new dependencies found to map', 'info');
       } else {
@@ -212,7 +201,11 @@ export function TicketDependencyGraph({
           'success'
         );
       }
-      await fetchGraph();
+      if (orgId) {
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.projects.dependencies(orgId, projectId),
+        });
+      }
     } catch {
       showToast('Failed to map dependencies', 'error');
     } finally {

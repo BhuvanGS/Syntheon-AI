@@ -27,6 +27,7 @@ import {
   type TicketType,
   type TicketEstimate,
 } from '@/components/ticket-badges';
+import { useLabels } from '@/hooks/use-labels';
 
 interface MeetingOption {
   id: string;
@@ -64,9 +65,7 @@ export function ManualTicketDialog({
   const [type, setType] = useState<TicketType>('task');
   const [estimate, setEstimate] = useState<TicketEstimate>('none');
   const [labels, setLabels] = useState<string[]>([]);
-  const [availableLabels, setAvailableLabels] = useState<
-    { id: string; name: string; color: string }[]
-  >([]);
+  const { labels: availableLabels } = useLabels();
   const [error, setError] = useState<string | null>(null);
   const [limitReached, setLimitReached] = useState<{
     resource: string;
@@ -100,22 +99,6 @@ export function ManualTicketDialog({
 
     wasOpenRef.current = open;
   }, [open, defaultMeetingId, defaultStatus, meetings, projectOnly]);
-
-  useEffect(() => {
-    if (open) {
-      void (async () => {
-        try {
-          const res = await fetch('/api/labels');
-          if (res.ok) {
-            const data = await res.json();
-            setAvailableLabels(data.labels ?? []);
-          }
-        } catch {
-          // ignore
-        }
-      })();
-    }
-  }, [open]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

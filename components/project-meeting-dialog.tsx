@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Video, Sparkles, Link2, CalendarDays, AlertCircle, Settings, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useIntegrationsStatusQuery } from '@/hooks/use-workspace-queries';
 
 type Mode = 'paste' | 'create';
 
@@ -35,11 +36,12 @@ export function ProjectMeetingDialog({
   const [startTime, setStartTime] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [hasJoined, setHasJoined] = useState(false);
-  const [googleConnected, setGoogleConnected] = useState(false);
-  const [checkingGoogle, setCheckingGoogle] = useState(false);
   const [createdMeetUrl, setCreatedMeetUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [limitReached, setLimitReached] = useState<{ used: number; limit: number } | null>(null);
+
+  const { data: integrationsStatus, isLoading: checkingGoogle } = useIntegrationsStatusQuery(open);
+  const googleConnected = Boolean(integrationsStatus?.googleConnected);
 
   useEffect(() => {
     if (!open) return;
@@ -56,13 +58,6 @@ export function ProjectMeetingDialog({
     const now = new Date();
     now.setMinutes(now.getMinutes() + 5);
     setStartTime(now.toISOString().slice(0, 16));
-
-    // Check Google connection status
-    setCheckingGoogle(true);
-    fetch('/api/integrations/status')
-      .then((r) => r.json().catch(() => ({})))
-      .then((data) => setGoogleConnected(Boolean(data.googleConnected)))
-      .finally(() => setCheckingGoogle(false));
   }, [open]);
 
   async function handlePasteSubmit(e: React.FormEvent) {

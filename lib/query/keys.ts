@@ -20,6 +20,8 @@ export const queryKeys = {
       [orgId, 'projects', projectId, 'sprints'] as const,
     deletedActivities: (orgId: string, projectId: string) =>
       [orgId, 'projects', projectId, 'deletedActivities'] as const,
+    dependencies: (orgId: string, projectId: string) =>
+      [orgId, 'projects', projectId, 'dependencies'] as const,
   },
 
   meetings: {
@@ -40,6 +42,14 @@ export const queryKeys = {
     byMeeting: (orgId: string, meetingId: string) =>
       [orgId, 'tickets', 'byMeeting', meetingId] as const,
     detail: (orgId: string, ticketId: string) => [orgId, 'tickets', 'detail', ticketId] as const,
+    comments: (orgId: string, ticketId: string) =>
+      [orgId, 'tickets', ticketId, 'comments'] as const,
+    attachments: (orgId: string, ticketId: string) =>
+      [orgId, 'tickets', ticketId, 'attachments'] as const,
+    activities: (orgId: string, ticketId: string) =>
+      [orgId, 'tickets', ticketId, 'activities'] as const,
+    dependencies: (orgId: string, ticketId: string) =>
+      [orgId, 'tickets', ticketId, 'dependencies'] as const,
   },
 
   labels: {
@@ -58,11 +68,21 @@ export const queryKeys = {
     query: (orgId: string, q: string) => [orgId, 'search', q] as const,
   },
 
+  users: {
+    all: (orgId: string) => [orgId, 'users'] as const,
+    list: (orgId: string) => [orgId, 'users', 'list'] as const,
+  },
+
   usage: {
     all: (orgId: string) => [orgId, 'usage'] as const,
   },
 
+  trial: {
+    status: (orgId: string) => [orgId, 'trial'] as const,
+  },
+
   integrations: {
     all: (orgId: string) => [orgId, 'integrations'] as const,
+    status: (orgId: string) => [orgId, 'integrations', 'status'] as const,
   },
 } as const;

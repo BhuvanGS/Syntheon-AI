@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
 import {
   Loader2,
   Activity,
@@ -18,7 +17,7 @@ import {
   ArrowRight,
   type LucideIcon,
 } from 'lucide-react';
-import { useUser } from '@clerk/nextjs';
+import { useTicketActivityPanelQuery } from '@/hooks/use-ticket-panel-queries';
 
 interface Activity {
   id: string;
@@ -223,71 +222,9 @@ function ActivityItem({
 }
 
 export function TicketActivityPanel({ ticketId }: TicketActivityPanelProps) {
-  const [activities, setActivities] = useState<Activity[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [userMap, setUserMap] = useState<Map<string, UserInfo>>(new Map());
-  const { user } = useUser();
+  const { activities, userMap, isLoading } = useTicketActivityPanelQuery(ticketId);
 
-  const fetchActivities = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await fetch(`/api/tickets/${ticketId}/activities`);
-      if (!res.ok) throw new Error('Failed to fetch activities');
-      const data = await res.json();
-      setActivities(data);
-
-      // Collect unique user IDs
-      const userIds = [...new Set<string>(data.map((a: Activity) => a.user_id))];
-      const newUserMap = new Map<string, UserInfo>();
-
-      // Add current user info if present
-      if (user) {
-        newUserMap.set(user.id, {
-          firstName: user.firstName || undefined,
-          lastName: user.lastName || undefined,
-          username: user.username || undefined,
-          email: user.primaryEmailAddress?.emailAddress || undefined,
-          imageUrl: user.imageUrl || undefined,
-        });
-      }
-
-      // Fetch other users' info from the users API
-      const otherUserIds = userIds.filter((id) => id !== user?.id);
-      if (otherUserIds.length > 0) {
-        try {
-          const usersRes = await fetch('/api/users');
-          if (usersRes.ok) {
-            const usersData = await usersRes.json();
-            const orgUsers = usersData.users || [];
-            for (const u of orgUsers) {
-              if (otherUserIds.includes(u.id)) {
-                newUserMap.set(u.id, {
-                  firstName: u.name?.split(' ')[0] || undefined,
-                  lastName: u.name?.split(' ').slice(1).join(' ') || undefined,
-                  username: u.username || undefined,
-                  email: u.email || undefined,
-                  imageUrl: u.imageUrl || undefined,
-                });
-              }
-            }
-          }
-        } catch (e) {
-          console.error('Failed to fetch user info:', e);
-        }
-      }
-      setUserMap(newUserMap);
-    } catch (err) {
-      console.error('Error fetching activities:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [ticketId, user]);
-
-  useEffect(() => {
-    fetchActivities();
-  }, [fetchActivities]);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -312,9 +249,7 @@ export function TicketActivityPanel({ ticketId }: TicketActivityPanelProps) {
       {activities.map((activity, index) => (
         <div key={activity.id}>
           <ActivityItem activity={activity} userMap={userMap} />
-          {index < activities.length - 1 && (
-            <div className="ml-4 border-l-2 border-border pl-7 my-1" />
-          )}
+          {index < activities.length - 1 && <div className="ml-4 h-3 w-px bg-border my-1" />}
         </div>
       ))}
     </div>

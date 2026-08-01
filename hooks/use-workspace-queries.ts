@@ -219,3 +219,52 @@ export function useInvalidateWorkspace() {
     ]);
   }, [orgId, queryClient]);
 }
+
+export type UsageSummary = {
+  meetingsUsed: number;
+  meetingsLimit: number;
+};
+
+export type TrialStatus = {
+  isTrial: boolean;
+  daysLeft: number | null;
+  expired: boolean;
+  trialDays?: number;
+};
+
+export type IntegrationsStatus = {
+  googleConnected: boolean;
+};
+
+export function useUsageQuery(enabled = true) {
+  const { orgId } = useAuth();
+
+  return useQuery({
+    queryKey: orgId ? queryKeys.usage.all(orgId) : ['usage', 'disabled'],
+    queryFn: () => apiGet<UsageSummary>('/api/usage'),
+    enabled: Boolean(orgId) && enabled,
+    staleTime: 60_000,
+  });
+}
+
+export function useTrialQuery(enabled = true) {
+  const { orgId } = useAuth();
+
+  return useQuery({
+    queryKey: orgId ? queryKeys.trial.status(orgId) : ['trial', 'disabled'],
+    queryFn: () => apiGet<TrialStatus>(`/api/organizations/${orgId}/trial`),
+    enabled: Boolean(orgId) && enabled,
+    staleTime: 60_000,
+  });
+}
+
+export function useIntegrationsStatusQuery(enabled = true) {
+  const { orgId } = useAuth();
+
+  return useQuery({
+    queryKey: orgId ? queryKeys.integrations.status(orgId) : ['integrations', 'disabled'],
+    queryFn: () => apiGet<IntegrationsStatus>('/api/integrations/status'),
+    enabled: Boolean(orgId) && enabled,
+    staleTime: 60_000,
+  });
+}

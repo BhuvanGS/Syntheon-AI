@@ -1,18 +1,15 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState } from 'react';
 import DOMPurify from 'dompurify';
+import { useAuth } from '@clerk/nextjs';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { MessageSquare, Send, X, User, Pencil, Check } from 'lucide-react';
 import { useToast } from '@/components/island-toast';
 import { TipTapEditor } from '@/components/tiptap-editor';
-
-interface Comment {
-  id: string;
-  content: string;
-  user_id: string;
-  created_at: string;
-}
+import { useTicketCommentsQuery, type TicketComment } from '@/hooks/use-ticket-panel-queries';
+import { queryKeys } from '@/lib/query/keys';
 
 interface TicketCommentsPanelProps {
   ticketId: string;
@@ -35,8 +32,9 @@ function formatRelativeTime(dateString: string): string {
 }
 
 export function TicketCommentsPanel({ ticketId, currentUserId }: TicketCommentsPanelProps) {
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { orgId } = useAuth();
+  const queryClient = useQueryClient();
+  const { data: comments = [], isLoading } = useTicketCommentsQuery(ticketId);
   const [newComment, setNewComment] = useState('');
   const [sending, setSending] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -46,22 +44,12 @@ export function TicketCommentsPanel({ ticketId, currentUserId }: TicketCommentsP
   const [editorKey, setEditorKey] = useState(0);
   const { showToast } = useToast();
 
-  const fetchComments = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/tickets/${ticketId}/comments`);
-      if (!res.ok) throw new Error('Failed to fetch comments');
-      const data = await res.json();
-      setComments(data);
-    } catch (err) {
-      console.error('Error fetching comments:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [ticketId]);
-
-  useEffect(() => {
-    fetchComments();
-  }, [fetchComments]);
+  function setCommentsCache(updater: (prev: TicketComment[]) => TicketComment[]) {
+    if (!orgId) return;
+    queryClient.setQueryData<TicketComment[]>(queryKeys.tickets.comments(orgId, ticketId), (prev) =>
+      updater(prev ?? [])
+    );
+  }
 
   async function handleSubmit() {
     if (!newComment.trim()) return;
@@ -76,8 +64,13 @@ export function TicketCommentsPanel({ ticketId, currentUserId }: TicketCommentsP
 
       if (!res.ok) throw new Error('Failed to add comment');
 
-      const comment = await res.json();
-      setComments((prev) => [...prev, comment]);
+      const comment = (await res.json()) as TicketComment;
+      setCommentsCache((prev) => [...prev, comment]);
+      if (orgId) {
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.tickets.activities(orgId, ticketId),
+        });
+      }
       setNewComment('');
       setEditorKey((k) => k + 1);
       showToast('Comment added', 'success');
@@ -99,8 +92,8 @@ export function TicketCommentsPanel({ ticketId, currentUserId }: TicketCommentsP
         body: JSON.stringify({ content: editContent.trim() }),
       });
       if (!res.ok) throw new Error('Failed to update comment');
-      const updated = await res.json();
-      setComments((prev) => prev.map((c) => (c.id === commentId ? updated : c)));
+      const updated = (await res.json()) as TicketComment;
+      setCommentsCache((prev) => prev.map((c) => (c.id === commentId ? updated : c)));
       setEditingId(null);
       setEditContent('');
       showToast('Comment updated', 'success');
@@ -121,7 +114,7 @@ export function TicketCommentsPanel({ ticketId, currentUserId }: TicketCommentsP
 
       if (!res.ok) throw new Error('Failed to delete comment');
 
-      setComments((prev) => prev.filter((c) => c.id !== commentId));
+      setCommentsCache((prev) => prev.filter((c) => c.id !== commentId));
       showToast('Comment deleted', 'success');
     } catch (err) {
       console.error('Error deleting comment:', err);
@@ -131,7 +124,7 @@ export function TicketCommentsPanel({ ticketId, currentUserId }: TicketCommentsP
     }
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
         <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full" />
@@ -244,7 +237,7 @@ export function TicketCommentsPanel({ ticketId, currentUserId }: TicketCommentsP
                   </div>
                 ) : (
                   <div
-                    className="text-sm text-foreground mt-1 prose prose-sm max-w-none [&_h1]:text-lg [&_h1]:font-bold [&_h2]:text-base [&_h2]:font-bold [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-2 [&_blockquote]:italic [&_code]:bg-muted [&_code]:px-1 [&_code]:rounded [&_a]:text-primary [&_a]:underline"
+                    className="text-sm text-foreground mt-1 prose prose-sm max-w-none [&_h1]:text-lg [&_h1]:font-bold [&_h2]:text-base [&_h2]:font-bold [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:text-muted-foreground [&_code]:bg-muted [&_code]:px-1 [&_code]:rounded [&_a]:text-primary [&_a]:underline"
                     dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(comment.content) }}
                   />
                 )}

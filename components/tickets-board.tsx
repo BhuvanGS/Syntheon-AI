@@ -65,6 +65,7 @@ import { LabelManager } from '@/components/label-manager';
 import { onCommand } from '@/lib/command-events';
 import { useLabels } from '@/hooks/use-labels';
 import { useMeetingsQuery, useTicketsQuery } from '@/hooks/use-workspace-queries';
+import { usePrefetchTicketPanels } from '@/hooks/use-ticket-panel-queries';
 import {
   useBulkDeleteTicketsMutation,
   useBulkTicketsMutation,
@@ -120,6 +121,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
   const bulkDeleteTicketsMutation = useBulkDeleteTicketsMutation();
   const { memberships } = useOrganization({ memberships: true });
   const { labels, labelMap, invalidate: invalidateLabels } = useLabels();
+  const prefetchTicketPanels = usePrefetchTicketPanels();
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
   const [assigneeFilter, setAssigneeFilter] = useState<'all' | 'mine' | 'unassigned'>('all');
   const [filters, setFilters] = useState<TicketFilters>(EMPTY_FILTERS);
@@ -325,6 +327,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
   }, [tickets, filters, user?.id]);
 
   function openTicketEditor(ticket: Ticket) {
+    prefetchTicketPanels(ticket.id);
     setTicketToEdit(ticket);
     setTicketEditForm({
       title: ticket.title,
