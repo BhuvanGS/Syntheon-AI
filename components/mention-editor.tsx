@@ -20,6 +20,7 @@ import {
   Redo,
   AtSign,
   Hash,
+  type LucideIcon,
 } from 'lucide-react';
 
 export interface MentionPerson {
@@ -352,7 +353,7 @@ export function MentionEditor({
   }: {
     onClick: () => void;
     active?: boolean;
-    icon: React.ElementType;
+    icon: LucideIcon;
     title: string;
     disabled?: boolean;
   }) => (

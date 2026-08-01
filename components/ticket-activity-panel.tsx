@@ -16,6 +16,7 @@ import {
   Clock,
   Edit3,
   ArrowRight,
+  type LucideIcon,
 } from 'lucide-react';
 import { useUser } from '@clerk/nextjs';
 
@@ -40,7 +41,7 @@ interface TicketActivityPanelProps {
   ticketId: string;
 }
 
-const ACTION_ICONS: Record<string, React.ElementType> = {
+const ACTION_ICONS: Record<string, LucideIcon> = {
   created: Plus,
   updated: Edit3,
   status_changed: GitCommit,

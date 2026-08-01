@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { useSse } from '@/components/sse-provider';
+import { useState, useEffect, useRef } from 'react';
+import { useAuth } from '@clerk/nextjs';
+import { useQuery } from '@tanstack/react-query';
 import {
   Bell,
   Check,
@@ -14,6 +15,12 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/lib/utils';
+import { apiGet } from '@/lib/query/fetcher';
+import { queryKeys } from '@/lib/query/keys';
+import {
+  useMarkAllNotificationsRead,
+  useMarkNotificationRead,
+} from '@/hooks/use-notification-mutations';
 
 interface NotificationItem {
   id: string;
@@ -75,43 +82,31 @@ function timeAgo(date: string): string {
 }
 
 export function NotificationBell({ onNavigateToTicket }: NotificationBellProps) {
+  const { orgId } = useAuth();
   const [open, setOpen] = useState(false);
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [loading, setLoading] = useState(false);
   const bellRef = useRef<HTMLDivElement>(null);
+  const markRead = useMarkNotificationRead();
+  const markAllRead = useMarkAllNotificationsRead();
 
-  const fetchNotifications = useCallback(async () => {
-    try {
-      const res = await fetch('/api/notifications');
-      if (res.ok) {
-        const data = await res.json();
-        setNotifications(data);
-      }
-      const unreadRes = await fetch('/api/notifications?unread=true');
-      if (unreadRes.ok) {
-        const { count } = await unreadRes.json();
-        setUnreadCount(count);
-      }
-    } catch {
-      // silently fail
-    }
-  }, []);
+  const notificationsQuery = useQuery({
+    queryKey: orgId ? queryKeys.notifications.list(orgId) : ['notifications', 'disabled'],
+    queryFn: () => apiGet<NotificationItem[]>('/api/notifications'),
+    enabled: Boolean(orgId),
+  });
 
-  const { on, off } = useSse();
+  const unreadQuery = useQuery({
+    queryKey: orgId
+      ? queryKeys.notifications.unreadCount(orgId)
+      : ['notifications', 'unread', 'disabled'],
+    queryFn: async () => {
+      const data = await apiGet<{ count: number }>('/api/notifications?unread=true');
+      return data.count ?? 0;
+    },
+    enabled: Boolean(orgId),
+  });
 
-  useEffect(() => {
-    fetchNotifications();
-  }, [fetchNotifications]);
-
-  // Listen for real-time notification events
-  useEffect(() => {
-    const handleNew = () => {
-      fetchNotifications();
-    };
-    on('notification_new', handleNew);
-    return () => off('notification_new', handleNew);
-  }, [on, off, fetchNotifications]);
+  const notifications = notificationsQuery.data ?? [];
+  const unreadCount = unreadQuery.data ?? 0;
 
   // Close on outside click
   useEffect(() => {
@@ -124,32 +119,8 @@ export function NotificationBell({ onNavigateToTicket }: NotificationBellProps) 
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
-  const markAsRead = async (id: string) => {
-    try {
-      await fetch('/api/notifications', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id }),
-      });
-      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
-      setUnreadCount((c) => Math.max(c - 1, 0));
-    } catch {
-      // silently fail
-    }
-  };
-
-  const markAllAsRead = async () => {
-    try {
-      await fetch('/api/notifications/read-all', { method: 'PATCH' });
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-      setUnreadCount(0);
-    } catch {
-      // silently fail
-    }
-  };
-
   const handleClickNotification = (n: NotificationItem) => {
-    if (!n.read) markAsRead(n.id);
+    if (!n.read) markRead.mutate(n.id);
     if (n.ticket_id && onNavigateToTicket) {
       onNavigateToTicket(n.ticket_id);
     }
@@ -165,8 +136,7 @@ export function NotificationBell({ onNavigateToTicket }: NotificationBellProps) 
         type="button"
         onClick={() => {
           setOpen((v) => !v);
-          // Don't refetch on open - we already have SSE updates
-          // This prevents unnecessary API calls when switching tabs
+          // SSE bridge keeps list fresh — avoid refetch-on-open flood.
         }}
         aria-label="Notifications"
         className={cn(
@@ -199,7 +169,7 @@ export function NotificationBell({ onNavigateToTicket }: NotificationBellProps) 
               {unreadCount > 0 && (
                 <button
                   type="button"
-                  onClick={markAllAsRead}
+                  onClick={() => markAllRead.mutate()}
                   className="text-[11px] text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
                 >
                   <Check className="h-3 w-3" />

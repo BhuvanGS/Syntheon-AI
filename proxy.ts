@@ -2,6 +2,9 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse, type NextRequest } from 'next/server';
 import { isAppClosed } from '@/lib/beta';
 
+// Next.js 16+: `proxy.ts` replaces the deprecated `middleware.ts` convention.
+// Clerk still uses `clerkMiddleware` as the default export (see Clerk Next.js quickstart).
+
 // ─── Domain config ────────────────────────────────────────────────
 const MARKETING_DOMAIN = 'syntheonhub.com';
 const APP_DOMAIN = 'app.syntheonhub.com';

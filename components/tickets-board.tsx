@@ -1,12 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { useUser, useOrganization } from '@clerk/nextjs';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useAuth, useUser, useOrganization } from '@clerk/nextjs';
+import { useQueryClient } from '@tanstack/react-query';
 import { stripHtml, cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -51,7 +50,6 @@ import { TicketDependencyPanel } from '@/components/ticket-dependency-panel';
 import { DependencyBlockerModal } from '@/components/dependency-blocker-modal';
 import { DateRangePicker } from '@/components/date-range-picker';
 import { MentionEditor } from '@/components/mention-editor';
-import { useSse } from '@/components/sse-provider';
 import { format, parseISO, isToday, isPast, isTomorrow, isThisWeek } from 'date-fns';
 import {
   TicketBadges,
@@ -65,6 +63,16 @@ import { TicketMetadataEditor } from '@/components/ticket-metadata-editor';
 import { BulkActionBar } from '@/components/ticket-bulk-bar';
 import { LabelManager } from '@/components/label-manager';
 import { onCommand } from '@/lib/command-events';
+import { useLabels } from '@/hooks/use-labels';
+import { useMeetingsQuery, useTicketsQuery } from '@/hooks/use-workspace-queries';
+import {
+  useBulkDeleteTicketsMutation,
+  useBulkTicketsMutation,
+  useDeleteTicketMutation,
+  usePatchTicketStatusesMutation,
+} from '@/hooks/use-ticket-mutations';
+import type { PaginatedList } from '@/lib/query/fetcher';
+import { queryKeys } from '@/lib/query/keys';
 
 type TicketStatus = string;
 
@@ -91,12 +99,6 @@ interface Ticket {
   dependency_ticket_id?: string | null;
 }
 
-interface Label {
-  id: string;
-  name: string;
-  color: string;
-}
-
 interface Meeting {
   id: string;
   projectName: string;
@@ -110,12 +112,17 @@ interface TicketsBoardProps {
 
 export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: TicketsBoardProps) {
   const { user } = useUser();
+  const { orgId } = useAuth();
+  const queryClient = useQueryClient();
+  const patchStatusesMutation = usePatchTicketStatusesMutation();
+  const deleteTicketMutation = useDeleteTicketMutation();
+  const bulkTicketsMutation = useBulkTicketsMutation();
+  const bulkDeleteTicketsMutation = useBulkDeleteTicketsMutation();
   const { memberships } = useOrganization({ memberships: true });
+  const { labels, labelMap, invalidate: invalidateLabels } = useLabels();
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
   const [assigneeFilter, setAssigneeFilter] = useState<'all' | 'mine' | 'unassigned'>('all');
   const [filters, setFilters] = useState<TicketFilters>(EMPTY_FILTERS);
-  const [labels, setLabels] = useState<Label[]>([]);
-  const [labelMap, setLabelMap] = useState<Record<string, { name: string; color: string }>>({});
   const [bulkMode, setBulkMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [labelManagerOpen, setLabelManagerOpen] = useState(false);
@@ -129,24 +136,31 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
   const [metaTimeSpent, setMetaTimeSpent] = useState<number | null>(null);
   const [metaLabels, setMetaLabels] = useState<string[]>([]);
 
-  // Stale ticket detection (7 days without update, not done)
-  const isTicketStale = (ticket: (typeof tickets)[number]) => {
-    if (ticket.status === 'done') return false;
-    const now = new Date();
-    const updatedAt = ticket.updatedAt
-      ? new Date(ticket.updatedAt)
-      : new Date(ticket.createdAt || now);
-    const daysSinceUpdate = (now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60 * 24);
-    return daysSinceUpdate >= 7;
-  };
-  const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [loading, setLoading] = useState(true);
+  const PAGE_SIZE = 40;
+  const [ticketPage, setTicketPage] = useState(1);
+  const ticketOffset = (ticketPage - 1) * PAGE_SIZE;
+
+  const ticketsQuery = useTicketsQuery({ limit: PAGE_SIZE, offset: ticketOffset });
+  const meetingsQuery = useMeetingsQuery({ limit: 50 });
+
+  const serverTickets = (ticketsQuery.data?.items ?? []) as Ticket[];
+  const meetings = (meetingsQuery.data?.items ?? []) as Meeting[];
+  const ticketsTotal = ticketsQuery.data?.total ?? 0;
+  const ticketsHasMore = ticketsQuery.data?.hasMore ?? false;
+  const loading = ticketsQuery.isLoading && !ticketsQuery.data;
+  const pageLoading = ticketsQuery.isFetching;
+
+  // Clamp past-last page after deletes / invalidation.
+  useEffect(() => {
+    if (!ticketsQuery.isFetching && serverTickets.length === 0 && ticketOffset > 0) {
+      setTicketPage((p) => Math.max(1, p - 1));
+    }
+  }, [ticketsQuery.isFetching, serverTickets.length, ticketOffset]);
+
   const [saving, setSaving] = useState(false);
   const [draggedTicketId, setDraggedTicketId] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<TicketStatus | null>(null);
   const [pendingChanges, setPendingChanges] = useState<Record<string, TicketStatus>>({});
-  const [originalStatusById, setOriginalStatusById] = useState<Record<string, TicketStatus>>({});
   const [isDiscardConfirmOpen, setIsDiscardConfirmOpen] = useState(false);
   const [ticketToEdit, setTicketToEdit] = useState<Ticket | null>(null);
   const [ticketEditForm, setTicketEditForm] = useState<{
@@ -170,8 +184,6 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
   const [ticketToDelete, setTicketToDelete] = useState<Ticket | null>(null);
   const [deletingTicketId, setDeletingTicketId] = useState<string | null>(null);
 
-  const { on: sseOn, off: sseOff } = useSse();
-
   // Dependency blocker modal state
   const [blockerModalOpen, setBlockerModalOpen] = useState(false);
   const [blockerModalData, setBlockerModalData] = useState<{
@@ -182,34 +194,64 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
     onProceed?: () => void;
   } | null>(null);
 
-  const PAGE_SIZE = 40;
-  const [ticketPage, setTicketPage] = useState(1);
-  const [ticketsTotal, setTicketsTotal] = useState(0);
-  const [ticketsHasMore, setTicketsHasMore] = useState(false);
-
+  // Drop unsaved status moves after a real network refetch (SSE / invalidate),
+  // but not after local setQueryData patches.
+  const wasFetchingTickets = useRef(false);
   useEffect(() => {
-    setLoading(true);
-    void fetchAll();
-  }, [ticketPage]);
+    if (wasFetchingTickets.current && !ticketsQuery.isFetching) {
+      setPendingChanges({});
+    }
+    wasFetchingTickets.current = ticketsQuery.isFetching;
+  }, [ticketsQuery.isFetching]);
 
-  // Fetch labels
-  useEffect(() => {
-    void (async () => {
-      try {
-        const res = await fetch('/api/labels');
-        if (res.ok) {
-          const data = await res.json();
-          const labelArr: Label[] = data.labels ?? [];
-          setLabels(labelArr);
-          const map: Record<string, { name: string; color: string }> = {};
-          for (const l of labelArr) map[l.id] = { name: l.name, color: l.color };
-          setLabelMap(map);
-        }
-      } catch {
-        // ignore
-      }
-    })();
-  }, []);
+  const originalStatusById = useMemo(
+    () =>
+      serverTickets.reduce<Record<string, TicketStatus>>((acc, ticket) => {
+        acc[ticket.id] = ticket.status;
+        return acc;
+      }, {}),
+    [serverTickets]
+  );
+
+  const tickets = useMemo(
+    () =>
+      serverTickets.map((ticket) =>
+        pendingChanges[ticket.id] ? { ...ticket, status: pendingChanges[ticket.id] } : ticket
+      ),
+    [serverTickets, pendingChanges]
+  );
+
+  // Stale ticket detection (7 days without update, not done)
+  const isTicketStale = (ticket: Ticket) => {
+    if (ticket.status === 'done') return false;
+    const now = new Date();
+    const updatedAt = ticket.updatedAt
+      ? new Date(ticket.updatedAt)
+      : new Date(ticket.createdAt || now);
+    const daysSinceUpdate = (now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60 * 24);
+    return daysSinceUpdate >= 7;
+  };
+
+  const ticketsListKey = orgId
+    ? queryKeys.tickets.list(orgId, {
+        projectId: null,
+        limit: PAGE_SIZE,
+        offset: ticketOffset,
+      })
+    : null;
+
+  function patchTicketsCache(updater: (items: Ticket[]) => Ticket[]) {
+    if (!ticketsListKey) return;
+    queryClient.setQueryData<PaginatedList<Ticket>>(ticketsListKey, (old) => {
+      if (!old) return old;
+      return { ...old, items: updater(old.items) };
+    });
+  }
+
+  async function refetchBoard() {
+    setPendingChanges({});
+    await ticketsQuery.refetch();
+  }
 
   // Keyboard shortcuts: cmd+B for bulk mode
   // cmd+K is handled by DynamicIslandSearch globally
@@ -281,68 +323,6 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
       return true;
     });
   }, [tickets, filters, user?.id]);
-
-  async function fetchAll() {
-    try {
-      const offset = (ticketPage - 1) * PAGE_SIZE;
-      const [ticketsRes, meetingsRes] = await Promise.all([
-        fetch(`/api/tickets?limit=${PAGE_SIZE}&offset=${offset}`),
-        fetch('/api/meetings?limit=50'),
-      ]);
-      const [ticketsData, meetingsData] = await Promise.all([
-        ticketsRes.json(),
-        meetingsRes.json(),
-      ]);
-      const ticketsArr: Ticket[] = Array.isArray(ticketsData)
-        ? ticketsData
-        : (ticketsData.tickets ?? []);
-      const meetingsArr: Meeting[] = Array.isArray(meetingsData)
-        ? meetingsData
-        : (meetingsData.meetings ?? []);
-      setTicketsTotal(
-        Array.isArray(ticketsData) ? ticketsArr.length : (ticketsData.total ?? ticketsArr.length)
-      );
-      setTicketsHasMore(Array.isArray(ticketsData) ? false : Boolean(ticketsData.hasMore));
-
-      if (ticketsArr.length === 0 && offset > 0) {
-        setTicketPage((p) => Math.max(1, p - 1));
-        return;
-      }
-
-      setTickets(ticketsArr);
-      setMeetings(meetingsArr);
-      setOriginalStatusById(
-        ticketsArr.reduce<Record<string, TicketStatus>>((acc, ticket) => {
-          acc[ticket.id] = ticket.status;
-          return acc;
-        }, {})
-      );
-      setPendingChanges({});
-    } catch (error) {
-      console.error('Failed to fetch tickets:', error);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // Real-time refresh via SSE
-  useEffect(() => {
-    const handleRefresh = () => {
-      void fetchAll();
-    };
-    sseOn('ticket_created', handleRefresh);
-    sseOn('ticket_updated', handleRefresh);
-    sseOn('ticket_deleted', handleRefresh);
-    sseOn('project_updated', handleRefresh);
-    sseOn('project_deleted', handleRefresh);
-    return () => {
-      sseOff('ticket_created', handleRefresh);
-      sseOff('ticket_updated', handleRefresh);
-      sseOff('ticket_deleted', handleRefresh);
-      sseOff('project_updated', handleRefresh);
-      sseOff('project_deleted', handleRefresh);
-    };
-  }, [sseOn, sseOff]);
 
   function openTicketEditor(ticket: Ticket) {
     setTicketToEdit(ticket);
@@ -433,10 +413,16 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
               });
               if (bypassRes.ok) {
                 const updated = await bypassRes.json();
-                setTickets((prev) =>
+                patchTicketsCache((prev) =>
                   prev.map((t) => (t.id === ticketToEdit.id ? { ...t, ...updated } : t))
                 );
+                setPendingChanges((prev) => {
+                  const next = { ...prev };
+                  delete next[ticketToEdit.id];
+                  return next;
+                });
                 setTicketToEdit(null);
+                await onSaved?.();
               } else if (bypassRes.status === 422) {
                 const errData = await bypassRes.json().catch(() => ({}));
                 const bwt = (errData?.blockers || []).map((b: any) => ({
@@ -483,7 +469,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
         }
       }
 
-      setTickets((prev) =>
+      patchTicketsCache((prev) =>
         prev.map((ticket) =>
           ticket.id === ticketToEdit.id
             ? {
@@ -511,10 +497,6 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
         delete next[ticketToEdit.id];
         return next;
       });
-      setOriginalStatusById((prev) => ({
-        ...prev,
-        [ticketToEdit.id]: ticketEditForm.status,
-      }));
 
       setTicketToEdit(null);
       await onSaved?.();
@@ -528,19 +510,19 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
 
     setDeletingTicketId(ticketToDelete.id);
     try {
-      const res = await fetch(`/api/tickets/${ticketToDelete.id}`, { method: 'DELETE' });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error || 'Failed to delete ticket');
-      }
+      await deleteTicketMutation.mutateAsync(ticketToDelete.id);
 
-      setTickets((prev) => prev.filter((ticket) => ticket.id !== ticketToDelete.id));
+      patchTicketsCache((prev) => prev.filter((ticket) => ticket.id !== ticketToDelete.id));
+      if (ticketsListKey) {
+        queryClient.setQueryData<PaginatedList<Ticket>>(ticketsListKey, (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            total: Math.max(0, old.total - 1),
+          };
+        });
+      }
       setPendingChanges((prev) => {
-        const next = { ...prev };
-        delete next[ticketToDelete.id];
-        return next;
-      });
-      setOriginalStatusById((prev) => {
         const next = { ...prev };
         delete next[ticketToDelete.id];
         return next;
@@ -555,24 +537,21 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
   const hasPendingChanges = useMemo(() => Object.keys(pendingChanges).length > 0, [pendingChanges]);
 
   function moveTicket(ticketId: string, nextStatus: TicketStatus) {
-    setTickets((prev) => {
-      const current = prev.find((ticket) => ticket.id === ticketId);
-      if (!current || current.status === nextStatus) return prev;
+    const current = tickets.find((ticket) => ticket.id === ticketId);
+    if (!current || current.status === nextStatus) return;
 
-      const original = originalStatusById[ticketId] ?? current.status;
-      setPendingChanges((existing) => {
-        const next = { ...existing };
-        if (original === nextStatus) {
-          delete next[ticketId];
-        } else {
-          next[ticketId] = nextStatus;
-        }
-        return next;
-      });
+    const original =
+      originalStatusById[ticketId] ?? serverTickets.find((t) => t.id === ticketId)?.status;
+    if (!original) return;
 
-      return prev.map((ticket) =>
-        ticket.id === ticketId ? { ...ticket, status: nextStatus } : ticket
-      );
+    setPendingChanges((existing) => {
+      const next = { ...existing };
+      if (original === nextStatus) {
+        delete next[ticketId];
+      } else {
+        next[ticketId] = nextStatus;
+      }
+      return next;
     });
   }
 
@@ -585,15 +564,11 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
 
     setSaving(true);
     try {
-      let res = await fetch('/api/tickets', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ changes }),
-      });
+      const result = await patchStatusesMutation.mutateAsync({ changes });
+      let res = { ok: result.ok, status: result.status, json: async () => result.data };
+      const data = result.data;
 
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-
         if (res.status === 422 && data?.error === 'soft_blocked') {
           const blockersWithTitles = (data?.blockers || []).map((b: any) => ({
             ...b,
@@ -605,17 +580,27 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
             isHardBlock: false,
             onRevert: () => {
               setBlockerModalOpen(false);
-              fetchAll();
+              void refetchBoard();
             },
             onProceed: async () => {
               setBlockerModalOpen(false);
-              const bypassRes = await fetch('/api/tickets', {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ changes, bypassGate: true }),
+              const bypassResult = await patchStatusesMutation.mutateAsync({
+                changes,
+                bypassGate: true,
               });
+              const bypassRes = {
+                ok: bypassResult.ok,
+                status: bypassResult.status,
+                json: async () => bypassResult.data,
+              };
               if (bypassRes.ok) {
-                fetchAll();
+                patchTicketsCache((items) =>
+                  items.map((t) =>
+                    pendingChanges[t.id] ? { ...t, status: pendingChanges[t.id] } : t
+                  )
+                );
+                setPendingChanges({});
+                await onSaved?.();
               } else if (bypassRes.status === 422) {
                 const errData = await bypassRes.json().catch(() => ({}));
                 const bwt = (errData?.blockers || []).map((b: any) => ({
@@ -628,7 +613,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                   isHardBlock: true,
                   onRevert: () => {
                     setBlockerModalOpen(false);
-                    fetchAll();
+                    void refetchBoard();
                   },
                 });
                 setBlockerModalOpen(true);
@@ -652,7 +637,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
               isHardBlock: true,
               onRevert: () => {
                 setBlockerModalOpen(false);
-                fetchAll();
+                void refetchBoard();
               },
             });
             setBlockerModalOpen(true);
@@ -668,19 +653,24 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
               isHardBlock: false,
               onRevert: () => {
                 setBlockerModalOpen(false);
-                fetchAll();
+                void refetchBoard();
               },
               onProceed: async () => {
                 setBlockerModalOpen(false);
-                const bypassRes = await fetch('/api/tickets', {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ changes, bypassGate: true }),
+                const bypassResult = await patchStatusesMutation.mutateAsync({
+                  changes,
+                  bypassGate: true,
                 });
-                if (bypassRes.ok) {
-                  fetchAll();
-                } else if (bypassRes.status === 422) {
-                  const errData = await bypassRes.json().catch(() => ({}));
+                if (bypassResult.ok) {
+                  patchTicketsCache((items) =>
+                    items.map((t) =>
+                      pendingChanges[t.id] ? { ...t, status: pendingChanges[t.id] } : t
+                    )
+                  );
+                  setPendingChanges({});
+                  await onSaved?.();
+                } else if (bypassResult.status === 422) {
+                  const errData = bypassResult.data;
                   const bwt = (errData?.blockers || []).map((b: any) => ({
                     ...b,
                     title: tickets.find((t) => t.id === b.depends_on)?.title,
@@ -691,7 +681,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                     isHardBlock: true,
                     onRevert: () => {
                       setBlockerModalOpen(false);
-                      fetchAll();
+                      void refetchBoard();
                     },
                   });
                   setBlockerModalOpen(true);
@@ -705,13 +695,9 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
         }
       }
 
-      setOriginalStatusById((prev) => {
-        const merged = { ...prev };
-        for (const [ticketId, status] of Object.entries(pendingChanges)) {
-          merged[ticketId] = status;
-        }
-        return merged;
-      });
+      patchTicketsCache((items) =>
+        items.map((t) => (pendingChanges[t.id] ? { ...t, status: pendingChanges[t.id] } : t))
+      );
       setPendingChanges({});
       await onSaved?.();
     } finally {
@@ -720,13 +706,6 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
   }
 
   function discardChanges() {
-    setTickets((prev) =>
-      prev.map((ticket) => {
-        const originalStatus = originalStatusById[ticket.id];
-        if (!originalStatus) return ticket;
-        return { ...ticket, status: originalStatus };
-      })
-    );
     setPendingChanges({});
   }
 
@@ -987,13 +966,11 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
           onBulkUpdate={async (updates) => {
             const ids = [...selectedIds];
             if (ids.length === 0) return;
-            await fetch('/api/tickets/bulk', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ ticketIds: ids, ...updates }),
-            });
-            setTickets((prev) =>
-              prev.map((t) => (selectedIds.has(t.id) ? { ...t, ...(updates as any) } : t))
+            await bulkTicketsMutation.mutateAsync({ ticketIds: ids, ...updates });
+            patchTicketsCache((prev) =>
+              prev.map((t) =>
+                selectedIds.has(t.id) ? { ...t, ...(updates as Partial<Ticket>) } : t
+              )
             );
             setSelectedIds(new Set());
             await onSaved?.();
@@ -1002,8 +979,14 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
           onBulkDelete={async () => {
             const ids = [...selectedIds];
             if (ids.length === 0) return;
-            await Promise.all(ids.map((id) => fetch(`/api/tickets/${id}`, { method: 'DELETE' })));
-            setTickets((prev) => prev.filter((t) => !selectedIds.has(t.id)));
+            await bulkDeleteTicketsMutation.mutateAsync(ids);
+            patchTicketsCache((prev) => prev.filter((t) => !selectedIds.has(t.id)));
+            if (ticketsListKey) {
+              queryClient.setQueryData<PaginatedList<Ticket>>(ticketsListKey, (old) => {
+                if (!old) return old;
+                return { ...old, total: Math.max(0, old.total - ids.length) };
+              });
+            }
             setSelectedIds(new Set());
             await onSaved?.();
           }}
@@ -1317,7 +1300,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
             size="sm"
             className="h-8 px-3"
             onClick={() => setTicketPage((p) => Math.max(1, p - 1))}
-            disabled={ticketPage <= 1 || loading}
+            disabled={ticketPage <= 1 || pageLoading}
           >
             Previous
           </Button>
@@ -1328,7 +1311,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
             size="sm"
             className="h-8 px-3"
             onClick={() => setTicketPage((p) => p + 1)}
-            disabled={!ticketsHasMore || loading}
+            disabled={!ticketsHasMore || pageLoading}
           >
             Next
           </Button>
@@ -1693,17 +1676,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
         onClose={() => setLabelManagerOpen(false)}
         labels={labels}
         onRefresh={() => {
-          void (async () => {
-            const res = await fetch('/api/labels');
-            if (res.ok) {
-              const data = await res.json();
-              const labelArr: Label[] = data.labels ?? [];
-              setLabels(labelArr);
-              const map: Record<string, { name: string; color: string }> = {};
-              for (const l of labelArr) map[l.id] = { name: l.name, color: l.color };
-              setLabelMap(map);
-            }
-          })();
+          void invalidateLabels();
         }}
       />
     </div>

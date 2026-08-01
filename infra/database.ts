@@ -2,6 +2,7 @@
 
 const TABLE_NAMES = [
   'sh-users',
+  // LEGACY: Chrome extension API keys — table kept in SST; app no longer uses it
   'sh-api-keys',
   'sh-meetings',
   'sh-specs',

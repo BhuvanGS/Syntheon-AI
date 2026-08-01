@@ -2,7 +2,18 @@
 
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useOrganization, useUser, useAuth } from '@clerk/nextjs';
-import { useSse } from '@/components/sse-provider';
+import {
+  useProjectDeletedActivitiesQuery,
+  useProjectMembersQuery,
+  useProjectMilestonesQuery,
+  useProjectSprintsQuery,
+  useInvalidateProjectResources,
+} from '@/hooks/use-workspace-queries';
+import {
+  useBulkDeleteTicketsMutation,
+  useBulkTicketsMutation,
+  useUpdateTicketRanksMutation,
+} from '@/hooks/use-ticket-mutations';
 
 const ORG_QUERY_CONFIG = {
   memberships: { infinite: true, pageSize: 50 },
@@ -70,6 +81,7 @@ import { RoadmapView } from '@/components/roadmap-view';
 import { LoadingMessage } from '@/components/loading-message';
 import { LabelManager } from '@/components/label-manager';
 import { onCommand } from '@/lib/command-events';
+import { useLabels } from '@/hooks/use-labels';
 import {
   FolderKanban,
   Plus,
@@ -200,12 +212,6 @@ interface Ticket {
   updatedAt?: string | null;
 }
 
-interface Label {
-  id: string;
-  name: string;
-  color: string;
-}
-
 type StageConfig = {
   id: string;
   label: string;
@@ -250,6 +256,7 @@ export function ProjectsWorkspace({
   const { user } = useUser();
   const { has } = useAuth();
   const isAdmin = membership?.role === 'org:admin';
+  const { labels, labelMap, invalidate: invalidateLabels } = useLabels();
   const [kanbanAssigneeFilter, setKanbanAssigneeFilter] = useState<'all' | 'unassigned' | 'mine'>(
     'all'
   );
@@ -260,8 +267,6 @@ export function ProjectsWorkspace({
   const [meetingsViewMode, setMeetingsViewMode] = useState<'list' | 'calendar'>('list');
   const [ticketsViewMode, setTicketsViewMode] = useState<TicketsViewMode>('board');
   const [filters, setFilters] = useState<TicketFilters>(EMPTY_FILTERS);
-  const [labels, setLabels] = useState<Label[]>([]);
-  const [labelMap, setLabelMap] = useState<Record<string, { name: string; color: string }>>({});
   const [bulkMode, setBulkMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [labelManagerOpen, setLabelManagerOpen] = useState(false);
@@ -307,47 +312,48 @@ export function ProjectsWorkspace({
     {}
   );
 
-  interface ProjectMemberRow {
-    id: string;
-    project_id: string;
-    user_id: string;
-    role: 'admin' | 'manager' | 'member';
-  }
-  const [projectMembers, setProjectMembers] = useState<ProjectMemberRow[]>([]);
-  const [projectMembersLoading, setProjectMembersLoading] = useState(false);
   const [addingMemberId, setAddingMemberId] = useState<string | null>(null);
   const [removingProjectMemberId, setRemovingProjectMemberId] = useState<string | null>(null);
 
-  const fetchProjectMembers = useCallback(async (projectId: string) => {
-    setProjectMembersLoading(true);
-    try {
-      const res = await fetch(`/api/projects/${projectId}/members`);
-      if (res.ok) setProjectMembers(await res.json());
-    } finally {
-      setProjectMembersLoading(false);
-    }
-  }, []);
+  const membersQuery = useProjectMembersQuery(selectedProjectId);
+  const milestonesQuery = useProjectMilestonesQuery(selectedProjectId);
+  const sprintsQuery = useProjectSprintsQuery(selectedProjectId);
+  const deletedActivitiesQuery = useProjectDeletedActivitiesQuery(selectedProjectId);
+  const invalidateProjectResources = useInvalidateProjectResources(selectedProjectId);
+  const bulkTicketsMutation = useBulkTicketsMutation();
+  const bulkDeleteTicketsMutation = useBulkDeleteTicketsMutation();
+  const updateRanksMutation = useUpdateTicketRanksMutation();
 
-  const fetchMilestones = useCallback(async (projectId: string) => {
-    try {
-      const res = await fetch(`/api/projects/${projectId}/milestones`);
-      if (res.ok) setMilestones(await res.json());
-    } catch {}
-  }, []);
+  const projectMembers = membersQuery.data ?? [];
+  const projectMembersLoading = membersQuery.isLoading;
+  const milestones = milestonesQuery.data ?? [];
+  const sprints = sprintsQuery.data ?? [];
+  const deletedActivities = deletedActivitiesQuery.data ?? [];
 
-  const fetchDeletedActivities = useCallback(async (projectId: string) => {
-    try {
-      const res = await fetch(`/api/projects/${projectId}/deleted-activities`);
-      if (res.ok) setDeletedActivities(await res.json());
-    } catch {}
-  }, []);
-
-  const fetchSprints = useCallback(async (projectId: string) => {
-    try {
-      const res = await fetch(`/api/projects/${projectId}/sprints`);
-      if (res.ok) setSprints(await res.json());
-    } catch {}
-  }, []);
+  const fetchProjectMembers = useCallback(
+    async (_projectId?: string) => {
+      await invalidateProjectResources('members');
+    },
+    [invalidateProjectResources]
+  );
+  const fetchMilestones = useCallback(
+    async (_projectId?: string) => {
+      await invalidateProjectResources('milestones');
+    },
+    [invalidateProjectResources]
+  );
+  const fetchDeletedActivities = useCallback(
+    async (_projectId?: string) => {
+      await invalidateProjectResources('deletedActivities');
+    },
+    [invalidateProjectResources]
+  );
+  const fetchSprints = useCallback(
+    async (_projectId?: string) => {
+      await invalidateProjectResources('sprints');
+    },
+    [invalidateProjectResources]
+  );
 
   const [draggedTicketId, setDraggedTicketId] = useState<string | null>(null);
   const [draggedStageId, setDraggedStageId] = useState<string | null>(null);
@@ -366,26 +372,6 @@ export function ProjectsWorkspace({
     status: string;
     reason: string;
   } | null>(null);
-  const [deletedActivities, setDeletedActivities] = useState<
-    {
-      id: string;
-      ticket_id: string;
-      user_id: string;
-      action_type: string;
-      metadata: Record<string, unknown>;
-      created_at: string;
-    }[]
-  >([]);
-  const [milestones, setMilestones] = useState<
-    Array<{
-      id: string;
-      name: string;
-      description: string;
-      due_date?: string | null;
-      status: string;
-      created_at: string;
-    }>
-  >([]);
   const [milestoneForm, setMilestoneForm] = useState<{
     name: string;
     description: string;
@@ -396,18 +382,6 @@ export function ProjectsWorkspace({
     dueDate: '',
   });
   const [savingMilestone, setSavingMilestone] = useState(false);
-  const [sprints, setSprints] = useState<
-    Array<{
-      id: string;
-      name: string;
-      goal: string;
-      start_date: string;
-      end_date: string;
-      status: string;
-      review?: string | null;
-      created_at: string;
-    }>
-  >([]);
   const [sprintForm, setSprintForm] = useState<{
     name: string;
     goal: string;
@@ -1528,8 +1502,6 @@ export function ProjectsWorkspace({
     }
   }
 
-  const { on, off } = useSse();
-
   useEffect(() => {
     if (!selectedProject) return;
     setProjectNameDraft(selectedProject.name);
@@ -1537,48 +1509,9 @@ export function ProjectsWorkspace({
   }, [selectedProject?.id]);
 
   useEffect(() => {
-    if (selectedProjectId) fetchProjectMembers(selectedProjectId);
-    else setProjectMembers([]);
-  }, [selectedProjectId, fetchProjectMembers]);
-
-  useEffect(() => {
-    if (selectedProjectId) fetchMilestones(selectedProjectId);
-    else setMilestones([]);
-  }, [selectedProjectId, fetchMilestones]);
-
-  useEffect(() => {
-    if (selectedProjectId) fetchDeletedActivities(selectedProjectId);
-    else setDeletedActivities([]);
-  }, [selectedProjectId, fetchDeletedActivities]);
-
-  useEffect(() => {
-    if (selectedProjectId) fetchSprints(selectedProjectId);
-    else setSprints([]);
-  }, [selectedProjectId, fetchSprints]);
-
-  useEffect(() => {
     if (!preferredTab) return;
     setProjectTab(preferredTab);
   }, [preferredTab]);
-
-  // Fetch labels
-  useEffect(() => {
-    void (async () => {
-      try {
-        const res = await fetch('/api/labels');
-        if (res.ok) {
-          const data = await res.json();
-          const labelArr: Label[] = data.labels ?? [];
-          setLabels(labelArr);
-          const map: Record<string, { name: string; color: string }> = {};
-          for (const l of labelArr) map[l.id] = { name: l.name, color: l.color };
-          setLabelMap(map);
-        }
-      } catch {
-        // ignore
-      }
-    })();
-  }, []);
 
   // Keyboard shortcuts: cmd+B for bulk
   // cmd+K is handled by DynamicIslandSearch globally
@@ -1619,77 +1552,7 @@ export function ProjectsWorkspace({
     return () => unsubs.forEach((u) => u());
   }, []);
 
-  // Real-time refresh via SSE
-  useEffect(() => {
-    const handleProjectsRefresh = () => {
-      void onProjectsRefresh?.();
-    };
-
-    const handleWorkspaceRefresh = () => {
-      void onRefresh();
-    };
-
-    // Project events — refresh project list
-    on('project_created', handleProjectsRefresh);
-    on('project_updated', handleProjectsRefresh);
-    on('project_deleted', handleProjectsRefresh);
-
-    // Meeting events — refresh workspace (meetings + tickets)
-    if (selectedProject) {
-      on('meeting_status_changed', handleWorkspaceRefresh);
-      on('meeting_ready', handleWorkspaceRefresh);
-      on('meeting_failed', handleWorkspaceRefresh);
-    }
-
-    // Ticket events — refresh workspace if ticket belongs to current project
-    const handleTicketUpdated = (data: Record<string, unknown>) => {
-      const eventProjectId = data.projectId as string | null | undefined;
-      if (!eventProjectId || eventProjectId === selectedProjectId) {
-        void onRefresh();
-        if (selectedProjectId) {
-          void fetchSprints(selectedProjectId);
-          void fetchMilestones(selectedProjectId);
-        }
-      }
-    };
-    const handleTicketCreated = (data: Record<string, unknown>) => {
-      const eventProjectId = data.projectId as string | null | undefined;
-      if (!eventProjectId || eventProjectId === selectedProjectId) {
-        void onRefresh();
-        if (selectedProjectId) {
-          void fetchSprints(selectedProjectId);
-          void fetchMilestones(selectedProjectId);
-        }
-      }
-    };
-    const handleTicketDeleted = (data: Record<string, unknown>) => {
-      const eventProjectId = data.projectId as string | null | undefined;
-      if (!eventProjectId || eventProjectId === selectedProjectId) {
-        void onRefresh();
-        if (selectedProjectId) {
-          void fetchSprints(selectedProjectId);
-          void fetchMilestones(selectedProjectId);
-          void fetchDeletedActivities(selectedProjectId);
-        }
-      }
-    };
-
-    on('ticket_updated', handleTicketUpdated);
-    on('ticket_created', handleTicketCreated);
-    on('ticket_deleted', handleTicketDeleted);
-
-    return () => {
-      off('project_created', handleProjectsRefresh);
-      off('project_updated', handleProjectsRefresh);
-      off('project_deleted', handleProjectsRefresh);
-      off('meeting_status_changed', handleWorkspaceRefresh);
-      off('meeting_ready', handleWorkspaceRefresh);
-      off('meeting_failed', handleWorkspaceRefresh);
-      off('ticket_updated', handleTicketUpdated);
-      off('ticket_created', handleTicketCreated);
-      off('ticket_deleted', handleTicketDeleted);
-    };
-  }, [on, off, onRefresh, onProjectsRefresh, selectedProject, selectedProjectId]);
+  // Workspace lists + project secondary resources are invalidated by SseQueryBridge.
 
   if (!selectedProject) {
     return (
@@ -2275,11 +2138,7 @@ export function ProjectsWorkspace({
                 onBulkUpdate={async (updates) => {
                   const ids = [...selectedIds];
                   if (ids.length === 0) return;
-                  await fetch('/api/tickets/bulk', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ticketIds: ids, ...updates }),
-                  });
+                  await bulkTicketsMutation.mutateAsync({ ticketIds: ids, ...updates });
                   setSelectedIds(new Set());
                   await onRefresh?.();
                 }}
@@ -2287,17 +2146,10 @@ export function ProjectsWorkspace({
                 onBulkDelete={async () => {
                   const ids = [...selectedIds];
                   if (ids.length === 0) return;
-                  await Promise.all(
-                    ids.map((id) => fetch(`/api/tickets/${id}`, { method: 'DELETE' }))
-                  );
+                  await bulkDeleteTicketsMutation.mutateAsync(ids);
                   setSelectedIds(new Set());
                   await onRefresh?.();
-                  if (selectedProjectId) {
-                    await Promise.all([
-                      fetchSprints(selectedProjectId),
-                      fetchMilestones(selectedProjectId),
-                    ]);
-                  }
+                  await Promise.all([fetchSprints(), fetchMilestones()]);
                 }}
               />
             )}
@@ -2402,11 +2254,7 @@ export function ProjectsWorkspace({
                   tickets={rootProjectTickets}
                   labelMap={labelMap}
                   onReorder={async (rankUpdates) => {
-                    await fetch('/api/tickets/ranks', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ rankUpdates }),
-                    });
+                    await updateRanksMutation.mutateAsync(rankUpdates);
                     await onRefresh?.();
                   }}
                   onTicketClick={(ticket) => {
@@ -6545,17 +6393,7 @@ export function ProjectsWorkspace({
         onClose={() => setLabelManagerOpen(false)}
         labels={labels}
         onRefresh={() => {
-          void (async () => {
-            const res = await fetch('/api/labels');
-            if (res.ok) {
-              const data = await res.json();
-              const labelArr: Label[] = data.labels ?? [];
-              setLabels(labelArr);
-              const map: Record<string, { name: string; color: string }> = {};
-              for (const l of labelArr) map[l.id] = { name: l.name, color: l.color };
-              setLabelMap(map);
-            }
-          })();
+          void invalidateLabels();
         }}
       />
 

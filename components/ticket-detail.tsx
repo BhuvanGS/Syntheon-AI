@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { useSse } from '@/components/sse-provider';
+import { useMemo, useState } from 'react';
+import { useAuth } from '@clerk/nextjs';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { stripHtml } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -44,6 +45,8 @@ import { ManualTicketDialog } from '@/components/manual-ticket-dialog';
 import { AssigneePicker, type AssigneeValue } from '@/components/assignee-picker';
 import { TicketDependencyPanel } from '@/components/ticket-dependency-panel';
 import { DependencyBlockerModal } from '@/components/dependency-blocker-modal';
+import { apiGet, unwrapList } from '@/lib/query/fetcher';
+import { queryKeys } from '@/lib/query/keys';
 
 interface Ticket {
   id: string;
@@ -81,11 +84,47 @@ interface TicketDetailProps {
 }
 
 export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: TicketDetailProps) {
-  const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [meetingTitle, setMeetingTitle] = useState('Meeting');
-  const [meetingData, setMeetingData] = useState<Meeting | null>(null);
-  const [project, setProject] = useState<Project | null>(null);
+  const { orgId } = useAuth();
+  const queryClient = useQueryClient();
+
+  const ticketsQuery = useQuery({
+    queryKey:
+      orgId && meetingId
+        ? queryKeys.tickets.byMeeting(orgId, meetingId)
+        : ['tickets', 'byMeeting', 'disabled'],
+    queryFn: async () => {
+      const data = await apiGet<Ticket[] | { tickets?: Ticket[] }>(
+        `/api/meetings/${meetingId}/tickets`
+      );
+      return unwrapList<Ticket>(data, 'tickets');
+    },
+    enabled: Boolean(orgId && meetingId),
+  });
+
+  const meetingQuery = useQuery({
+    queryKey:
+      orgId && meetingId
+        ? queryKeys.meetings.detail(orgId, meetingId)
+        : ['meetings', 'detail', 'disabled'],
+    queryFn: () => apiGet<Meeting>(`/api/meetings/${meetingId}`),
+    enabled: Boolean(orgId && meetingId),
+  });
+
+  const projectQuery = useQuery({
+    queryKey:
+      orgId && meetingId
+        ? queryKeys.projects.byMeeting(orgId, meetingId)
+        : ['projects', 'byMeeting', 'disabled'],
+    queryFn: () => apiGet<Project>(`/api/projects?meetingId=${meetingId}`),
+    enabled: Boolean(orgId && meetingId && meetingQuery.data?.projectId),
+  });
+
+  const tickets = ticketsQuery.data ?? [];
+  const loading = ticketsQuery.isLoading;
+  const meetingData = meetingQuery.data ?? null;
+  const meetingTitle = meetingData?.projectName ?? 'Meeting';
+  const project = projectQuery.data ?? null;
+
   const [summary, setSummary] = useState<string | null>(null);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [summaryLoading, setSummaryLoading] = useState(false);
@@ -115,50 +154,11 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
   const [ticketToDelete, setTicketToDelete] = useState<string | null>(null);
   const [meetingToDelete, setMeetingToDelete] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchTickets();
-    fetchMeetingData();
-  }, [meetingId]);
-
-  const { on, off } = useSse();
-
-  useEffect(() => {
-    if (meetingData?.projectId) fetchProject(meetingData.projectId);
-  }, [meetingData?.projectId]);
-
-  useEffect(() => {
-    const handleMeetingUpdate = () => {
-      fetchTickets();
-      fetchMeetingData();
-    };
-    on('meeting_ready', handleMeetingUpdate);
-    on('meeting_status_changed', handleMeetingUpdate);
-    return () => {
-      off('meeting_ready', handleMeetingUpdate);
-      off('meeting_status_changed', handleMeetingUpdate);
-    };
-  }, [on, off, meetingId]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchTickets();
-      fetchMeetingData();
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [meetingId]);
-
-  async function fetchTickets() {
-    try {
-      setLoading(true);
-      const res = await fetch(`/api/meetings/${meetingId}/tickets`);
-      if (!res.ok) throw new Error('Failed to fetch tickets');
-      const data = await res.json();
-      setTickets(data);
-    } catch (error) {
-      console.error('Could not load tickets:', error);
-    } finally {
-      setLoading(false);
-    }
+  function patchMeetingTickets(updater: (prev: Ticket[]) => Ticket[]) {
+    if (!orgId) return;
+    queryClient.setQueryData<Ticket[]>(queryKeys.tickets.byMeeting(orgId, meetingId), (prev) =>
+      updater(prev ?? [])
+    );
   }
 
   async function handleDeleteMeeting() {
@@ -195,28 +195,6 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
     } finally {
       setSummaryGenerating(false);
     }
-  }
-
-  async function fetchMeetingData() {
-    if (!meetingId) return;
-    try {
-      const res = await fetch(`/api/meetings/${meetingId}`);
-      if (!res.ok) return;
-      const meeting = await res.json();
-      if (meeting) {
-        setMeetingTitle(meeting.projectName);
-        setMeetingData(meeting);
-      }
-    } catch {}
-  }
-
-  async function fetchProject(projectId: string) {
-    try {
-      const res = await fetch(`/api/projects?meetingId=${meetingId}`);
-      if (!res.ok) return;
-      const data = await res.json();
-      if (data) setProject(data);
-    } catch {}
   }
 
   function openTicketEditor(ticket: Ticket) {
@@ -378,7 +356,7 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
         }
       }
 
-      setTickets((prev) =>
+      patchMeetingTickets((prev) =>
         prev.map((ticket) =>
           ticket.id === ticketToEdit.id
             ? {
@@ -392,6 +370,9 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
             : ticket
         )
       );
+      if (orgId) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.tickets.all(orgId) });
+      }
       setTicketToEdit(null);
     } finally {
       setSavingTicketId(null);
@@ -406,7 +387,10 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
       const res = await fetch(`/api/tickets/${ticketToDelete}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete ticket');
 
-      setTickets((prev) => prev.filter((ticket) => ticket.id !== ticketToDelete));
+      patchMeetingTickets((prev) => prev.filter((ticket) => ticket.id !== ticketToDelete));
+      if (orgId) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.tickets.all(orgId) });
+      }
       setTicketToDelete(null);
     } finally {
       setSavingTicketId(null);
@@ -582,7 +566,12 @@ export function TicketDetail({ meetingId, onSelectMeeting, onDeleteMeeting }: Ti
         onOpenChange={setIsManualTicketOpen}
         meetings={[{ id: meetingId, projectName: meetingTitle }]}
         defaultMeetingId={meetingId}
-        onCreated={fetchTickets}
+        onCreated={() => {
+          void ticketsQuery.refetch();
+          if (orgId) {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.tickets.all(orgId) });
+          }
+        }}
       />
 
       <Dialog

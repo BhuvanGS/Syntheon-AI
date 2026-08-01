@@ -2,7 +2,7 @@
 
 import { BrandLogo } from '@/components/brand-logo';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -22,8 +22,11 @@ import {
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useUser, useOrganization } from '@clerk/nextjs';
+import { useAuth, useUser, useOrganization } from '@clerk/nextjs';
 import { useSearchParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
+import { apiGet, unwrapPaginated } from '@/lib/query/fetcher';
+import { queryKeys } from '@/lib/query/keys';
 
 interface SidebarProps {
   currentView?: string;
@@ -100,12 +103,53 @@ export function Sidebar({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { orgId } = useAuth();
+  const queryClient = useQueryClient();
   const { user } = useUser();
   const { membership, organization } = useOrganization();
   const [collapsed, setCollapsed] = useState(false);
 
   const isAdmin = membership?.role === 'org:admin';
   const navItems = isAdmin ? ADMIN_NAV : MEMBER_NAV;
+
+  const prefetchProject = useCallback(
+    (projectId: string) => {
+      if (!orgId || !projectId) return;
+      const ticketsKey = queryKeys.tickets.list(orgId, {
+        projectId,
+        limit: 50,
+        offset: 0,
+      });
+      const meetingsKey = queryKeys.meetings.list(orgId, {
+        projectId,
+        limit: 50,
+        offset: 0,
+      });
+      void queryClient.prefetchQuery({
+        queryKey: ticketsKey,
+        queryFn: async () => {
+          const search = new URLSearchParams({
+            projectId,
+            limit: '50',
+          });
+          const data = await apiGet<unknown>(`/api/tickets?${search.toString()}`);
+          return unwrapPaginated(data, 'tickets');
+        },
+      });
+      void queryClient.prefetchQuery({
+        queryKey: meetingsKey,
+        queryFn: async () => {
+          const search = new URLSearchParams({
+            projectId,
+            limit: '50',
+          });
+          const data = await apiGet<unknown>(`/api/meetings?${search.toString()}`);
+          return unwrapPaginated(data, 'meetings');
+        },
+      });
+    },
+    [orgId, queryClient]
+  );
 
   const userEmail =
     user?.primaryEmailAddress?.emailAddress ?? user?.emailAddresses?.[0]?.emailAddress ?? '';
@@ -212,6 +256,8 @@ export function Sidebar({
                 return (
                   <button
                     key={project.id}
+                    onMouseEnter={() => prefetchProject(project.id)}
+                    onFocus={() => prefetchProject(project.id)}
                     onClick={() => {
                       router.push(`/project?projectId=${project.id}&tab=tickets`);
                       onSelectProject?.(project.id);

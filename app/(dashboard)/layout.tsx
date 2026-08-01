@@ -1,6 +1,6 @@
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
-import { SseProvider } from '@/components/sse-provider';
+import { DashboardProviders } from '@/components/dashboard-providers';
 import { TermsAcceptanceStamp } from '@/components/auth/terms-acceptance-stamp';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -15,8 +15,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <SseProvider>
+    <DashboardProviders>
       <TermsAcceptanceStamp>{children}</TermsAcceptanceStamp>
-    </SseProvider>
+    </DashboardProviders>
   );
 }

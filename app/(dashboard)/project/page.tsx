@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from 'react';
+import { useCallback, useEffect, useMemo, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useUser, useOrganization } from '@clerk/nextjs';
 import { Sidebar } from '@/components/sidebar';
@@ -16,6 +16,12 @@ import { NotificationBell } from '@/components/notification-bell';
 import { TrialBanner } from '@/components/trial-banner';
 import { toast } from '@/hooks/use-toast';
 import { onCommand } from '@/lib/command-events';
+import {
+  useInvalidateWorkspace,
+  useMeetingsQuery,
+  useProjectsQuery,
+  useTicketsQuery,
+} from '@/hooks/use-workspace-queries';
 
 type ViewType = 'project' | 'ticket-detail';
 type ProjectTab =
@@ -83,9 +89,22 @@ function ProjectContent() {
   const resolvedTab: ProjectTab =
     tabParam && validProjectTabs.includes(tabParam) ? tabParam : 'tickets';
 
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const membershipReady = membership !== undefined;
+  const projectsQuery = useProjectsQuery(membershipReady);
+  const meetingsQuery = useMeetingsQuery(
+    { projectId: projectId ?? null },
+    membershipReady && Boolean(projectId)
+  );
+  const ticketsQuery = useTicketsQuery(
+    { projectId: projectId ?? null },
+    membershipReady && Boolean(projectId)
+  );
+  const invalidateWorkspace = useInvalidateWorkspace();
+
+  const projects = (projectsQuery.data ?? []) as Project[];
+  const meetings = (meetingsQuery.data?.items ?? []) as Meeting[];
+  const tickets = (ticketsQuery.data?.items ?? []) as Ticket[];
+
   const [currentView, setCurrentView] = useState<ViewType>('project');
   const [selectedMeeting, setSelectedMeeting] = useState<string | null>(null);
   const [preferredTab, setPreferredTab] = useState<ProjectTab>(resolvedTab);
@@ -107,40 +126,6 @@ function ProjectContent() {
     });
   }, []);
 
-  const loadProjects = useCallback(async () => {
-    try {
-      const res = await fetch('/api/projects');
-      if (!res.ok) return;
-      const projectsData = await res.json();
-      setProjects(Array.isArray(projectsData) ? projectsData : []);
-    } catch (error) {
-      console.error('Failed to load projects:', error);
-    }
-  }, []);
-
-  const loadScopedWorkspace = useCallback(async (targetProjectId: string | null) => {
-    try {
-      const meetingsUrl = targetProjectId
-        ? `/api/meetings?projectId=${targetProjectId}`
-        : '/api/meetings';
-      const ticketsUrl = targetProjectId
-        ? `/api/tickets?projectId=${targetProjectId}`
-        : '/api/tickets';
-      const [meetingsRes, ticketsRes] = await Promise.all([fetch(meetingsUrl), fetch(ticketsUrl)]);
-
-      if (meetingsRes.ok) {
-        const meetingsData = await meetingsRes.json();
-        setMeetings(Array.isArray(meetingsData) ? meetingsData : (meetingsData.meetings ?? []));
-      }
-      if (ticketsRes.ok) {
-        const ticketsData = await ticketsRes.json();
-        setTickets(Array.isArray(ticketsData) ? ticketsData : (ticketsData.tickets ?? []));
-      }
-    } catch (error) {
-      console.error('Failed to load scoped workspace data:', error);
-    }
-  }, []);
-
   useEffect(() => {
     if (!projectId) {
       router.replace('/dashboard');
@@ -154,37 +139,13 @@ function ProjectContent() {
     }
   }, [searchParams]);
 
-  useEffect(() => {
-    if (membership === undefined) return;
-    void loadProjects();
-  }, [membership, loadProjects]);
-
-  const lastFetchRef = useRef<{ projectId: string | null; time: number }>({
-    projectId: null,
-    time: 0,
-  });
-
-  useEffect(() => {
-    if (membership === undefined) return;
-    // Skip re-fetch on tab resume (same project, fetched within last 5s)
-    const last = lastFetchRef.current;
-    if (last.projectId === projectId && Date.now() - last.time < 5000) return;
-
-    async function loadWorkspace() {
-      lastFetchRef.current = { projectId, time: Date.now() };
-      await loadScopedWorkspace(projectId);
-    }
-
-    void loadWorkspace();
-  }, [projectId, membership, loadScopedWorkspace]);
-
   const refreshWorkspace = useCallback(async () => {
-    await loadScopedWorkspace(projectId);
-  }, [projectId, loadScopedWorkspace]);
+    await invalidateWorkspace();
+  }, [invalidateWorkspace]);
 
   const refreshProjects = useCallback(async () => {
-    await loadProjects();
-  }, [loadProjects]);
+    await invalidateWorkspace();
+  }, [invalidateWorkspace]);
 
   function handleTabChange(tab: ProjectTab) {
     if (!projectId) return;
@@ -229,7 +190,7 @@ function ProjectContent() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data?.error || 'Failed to delete project');
       }
-      await Promise.all([loadProjects(), refreshWorkspace()]);
+      await refreshWorkspace();
       toast({ title: 'Project deleted', description: 'The project was removed.' });
       router.push('/dashboard');
     } catch (err) {
@@ -250,7 +211,7 @@ function ProjectContent() {
     }
     const data = await res.json();
 
-    await Promise.all([loadProjects(), refreshWorkspace()]);
+    await refreshWorkspace();
     router.push(`/project?projectId=${data.project.id}&tab=tickets`);
     toast({ title: 'Project created', description: `${data.project.name} is ready.` });
   }

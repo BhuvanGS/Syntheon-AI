@@ -75,31 +75,6 @@ export const BetaWaitlistEntity = makeEntity(
   }
 );
 
-// ─── API Keys (legacy; Chrome extension removed — table kept, unused by app) ──
-export const ApiKeysEntity = makeEntity(
-  'sh-api-keys',
-  'SH_API_KEYS',
-  'apiKey',
-  {
-    id: { type: 'string', required: true },
-    userId: { type: 'string', required: true },
-    keyHash: { type: 'string', required: true },
-    createdAt: { type: 'string', default: () => new Date().toISOString() },
-  },
-  {
-    primary: {
-      pk: { field: 'pk', composite: ['userId'] },
-      sk: { field: 'sk', template: 'apiKey' },
-    },
-    byId: { index: 'gsi1', pk: { field: 'gsi1pk', composite: ['id'] } },
-    byKeyHash: {
-      index: 'gsi2',
-      pk: { field: 'gsi2pk', composite: ['keyHash'] },
-      sk: { field: 'gsi2sk', template: 'apiKey' },
-    },
-  }
-);
-
 // ─── Meetings ────────────────────────────────────────────────────
 export const MeetingsEntity = makeEntity(
   'sh-meetings',

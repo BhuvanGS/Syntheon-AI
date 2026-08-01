@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from 'react';
+import { useCallback, useEffect, useMemo, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   FolderKanban,
@@ -35,8 +35,13 @@ import { Progress } from '@/components/ui/progress';
 import { toast } from '@/hooks/use-toast';
 import { useUser, useOrganization } from '@clerk/nextjs';
 import { onCommand, emitCommand } from '@/lib/command-events';
-import { useSse } from '@/components/sse-provider';
 import { FeedbackView } from '@/components/feedback-view';
+import {
+  useInvalidateWorkspace,
+  useMeetingsQuery,
+  useProjectsQuery,
+  useTicketsQuery,
+} from '@/hooks/use-workspace-queries';
 
 type ViewType =
   | 'dashboard'
@@ -113,9 +118,16 @@ function DashboardContent() {
   // Drive view from URL — no state needed, avoids sync delay
   const currentView: ViewType = (searchParams.get('view') as ViewType) || 'dashboard';
 
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const membershipReady = membership !== undefined;
+  const projectsQuery = useProjectsQuery(membershipReady);
+  const meetingsQuery = useMeetingsQuery({ limit: 50 }, membershipReady);
+  const ticketsQuery = useTicketsQuery({ limit: 50 }, membershipReady);
+  const invalidateWorkspace = useInvalidateWorkspace();
+
+  const projects = (projectsQuery.data ?? []) as Project[];
+  const meetings = (meetingsQuery.data?.items ?? []) as Meeting[];
+  const tickets = (ticketsQuery.data?.items ?? []) as Ticket[];
+
   const [selectedMeeting, setSelectedMeeting] = useState<string | null>(null);
   const [isProjectCreateOpen, setIsProjectCreateOpen] = useState(false);
   const [isMeetingTicketOpen, setIsMeetingTicketOpen] = useState(false);
@@ -125,8 +137,6 @@ function DashboardContent() {
     () => meetings.map((m) => ({ id: m.id, projectName: m.projectName })),
     [meetings]
   );
-
-  const orgId = organization?.id;
 
   // Listen for create:ticket command from global search (works on any view)
   useEffect(() => {
@@ -146,56 +156,9 @@ function DashboardContent() {
     });
   }, [currentView]);
 
-  const loadProjects = useCallback(async () => {
-    try {
-      const res = await fetch('/api/projects');
-      if (!res.ok) return;
-      const projectsData = await res.json();
-      setProjects(Array.isArray(projectsData) ? projectsData : []);
-    } catch (error) {
-      console.error('Failed to load projects:', error);
-    }
-  }, []);
-
-  const loadWorkspaceData = useCallback(async () => {
-    try {
-      const [meetingsRes, ticketsRes] = await Promise.all([
-        fetch('/api/meetings?limit=50'),
-        fetch('/api/tickets?limit=50'),
-      ]);
-
-      if (meetingsRes.ok) {
-        const meetingsData = await meetingsRes.json();
-        setMeetings(Array.isArray(meetingsData) ? meetingsData : (meetingsData.meetings ?? []));
-      }
-
-      if (ticketsRes.ok) {
-        const ticketsData = await ticketsRes.json();
-        setTickets(Array.isArray(ticketsData) ? ticketsData : (ticketsData.tickets ?? []));
-      }
-    } catch (error) {
-      console.error('Failed to load workspace data:', error);
-    }
-  }, []);
-
-  const lastFetchRef = useRef(0);
-
-  useEffect(() => {
-    if (membership === undefined) return;
-    void loadProjects();
-  }, [membership, orgId, loadProjects]);
-
-  useEffect(() => {
-    // Wait until Clerk has resolved membership (undefined = still loading)
-    if (membership === undefined) return;
-
-    async function loadWorkspace() {
-      lastFetchRef.current = Date.now();
-      await loadWorkspaceData();
-    }
-
-    void loadWorkspace();
-  }, [membership === undefined, orgId, loadWorkspaceData, currentView]);
+  const refreshWorkspace = useCallback(async () => {
+    await invalidateWorkspace();
+  }, [invalidateWorkspace]);
 
   function handleViewChange(view: ViewType) {
     if (view === 'dashboard') {
@@ -254,48 +217,12 @@ function DashboardContent() {
       throw new Error(data?.error || 'Failed to delete project');
     }
 
-    await Promise.all([loadProjects(), refreshWorkspace()]);
+    await refreshWorkspace();
     toast({
       title: 'Project deleted',
       description: 'The project was removed from your workspace.',
     });
   }
-
-  const refreshWorkspace = useCallback(async () => {
-    await loadWorkspaceData();
-  }, [loadWorkspaceData]);
-
-  const { on: sseOn, off: sseOff } = useSse();
-
-  useEffect(() => {
-    const handleRefresh = () => {
-      void loadWorkspaceData();
-      void loadProjects();
-    };
-    const handleTicketEvent = () => {
-      void loadWorkspaceData();
-    };
-
-    sseOn('ticket_updated', handleTicketEvent);
-    sseOn('ticket_created', handleTicketEvent);
-    sseOn('ticket_deleted', handleTicketEvent);
-    sseOn('project_created', handleRefresh);
-    sseOn('project_updated', handleRefresh);
-    sseOn('project_deleted', handleRefresh);
-    sseOn('meeting_status_changed', handleTicketEvent);
-    sseOn('meeting_ready', handleTicketEvent);
-
-    return () => {
-      sseOff('ticket_updated', handleTicketEvent);
-      sseOff('ticket_created', handleTicketEvent);
-      sseOff('ticket_deleted', handleTicketEvent);
-      sseOff('project_created', handleRefresh);
-      sseOff('project_updated', handleRefresh);
-      sseOff('project_deleted', handleRefresh);
-      sseOff('meeting_status_changed', handleTicketEvent);
-      sseOff('meeting_ready', handleTicketEvent);
-    };
-  }, [sseOn, sseOff, loadWorkspaceData, loadProjects]);
 
   async function handleCreateProject(payload: { name: string; context: string }) {
     const res = await fetch('/api/projects', {
@@ -311,7 +238,7 @@ function DashboardContent() {
 
     const data = await res.json();
 
-    await Promise.all([loadProjects(), refreshWorkspace()]);
+    await refreshWorkspace();
     router.push(`/project?projectId=${data.project.id}&tab=tickets`);
     toast({ title: 'Project created', description: `${data.project.name} is ready.` });
   }

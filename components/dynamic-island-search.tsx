@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useAuth } from '@clerk/nextjs';
+import { useQuery } from '@tanstack/react-query';
 import {
   Search,
   X,
@@ -14,6 +16,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { emitCommand } from '@/lib/command-events';
+import { apiGet } from '@/lib/query/fetcher';
+import { queryKeys } from '@/lib/query/keys';
 
 interface SearchResult {
   id: string;
@@ -31,10 +35,25 @@ interface CommandItem {
   shortcut?: string;
 }
 
+interface SearchApiResponse {
+  tickets: Array<{ id: string; title: string; type: string; status?: string }>;
+  meetings: Array<{ id: string; title: string; type: string; date?: string }>;
+  projects: Array<{ id: string; title: string; type: string }>;
+}
+
 interface DynamicIslandSearchProps {
   onSelectTicket?: (id: string) => void;
   onSelectMeeting?: (id: string) => void;
   onSelectProject?: (id: string) => void;
+}
+
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(timer);
+  }, [value, delayMs]);
+  return debounced;
 }
 
 export function DynamicIslandSearch({
@@ -42,10 +61,9 @@ export function DynamicIslandSearch({
   onSelectMeeting,
   onSelectProject,
 }: DynamicIslandSearchProps) {
+  const { orgId } = useAuth();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [loading, setLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -58,7 +76,6 @@ export function DynamicIslandSearch({
   const handleClose = useCallback(() => {
     setOpen(false);
     setQuery('');
-    setResults([]);
     setSelectedIndex(0);
   }, []);
 
@@ -88,81 +105,49 @@ export function DynamicIslandSearch({
   // Search (only when not in command mode)
   const isCommandMode = query.trim().startsWith('/');
   const cmd = isCommandMode ? query.trim().slice(1).toLowerCase() : '';
+  const trimmedQuery = query.trim();
+  const debouncedQuery = useDebouncedValue(trimmedQuery, 200);
+  const searchEnabled = Boolean(orgId) && open && !isCommandMode && debouncedQuery.length >= 1;
+
+  const searchQuery = useQuery({
+    queryKey:
+      orgId && searchEnabled
+        ? queryKeys.search.query(orgId, debouncedQuery)
+        : ['search', 'disabled'],
+    queryFn: () => apiGet<SearchApiResponse>(`/api/search?q=${encodeURIComponent(debouncedQuery)}`),
+    enabled: searchEnabled,
+  });
+
+  const results = useMemo((): SearchResult[] => {
+    if (!searchEnabled || !searchQuery.data) return [];
+    const { tickets, meetings, projects } = searchQuery.data;
+    return [
+      ...tickets.map((t) => ({
+        id: t.id,
+        type: 'ticket' as const,
+        title: t.title,
+        subtitle: t.status?.replace('_', ' '),
+      })),
+      ...meetings.map((m) => ({
+        id: m.id,
+        type: 'meeting' as const,
+        title: m.title,
+        subtitle: m.date,
+      })),
+      ...projects.map((p) => ({
+        id: p.id,
+        type: 'project' as const,
+        title: p.title,
+        subtitle: 'Project',
+      })),
+    ];
+  }, [searchEnabled, searchQuery.data]);
+
+  const loading = searchEnabled && searchQuery.isFetching;
 
   useEffect(() => {
-    if (!query.trim() || isCommandMode) {
-      setResults([]);
-      return;
-    }
-    const debounce = setTimeout(async () => {
-      setLoading(true);
-      try {
-        const [ticketsRes, meetingsRes, projectsRes] = await Promise.all([
-          fetch('/api/tickets?limit=100'),
-          fetch('/api/meetings?limit=100'),
-          fetch('/api/projects'),
-        ]);
-        const [ticketsData, meetingsData, projectsData] = await Promise.all([
-          ticketsRes.json(),
-          meetingsRes.json(),
-          projectsRes.json(),
-        ]);
-
-        const q = query.toLowerCase();
-
-        const ticketsArr: any[] = Array.isArray(ticketsData)
-          ? ticketsData
-          : (ticketsData.tickets ?? []);
-        const meetingsArr: any[] = Array.isArray(meetingsData)
-          ? meetingsData
-          : (meetingsData.meetings ?? []);
-        const projectsArr: any[] = Array.isArray(projectsData)
-          ? projectsData
-          : (projectsData.projects ?? []);
-
-        const ticketResults: SearchResult[] = ticketsArr
-          .filter(
-            (t: any) =>
-              t.title?.toLowerCase().includes(q) || t.description?.toLowerCase().includes(q)
-          )
-          .slice(0, 5)
-          .map((t: any) => ({
-            id: t.id,
-            type: 'ticket' as const,
-            title: t.title,
-            subtitle: t.status?.replace('_', ' '),
-          }));
-
-        const meetingResults: SearchResult[] = meetingsArr
-          .filter((m: any) => (m.projectName ?? m.project_name)?.toLowerCase().includes(q))
-          .slice(0, 3)
-          .map((m: any) => ({
-            id: m.id,
-            type: 'meeting' as const,
-            title: m.projectName ?? m.project_name,
-            subtitle: m.platform,
-          }));
-
-        const projectResults: SearchResult[] = projectsArr
-          .filter((p: any) => p.name?.toLowerCase().includes(q))
-          .slice(0, 3)
-          .map((p: any) => ({
-            id: p.id,
-            type: 'project' as const,
-            title: p.name,
-            subtitle: 'Project',
-          }));
-
-        setResults([...ticketResults, ...meetingResults, ...projectResults]);
-        setSelectedIndex(0);
-      } catch {
-        setResults([]);
-      } finally {
-        setLoading(false);
-      }
-    }, 200);
-    return () => clearTimeout(debounce);
-  }, [query, isCommandMode]);
+    setSelectedIndex(0);
+  }, [results]);
 
   // Build command items when in command mode
   const commands = useMemo((): CommandItem[] => {

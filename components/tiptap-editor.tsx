@@ -19,6 +19,7 @@ import {
   Heading2,
   Undo,
   Redo,
+  type LucideIcon,
 } from 'lucide-react';
 
 interface TipTapEditorProps {
@@ -73,7 +74,7 @@ export function TipTapEditor({
   }: {
     onClick: () => void;
     active?: boolean;
-    icon: React.ElementType;
+    icon: LucideIcon;
     title: string;
     disabled?: boolean;
   }) => (
@@ -201,7 +202,7 @@ export function TipTapEditor({
       </div>
       <EditorContent
         editor={editor}
-        className="px-3 py-2 [&_.ProseMirror]:min-h-[150px] [&_.ProseMirror]:outline-none [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:my-2 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_blockquote]:border-l-4 [&_blockquote]:border-border [&_blockquote]:pl-4 [&_blockquote]:italic [&_code]:bg-muted [&_code]:px-1 [&_code]:rounded [&_a]:text-primary [&_a]:underline"
+        className="px-3 py-2 [&_.ProseMirror]:min-h-[150px] [&_.ProseMirror]:outline-none [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:my-2 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_blockquote]:bg-muted/50 [&_blockquote]:pl-4 [&_blockquote]:py-1 [&_blockquote]:italic [&_code]:bg-muted [&_code]:px-1 [&_code]:rounded [&_a]:text-primary [&_a]:underline"
       />
     </div>
   );

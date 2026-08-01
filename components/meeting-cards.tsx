@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSse } from '@/components/sse-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, CheckCircle, Clock, Loader2 } from 'lucide-react';
+import { useMeetingsQuery } from '@/hooks/use-workspace-queries';
 
 interface Meeting {
   id: string;
@@ -23,61 +23,23 @@ interface MeetingCardsProps {
 
 export function MeetingCards({ onSelectMeeting, onCreateTicket }: MeetingCardsProps) {
   const PAGE_SIZE = 12;
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [hasMore, setHasMore] = useState(false);
+  const offset = (page - 1) * PAGE_SIZE;
 
-  const { on, off } = useSse();
+  const meetingsQuery = useMeetingsQuery({ limit: PAGE_SIZE, offset });
+  const meetings = (meetingsQuery.data?.items ?? []) as Meeting[];
+  const total = meetingsQuery.data?.total ?? 0;
+  const hasMore = meetingsQuery.data?.hasMore ?? false;
+  const loading = meetingsQuery.isLoading && !meetingsQuery.data;
+  const pageLoading = meetingsQuery.isFetching;
+  const error = meetingsQuery.isError ? 'Could not load meetings' : null;
 
+  // Clamp past-last page after deletes / invalidation.
   useEffect(() => {
-    setLoading(true);
-    void fetchMeetings();
-
-    const handleUpdate = () => {
-      void fetchMeetings();
-    };
-
-    on('meeting_status_changed', handleUpdate);
-    on('meeting_ready', handleUpdate);
-    on('meeting_failed', handleUpdate);
-
-    return () => {
-      off('meeting_status_changed', handleUpdate);
-      off('meeting_ready', handleUpdate);
-      off('meeting_failed', handleUpdate);
-    };
-  }, [on, off, page]);
-
-  async function fetchMeetings() {
-    try {
-      const offset = (page - 1) * PAGE_SIZE;
-      const res = await fetch(`/api/meetings?limit=${PAGE_SIZE}&offset=${offset}`);
-      if (!res.ok) throw new Error('Failed to fetch meetings');
-      const data = await res.json();
-      const meetingsArr = Array.isArray(data) ? data : (data.meetings ?? []);
-      const totalCount = Array.isArray(data)
-        ? meetingsArr.length
-        : (data.total ?? meetingsArr.length);
-      const more = Array.isArray(data) ? false : Boolean(data.hasMore);
-
-      if (meetingsArr.length === 0 && offset > 0) {
-        setPage((p) => Math.max(1, p - 1));
-        return;
-      }
-
-      setMeetings(meetingsArr);
-      setTotal(totalCount);
-      setHasMore(more);
-      setError(null);
-    } catch (err) {
-      setError('Could not load meetings');
-    } finally {
-      setLoading(false);
+    if (!meetingsQuery.isFetching && meetings.length === 0 && offset > 0) {
+      setPage((p) => Math.max(1, p - 1));
     }
-  }
+  }, [meetingsQuery.isFetching, meetings.length, offset]);
 
   if (loading)
     return (
@@ -91,7 +53,7 @@ export function MeetingCards({ onSelectMeeting, onCreateTicket }: MeetingCardsPr
     return (
       <div className="bg-muted/50 rounded-2xl p-8 border border-border text-center animate-fade-in">
         <p className="text-destructive">{error}</p>
-        <Button onClick={fetchMeetings} className="mt-4">
+        <Button onClick={() => void meetingsQuery.refetch()} className="mt-4">
           Retry
         </Button>
       </div>
@@ -120,7 +82,7 @@ export function MeetingCards({ onSelectMeeting, onCreateTicket }: MeetingCardsPr
             size="sm"
             className="h-8 px-3"
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page <= 1 || loading}
+            disabled={page <= 1 || pageLoading}
           >
             Previous
           </Button>
@@ -131,7 +93,7 @@ export function MeetingCards({ onSelectMeeting, onCreateTicket }: MeetingCardsPr
             size="sm"
             className="h-8 px-3"
             onClick={() => setPage((p) => p + 1)}
-            disabled={!hasMore || loading}
+            disabled={!hasMore || pageLoading}
           >
             Next
           </Button>
