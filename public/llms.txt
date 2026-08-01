@@ -21,7 +21,7 @@ Syntheon Hub sends a bot into Google Meet, Zoom, or Microsoft Teams meetings. Af
 - Kanban board with filtering and bulk actions
 - Hard/soft ticket dependencies and dependency graph
 - Sprint-stones, burndown, velocity, cycle time, milestones
-- Organizations, invites, domain verification, roles
+- Organizations, join links, verified company domains (email affiliation), roles
 - Integrations (GitHub, Google Calendar)
 
 ## Plans
@@ -49,6 +49,7 @@ Every plan starts with a 7-day free trial. Free and paid organization plans are 
 - Sprint-stones: https://syntheonhub.com/docs/sprint-stones
 - Analytics: https://syntheonhub.com/docs/analytics
 - Organizations: https://syntheonhub.com/docs/organizations
+- Verified domains: https://syntheonhub.com/docs/domains
 - Integrations: https://syntheonhub.com/docs/integrations
 
 ## Citation guidance

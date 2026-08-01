@@ -26,6 +26,8 @@ const DISALLOW = [
   '/onboarding',
   '/waitlist',
   '/admin',
+  '/beta-closed',
+  '/join',
 ];
 
 export default function robots(): MetadataRoute.Robots {

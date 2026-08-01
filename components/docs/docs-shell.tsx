@@ -99,7 +99,7 @@ const NAV_GROUPS = [
       { slug: 'settings', label: 'Settings Overview' },
       { slug: 'integrations', label: 'Integrations' },
       { slug: 'organizations', label: 'Organizations' },
-      { slug: 'domains', label: 'Domain Verification' },
+      { slug: 'domains', label: 'Verified Domains' },
       { slug: 'preferences', label: 'Preferences' },
     ],
   },

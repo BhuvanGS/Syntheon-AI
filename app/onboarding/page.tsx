@@ -4,42 +4,27 @@ import { BrandLogo } from '@/components/brand-logo';
 
 import { useState, useEffect, useCallback } from 'react';
 import { useOrganizationList, useUser } from '@clerk/nextjs';
-import {
-  Building2,
-  Users,
-  ArrowRight,
-  Loader2,
-  Sparkles,
-  KeyRound,
-  CheckCircle2,
-  ArrowLeft,
-} from 'lucide-react';
-import {
-  isPublicDomainEmail,
-  generateOrgNameFromDomain,
-  generatePersonalOrgName,
-} from '@/lib/org-utils';
+import { Building2, Users, ArrowRight, Loader2, Link2, ArrowLeft, Clock } from 'lucide-react';
+import { isPublicDomainEmail, generateOrgNameFromDomain } from '@/lib/org-utils';
 import { extractDomain } from '@/lib/public-domains';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-  InputOTPSeparator,
-} from '@/components/ui/input-otp';
-import { cn } from '@/lib/utils';
 import { LoadingMessage } from '@/components/loading-message';
 import { motion, AnimatePresence } from 'motion/react';
 import { WelcomeDialog } from '@/components/welcome-dialog';
 
-type Step = 'loading' | 'choose' | 'create' | 'join' | 'join-existing' | 'error';
+type Step = 'loading' | 'choose' | 'create' | 'join' | 'join-existing' | 'waiting' | 'error';
 
 type DomainCheckResult = {
   exists: boolean;
   orgId?: string;
   orgName?: string;
 } | null;
+
+type WaitingInfo = {
+  orgId: string;
+  orgName: string | null;
+};
 
 export default function OnboardingPage() {
   const { user } = useUser();
@@ -49,8 +34,8 @@ export default function OnboardingPage() {
 
   const [step, setStep] = useState<Step>('loading');
   const [orgName, setOrgName] = useState('');
-  const [joinCode, setJoinCode] = useState('');
-  const rawJoinCode = joinCode.replace(/\D/g, '');
+  const [joinLinkInput, setJoinLinkInput] = useState('');
+  const [waiting, setWaiting] = useState<WaitingInfo | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [domainCheck, setDomainCheck] = useState<DomainCheckResult>(null);
@@ -80,6 +65,22 @@ export default function OnboardingPage() {
       return;
     }
 
+    // No memberships yet — restore waiting lobby if a request is pending
+    if (!isPublicDomain && step !== 'waiting' && !waiting) {
+      void (async () => {
+        try {
+          const res = await fetch('/api/organizations/join', { credentials: 'include' });
+          const data = await res.json();
+          if (data.pending && data.orgId) {
+            setWaiting({ orgId: data.orgId, orgName: data.orgName ?? null });
+            setStep('waiting');
+          }
+        } catch {
+          // ignore
+        }
+      })();
+    }
+
     // No memberships yet
     if (isPublicDomain) {
       let cancelled = false;
@@ -103,7 +104,6 @@ export default function OnboardingPage() {
       const interval = setInterval(() => {
         void tick();
       }, pollMs);
-      // First check after a short delay for webhook
       const initial = setTimeout(() => {
         void tick();
       }, 1500);
@@ -116,18 +116,29 @@ export default function OnboardingPage() {
     }
 
     // B2B: domain check effect handles the step; fallback to choose
-    if (!isPublicDomain && domainCheck === null) {
+    if (!isPublicDomain && domainCheck === null && step !== 'waiting') {
       const timeout = setTimeout(() => {
         setStep((prev) => (prev === 'loading' ? 'choose' : prev));
       }, 10000);
       return () => clearTimeout(timeout);
     }
-  }, [user, memberships, isPublicDomain, setActive, domainCheck, showWelcome, userMemberships]);
+  }, [
+    user,
+    memberships,
+    isPublicDomain,
+    setActive,
+    domainCheck,
+    showWelcome,
+    userMemberships,
+    step,
+    waiting,
+  ]);
 
-  // Domain check no longer passes email — server uses session email
+  // Domain check
   useEffect(() => {
     if (!user || !userEmail || isPublicDomain || !emailDomain) return;
     if (memberships.length > 0) return;
+    if (step === 'waiting') return;
 
     let cancelled = false;
     (async () => {
@@ -137,16 +148,16 @@ export default function OnboardingPage() {
         if (!cancelled) {
           setDomainCheck(data);
           if (data.exists) {
-            setStep('join-existing');
+            setStep((prev) => (prev === 'waiting' ? prev : 'join-existing'));
           } else {
             const suggestedName = generateOrgNameFromDomain(emailDomain);
             setOrgName(suggestedName);
-            setStep('create');
+            setStep((prev) => (prev === 'waiting' ? prev : 'create'));
           }
         }
       } catch {
         if (!cancelled) {
-          setStep('choose');
+          setStep((prev) => (prev === 'waiting' ? prev : 'choose'));
         }
       }
     })();
@@ -154,7 +165,47 @@ export default function OnboardingPage() {
     return () => {
       cancelled = true;
     };
-  }, [user, userEmail, isPublicDomain, emailDomain, memberships.length]);
+  }, [user, userEmail, isPublicDomain, emailDomain, memberships.length, step]);
+
+  // Poll waiting lobby for approval
+  useEffect(() => {
+    if (step !== 'waiting' || !waiting?.orgId) return;
+
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        await userMemberships.revalidate?.();
+        const joined = (userMemberships.data ?? []).find(
+          (m) => m.organization.id === waiting.orgId
+        );
+        if (joined && setActive) {
+          await setActive({ organization: waiting.orgId });
+          window.location.assign('/dashboard');
+          return;
+        }
+
+        const statusRes = await fetch('/api/organizations/join', { credentials: 'include' });
+        const status = await statusRes.json();
+        if (cancelled) return;
+        if (status.status === 'rejected' && status.orgId === waiting.orgId) {
+          setError('Your join request was declined by an admin.');
+          setWaiting(null);
+          setStep(domainCheck?.exists ? 'join-existing' : 'choose');
+        }
+      } catch {
+        // keep waiting
+      }
+    };
+
+    const interval = setInterval(() => {
+      void tick();
+    }, 3000);
+    void tick();
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [step, waiting, setActive, userMemberships, domainCheck]);
 
   const handleSelectOrg = useCallback(
     (orgId: string) => {
@@ -204,10 +255,7 @@ export default function OnboardingPage() {
     }
   }
 
-  async function handleJoinWithCode(e: React.FormEvent) {
-    e.preventDefault();
-    if (rawJoinCode.length !== 8) return;
-
+  async function submitJoinRequest(body: { token?: string; orgId?: string }) {
     setLoading(true);
     setError('');
     try {
@@ -215,31 +263,42 @@ export default function OnboardingPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ joinCode }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to join');
+      if (!res.ok) throw new Error(data.error || data.message || 'Failed to request access');
 
-      if (data.success || data.alreadyMember || data.joined) {
-        if (data.orgId && setActive) {
-          await setActive({ organization: data.orgId });
-        }
+      if (data.alreadyMember && data.orgId && setActive) {
+        await setActive({ organization: data.orgId });
         window.location.assign('/dashboard');
+        return;
       }
+
+      setWaiting({ orgId: data.orgId, orgName: data.orgName ?? null });
+      setStep('waiting');
     } catch (err: any) {
-      setError(err?.message || 'Failed to join organization');
+      setError(err?.message || 'Failed to request access');
     } finally {
       setLoading(false);
     }
   }
 
-  if (step === 'loading' && !isPublicDomain && domainCheck === null) {
+  async function handleJoinWithLink(e: React.FormEvent) {
+    e.preventDefault();
+    if (!joinLinkInput.trim()) return;
+    await submitJoinRequest({ token: joinLinkInput.trim() });
+  }
+
+  async function handleRequestDomainJoin() {
+    if (!domainCheck?.orgId) return;
+    await submitJoinRequest({ orgId: domainCheck.orgId });
+  }
+
+  if (step === 'loading' && !isPublicDomain && domainCheck === null && !waiting) {
     return (
       <div
         className="min-h-screen flex flex-col items-center justify-center p-6"
-        style={{
-          backgroundColor: '#0a0a0a',
-        }}
+        style={{ backgroundColor: '#0a0a0a' }}
       >
         <motion.div
           initial={{ opacity: 0, y: 8 }}
@@ -267,9 +326,7 @@ export default function OnboardingPage() {
     return (
       <div
         className="min-h-screen flex flex-col items-center justify-center p-6"
-        style={{
-          backgroundColor: '#0a0a0a',
-        }}
+        style={{ backgroundColor: '#0a0a0a' }}
       >
         <motion.div
           initial={{ opacity: 0, y: 8 }}
@@ -297,82 +354,38 @@ export default function OnboardingPage() {
     return (
       <div
         className="min-h-screen flex flex-col items-center justify-center p-6"
-        style={{
-          backgroundColor: '#0a0a0a',
-        }}
+        style={{ backgroundColor: '#0a0a0a' }}
       >
-        <div className="flex items-center gap-2.5 mb-12">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-2.5 mb-12"
+        >
           <BrandLogo size={32} />
           <span className="font-playfair text-xl font-bold text-foreground">Syntheon Hub</span>
-        </div>
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="w-full max-w-md space-y-6 text-center"
-        >
-          <div className="flex justify-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/50 text-muted-foreground">
-              <Building2 className="h-7 w-7" />
-            </div>
-          </div>
-          <h1 className="font-playfair text-2xl font-bold text-foreground">
-            Set up your workspace
-          </h1>
+        </motion.div>
+        <div className="w-full max-w-md space-y-6 text-center">
+          <h1 className="font-playfair text-3xl font-bold text-foreground">Workspace not ready</h1>
           <p className="text-sm text-muted-foreground">
-            Let&apos;s create your personal workspace to get started.
+            We couldn&apos;t finish setting up your personal workspace. You can retry or create one
+            manually.
           </p>
-          {error && <p className="text-xs text-red-500">{error}</p>}
-          <Button
-            onClick={async () => {
-              setLoading(true);
-              setError('');
-              try {
-                const res = await fetch('/api/organizations', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  credentials: 'include',
-                  body: JSON.stringify({
-                    name: generatePersonalOrgName(
-                      userEmail,
-                      user?.fullName || user?.firstName || undefined
-                    ),
-                    domain: null,
-                  }),
-                });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || 'Failed to create workspace');
-                if (data.id && setActive) {
-                  await setActive({ organization: data.id });
-                }
-                window.location.assign('/dashboard');
-              } catch (err: any) {
-                setError(err?.message || 'Failed to create workspace');
-                setLoading(false);
-              }
-            }}
-            className="w-full rounded-full gap-2"
-            disabled={loading}
-          >
-            {loading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Building2 className="h-4 w-4" />
-            )}
-            {loading ? 'Creating...' : 'Create Workspace'}
-          </Button>
-          {error && (
-            <Button
-              onClick={handleRetry}
-              variant="ghost"
-              className="w-full rounded-full gap-2"
-              disabled={loading}
-            >
-              <Sparkles className="h-4 w-4" />
+          <div className="flex flex-col gap-2">
+            <Button className="rounded-full" onClick={handleRetry}>
               Retry
             </Button>
-          )}
-        </motion.div>
+            <Button
+              variant="outline"
+              className="rounded-full"
+              onClick={() => {
+                setOrgName(user?.firstName ? `${user.firstName}'s Workspace` : 'My Workspace');
+                setStep('create');
+              }}
+            >
+              Create workspace
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -380,14 +393,17 @@ export default function OnboardingPage() {
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center p-6"
-      style={{
-        backgroundColor: '#0a0a0a',
-      }}
+      style={{ backgroundColor: '#0a0a0a' }}
     >
-      <div className="flex items-center gap-2.5 mb-12">
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="flex items-center gap-2.5 mb-10"
+      >
         <BrandLogo size={32} />
         <span className="font-playfair text-xl font-bold text-foreground">Syntheon Hub</span>
-      </div>
+      </motion.div>
 
       <div className="w-full max-w-md">
         <AnimatePresence mode="wait">
@@ -451,7 +467,7 @@ export default function OnboardingPage() {
                   <div className="space-y-1">
                     <p className="font-semibold text-foreground">Create an organization</p>
                     <p className="text-sm text-muted-foreground">
-                      Set up a new workspace for your team. You'll be the admin.
+                      Set up a new workspace for your team. You&apos;ll be the admin.
                     </p>
                   </div>
                   <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-muted-foreground mt-1" />
@@ -464,12 +480,12 @@ export default function OnboardingPage() {
                   className="flex items-start gap-4 rounded-2xl border border-border bg-muted/40 p-5 text-left transition-all hover:border-primary/30 hover:shadow-md"
                 >
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <KeyRound className="h-5 w-5" />
+                    <Link2 className="h-5 w-5" />
                   </div>
                   <div className="space-y-1">
-                    <p className="font-semibold text-foreground">Join with a code</p>
+                    <p className="font-semibold text-foreground">Join with a link</p>
                     <p className="text-sm text-muted-foreground">
-                      Have an 8-digit join code? Enter it to join your team.
+                      Paste the join link from your admin. You&apos;ll wait for approval.
                     </p>
                   </div>
                   <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-muted-foreground mt-1" />
@@ -500,7 +516,7 @@ export default function OnboardingPage() {
                   Create your organization
                 </h1>
                 <p className="text-sm text-muted-foreground">
-                  This will be your team's shared workspace in Syntheon Hub.
+                  This will be your team&apos;s shared workspace in Syntheon Hub.
                 </p>
               </div>
 
@@ -552,6 +568,7 @@ export default function OnboardingPage() {
                 <p className="text-sm text-muted-foreground">
                   An organization for{' '}
                   <span className="font-medium text-foreground">{emailDomain}</span> already exists.
+                  Request access and wait for an admin to approve you.
                 </p>
               </div>
 
@@ -567,54 +584,29 @@ export default function OnboardingPage() {
                 </div>
               </div>
 
-              <form onSubmit={handleJoinWithCode} className="space-y-4">
-                <div className="space-y-3">
-                  <label className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Enter join code
-                  </label>
-                  <div className="flex justify-center pt-1">
-                    <InputOTP
-                      maxLength={8}
-                      value={joinCode}
-                      onChange={(val) => setJoinCode(val)}
-                      disabled={loading}
-                      containerClassName="justify-center"
-                    >
-                      <InputOTPGroup>
-                        <InputOTPSlot index={0} className="h-12 w-10 text-lg font-bold" />
-                        <InputOTPSlot index={1} className="h-12 w-10 text-lg font-bold" />
-                        <InputOTPSlot index={2} className="h-12 w-10 text-lg font-bold" />
-                        <InputOTPSlot index={3} className="h-12 w-10 text-lg font-bold" />
-                      </InputOTPGroup>
-                      <InputOTPSeparator className="mx-1" />
-                      <InputOTPGroup>
-                        <InputOTPSlot index={4} className="h-12 w-10 text-lg font-bold" />
-                        <InputOTPSlot index={5} className="h-12 w-10 text-lg font-bold" />
-                        <InputOTPSlot index={6} className="h-12 w-10 text-lg font-bold" />
-                        <InputOTPSlot index={7} className="h-12 w-10 text-lg font-bold" />
-                      </InputOTPGroup>
-                    </InputOTP>
-                  </div>
-                  <p className="text-xs text-muted-foreground text-center">
-                    Ask your admin for the 8-digit join code.
-                  </p>
-                </div>
+              {error && <p className="text-sm text-destructive text-center">{error}</p>}
 
-                {error && <p className="text-sm text-destructive text-center">{error}</p>}
+              <Button
+                type="button"
+                className="w-full rounded-full gap-2"
+                disabled={loading}
+                onClick={() => void handleRequestDomainJoin()}
+              >
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Users className="h-4 w-4" />
+                )}
+                {loading ? 'Requesting...' : 'Request to join'}
+              </Button>
 
-                <Button
-                  type="submit"
-                  className="w-full rounded-full gap-2"
-                  disabled={loading || rawJoinCode.length !== 8}
-                >
-                  {loading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <KeyRound className="h-4 w-4" />
-                  )}
-                  {loading ? 'Joining...' : 'Join organization'}
-                </Button>
-              </form>
+              <button
+                type="button"
+                onClick={() => setStep('join')}
+                className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Have a join link instead?
+              </button>
             </motion.div>
           )}
 
@@ -636,40 +628,27 @@ export default function OnboardingPage() {
                   <ArrowLeft className="h-3.5 w-3.5" />
                   Back
                 </button>
-                <h1 className="font-playfair text-3xl font-bold text-foreground">Join your team</h1>
+                <h1 className="font-playfair text-3xl font-bold text-foreground">
+                  Join with a link
+                </h1>
                 <p className="text-sm text-muted-foreground">
-                  Enter the 8-digit join code your admin shared with you.
+                  Paste the join link your admin shared. You&apos;ll enter a waiting room until they
+                  approve you.
                 </p>
               </div>
 
-              <form onSubmit={handleJoinWithCode} className="space-y-4">
-                <div className="space-y-3">
+              <form onSubmit={handleJoinWithLink} className="space-y-4">
+                <div className="rounded-2xl border border-border bg-muted/40 p-6 space-y-3">
                   <label className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Join code
+                    Join link
                   </label>
-                  <div className="flex justify-center pt-1">
-                    <InputOTP
-                      maxLength={8}
-                      value={joinCode}
-                      onChange={(val) => setJoinCode(val)}
-                      disabled={loading}
-                      containerClassName="justify-center"
-                    >
-                      <InputOTPGroup>
-                        <InputOTPSlot index={0} className="h-12 w-10 text-lg font-bold" />
-                        <InputOTPSlot index={1} className="h-12 w-10 text-lg font-bold" />
-                        <InputOTPSlot index={2} className="h-12 w-10 text-lg font-bold" />
-                        <InputOTPSlot index={3} className="h-12 w-10 text-lg font-bold" />
-                      </InputOTPGroup>
-                      <InputOTPSeparator className="mx-1" />
-                      <InputOTPGroup>
-                        <InputOTPSlot index={4} className="h-12 w-10 text-lg font-bold" />
-                        <InputOTPSlot index={5} className="h-12 w-10 text-lg font-bold" />
-                        <InputOTPSlot index={6} className="h-12 w-10 text-lg font-bold" />
-                        <InputOTPSlot index={7} className="h-12 w-10 text-lg font-bold" />
-                      </InputOTPGroup>
-                    </InputOTP>
-                  </div>
+                  <Input
+                    value={joinLinkInput}
+                    onChange={(e) => setJoinLinkInput(e.target.value)}
+                    placeholder="https://app.syntheonhub.com/join?token=..."
+                    autoFocus
+                    disabled={loading}
+                  />
                 </div>
 
                 {error && <p className="text-sm text-destructive text-center">{error}</p>}
@@ -677,16 +656,60 @@ export default function OnboardingPage() {
                 <Button
                   type="submit"
                   className="w-full rounded-full gap-2"
-                  disabled={loading || rawJoinCode.length !== 8}
+                  disabled={loading || !joinLinkInput.trim()}
                 >
                   {loading ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    <KeyRound className="h-4 w-4" />
+                    <Link2 className="h-4 w-4" />
                   )}
-                  {loading ? 'Joining...' : 'Join organization'}
+                  {loading ? 'Requesting...' : 'Request to join'}
                 </Button>
               </form>
+            </motion.div>
+          )}
+
+          {step === 'waiting' && waiting && (
+            <motion.div
+              key="waiting"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-6 text-center"
+            >
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <Clock className="h-7 w-7" />
+              </div>
+              <div className="space-y-2">
+                <h1 className="font-playfair text-3xl font-bold text-foreground">Waiting room</h1>
+                <p className="text-sm text-muted-foreground">
+                  Your request to join{' '}
+                  <span className="font-medium text-foreground">
+                    {waiting.orgName || 'the organization'}
+                  </span>{' '}
+                  is pending admin approval.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-border bg-muted/40 p-5 text-left">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <Building2 className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-foreground">
+                      {waiting.orgName || 'Organization'}
+                    </p>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Waiting for an admin to approve
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                This page updates automatically when you&apos;re approved.
+              </p>
             </motion.div>
           )}
         </AnimatePresence>

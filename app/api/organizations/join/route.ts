@@ -1,98 +1,143 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
-import { OrganizationMetadataEntity } from '@/db/entities';
-import { FREE_ORG_SEAT_LIMIT, isOrganizationPaid } from '@/lib/org-plan';
+import { OrganizationAccessRequestsEntity } from '@/db/entities';
+import { extractJoinToken, findOrgMetaByJoinToken, requestOrgAccess } from '@/lib/org-join';
 
+async function resolveUserProfile(userId: string) {
+  const client = await clerkClient();
+  const clerkUser = await client.users.getUser(userId);
+  const email =
+    clerkUser.emailAddresses.find((e) => e.id === clerkUser.primaryEmailAddressId)?.emailAddress ??
+    clerkUser.emailAddresses[0]?.emailAddress ??
+    '';
+  const name = `${clerkUser.firstName ?? ''} ${clerkUser.lastName ?? ''}`.trim() || undefined;
+  return { email, name, client };
+}
+
+/** GET — current user's latest join request / lobby status */
+export async function GET() {
+  const session = await auth();
+  if (!session.userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const res = await OrganizationAccessRequestsEntity.query.byUser({ userId: session.userId }).go();
+  const latest = (res.data ?? []).sort((a: any, b: any) =>
+    (b.requestedAt || '').localeCompare(a.requestedAt || '')
+  )[0];
+
+  if (!latest) {
+    return NextResponse.json({ pending: false, status: null });
+  }
+
+  let orgName: string | null = null;
+  try {
+    const client = await clerkClient();
+    const org = await client.organizations.getOrganization({ organizationId: latest.orgId });
+    orgName = org.name;
+  } catch {
+    orgName = null;
+  }
+
+  return NextResponse.json({
+    pending: latest.status === 'pending',
+    orgId: latest.orgId,
+    orgName,
+    requestId: latest.id,
+    status: latest.status,
+    requestedAt: latest.requestedAt,
+    source: latest.source ?? null,
+  });
+}
+
+/**
+ * POST — request to join an org (waiting lobby).
+ * Body: { token } from join link, OR { orgId } for manual / domain join.
+ * Never creates Clerk membership — admin must approve.
+ */
 export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session.userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { joinCode } = await req.json();
-  if (!joinCode?.trim()) {
-    return NextResponse.json({ error: 'Join code is required' }, { status: 400 });
-  }
+  const body = await req.json().catch(() => ({}));
+  const tokenInput = typeof body.token === 'string' ? body.token : '';
+  const orgIdInput = typeof body.orgId === 'string' ? body.orgId.trim() : '';
 
-  // Lookup org by join code GSI (scan fallback for pre-GSI records)
-  const code = joinCode.trim();
-  let meta: any = null;
-  const byCode = await OrganizationMetadataEntity.query.byJoinCode({ joinCode: code }).go({
-    limit: 1,
-  });
-  meta = byCode.data?.[0] ?? null;
+  let orgId: string | null = null;
+  let source: 'join_link' | 'manual' = 'manual';
 
-  if (!meta) {
-    const scanRes = await OrganizationMetadataEntity.scan.go();
-    meta = (scanRes.data ?? []).find((m: any) => m.joinCode === code) ?? null;
-    if (meta?.joinCode) {
-      try {
-        await OrganizationMetadataEntity.update({ orgId: meta.orgId })
-          .set({ joinCode: meta.joinCode, updatedAt: new Date().toISOString() })
-          .go();
-      } catch {
-        // ignore backfill errors
-      }
+  if (tokenInput) {
+    const token = extractJoinToken(tokenInput);
+    if (!token) {
+      return NextResponse.json({ error: 'Invalid join link' }, { status: 400 });
     }
-  }
-
-  if (!meta) {
-    return NextResponse.json({ error: 'Invalid join code' }, { status: 404 });
-  }
-
-  const client = await clerkClient();
-
-  // Check if already a member
-  try {
-    const memberships = await client.users.getOrganizationMembershipList({
-      userId: session.userId,
-    });
-    const alreadyMember = memberships.data.some((m) => m.organization.id === meta.orgId);
-    if (alreadyMember) {
-      return NextResponse.json({
-        success: true,
-        orgId: meta.orgId,
-        message: 'Already a member',
-      });
+    const meta = await findOrgMetaByJoinToken(token);
+    if (!meta) {
+      return NextResponse.json({ error: 'Invalid or expired join link' }, { status: 404 });
     }
-  } catch {
-    // Continue
-  }
-
-  // Direct join (no waitlist during beta)
-  try {
-    // Seat limit is based on the *target* org's plan, not the joiner's
-    const isPaidOrg = await isOrganizationPaid(meta.orgId);
-    if (!isPaidOrg) {
-      const members = await client.organizations.getOrganizationMembershipList({
-        organizationId: meta.orgId,
-      });
-      if ((members.data?.length ?? 0) >= FREE_ORG_SEAT_LIMIT) {
-        return NextResponse.json(
-          {
-            error: 'Seat limit reached',
-            message: `This organization has reached the ${FREE_ORG_SEAT_LIMIT}-member limit.`,
-          },
-          { status: 403 }
-        );
-      }
-    }
-
-    await client.organizations.createOrganizationMembership({
-      organizationId: meta.orgId,
-      userId: session.userId,
-      role: 'org:member',
-    });
-
-    return NextResponse.json({
-      success: true,
-      orgId: meta.orgId,
-    });
-  } catch (error: any) {
-    console.error('Join org error:', error);
+    orgId = meta.orgId;
+    source = 'join_link';
+  } else if (orgIdInput) {
+    orgId = orgIdInput;
+    source = 'manual';
+  } else {
     return NextResponse.json(
-      { error: error?.errors?.[0]?.message ?? 'Failed to join organization' },
-      { status: 500 }
+      { error: 'A join link token or organization id is required' },
+      { status: 400 }
     );
   }
+
+  const { email, name, client } = await resolveUserProfile(session.userId);
+  if (!email) {
+    return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+  }
+
+  let orgName: string | null = null;
+  try {
+    const org = await client.organizations.getOrganization({ organizationId: orgId! });
+    orgName = org.name;
+  } catch {
+    return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+  }
+
+  const result = await requestOrgAccess({
+    orgId: orgId!,
+    userId: session.userId,
+    userEmail: email,
+    userName: name,
+    source,
+  });
+
+  if (result.status === 'already_member') {
+    return NextResponse.json({
+      success: true,
+      alreadyMember: true,
+      pending: false,
+      orgId: result.orgId,
+      orgName,
+    });
+  }
+
+  if (result.status === 'seat_limit') {
+    return NextResponse.json(
+      {
+        error: 'Seat limit reached',
+        message: 'This organization has reached its member limit.',
+        orgId: result.orgId,
+        orgName,
+      },
+      { status: 403 }
+    );
+  }
+
+  return NextResponse.json({
+    success: true,
+    pending: true,
+    alreadyPending: result.alreadyPending,
+    orgId: result.orgId,
+    orgName,
+    requestId: result.requestId,
+  });
 }

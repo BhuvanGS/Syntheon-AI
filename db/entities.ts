@@ -521,8 +521,8 @@ export const OrganizationMetadataEntity = makeEntity(
     companyName: { type: 'string' },
     managerName: { type: 'string' },
     domain: { type: 'string' },
-    joinCode: { type: 'string' },
-    allowAccessRequests: { type: 'boolean', default: false },
+    joinToken: { type: 'string' },
+    allowAccessRequests: { type: 'boolean', default: true },
     trialStartedAt: { type: 'string' },
     createdAt: { type: 'string', default: () => new Date().toISOString() },
     updatedAt: { type: 'string', default: () => new Date().toISOString() },
@@ -532,9 +532,9 @@ export const OrganizationMetadataEntity = makeEntity(
       pk: { field: 'pk', composite: ['orgId'] },
       sk: { field: 'sk', template: 'orgMetadata' },
     },
-    byJoinCode: {
+    byJoinToken: {
       index: 'gsi1',
-      pk: { field: 'gsi1pk', composite: ['joinCode'] },
+      pk: { field: 'gsi1pk', composite: ['joinToken'] },
       sk: { field: 'gsi1sk', template: 'orgMetadata' },
     },
   }
@@ -577,6 +577,7 @@ export const OrganizationAccessRequestsEntity = makeEntity(
     userEmail: { type: 'string', required: true },
     userName: { type: 'string' },
     status: { type: 'string', default: 'pending' },
+    source: { type: 'string' },
     requestedAt: { type: 'string', default: () => new Date().toISOString() },
     respondedAt: { type: 'string' },
     respondedBy: { type: 'string' },

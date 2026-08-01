@@ -19,19 +19,37 @@ export default function DomainsPage() {
           letterSpacing: '-0.03em',
         }}
       >
-        Domain Verification
+        Verified Domains
       </h1>
       <p style={{ fontSize: '16px', color: 'rgba(255,255,255,0.5)', marginBottom: '2.5rem' }}>
-        Admins can verify domain ownership (e.g., <code>yourcompany.com</code>) to enable auto-join.
-        New users signing up with a verified domain email are automatically added to your
-        organization.
+        Admins can verify a company email domain (e.g. <code>yourcompany.com</code>) so teammates on
+        that domain can discover and join the organization. Public inboxes like Gmail cannot be
+        verified.
       </p>
 
       <div className="doc-card">
-        <p className="doc-card-title">How it works</p>
+        <p className="doc-card-title">How verification works</p>
         <p className="doc-card-text">
-          Add a DNS TXT record provided by Syntheon Hub to your domain. Once verified, any user
-          signing up with an email on that domain is automatically joined to your organization.
+          Ownership is proven with an affiliation email — not a DNS TXT record. An admin adds the
+          domain, enters an email on that domain, and confirms the one-time code sent to that inbox.
+          Once verified, enrollment can invite or suggest membership for matching sign-ups.
+        </p>
+      </div>
+
+      <div className="doc-card">
+        <p className="doc-card-title">Enrollment modes</p>
+        <p className="doc-card-text">
+          Choose how verified-domain users join: automatic invitation for faster onboarding, or
+          manual approval when admins should confirm each request.
+        </p>
+      </div>
+
+      <div className="doc-card">
+        <p className="doc-card-title">Join links</p>
+        <p className="doc-card-text">
+          Separately, admins can share an organization join link from Settings → Organizations.
+          Anyone with the link enters a waiting room until an admin approves — useful when the
+          teammate does not use a verified company domain.
         </p>
       </div>
     </>

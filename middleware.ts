@@ -1,5 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse, type NextRequest } from 'next/server';
+import { isAppClosed } from '@/lib/beta';
 
 // ─── Domain config ────────────────────────────────────────────────
 const MARKETING_DOMAIN = 'syntheonhub.com';
@@ -41,15 +42,26 @@ const isAppOnlyRoute = createRouteMatcher([
   '/sso-callback(.*)',
   '/accept-invite(.*)',
   '/onboarding(.*)',
+  '/join(.*)',
   '/waitlist(.*)',
   '/admin(.*)',
+  '/beta-closed',
 ]);
 
 const isApiRoute = createRouteMatcher(['/api/(.*)']);
 
 const isClerkSessionTask = createRouteMatcher(['/sign-up/tasks(.*)', '/sign-in/tasks(.*)']);
 
-const isOnboardingRoute = createRouteMatcher(['/onboarding(.*)']);
+const isOnboardingRoute = createRouteMatcher(['/onboarding(.*)', '/join(.*)']);
+
+/** Keep infra webhooks alive while the product UI is locked. */
+const isAllowedWhileClosed = createRouteMatcher([
+  '/beta-closed',
+  '/api/bot/webhook(.*)',
+  '/api/deploy/webhook(.*)',
+  '/api/auth/webhook(.*)',
+  '/api/webhooks(.*)',
+]);
 
 // Truly public — no auth required
 const isPublicAppRoute = createRouteMatcher([
@@ -58,6 +70,7 @@ const isPublicAppRoute = createRouteMatcher([
   '/sso-callback(.*)',
   '/accept-invite(.*)',
   '/pricing',
+  '/beta-closed',
   '/api/bot/create',
   '/api/bot/webhook(.*)',
   '/api/deploy/webhook(.*)',
@@ -80,6 +93,20 @@ const isOrgOptionalApi = createRouteMatcher([
 
 function redirectToOnboarding(request: NextRequest) {
   return NextResponse.redirect(new URL('/onboarding', request.url));
+}
+
+function lockIfClosed(request: NextRequest) {
+  if (!isAppClosed()) return null;
+  if (isAllowedWhileClosed(request)) return null;
+
+  if (isApiRoute(request)) {
+    return NextResponse.json(
+      { error: 'Beta testing is over. The application is temporarily closed.' },
+      { status: 503 }
+    );
+  }
+
+  return NextResponse.redirect(new URL('/beta-closed', request.url));
 }
 
 function requireOrgOrRedirect(
@@ -109,6 +136,9 @@ function requireOrgOrRedirect(
 }
 
 export default clerkMiddleware(async (auth, request) => {
+  const closed = lockIfClosed(request);
+  if (closed) return closed;
+
   const hostname = getHostname(request);
   const pathname = request.nextUrl.pathname;
 

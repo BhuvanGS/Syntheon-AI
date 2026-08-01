@@ -5,6 +5,7 @@ import { extractDomain } from '@/lib/public-domains';
 import { ensureUser } from '@/lib/ensureUser';
 import { isPublicDomainEmail } from '@/lib/org-utils';
 import { randomUUID } from 'crypto';
+import { generateJoinToken } from '@/lib/org-join';
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -13,7 +14,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { name, companyName, managerName, allowAccessRequests, domain } = body;
+  const { name, companyName, managerName, domain } = body;
 
   if (!name?.trim()) {
     return NextResponse.json({ error: 'Organization name is required' }, { status: 400 });
@@ -42,11 +43,9 @@ export async function POST(req: NextRequest) {
     if (creatorEmail && isPublicDomainEmail(creatorEmail) && memberships.data.length > 0) {
       const orgId = memberships.data[0].organization.id;
       const existingOrg = await client.organizations.getOrganization({ organizationId: orgId });
-      const existingMeta = await OrganizationMetadataEntity.get({ orgId }).go();
       return NextResponse.json({
         id: orgId,
         name: existingOrg.name,
-        joinCode: existingMeta.data?.joinCode,
         success: true,
         reused: true,
       });
@@ -60,23 +59,20 @@ export async function POST(req: NextRequest) {
     const orgId = created.id;
     const orgName = created.name;
 
-    const joinCode = Math.random().toString().slice(2, 10).padEnd(8, '0');
-
     await OrganizationMetadataEntity.create({
       id: randomUUID(),
       orgId,
       companyName: companyName?.trim() || undefined,
       managerName: managerName?.trim() || undefined,
       domain: domain?.trim() || undefined,
-      joinCode,
-      allowAccessRequests: allowAccessRequests ?? false,
+      joinToken: generateJoinToken(),
+      allowAccessRequests: true,
       trialStartedAt: new Date().toISOString(),
     }).go();
 
     return NextResponse.json({
       id: orgId,
       name: orgName,
-      joinCode,
       success: true,
     });
   } catch (error) {

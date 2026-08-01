@@ -30,8 +30,8 @@ export default function RolesPage() {
         <p className="doc-card-title">Admin</p>
         <p className="doc-card-text">
           Full access: dashboard, meetings, members, future viz, tickets, settings, project
-          creation, project deletion, member management, integrations, organization settings, domain
-          verification.
+          creation, project deletion, member management, integrations, organization settings,
+          verified domains, and join-link / access-request approval.
         </p>
       </div>
       <div className="doc-card">

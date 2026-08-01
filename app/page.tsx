@@ -986,7 +986,7 @@ function ChapterDone({ pageOrigin }: { pageOrigin: number }) {
           >
             By the time you scrolled here,
             <br />
-            Syntheon Hub had already arranged the
+            Syntheon Hub has already arranged your
             <br />
             <DoneModeNoun mode={mode} reduce={reduce} />
           </motion.h2>
@@ -1361,9 +1361,9 @@ function Footer() {
         <FooterCol
           title="Legal"
           links={[
-            { label: 'Privacy', href: '/privacy' },
+            { label: 'Privacy', href: '/legal#privacy' },
             { label: 'Cookies', href: '/cookie-policy' },
-            { label: 'Terms', href: '/terms' },
+            { label: 'Terms', href: '/legal#terms' },
           ]}
         />
         <FooterCol

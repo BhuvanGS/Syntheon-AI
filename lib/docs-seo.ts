@@ -152,11 +152,13 @@ export const DOC_SEO: Record<string, { title: string; description: string }> = {
   },
   organizations: {
     title: 'Organizations',
-    description: 'Create orgs, invite members, and manage company workspaces.',
+    description:
+      'Create orgs, share join links, approve access requests, and manage company workspaces in Syntheon Hub.',
   },
   domains: {
-    title: 'Domain Verification',
-    description: 'Verify your company domain so teammates can join the right organization.',
+    title: 'Verified Domains',
+    description:
+      'Verify a company email domain with an affiliation code so teammates can discover and join your Syntheon Hub organization. Join links cover everyone else.',
   },
   preferences: {
     title: 'Preferences',

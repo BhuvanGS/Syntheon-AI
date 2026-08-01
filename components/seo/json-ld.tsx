@@ -13,7 +13,7 @@ export const ORGANIZATION_JSON_LD = {
   logo: `${BASE}/syntheon-logo.png`,
   image: `${BASE}/og-image.png`,
   description:
-    'Syntheon Hub joins your meetings, extracts action items, and creates organized tickets automatically.',
+    'Syntheon Hub joins your meetings, extracts action items, and creates organized tickets automatically — with Kanban, dependencies, sprints, join links, and verified company domains.',
   email: 'support@syntheonhub.com',
   foundingDate: '2025',
   founder: {
@@ -62,7 +62,7 @@ export const SOFTWARE_JSON_LD = {
     'Kanban board',
     'Dependency mapping',
     'Sprint-stones and analytics',
-    'Organization and role management',
+    'Organizations with join links and verified domains',
   ],
   creator: {
     '@type': 'Person',

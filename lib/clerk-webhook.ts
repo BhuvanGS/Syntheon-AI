@@ -46,7 +46,7 @@ export async function handleClerkWebhook(evt: any) {
         orgId: id,
         companyName: null,
         managerName: null,
-        allowAccessRequests: false,
+        allowAccessRequests: true,
       }).go();
     }
 
@@ -111,7 +111,7 @@ async function createPersonalOrg(userId: string, email: string, userDisplayName?
         orgId: org.id,
         companyName: null,
         managerName: null,
-        allowAccessRequests: false,
+        allowAccessRequests: true,
         trialStartedAt: new Date().toISOString(),
       }).go();
 

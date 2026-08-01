@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { clerkClient } from '@clerk/nextjs/server';
 import { OrganizationAccessRequestsEntity } from '@/db/entities';
 import { requireAuth, isOrgAdmin } from '@/lib/rbac';
+import { FREE_ORG_SEAT_LIMIT, isOrganizationPaid } from '@/lib/org-plan';
 
 export async function POST(
   req: NextRequest,
@@ -20,7 +21,6 @@ export async function POST(
   const body = await req.json();
   const { action } = body;
 
-  // Find the request by scanning
   const res = await OrganizationAccessRequestsEntity.query.primary({ orgId }).go();
   const request = (res.data ?? []).find((r: any) => r.id === requestId);
   if (!request) {
@@ -28,6 +28,46 @@ export async function POST(
   }
 
   if (action === 'approve') {
+    if (request.status === 'approved') {
+      return NextResponse.json({ success: true, alreadyApproved: true });
+    }
+
+    const client = await clerkClient();
+    const isPaidOrg = await isOrganizationPaid(orgId);
+    if (!isPaidOrg) {
+      const members = await client.organizations.getOrganizationMembershipList({
+        organizationId: orgId,
+      });
+      if ((members.data?.length ?? 0) >= FREE_ORG_SEAT_LIMIT) {
+        return NextResponse.json(
+          {
+            error: 'Seat limit reached',
+            message: `This organization has reached the ${FREE_ORG_SEAT_LIMIT}-member limit.`,
+          },
+          { status: 403 }
+        );
+      }
+    }
+
+    try {
+      await client.organizations.createOrganizationMembership({
+        organizationId: orgId,
+        userId: request.userId,
+        role: 'org:member',
+      });
+    } catch (error: any) {
+      const alreadyMember =
+        error?.errors?.[0]?.code === 'duplicate_record' ||
+        error?.errors?.[0]?.code === 'already_a_member_in_organization';
+      if (!alreadyMember) {
+        console.error('Clerk add member error:', error);
+        return NextResponse.json(
+          { error: error?.errors?.[0]?.message ?? 'Failed to add member' },
+          { status: 500 }
+        );
+      }
+    }
+
     await OrganizationAccessRequestsEntity.update({ orgId, userId: request.userId })
       .set({
         status: 'approved',
@@ -35,17 +75,6 @@ export async function POST(
         respondedBy: ctx.userId,
       })
       .go();
-
-    try {
-      const client = await clerkClient();
-      await client.organizations.createOrganizationMembership({
-        organizationId: orgId,
-        userId: request.userId,
-        role: 'org:member',
-      });
-    } catch (error) {
-      console.error('Clerk add member error:', error);
-    }
 
     return NextResponse.json({ success: true });
   }

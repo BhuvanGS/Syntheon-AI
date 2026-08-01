@@ -45,7 +45,8 @@ const PERMISSIONS: {
     items: [
       { label: 'Integrations', admin: true, member: false },
       { label: 'Organization settings', admin: true, member: false },
-      { label: 'Domain verification', admin: true, member: false },
+      { label: 'Verified domains', admin: true, member: false },
+      { label: 'Join link / access requests', admin: true, member: false },
       { label: 'Preferences', admin: true, member: true },
     ],
   },

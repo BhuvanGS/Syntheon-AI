@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { BrandLogo } from '@/components/brand-logo';
-import { FounderNoteAuthDialog } from '@/components/founder-note-auth-dialog';
 import type { ReactNode } from 'react';
 
 const DISPLAY =
@@ -96,7 +95,6 @@ export function AuthShell({
         </div>
 
         <div className="w-full max-w-[400px] mt-14 md:mt-0">
-          <FounderNoteAuthDialog />
           <div className="auth-clerk-wrap">{children}</div>
           <LegalAgreeLine mode={mode} />
         </div>

@@ -15,15 +15,14 @@ import {
   Loader2,
   Copy,
   CheckCircle,
-  KeyRound,
   RefreshCw,
+  Link2,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -41,8 +40,8 @@ import { WelcomeDialog } from '@/components/welcome-dialog';
 interface OrgMetadata {
   companyName: string;
   managerName: string;
-  allowAccessRequests: boolean;
-  joinCode: string | null;
+  joinToken: string | null;
+  joinLink: string | null;
 }
 
 interface AccessRequest {
@@ -72,8 +71,8 @@ export function OrganizationsTab() {
   const [orgMetadata, setOrgMetadata] = useState<OrgMetadata>({
     companyName: '',
     managerName: '',
-    allowAccessRequests: false,
-    joinCode: null,
+    joinToken: null,
+    joinLink: null,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -82,23 +81,21 @@ export function OrganizationsTab() {
   const [sentInvites, setSentInvites] = useState<SentInvite[]>([]);
   const [sentInvitesLoading, setSentInvitesLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [confirmToggleDialog, setConfirmToggleDialog] = useState(false);
   const [switchingOrgId, setSwitchingOrgId] = useState<string | null>(null);
   const [createOrgDialogOpen, setCreateOrgDialogOpen] = useState(false);
   const [newOrgForm, setNewOrgForm] = useState({
     name: '',
     companyName: '',
     managerName: '',
-    allowAccessRequests: false,
   });
   const [creatingOrg, setCreatingOrg] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviting, setInviting] = useState(false);
   const [generatedInviteLink, setGeneratedInviteLink] = useState('');
   const [copiedLink, setCopiedLink] = useState(false);
-  const [copiedJoinCode, setCopiedJoinCode] = useState(false);
-  const [rotatingCode, setRotatingCode] = useState(false);
-  const [confirmRotateCode, setConfirmRotateCode] = useState(false);
+  const [copiedJoinLink, setCopiedJoinLink] = useState(false);
+  const [rotatingLink, setRotatingLink] = useState(false);
+  const [confirmRotateLink, setConfirmRotateLink] = useState(false);
   const [revokeInviteId, setRevokeInviteId] = useState<string | null>(null);
   const [revoking, setRevoking] = useState(false);
   const [reinviteEmail, setReinviteEmail] = useState<string | null>(null);
@@ -126,8 +123,8 @@ export function OrganizationsTab() {
         setOrgMetadata({
           companyName: data.companyName || '',
           managerName: data.managerName || '',
-          allowAccessRequests: data.allowAccessRequests || false,
-          joinCode: data.joinCode || null,
+          joinToken: data.joinToken || null,
+          joinLink: data.joinLink || null,
         });
       }
     } catch (error) {
@@ -176,45 +173,15 @@ export function OrganizationsTab() {
       const res = await fetch(`/api/organizations/${organization.id}/metadata`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(orgMetadata),
+        body: JSON.stringify({
+          companyName: orgMetadata.companyName,
+          managerName: orgMetadata.managerName,
+        }),
       });
       if (!res.ok) throw new Error('Failed to save');
       showToast('Organization details updated', 'success');
     } catch (error) {
       showToast('Failed to save. Please try again.', 'error');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleToggleAccessRequests(enabled: boolean) {
-    if (!enabled) {
-      setConfirmToggleDialog(true);
-      return;
-    }
-    await updateAccessRequestsSetting(enabled);
-  }
-
-  async function updateAccessRequestsSetting(enabled: boolean) {
-    if (!organization?.id) return;
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/organizations/${organization.id}/metadata`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...orgMetadata, allowAccessRequests: enabled }),
-      });
-      if (!res.ok) throw new Error('Failed to update');
-      setOrgMetadata((prev) => ({ ...prev, allowAccessRequests: enabled }));
-      setConfirmToggleDialog(false);
-      showToast(
-        enabled
-          ? 'Users can now request access to your organization'
-          : 'Only invited users can join your organization',
-        'success'
-      );
-    } catch (error) {
-      showToast('Failed to update. Please try again.', 'error');
     } finally {
       setSaving(false);
     }
@@ -423,32 +390,14 @@ export function OrganizationsTab() {
 
                   <Separator className="my-4" />
 
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="access-requests" className="text-sm font-medium">
-                          Allow Access Requests
-                        </Label>
-                        <p className="text-xs text-muted-foreground">
-                          Let users request to join your organization
-                        </p>
-                      </div>
-                      <Switch
-                        id="access-requests"
-                        checked={orgMetadata.allowAccessRequests}
-                        onCheckedChange={handleToggleAccessRequests}
-                      />
-                    </div>
-
-                    {orgMetadata.allowAccessRequests && (
-                      <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-3 text-xs text-blue-700">
-                        <p className="font-medium mb-1">Access requests are enabled</p>
-                        <p>
-                          Users can request to join your organization. You'll review and approve
-                          requests in the Requests tab.
-                        </p>
-                      </div>
-                    )}
+                  <div className="rounded-lg bg-muted/40 border border-border/60 p-3 text-xs text-muted-foreground">
+                    <p className="font-medium text-foreground mb-1">
+                      Joining always needs approval
+                    </p>
+                    <p>
+                      Share your join link from the Requests tab. New members wait in a lobby until
+                      an admin approves them.
+                    </p>
                   </div>
 
                   <Button
@@ -543,32 +492,32 @@ export function OrganizationsTab() {
         {/* Requests Tab (Admin Only) */}
         {isAdmin && (
           <TabsContent value="requests" className="space-y-4">
-            {/* Join Code Card */}
+            {/* Join Link Card */}
             <Card className="border-border/60 shadow-none overflow-hidden">
               <div className="relative bg-muted/30 p-6">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                    <KeyRound className="h-5 w-5 text-primary" />
+                    <Link2 className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-foreground">Organization Join Code</p>
+                    <p className="text-sm font-semibold text-foreground">Organization Join Link</p>
                     <p className="text-xs text-muted-foreground">
-                      Share this code with team members so they can join
+                      Share this link — joiners wait for your approval
                     </p>
                   </div>
                 </div>
-                {orgMetadata.joinCode ? (
-                  <div className="flex items-center justify-between rounded-2xl border border-border bg-muted/50 px-6 py-5">
-                    <code className="text-4xl font-mono font-black tracking-[0.15em] text-foreground">
-                      {orgMetadata.joinCode.slice(0, 4)}
-                      <span className="text-primary/40 mx-1">-</span>
-                      {orgMetadata.joinCode.slice(4)}
-                    </code>
-                    <div className="flex items-center gap-2">
+                {orgMetadata.joinLink ? (
+                  <div className="space-y-3">
+                    <div className="rounded-2xl border border-border bg-muted/50 px-4 py-4">
+                      <code className="text-sm font-mono text-foreground break-all">
+                        {orgMetadata.joinLink}
+                      </code>
+                    </div>
+                    <div className="flex items-center gap-2 justify-end">
                       <button
                         type="button"
-                        onClick={() => setConfirmRotateCode(true)}
-                        disabled={rotatingCode}
+                        onClick={() => setConfirmRotateLink(true)}
+                        disabled={rotatingLink}
                         className="flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors duration-200"
                       >
                         <RefreshCw className="h-4 w-4" />
@@ -577,14 +526,14 @@ export function OrganizationsTab() {
                       <button
                         type="button"
                         onClick={() => {
-                          navigator.clipboard.writeText(orgMetadata.joinCode!);
-                          setCopiedJoinCode(true);
-                          showToast('Join code copied to clipboard', 'success');
-                          setTimeout(() => setCopiedJoinCode(false), 2000);
+                          navigator.clipboard.writeText(orgMetadata.joinLink!);
+                          setCopiedJoinLink(true);
+                          showToast('Join link copied to clipboard', 'success');
+                          setTimeout(() => setCopiedJoinLink(false), 2000);
                         }}
                         className="flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg bg-primary/10 hover:bg-primary/15 transition-colors duration-200"
                       >
-                        {copiedJoinCode ? (
+                        {copiedJoinLink ? (
                           <>
                             <CheckCircle className="h-4 w-4 text-primary transition-all duration-200" />
                             <span className="text-primary">Copied</span>
@@ -592,7 +541,7 @@ export function OrganizationsTab() {
                         ) : (
                           <>
                             <Copy className="h-4 w-4 transition-all duration-200" />
-                            <span>Copy code</span>
+                            <span>Copy link</span>
                           </>
                         )}
                       </button>
@@ -603,34 +552,38 @@ export function OrganizationsTab() {
                     type="button"
                     onClick={async () => {
                       if (!organization?.id) return;
-                      setRotatingCode(true);
+                      setRotatingLink(true);
                       try {
                         const res = await fetch(
-                          `/api/organizations/${organization.id}/rotate-join-code`,
+                          `/api/organizations/${organization.id}/rotate-join-link`,
                           { method: 'POST' }
                         );
-                        if (!res.ok) throw new Error('Failed to generate code');
+                        if (!res.ok) throw new Error('Failed to generate link');
                         const data = await res.json();
-                        setOrgMetadata((prev) => ({ ...prev, joinCode: data.joinCode }));
-                        showToast('Join code generated', 'success');
+                        setOrgMetadata((prev) => ({
+                          ...prev,
+                          joinToken: data.joinToken,
+                          joinLink: data.joinLink,
+                        }));
+                        showToast('Join link generated', 'success');
                       } catch {
-                        showToast('Failed to generate join code', 'error');
+                        showToast('Failed to generate join link', 'error');
                       } finally {
-                        setRotatingCode(false);
+                        setRotatingLink(false);
                       }
                     }}
-                    disabled={rotatingCode}
+                    disabled={rotatingLink}
                     className="flex items-center justify-center gap-2 w-full rounded-2xl border-2 border-dashed border-primary/30 px-6 py-5 text-sm font-medium text-primary hover:bg-primary/5 transition-colors duration-200"
                   >
-                    {rotatingCode ? (
+                    {rotatingLink ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" />
                         Generating...
                       </>
                     ) : (
                       <>
-                        <KeyRound className="h-4 w-4" />
-                        Generate join code
+                        <Link2 className="h-4 w-4" />
+                        Generate join link
                       </>
                     )}
                   </button>
@@ -638,75 +591,73 @@ export function OrganizationsTab() {
               </div>
             </Card>
 
-            {/* Invite Users (only when access requests are enabled) */}
-            {orgMetadata.allowAccessRequests && (
-              <Card className="border-border/60 shadow-none">
-                <CardHeader className="pb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
-                      <UserPlus className="h-5 w-5 text-blue-500" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-sm font-semibold">Invite Users</CardTitle>
-                      <CardDescription className="text-xs mt-0.5">
-                        Invite team members to your organization
-                      </CardDescription>
-                    </div>
+            {/* Invite Users by email */}
+            <Card className="border-border/60 shadow-none">
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
+                    <UserPlus className="h-5 w-5 text-blue-500" />
                   </div>
-                </CardHeader>
-                <Separator />
-                <CardContent className="pt-4">
-                  <div className="space-y-3">
-                    <div className="flex gap-2">
-                      <Input
-                        value={inviteEmail}
-                        onChange={(e) => setInviteEmail(e.target.value)}
-                        placeholder="colleague@company.com"
-                        className="flex-1"
-                      />
-                      <Button
-                        size="sm"
-                        className="rounded-full"
-                        onClick={handleSendInviteClick}
-                        disabled={inviting || !inviteEmail.trim()}
+                  <div>
+                    <CardTitle className="text-sm font-semibold">Invite Users</CardTitle>
+                    <CardDescription className="text-xs mt-0.5">
+                      Email invitations skip the waiting room (direct invite)
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <Separator />
+              <CardContent className="pt-4">
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <Input
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                      placeholder="colleague@company.com"
+                      className="flex-1"
+                    />
+                    <Button
+                      size="sm"
+                      className="rounded-full"
+                      onClick={handleSendInviteClick}
+                      disabled={inviting || !inviteEmail.trim()}
+                    >
+                      {inviting ? 'Sending...' : 'Send Invite'}
+                    </Button>
+                  </div>
+                  {generatedInviteLink && (
+                    <div className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
+                      <p className="text-xs text-muted-foreground">Invite link generated</p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(generatedInviteLink);
+                          setCopiedLink(true);
+                          showToast('Invite link copied to clipboard', 'success');
+                          setTimeout(() => setCopiedLink(false), 2000);
+                        }}
+                        className="flex items-center gap-1.5 text-xs font-medium transition-colors duration-200"
+                        style={{ color: copiedLink ? '#16a34a' : 'currentColor' }}
                       >
-                        {inviting ? 'Sending...' : 'Send Invite'}
-                      </Button>
+                        {copiedLink ? (
+                          <>
+                            <CheckCircle className="h-4 w-4 text-green-600 transition-all duration-200" />
+                            <span className="text-green-600 transition-colors duration-200">
+                              Copied
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-4 w-4 transition-all duration-200" />
+                            <span className="transition-colors duration-200">Copy link</span>
+                          </>
+                        )}
+                      </button>
                     </div>
-                    {generatedInviteLink && (
-                      <div className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
-                        <p className="text-xs text-muted-foreground">Invite link generated</p>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            navigator.clipboard.writeText(generatedInviteLink);
-                            setCopiedLink(true);
-                            showToast('Invite link copied to clipboard', 'success');
-                            setTimeout(() => setCopiedLink(false), 2000);
-                          }}
-                          className="flex items-center gap-1.5 text-xs font-medium transition-colors duration-200"
-                          style={{ color: copiedLink ? '#16a34a' : 'currentColor' }}
-                        >
-                          {copiedLink ? (
-                            <>
-                              <CheckCircle className="h-4 w-4 text-green-600 transition-all duration-200" />
-                              <span className="text-green-600 transition-colors duration-200">
-                                Copied
-                              </span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="h-4 w-4 transition-all duration-200" />
-                              <span className="transition-colors duration-200">Copy link</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                  )}
+                </div>
+              </CardContent>
+            </Card>
 
             <Tabs defaultValue="incoming" className="space-y-4">
               <TabsList className="grid w-full grid-cols-2">
@@ -915,38 +866,6 @@ export function OrganizationsTab() {
         )}
       </Tabs>
 
-      {/* Confirm Disable Access Requests Dialog */}
-      <Dialog open={confirmToggleDialog} onOpenChange={setConfirmToggleDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-500" />
-              Disable Access Requests?
-            </DialogTitle>
-            <DialogDescription>
-              If you disable access requests, users will no longer be able to request access to your
-              organization. Only invited users will be able to join.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3 text-xs text-amber-700">
-            Any pending requests will remain in your queue, but new users won't be able to submit
-            requests.
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setConfirmToggleDialog(false)}
-              disabled={saving}
-            >
-              Cancel
-            </Button>
-            <Button onClick={() => updateAccessRequestsSetting(false)} disabled={saving}>
-              {saving ? 'Disabling...' : 'Disable Access Requests'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* Create Organization Dialog */}
       <Dialog
         open={createOrgDialogOpen}
@@ -957,7 +876,6 @@ export function OrganizationsTab() {
               name: '',
               companyName: '',
               managerName: '',
-              allowAccessRequests: false,
             });
           }
         }}
@@ -998,20 +916,6 @@ export function OrganizationsTab() {
                 placeholder="e.g. John Doe"
               />
             </div>
-            <div className="flex items-center justify-between rounded-lg border border-border/60 p-3">
-              <div className="space-y-0.5">
-                <Label className="text-sm font-medium">Allow Access Requests</Label>
-                <p className="text-xs text-muted-foreground">
-                  Let users request to join this organization
-                </p>
-              </div>
-              <Switch
-                checked={newOrgForm.allowAccessRequests}
-                onCheckedChange={(checked) =>
-                  setNewOrgForm((prev) => ({ ...prev, allowAccessRequests: checked }))
-                }
-              />
-            </div>
           </div>
           <DialogFooter>
             <Button
@@ -1043,7 +947,6 @@ export function OrganizationsTab() {
                     name: '',
                     companyName: '',
                     managerName: '',
-                    allowAccessRequests: false,
                   });
                   setShowWelcome(true);
                 } catch (error) {
@@ -1125,61 +1028,65 @@ export function OrganizationsTab() {
         </DialogContent>
       </Dialog>
 
-      {/* Rotate Join Code Confirmation */}
+      {/* Rotate Join Link Confirmation */}
       <Dialog
-        open={confirmRotateCode}
+        open={confirmRotateLink}
         onOpenChange={(open) => {
-          if (!open) setConfirmRotateCode(false);
+          if (!open) setConfirmRotateLink(false);
         }}
       >
         <DialogContent className="sm:max-w-md border-border bg-background shadow-2xl">
           <DialogHeader>
             <DialogTitle className="font-playfair text-2xl text-foreground flex items-center gap-2">
               <RefreshCw className="h-5 w-5 text-primary" />
-              Rotate Join Code?
+              Rotate Join Link?
             </DialogTitle>
             <DialogDescription>
-              A new 8-digit code will be generated. The old code will stop working immediately.
-              Anyone trying to join with the old code will be rejected.
+              A new join link will be generated. The old link will stop working immediately. Anyone
+              using the old link will not be able to request access.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setConfirmRotateCode(false)}
-              disabled={rotatingCode}
+              onClick={() => setConfirmRotateLink(false)}
+              disabled={rotatingLink}
             >
               Cancel
             </Button>
             <Button
               onClick={async () => {
                 if (!organization?.id) return;
-                setRotatingCode(true);
+                setRotatingLink(true);
                 try {
                   const res = await fetch(
-                    `/api/organizations/${organization.id}/rotate-join-code`,
+                    `/api/organizations/${organization.id}/rotate-join-link`,
                     { method: 'POST' }
                   );
-                  if (!res.ok) throw new Error('Failed to rotate code');
+                  if (!res.ok) throw new Error('Failed to rotate link');
                   const data = await res.json();
-                  setOrgMetadata((prev) => ({ ...prev, joinCode: data.joinCode }));
-                  setConfirmRotateCode(false);
-                  showToast('Join code rotated successfully', 'success');
+                  setOrgMetadata((prev) => ({
+                    ...prev,
+                    joinToken: data.joinToken,
+                    joinLink: data.joinLink,
+                  }));
+                  setConfirmRotateLink(false);
+                  showToast('Join link rotated successfully', 'success');
                 } catch {
-                  showToast('Failed to rotate join code', 'error');
+                  showToast('Failed to rotate join link', 'error');
                 } finally {
-                  setRotatingCode(false);
+                  setRotatingLink(false);
                 }
               }}
-              disabled={rotatingCode}
+              disabled={rotatingLink}
             >
-              {rotatingCode ? (
+              {rotatingLink ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   Rotating...
                 </>
               ) : (
-                'Rotate Code'
+                'Rotate Link'
               )}
             </Button>
           </DialogFooter>

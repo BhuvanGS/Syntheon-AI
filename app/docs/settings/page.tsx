@@ -33,7 +33,7 @@ export default function SettingsPage() {
           <strong>Organizations</strong> — manage organization details
         </li>
         <li>
-          <strong>Domains</strong> — verify domains for B2B auto-join
+          <strong>Domains</strong> — verify a company email domain for B2B discovery and enrollment
         </li>
         <li>
           <strong>Preferences</strong> — personal preferences

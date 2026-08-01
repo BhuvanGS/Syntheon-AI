@@ -26,8 +26,16 @@ export default function MembersPage() {
         members, their roles, and when they joined. Remove members or change roles.
       </p>
       <p>
-        Within a project, the Members tab (admin only) shows which organization members are part of
-        the project. Add or remove project members.
+        New people join via a shareable{' '}
+        <a href="/docs/organizations" style={{ color: 'rgba(255,255,255,0.75)' }}>
+          join link
+        </a>{' '}
+        (waiting room until approved) or through a{' '}
+        <a href="/docs/domains" style={{ color: 'rgba(255,255,255,0.75)' }}>
+          verified company domain
+        </a>
+        . Within a project, the Members tab (admin only) shows which organization members are part
+        of the project. Add or remove project members.
       </p>
     </>
   );
