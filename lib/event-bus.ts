@@ -1,5 +1,5 @@
-// lib/event-bus.ts — SSE event bus with DynamoDB cross-instance fan-out.
-// Local clients get immediate delivery; other instances poll Dynamo for new events.
+// Cross-instance realtime via Dynamo (TTL). Clients short-poll `/api/events`
+// instead of holding an SSE stream on Lambda.
 
 import { randomUUID } from 'crypto';
 import { SseEventsEntity } from '@/db/entities';
@@ -72,72 +72,16 @@ export type SseEvent =
     }
   | { type: 'ping' };
 
-interface Client {
-  id: string;
-  controller: ReadableStreamDefaultController;
-  userId?: string;
-  orgId?: string;
-  lastEventKey?: string;
-}
+export type BusEventRow = {
+  eventKey: string;
+  type: string;
+  payload: unknown;
+};
 
-const clients = new Map<string, Client>();
-const locallyPublished = new Set<string>();
 const EVENT_TTL_SECONDS = 120;
-const POLL_INTERVAL_MS = 1500;
-
-function formatSse(event: string, data: unknown): string {
-  return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
-}
-
-function sendToClient(client: Client, eventName: string, data: unknown) {
-  try {
-    client.controller.enqueue(new TextEncoder().encode(formatSse(eventName, data)));
-  } catch {
-    clients.delete(client.id);
-  }
-}
-
-function shouldDeliverToClient(client: Client, event: SseEvent, orgId?: string): boolean {
-  if (orgId && client.orgId !== orgId) return false;
-  if (event.type === 'notification_new' && event.payload.userId !== client.userId) return false;
-  return true;
-}
-
-function deliverLocal(event: SseEvent, orgId?: string) {
-  const eventName = event.type;
-  const data = 'payload' in event ? event.payload : {};
-  for (const client of clients.values()) {
-    if (!shouldDeliverToClient(client, event, orgId)) continue;
-    sendToClient(client, eventName, data);
-  }
-}
-
-function deliverLocalToUser(userId: string, event: SseEvent) {
-  const eventName = event.type;
-  const data = 'payload' in event ? event.payload : {};
-  for (const client of clients.values()) {
-    if (client.userId !== userId) continue;
-    if (event.type === 'notification_new' && event.payload.userId !== client.userId) continue;
-    sendToClient(client, eventName, data);
-  }
-}
 
 function userChannel(userId: string) {
   return `user:${userId}`;
-}
-
-function advanceClientCursors(channelId: string, eventKey: string) {
-  for (const client of clients.values()) {
-    if (channelId.startsWith('user:')) {
-      if (client.userId && userChannel(client.userId) === channelId) {
-        if ((client.lastEventKey ?? '') < eventKey) client.lastEventKey = eventKey;
-      }
-      continue;
-    }
-    if (client.orgId === channelId) {
-      if ((client.lastEventKey ?? '') < eventKey) client.lastEventKey = eventKey;
-    }
-  }
 }
 
 async function persistEvent(channelId: string, event: SseEvent): Promise<void> {
@@ -154,61 +98,46 @@ async function persistEvent(channelId: string, event: SseEvent): Promise<void> {
       createdAt,
       expireAt: Math.floor(Date.now() / 1000) + EVENT_TTL_SECONDS,
     }).go();
-    locallyPublished.add(eventKey);
-    advanceClientCursors(channelId, eventKey);
-    setTimeout(() => locallyPublished.delete(eventKey), EVENT_TTL_SECONDS * 1000);
   } catch (err) {
-    console.error('[event-bus] Failed to persist SSE event:', err);
+    console.error('[event-bus] Failed to persist event:', err);
   }
 }
 
-export function addClient(client: Client) {
-  clients.set(client.id, { ...client, lastEventKey: new Date().toISOString() });
+export function broadcastToOrg(orgId: string, event: SseEvent) {
+  if (!orgId) return;
+  void persistEvent(orgId, event);
 }
 
-export function removeClient(id: string) {
-  clients.delete(id);
+export function broadcastToUser(userId: string, event: SseEvent) {
+  if (!userId) return;
+  void persistEvent(userChannel(userId), event);
 }
 
 /** @deprecated Prefer broadcastToOrg / broadcastToUser — global fan-out leaks cross-tenant. */
 export function broadcast(event: SseEvent) {
   if (event.type === 'notification_new') {
     broadcastToUser(event.payload.userId, event);
-    return;
   }
-  // Best-effort local-only delivery without persisting globally
-  deliverLocal(event);
 }
 
-export function broadcastToOrg(orgId: string, event: SseEvent) {
-  if (!orgId) return;
-  deliverLocal(event, orgId);
-  void persistEvent(orgId, event);
-}
-
-export function broadcastToUser(userId: string, event: SseEvent) {
-  if (!userId) return;
-  deliverLocalToUser(userId, event);
-  void persistEvent(userChannel(userId), event);
-}
-
-async function pollChannel(
+export async function listChannelEvents(
   channelId: string,
-  afterKey: string
-): Promise<{ eventKey: string; type: string; payload: unknown }[]> {
+  afterKey: string,
+  limit = 50
+): Promise<BusEventRow[]> {
   try {
     const res = await SseEventsEntity.query
       .primary({ channelId })
       .gt({ eventKey: afterKey })
-      .go({ order: 'asc', limit: 50 });
-    return (res.data ?? []).map((row: any) => {
+      .go({ order: 'asc', limit });
+    return (res.data ?? []).map((row: { eventKey: string; type: string; payload?: string }) => {
       let payload: unknown = {};
       try {
         payload = JSON.parse(row.payload ?? '{}');
       } catch {
         payload = {};
       }
-      return { eventKey: row.eventKey as string, type: row.type as string, payload };
+      return { eventKey: row.eventKey, type: row.type, payload };
     });
   } catch (err) {
     console.error('[event-bus] Poll failed:', err);
@@ -216,51 +145,28 @@ async function pollChannel(
   }
 }
 
-async function pollRemoteEvents() {
-  if (clients.size === 0) return;
+export async function listRealtimeEvents(input: {
+  orgId: string;
+  userId: string;
+  orgAfter: string;
+  userAfter: string;
+}): Promise<{
+  events: Array<BusEventRow & { channel: 'org' | 'user' }>;
+  orgCursor: string;
+  userCursor: string;
+}> {
+  const [orgRows, userRows] = await Promise.all([
+    listChannelEvents(input.orgId, input.orgAfter),
+    listChannelEvents(userChannel(input.userId), input.userAfter),
+  ]);
 
-  const channels = new Set<string>();
-  for (const client of clients.values()) {
-    if (client.orgId) channels.add(client.orgId);
-    if (client.userId) channels.add(userChannel(client.userId));
-  }
+  const events = [
+    ...orgRows.map((row) => ({ ...row, channel: 'org' as const })),
+    ...userRows.map((row) => ({ ...row, channel: 'user' as const })),
+  ].sort((a, b) => a.eventKey.localeCompare(b.eventKey));
 
-  for (const channelId of channels) {
-    const channelClients = [...clients.values()].filter((c) => {
-      if (channelId.startsWith('user:')) {
-        return Boolean(c.userId && userChannel(c.userId) === channelId);
-      }
-      return c.orgId === channelId;
-    });
-    if (channelClients.length === 0) continue;
+  const lastOrg = orgRows[orgRows.length - 1]?.eventKey ?? input.orgAfter;
+  const lastUser = userRows[userRows.length - 1]?.eventKey ?? input.userAfter;
 
-    const minKey = channelClients.reduce(
-      (min, c) => ((c.lastEventKey ?? '') < min ? (c.lastEventKey ?? '') : min),
-      channelClients[0]?.lastEventKey ?? new Date(0).toISOString()
-    );
-
-    const events = await pollChannel(channelId, minKey);
-    for (const event of events) {
-      if (locallyPublished.has(event.eventKey)) {
-        advanceClientCursors(channelId, event.eventKey);
-        continue;
-      }
-      for (const client of channelClients) {
-        if ((client.lastEventKey ?? '') >= event.eventKey) continue;
-        if (
-          event.type === 'notification_new' &&
-          (event.payload as { userId?: string })?.userId !== client.userId
-        ) {
-          client.lastEventKey = event.eventKey;
-          continue;
-        }
-        sendToClient(client, event.type, event.payload);
-        client.lastEventKey = event.eventKey;
-      }
-    }
-  }
+  return { events, orgCursor: lastOrg, userCursor: lastUser };
 }
-
-setInterval(() => {
-  void pollRemoteEvents();
-}, POLL_INTERVAL_MS);

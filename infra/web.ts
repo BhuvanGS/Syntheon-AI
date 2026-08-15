@@ -72,9 +72,6 @@ export function createSite(args: {
       BETA_START_AT: process.env.BETA_START_AT ?? (isProduction ? '2026-07-06T12:20:00.000Z' : ''),
       BETA_DURATION_DAYS: process.env.BETA_DURATION_DAYS ?? '15',
       BETA_ADMIN_EMAILS: process.env.BETA_ADMIN_EMAILS ?? '',
-      // Closes the app host (app.syntheonhub.com); marketing site stays open.
-      // Local/non-prod defaults to open unless explicitly forced.
-      FORCE_BETA_CLOSED: process.env.FORCE_BETA_CLOSED ?? (isProduction ? 'true' : 'false'),
       NEXT_PUBLIC_BETA_MODE:
         process.env.NEXT_PUBLIC_BETA_MODE ??
         process.env.BETA_MODE ??
@@ -85,10 +82,6 @@ export function createSite(args: {
         (isProduction ? '2026-07-06T12:20:00.000Z' : ''),
       NEXT_PUBLIC_BETA_DURATION_DAYS:
         process.env.NEXT_PUBLIC_BETA_DURATION_DAYS ?? process.env.BETA_DURATION_DAYS ?? '15',
-      NEXT_PUBLIC_FORCE_BETA_CLOSED:
-        process.env.NEXT_PUBLIC_FORCE_BETA_CLOSED ??
-        process.env.FORCE_BETA_CLOSED ??
-        (isProduction ? 'true' : 'false'),
     },
   });
 

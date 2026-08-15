@@ -26,7 +26,6 @@ const DISALLOW = [
   '/onboarding',
   '/waitlist',
   '/admin',
-  '/beta-closed',
   '/join',
 ];
 

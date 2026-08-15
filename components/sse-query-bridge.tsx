@@ -9,7 +9,7 @@ import { queryKeys } from '@/lib/query/keys';
 const DEBOUNCE_MS = 300;
 
 /**
- * Bridges SSE realtime events into TanStack Query cache invalidation.
+ * Bridges realtime events into TanStack Query cache invalidation.
  * Debounces bursts so a flurry of ticket updates collapses into one refetch wave.
  */
 export function SseQueryBridge() {

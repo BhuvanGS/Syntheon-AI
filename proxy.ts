@@ -1,6 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse, type NextRequest } from 'next/server';
-import { isAppClosed } from '@/lib/beta';
 
 // Next.js 16+: `proxy.ts` replaces the deprecated `middleware.ts` convention.
 // Clerk still uses `clerkMiddleware` as the default export (see Clerk Next.js quickstart).
@@ -48,7 +47,6 @@ const isAppOnlyRoute = createRouteMatcher([
   '/join(.*)',
   '/waitlist(.*)',
   '/admin(.*)',
-  '/beta-closed',
 ]);
 
 const isApiRoute = createRouteMatcher(['/api/(.*)']);
@@ -57,15 +55,6 @@ const isClerkSessionTask = createRouteMatcher(['/sign-up/tasks(.*)', '/sign-in/t
 
 const isOnboardingRoute = createRouteMatcher(['/onboarding(.*)', '/join(.*)']);
 
-/** Keep infra webhooks alive while the app UI is locked. */
-const isAllowedWhileClosed = createRouteMatcher([
-  '/beta-closed',
-  '/api/bot/webhook(.*)',
-  '/api/deploy/webhook(.*)',
-  '/api/auth/webhook(.*)',
-  '/api/webhooks(.*)',
-]);
-
 // Truly public — no auth required
 const isPublicAppRoute = createRouteMatcher([
   '/sign-in(.*)',
@@ -73,7 +62,6 @@ const isPublicAppRoute = createRouteMatcher([
   '/sso-callback(.*)',
   '/accept-invite(.*)',
   '/pricing',
-  '/beta-closed',
   '/api/bot/create',
   '/api/bot/webhook(.*)',
   '/api/deploy/webhook(.*)',
@@ -96,32 +84,6 @@ const isOrgOptionalApi = createRouteMatcher([
 
 function redirectToOnboarding(request: NextRequest) {
   return NextResponse.redirect(new URL('/onboarding', request.url));
-}
-
-/**
- * Lock the app experience when closed — not the marketing site.
- * - syntheonhub.com / www: never locked
- * - app.syntheonhub.com: app pages + APIs locked (webhooks allowlisted)
- * - localhost / preview: same path split so marketing pages stay reachable
- */
-function lockIfClosed(request: NextRequest, hostname: string) {
-  if (!isAppClosed()) return null;
-  if (isAllowedWhileClosed(request)) return null;
-
-  // Marketing host stays fully open
-  if (isMarketingDomain(hostname)) return null;
-
-  // Dual-domain: marketing paths belong on the marketing host (redirect later)
-  if (isMarketingRoute(request) && !isApiRoute(request)) return null;
-
-  if (isApiRoute(request)) {
-    return NextResponse.json(
-      { error: 'Beta testing is over. The application is temporarily closed.' },
-      { status: 503 }
-    );
-  }
-
-  return NextResponse.redirect(new URL('/beta-closed', request.url));
 }
 
 function requireOrgOrRedirect(
@@ -161,10 +123,6 @@ export default clerkMiddleware(async (auth, request) => {
     url.protocol = 'https:';
     return NextResponse.redirect(url, 308);
   }
-
-  // App lock only — marketing host is never gated
-  const closed = lockIfClosed(request, hostname);
-  if (closed) return closed;
 
   // ─── Subdomain routing logic ──────────────────────────────────
   if (isMarketingDomain(hostname)) {

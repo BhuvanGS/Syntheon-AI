@@ -13,6 +13,10 @@ interface SseContextValue {
 
 const SseContext = createContext<SseContextValue | null>(null);
 
+/** Short JSON polls — avoids holding an OpenNext Lambda for the session. */
+const POLL_MS = 3000;
+const HIDDEN_POLL_MS = 15000;
+
 export function useSse() {
   const ctx = useContext(SseContext);
   if (!ctx) throw new Error('useSse must be used inside SseProvider');
@@ -22,9 +26,10 @@ export function useSse() {
 export function SseProvider({ children }: { children: React.ReactNode }) {
   const { orgId, userId } = useAuth();
   const [connected, setConnected] = useState(false);
-  const sourceRef = useRef<EventSource | null>(null);
   const listenersRef = useRef<Map<string, Set<SseEventCallback>>>(new Map());
-  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const orgCursorRef = useRef('');
+  const userCursorRef = useRef('');
+  const inflightRef = useRef(false);
 
   const on = useCallback((event: string, cb: SseEventCallback) => {
     const listeners = listenersRef.current;
@@ -38,75 +43,81 @@ export function SseProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!orgId || !userId) {
-      sourceRef.current?.close();
-      sourceRef.current = null;
       setConnected(false);
       return;
     }
 
-    function connect() {
-      if (sourceRef.current) {
-        sourceRef.current.close();
-        sourceRef.current = null;
+    orgCursorRef.current = new Date().toISOString();
+    userCursorRef.current = orgCursorRef.current;
+    let cancelled = false;
+
+    const emit = (type: string, payload: Record<string, unknown>) => {
+      if (type === 'notification_new' && payload.userId && payload.userId !== userId) return;
+      listenersRef.current.get(type)?.forEach((cb) => cb(payload));
+    };
+
+    const poll = async () => {
+      if (cancelled || inflightRef.current) return;
+      inflightRef.current = true;
+      try {
+        const params = new URLSearchParams({
+          orgAfter: orgCursorRef.current,
+          userAfter: userCursorRef.current,
+        });
+        const res = await fetch(`/api/events?${params.toString()}`, { cache: 'no-store' });
+        if (cancelled) return;
+        if (!res.ok) {
+          setConnected(false);
+          return;
+        }
+        const data = (await res.json()) as {
+          events?: Array<{ type: string; payload?: unknown; eventKey: string; channel: string }>;
+          orgCursor?: string;
+          userCursor?: string;
+        };
+        setConnected(true);
+        if (typeof data.orgCursor === 'string' && data.orgCursor) {
+          orgCursorRef.current = data.orgCursor;
+        }
+        if (typeof data.userCursor === 'string' && data.userCursor) {
+          userCursorRef.current = data.userCursor;
+        }
+        for (const event of data.events ?? []) {
+          const payload =
+            event.payload && typeof event.payload === 'object'
+              ? (event.payload as Record<string, unknown>)
+              : {};
+          emit(event.type, payload);
+        }
+      } catch {
+        if (!cancelled) setConnected(false);
+      } finally {
+        inflightRef.current = false;
       }
+    };
 
-      const source = new EventSource('/api/events');
-      sourceRef.current = source;
+    void poll();
 
-      source.onopen = () => setConnected(true);
-
-      source.onmessage = (e) => {
-        void e;
-      };
-
-      source.addEventListener('connected', () => setConnected(true));
-
-      const forward = (eventName: string) => (e: Event) => {
-        const data = JSON.parse((e as MessageEvent).data) as Record<string, unknown>;
-        listenersRef.current.get(eventName)?.forEach((cb) => cb(data));
-      };
-
-      source.addEventListener('meeting_ready', forward('meeting_ready'));
-      source.addEventListener('meeting_failed', forward('meeting_failed'));
-      source.addEventListener('ticket_updated', forward('ticket_updated'));
-      source.addEventListener('ticket_created', forward('ticket_created'));
-      source.addEventListener('ticket_deleted', forward('ticket_deleted'));
-      source.addEventListener('project_created', forward('project_created'));
-      source.addEventListener('project_updated', forward('project_updated'));
-      source.addEventListener('project_deleted', forward('project_deleted'));
-      source.addEventListener('notification_new', (e) => {
-        const data = JSON.parse((e as MessageEvent).data) as Record<string, unknown>;
-        // Defense in depth — only surface notifications for this user
-        if (data.userId && data.userId !== userId) return;
-        listenersRef.current.get('notification_new')?.forEach((cb) => cb(data));
-      });
-      source.addEventListener('meeting_status_changed', forward('meeting_status_changed'));
-      source.addEventListener('ping', () => {});
-
-      source.onerror = () => {
-        setConnected(false);
-        source.close();
-        if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = setTimeout(connect, 3000);
-      };
-    }
-
-    connect();
+    let timer: ReturnType<typeof setInterval> | null = null;
+    const arm = () => {
+      if (timer) clearInterval(timer);
+      const ms = document.hidden ? HIDDEN_POLL_MS : POLL_MS;
+      timer = setInterval(() => {
+        void poll();
+      }, ms);
+    };
+    arm();
 
     const handleVisibility = () => {
-      if (!document.hidden) {
-        if (!sourceRef.current || sourceRef.current.readyState === EventSource.CLOSED) {
-          connect();
-        }
-      }
+      arm();
+      if (!document.hidden) void poll();
     };
     document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
+      cancelled = true;
       document.removeEventListener('visibilitychange', handleVisibility);
-      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
-      sourceRef.current?.close();
-      sourceRef.current = null;
+      if (timer) clearInterval(timer);
       setConnected(false);
     };
   }, [orgId, userId]);
