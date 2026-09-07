@@ -3,7 +3,7 @@
 import { BrandLogo } from '@/components/brand-logo';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useOrganizationList, useUser } from '@clerk/nextjs';
+import { useOrganizationList, useSession, useUser } from '@clerk/nextjs';
 import { Building2, Users, ArrowRight, Loader2, Link2, ArrowLeft, Clock } from 'lucide-react';
 import { isPublicDomainEmail, generateOrgNameFromDomain } from '@/lib/org-utils';
 import { extractDomain } from '@/lib/public-domains';
@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { LoadingMessage } from '@/components/loading-message';
 import { motion, AnimatePresence } from 'motion/react';
 import { WelcomeDialog } from '@/components/welcome-dialog';
+import { ChooseOrganizationTask } from '@/components/auth/choose-organization-task';
 
 type Step = 'loading' | 'choose' | 'create' | 'join' | 'join-existing' | 'waiting' | 'error';
 
@@ -27,10 +28,19 @@ type WaitingInfo = {
 };
 
 export default function OnboardingPage() {
-  const { user } = useUser();
-  const { createOrganization, setActive, userMemberships } = useOrganizationList({
+  const { user, isLoaded: userLoaded } = useUser();
+  const { session, isLoaded: sessionLoaded } = useSession();
+  const {
+    isLoaded: orgListLoaded,
+    createOrganization,
+    setActive,
+    userMemberships,
+  } = useOrganizationList({
     userMemberships: true,
   });
+
+  const currentTask = session?.currentTask as { key?: string } | null | undefined;
+  const sessionPending = (session as { status?: string } | null)?.status === 'pending';
 
   const [step, setStep] = useState<Step>('loading');
   const [orgName, setOrgName] = useState('');
@@ -47,8 +57,11 @@ export default function OnboardingPage() {
   const emailDomain = userEmail ? extractDomain(userEmail) : null;
 
   useEffect(() => {
+    if (!userLoaded || !sessionLoaded || !orgListLoaded) return;
     if (!user) return;
     if (showWelcome) return;
+    if (currentTask?.key === 'choose-organization') return;
+    if (sessionPending) return;
 
     // Single membership → activate and enter app
     if (memberships.length === 1 && setActive) {
@@ -83,36 +96,11 @@ export default function OnboardingPage() {
 
     // No memberships yet
     if (isPublicDomain) {
-      let cancelled = false;
-      const startedAt = Date.now();
-      const pollMs = 2000;
-      const maxWaitMs = 15000;
-
-      const tick = async () => {
-        if (cancelled) return;
-        try {
-          await userMemberships.revalidate?.();
-        } catch {
-          // ignore
-        }
-        if (cancelled) return;
-        if (Date.now() - startedAt >= maxWaitMs) {
-          setStep('error');
-        }
-      };
-
-      const interval = setInterval(() => {
-        void tick();
-      }, pollMs);
-      const initial = setTimeout(() => {
-        void tick();
-      }, 1500);
-
-      return () => {
-        cancelled = true;
-        clearInterval(interval);
-        clearTimeout(initial);
-      };
+      setOrgName(
+        (name) => name || (user.firstName ? `${user.firstName}'s Workspace` : 'My Workspace')
+      );
+      setStep((prev) => (prev === 'loading' || prev === 'error' ? 'create' : prev));
+      return;
     }
 
     // B2B: domain check effect handles the step; fallback to choose
@@ -123,6 +111,10 @@ export default function OnboardingPage() {
       return () => clearTimeout(timeout);
     }
   }, [
+    userLoaded,
+    sessionLoaded,
+    orgListLoaded,
+    sessionPending,
     user,
     memberships,
     isPublicDomain,
@@ -231,25 +223,39 @@ export default function OnboardingPage() {
 
   async function handleCreateOrg(e: React.FormEvent) {
     e.preventDefault();
-    if (!orgName.trim() || !createOrganization) return;
+    if (!orgName.trim()) return;
     setLoading(true);
     setError('');
     try {
-      const res = await fetch('/api/organizations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          name: orgName.trim(),
-          domain: emailDomain,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to create organization');
-      await setActive({ organization: data.id });
+      const pendingTask = currentTask?.key === 'choose-organization';
+      let orgId: string | undefined;
+
+      // Client create is required while the session is still pending.
+      if (pendingTask && createOrganization) {
+        const org = await createOrganization({ name: orgName.trim() });
+        orgId = org.id;
+      } else {
+        const res = await fetch('/api/organizations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            name: orgName.trim(),
+            domain: emailDomain,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to create organization');
+        orgId = data.id;
+      }
+
+      if (!orgId || !setActive) {
+        throw new Error('Failed to activate workspace. Please retry.');
+      }
+      await setActive({ organization: orgId });
       setShowWelcome(true);
     } catch (err: any) {
-      setError(err?.message || 'Failed to create organization');
+      setError(err?.message || err?.errors?.[0]?.message || 'Failed to create organization');
     } finally {
       setLoading(false);
     }
@@ -292,6 +298,47 @@ export default function OnboardingPage() {
   async function handleRequestDomainJoin() {
     if (!domainCheck?.orgId) return;
     await submitJoinRequest({ orgId: domainCheck.orgId });
+  }
+
+  if (!sessionLoaded) {
+    return (
+      <div
+        className="min-h-screen flex flex-col items-center justify-center p-6"
+        style={{ backgroundColor: '#0a0a0a' }}
+      >
+        <div className="mb-12 flex items-center gap-2.5">
+          <BrandLogo size={32} />
+          <span className="font-playfair text-xl font-bold text-foreground">Syntheon Hub</span>
+        </div>
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (
+    currentTask?.key === 'choose-organization' ||
+    (sessionPending && currentTask?.key !== 'reset-password' && currentTask?.key !== 'setup-mfa')
+  ) {
+    return <ChooseOrganizationTask />;
+  }
+
+  if (!session) {
+    return <ChooseOrganizationTask />;
+  }
+
+  if (!userLoaded || !orgListLoaded) {
+    return (
+      <div
+        className="min-h-screen flex flex-col items-center justify-center p-6"
+        style={{ backgroundColor: '#0a0a0a' }}
+      >
+        <div className="mb-12 flex items-center gap-2.5">
+          <BrandLogo size={32} />
+          <span className="font-playfair text-xl font-bold text-foreground">Syntheon Hub</span>
+        </div>
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   if (step === 'loading' && !isPublicDomain && domainCheck === null && !waiting) {

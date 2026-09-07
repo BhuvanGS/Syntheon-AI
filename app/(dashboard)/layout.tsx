@@ -4,13 +4,18 @@ import { DashboardProviders } from '@/components/dashboard-providers';
 import { TermsAcceptanceStamp } from '@/components/auth/terms-acceptance-stamp';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { userId, orgId } = await auth();
+  const session = await auth();
+  const sessionStatus = (session as { sessionStatus?: string }).sessionStatus;
 
-  if (!userId) {
+  if (sessionStatus === 'pending') {
+    redirect('/onboarding');
+  }
+
+  if (!session.userId) {
     redirect('/sign-in');
   }
 
-  if (!orgId) {
+  if (!session.orgId) {
     redirect('/onboarding');
   }
 

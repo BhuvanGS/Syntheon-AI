@@ -139,35 +139,30 @@ export default clerkMiddleware(async (auth, request) => {
 
     if (pathname === '/') {
       const session = await auth();
+      const sessionStatus = (session as { sessionStatus?: string }).sessionStatus;
+      if (sessionStatus === 'pending' || (session.userId && !session.orgId)) {
+        return NextResponse.redirect(`${PROTOCOL}://${APP_DOMAIN}/onboarding`);
+      }
       if (session.userId) {
-        if (!session.orgId) {
-          return NextResponse.redirect(`${PROTOCOL}://${APP_DOMAIN}/onboarding`);
-        }
         return NextResponse.redirect(`${PROTOCOL}://${APP_DOMAIN}/dashboard`);
       }
       return NextResponse.redirect(`${PROTOCOL}://${APP_DOMAIN}/sign-in`);
     }
 
-    if (isClerkSessionTask(request)) {
-      const session = await auth();
-      if (session.userId) {
-        if (!session.orgId) {
-          return NextResponse.redirect(new URL('/onboarding', request.url));
-        }
-        return NextResponse.redirect(new URL('/dashboard', request.url));
-      }
-      return NextResponse.redirect(new URL('/sign-up', request.url));
-    }
-
     if (isPublicAppRoute(request)) return NextResponse.next();
 
-    // Onboarding requires auth but not an active org
-    if (isOnboardingRoute(request)) {
-      await auth.protect();
+    // Pending session tasks (choose-organization) must render Clerk's task UI.
+    // Do not treat them as signed-out or bounce them to /onboarding in a loop.
+    if (isClerkSessionTask(request) || isOnboardingRoute(request)) {
       return NextResponse.next();
     }
 
     const session = await auth();
+    const sessionStatus = (session as { sessionStatus?: string }).sessionStatus;
+    if (sessionStatus === 'pending') {
+      return redirectToOnboarding(request);
+    }
+
     if (!session.userId) {
       if (isApiRoute(request)) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -182,25 +177,17 @@ export default clerkMiddleware(async (auth, request) => {
   }
 
   // ─── Fallback for unknown domains (localhost, preview URLs, etc.) ───
-  if (isClerkSessionTask(request)) {
-    const session = await auth();
-    if (session.userId) {
-      if (!session.orgId) {
-        return NextResponse.redirect(new URL('/onboarding', request.url));
-      }
-      return NextResponse.redirect(new URL('/dashboard', request.url));
-    }
-    return NextResponse.redirect(new URL('/sign-up', request.url));
-  }
-
   if (isPublicAppRoute(request) || isMarketingRoute(request)) return NextResponse.next();
 
-  if (isOnboardingRoute(request)) {
-    await auth.protect();
+  if (isClerkSessionTask(request) || isOnboardingRoute(request)) {
     return NextResponse.next();
   }
 
   const session = await auth();
+  const sessionStatus = (session as { sessionStatus?: string }).sessionStatus;
+  if (sessionStatus === 'pending') {
+    return redirectToOnboarding(request);
+  }
 
   if (!session.userId) {
     if (isApiRoute(request)) {
