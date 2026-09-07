@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { randomUUID } from 'crypto';
-import { OrganizationMetadataEntity } from '@/db/entities';
+import { auth } from '@clerk/nextjs/server';
 import { requireAuth } from '@/lib/rbac';
+import { getOrgTrialStatus } from '@/lib/org-trial';
+import { getBetaStatus } from '@/lib/beta';
 
-const TRIAL_DAYS = 15;
-
-export async function GET(req: NextRequest, { params }: { params: Promise<{ orgId: string }> }) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ orgId: string }> }) {
   const ctx = await requireAuth();
   if (!ctx) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -16,41 +15,26 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ orgI
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const res = await OrganizationMetadataEntity.get({ orgId }).go();
+  const { has } = await auth();
+  const isPaid = Boolean(
+    has?.({ plan: 'user_pro' }) ||
+    has?.({ plan: 'user_max' }) ||
+    has?.({ plan: 'org:org_pro' }) ||
+    has?.({ plan: 'org:org_max' })
+  );
 
-  let trialStartedAt: string | undefined;
-
-  if (!res.data) {
-    trialStartedAt = new Date().toISOString();
-    try {
-      await OrganizationMetadataEntity.create({
-        id: randomUUID(),
-        orgId,
-        trialStartedAt,
-      }).go();
-    } catch {
-      // Another request may have created it concurrently — fall through to read
-    }
-  } else {
-    trialStartedAt = res.data.trialStartedAt;
-    if (!trialStartedAt) {
-      trialStartedAt = new Date().toISOString();
-      await OrganizationMetadataEntity.update({ orgId })
-        .set({ trialStartedAt, updatedAt: trialStartedAt })
-        .go();
-    }
-  }
-
-  const startDate = new Date(trialStartedAt);
-  const now = new Date();
-  const elapsedDays = Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-  const daysLeft = Math.max(0, TRIAL_DAYS - elapsedDays);
-  const expired = daysLeft <= 0;
+  const trial = await getOrgTrialStatus(orgId, { ensure: true });
+  const beta = getBetaStatus();
+  const trialClockExpired = trial.expired;
+  const writePaused = !isPaid && !beta.isActive && trialClockExpired;
 
   return NextResponse.json({
-    isTrial: true,
-    daysLeft: expired ? 0 : daysLeft,
-    expired,
-    trialDays: TRIAL_DAYS,
+    isPaid,
+    isTrial: !isPaid && !trialClockExpired,
+    daysLeft: isPaid ? null : trial.daysLeft,
+    expired: writePaused,
+    writePaused,
+    trialDays: trial.trialDays,
+    betaActive: beta.isActive,
   });
 }

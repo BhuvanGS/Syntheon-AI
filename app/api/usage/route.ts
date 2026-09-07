@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { countMeetingsSince, countTicketsForOrg } from '@/lib/db';
-import { PLAN_LIMITS } from '@/lib/billing-limits';
+import { PLAN_LIMITS, assertWritableSubscription } from '@/lib/billing-limits';
 
 export async function GET() {
   try {
@@ -11,6 +11,8 @@ export async function GET() {
 
     const isMax = has?.({ plan: 'user_max' }) || has?.({ plan: 'org:org_max' });
     const isPro = has?.({ plan: 'user_pro' }) || has?.({ plan: 'org:org_pro' });
+    const writeGate = await assertWritableSubscription(orgId, 'usage');
+    const writePaused = Boolean(writeGate && !writeGate.allowed);
     const tier = isMax ? 'max' : isPro ? 'pro' : 'free';
     const limits = PLAN_LIMITS[tier];
 
@@ -30,7 +32,9 @@ export async function GET() {
         meetingsLimit: limits.meetings === Infinity ? null : limits.meetings,
         ticketsUsed,
         ticketsLimit: limits.tickets === Infinity ? null : limits.tickets,
-        plan: tier,
+        plan: writePaused ? 'expired' : tier,
+        writePaused,
+        code: writePaused ? 'trial_expired' : null,
       },
       { headers: { 'Cache-Control': 'private, max-age=30' } }
     );

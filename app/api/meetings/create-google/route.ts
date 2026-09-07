@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getValidGoogleAccessToken } from '@/lib/services/integrations/google';
+import { checkMeetingLimit, limitErrorResponse } from '@/lib/billing-limits';
 
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
     if (!session.userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const meetingCheck = await checkMeetingLimit(session.orgId ?? null, session.userId);
+    if (!meetingCheck.allowed) {
+      return limitErrorResponse(meetingCheck) as NextResponse;
     }
 
     const body = await req.json().catch(() => ({}));

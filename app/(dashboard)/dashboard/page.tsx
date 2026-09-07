@@ -36,6 +36,9 @@ import { toast } from '@/hooks/use-toast';
 import { useUser, useOrganization } from '@clerk/nextjs';
 import { onCommand, emitCommand } from '@/lib/command-events';
 import { FeedbackView } from '@/components/feedback-view';
+import { TrialBanner } from '@/components/trial-banner';
+import { BillingPausedCard } from '@/components/billing-paused';
+import { useBillingAccess } from '@/hooks/use-billing-access';
 import {
   useInvalidateWorkspace,
   useMeetingsQuery,
@@ -107,6 +110,7 @@ function DashboardContent() {
   const searchParams = useSearchParams();
   const { user } = useUser();
   const { membership, organization } = useOrganization();
+  const { writePaused } = useBillingAccess();
   const isAdmin = membership?.role === 'org:admin';
   // Admin-only: load memberships lazily
   const orgQueryConfig = useMemo(
@@ -317,6 +321,7 @@ function DashboardContent() {
             {currentView === 'feedback' && 'Feedback'}
           </h1>
           <div className="flex items-center gap-2">
+            <TrialBanner />
             <NotificationBell onNavigateToTicket={() => handleViewChange('tickets')} />
             <DynamicIslandSearch
               onSelectTicket={(id) => {
@@ -340,13 +345,20 @@ function DashboardContent() {
         <main className="flex-1 overflow-auto">
           {/* ── ADMIN DASHBOARD ── */}
           {currentView === 'dashboard' && isAdmin && (
-            <DashboardGrid
-              organizationName={organization?.name}
-              projects={projects}
-              meetings={meetings}
-              tickets={tickets}
-              orgMembers={orgMembers}
-            />
+            <div className="space-y-4">
+              {writePaused ? (
+                <div className="app-page max-w-5xl pb-0">
+                  <BillingPausedCard />
+                </div>
+              ) : null}
+              <DashboardGrid
+                organizationName={organization?.name}
+                projects={projects}
+                meetings={meetings}
+                tickets={tickets}
+                orgMembers={orgMembers}
+              />
+            </div>
           )}
 
           {/* ── MEMBER DASHBOARD ── */}
@@ -359,6 +371,7 @@ function DashboardContent() {
                   Your work at a glance — tickets, deadlines, and projects.
                 </p>
               </header>
+              {writePaused ? <BillingPausedCard /> : null}
 
               <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
                 {[
@@ -794,6 +807,11 @@ function DashboardContent() {
                 <p className="text-sm text-muted-foreground mt-0.5">
                   Visual timeline of every ticket across your projects
                 </p>
+                {writePaused ? (
+                  <div className="mt-3">
+                    <BillingPausedCard />
+                  </div>
+                ) : null}
               </div>
               <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[1fr_240px] gap-4">
                 <div className="min-h-[600px] max-h-[calc(100vh-200px)] overflow-hidden rounded-2xl border border-border">
@@ -901,6 +919,7 @@ function DashboardContent() {
                 <h2 className="app-title mt-2">Meetings</h2>
                 <p className="app-subtitle">All your recorded meeting sessions.</p>
               </header>
+              {writePaused ? <BillingPausedCard className="mb-4" /> : null}
               <MeetingCards
                 onSelectMeeting={handleMeetingSelect}
                 onCreateTicket={handleMeetingTicketCreate}

@@ -5,6 +5,8 @@ import { AlertTriangle, Sparkles, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTrialQuery, useUsageQuery } from '@/hooks/use-workspace-queries';
+import { isPaidFromHas } from '@/hooks/use-billing-access';
+import { BillingUpgradeCtas } from '@/components/billing-paused';
 
 const FREE_MEETING_LIMIT = 10;
 
@@ -12,11 +14,7 @@ export function TrialBanner() {
   const { organization, isLoaded: orgLoaded } = useOrganization();
   const { isLoaded: authLoaded, has } = useAuth();
 
-  const isPaid =
-    has?.({ plan: 'user_pro' }) ||
-    has?.({ plan: 'user_max' }) ||
-    has?.({ plan: 'org:org_pro' }) ||
-    has?.({ plan: 'org:org_max' });
+  const isPaid = isPaidFromHas(has);
   const currentPlan =
     has?.({ plan: 'user_max' }) || has?.({ plan: 'org:org_max' })
       ? 'Max'
@@ -38,19 +36,21 @@ export function TrialBanner() {
   const days = trial?.daysLeft ?? 0;
   const totalDays = trial?.trialDays ?? 7;
   const isTrial = trial?.isTrial && !trial.expired;
-  const isUrgent = isTrial && days <= 7;
+  const isUrgent = isTrial && days <= 2;
+  const writePaused = Boolean(trial?.writePaused ?? trial?.expired);
 
-  if (trial?.expired) {
+  if (writePaused) {
     return (
       <AnimatePresence>
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-destructive/20 bg-destructive/10 text-xs font-medium text-destructive"
+          className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive"
         >
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
           <span>Trial expired</span>
+          <BillingUpgradeCtas compact />
         </motion.div>
       </AnimatePresence>
     );
@@ -63,7 +63,7 @@ export function TrialBanner() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
         className={cn(
-          'flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium',
+          'flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium',
           currentPlan === 'Max'
             ? 'border-purple-500/30 bg-purple-500/10 text-purple-600'
             : 'border-blue-500/30 bg-blue-500/10 text-blue-600'
@@ -85,7 +85,7 @@ export function TrialBanner() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
         className={cn(
-          'flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium',
+          'flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium',
           isUrgent
             ? 'border-primary/30 bg-primary/10 text-primary'
             : 'border-primary/20 bg-primary/5 text-primary'
@@ -99,7 +99,7 @@ export function TrialBanner() {
         <span>
           {days === 0 ? 'Trial ends today' : days === 1 ? '1 day left' : `${days} days left`}
         </span>
-        <div className="hidden sm:block w-16 h-1.5 rounded-full bg-muted overflow-hidden">
+        <div className="hidden h-1.5 w-16 overflow-hidden rounded-full bg-muted sm:block">
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${progress}%` }}
@@ -121,7 +121,7 @@ export function TrialBanner() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
         className={cn(
-          'flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium',
+          'flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium',
           isExhausted
             ? 'border-destructive/20 bg-destructive/10 text-destructive'
             : 'border-border bg-muted/40 text-muted-foreground'
@@ -133,6 +133,7 @@ export function TrialBanner() {
         <span>
           {isExhausted ? '0 meetings left' : `${remaining}/${usage.meetingsLimit} meetings left`}
         </span>
+        {isExhausted ? <BillingUpgradeCtas compact /> : null}
       </motion.div>
     );
   }

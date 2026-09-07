@@ -15,6 +15,8 @@ import {
   useUpdateTicketRanksMutation,
 } from '@/hooks/use-ticket-mutations';
 import { usePrefetchTicketPanels } from '@/hooks/use-ticket-panel-queries';
+import { useBillingAccess } from '@/hooks/use-billing-access';
+import { BillingPausedCard } from '@/components/billing-paused';
 
 const ORG_QUERY_CONFIG = {
   memberships: { infinite: true, pageSize: 50 },
@@ -256,6 +258,7 @@ export function ProjectsWorkspace({
   const { membership, memberships, invitations } = useOrganization(ORG_QUERY_CONFIG);
   const { user } = useUser();
   const { has } = useAuth();
+  const { writePaused } = useBillingAccess();
   const isAdmin = membership?.role === 'org:admin';
   const { labels, labelMap, invalidate: invalidateLabels } = useLabels();
   const prefetchTicketPanels = usePrefetchTicketPanels();
@@ -1586,12 +1589,13 @@ export function ProjectsWorkspace({
             <p className="text-muted-foreground mb-8 max-w-sm">
               Create your first project to start organizing meetings and tickets.
             </p>
-            {isAdmin && (
+            {isAdmin && !writePaused && (
               <Button onClick={onCreateProject} className="rounded-full gap-2 px-6">
                 <Plus className="h-4 w-4" />
                 Create project
               </Button>
             )}
+            {isAdmin && writePaused ? <BillingPausedCard className="mt-6 max-w-lg" /> : null}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -1922,12 +1926,17 @@ export function ProjectsWorkspace({
                     Calendar
                   </button>
                 </div>
-                <Button onClick={() => setIsMeetingDialogOpen(true)} className="rounded-full gap-2">
+                <Button
+                  onClick={() => setIsMeetingDialogOpen(true)}
+                  disabled={writePaused}
+                  className="rounded-full gap-2"
+                >
                   <Video className="h-4 w-4" />
                   New meeting
                 </Button>
               </div>
             </div>
+            {writePaused ? <BillingPausedCard /> : null}
             {meetingsViewMode === 'calendar' ? (
               <MeetingCalendar
                 meetings={projectMeetings.map((m) => ({
@@ -1948,7 +1957,11 @@ export function ProjectsWorkspace({
                 <p className="text-sm text-muted-foreground mb-5">
                   Start a meeting to begin collecting tickets.
                 </p>
-                <Button onClick={() => setIsMeetingDialogOpen(true)} className="rounded-full gap-2">
+                <Button
+                  onClick={() => setIsMeetingDialogOpen(true)}
+                  disabled={writePaused}
+                  className="rounded-full gap-2"
+                >
                   <Video className="h-4 w-4" />
                   Start first meeting
                 </Button>

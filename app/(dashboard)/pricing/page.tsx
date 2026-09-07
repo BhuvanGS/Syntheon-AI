@@ -1,18 +1,20 @@
 'use client';
 
-import { useState } from 'react';
-import { useAuth, useOrganization } from '@clerk/nextjs';
+import { PricingTable, useAuth, useOrganization } from '@clerk/nextjs';
 import { ArrowLeft, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { LoadingMessage } from '@/components/loading-message';
+import { useBillingAccess } from '@/hooks/use-billing-access';
 
 type BillingType = 'user' | 'organization';
 
 export default function PricingPage() {
   const { isLoaded, has } = useAuth();
   const { organization } = useOrganization();
+  const { isAdmin, writePaused } = useBillingAccess();
   const router = useRouter();
 
   const isOrg = Boolean(organization);
@@ -42,9 +44,8 @@ export default function PricingPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-5xl mx-auto px-6 py-10">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+      <div className="mx-auto max-w-5xl px-6 py-10">
+        <div className="mb-6 flex items-center justify-between">
           <Button
             variant="ghost"
             size="sm"
@@ -56,51 +57,57 @@ export default function PricingPage() {
           </Button>
         </div>
 
-        {/* Current plan banner */}
         <div
-          className={cn('rounded-xl border p-4 mb-8 flex items-center justify-between', planColor)}
+          className={cn('mb-8 flex items-center justify-between rounded-xl border p-4', planColor)}
         >
           <div className="flex items-center gap-3">
             <Sparkles className="h-5 w-5 shrink-0" />
             <div>
               <p className="text-xs uppercase tracking-wide opacity-70">Your current plan</p>
-              <p className="text-lg font-bold">{currentPlan}</p>
+              <p className="text-lg font-bold">
+                {writePaused && currentPlan === 'Free' ? 'Trial expired' : currentPlan}
+              </p>
             </div>
           </div>
           {currentPlan === 'Free' && (
             <div className="text-right">
-              <p className="text-xs opacity-70">10 meetings/mo · 3 projects · 50 tickets</p>
-              <p className="text-xs font-medium mt-0.5">All features free during beta</p>
+              <p className="text-xs opacity-70">
+                Meetings, tickets, and projects pause after trial
+              </p>
+              <p className="mt-0.5 text-xs font-medium">Upgrade to turn the bot back on</p>
             </div>
           )}
           {currentPlan === 'Pro' && (
             <div className="text-right">
               <p className="text-xs opacity-70">Unlimited meetings · 10 projects · 500 tickets</p>
-              <p className="text-xs font-medium mt-0.5">Dependencies · API access</p>
+              <p className="mt-0.5 text-xs font-medium">Dependencies · API access</p>
             </div>
           )}
           {currentPlan === 'Max' && (
             <div className="text-right">
               <p className="text-xs opacity-70">Everything unlimited</p>
-              <p className="text-xs font-medium mt-0.5">Analytics · Sprint-stones · Roadmap</p>
+              <p className="mt-0.5 text-xs font-medium">Analytics · Sprint-stones · Roadmap</p>
             </div>
           )}
         </div>
 
-        {/* Title */}
-        <div className="text-center mb-10">
+        <div className="mb-10 text-center">
           <h1 className="font-playfair text-4xl font-bold text-foreground">Choose your plan</h1>
-          <p className="text-muted-foreground mt-2">All plans are free during beta.</p>
+          <p className="mt-2 text-muted-foreground">
+            {isAdmin
+              ? 'Subscribe to resume meetings, ticket extraction, and new projects.'
+              : 'Only an organization admin can change the workspace plan.'}
+          </p>
         </div>
 
-        {/* Billing type toggle (only show if user is in an org) */}
-        {isOrg && (
-          <div className="flex justify-center mb-8">
+        {isOrg && isAdmin && (
+          <div className="mb-8 flex justify-center">
             <div className="inline-flex items-center rounded-lg border border-border bg-muted/40 p-0.5">
               <button
+                type="button"
                 onClick={() => setBillingType('organization')}
                 className={cn(
-                  'px-4 py-2 text-sm font-medium rounded-md transition-all',
+                  'rounded-md px-4 py-2 text-sm font-medium transition-all',
                   billingType === 'organization'
                     ? 'bg-background text-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-foreground'
@@ -109,9 +116,10 @@ export default function PricingPage() {
                 Organization plans
               </button>
               <button
+                type="button"
                 onClick={() => setBillingType('user')}
                 className={cn(
-                  'px-4 py-2 text-sm font-medium rounded-md transition-all',
+                  'rounded-md px-4 py-2 text-sm font-medium transition-all',
                   billingType === 'user'
                     ? 'bg-background text-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-foreground'
@@ -123,17 +131,19 @@ export default function PricingPage() {
           </div>
         )}
 
-        {/* Beta notice instead of subscribe buttons */}
-        <div className="flex justify-center">
-          <div className="rounded-xl border border-border bg-muted/30 p-8 text-center max-w-md">
-            <Sparkles className="h-8 w-8 text-primary mx-auto mb-3" />
-            <p className="text-sm font-medium text-foreground">You're in the beta</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              All features are unlocked during the beta period. Paid subscriptions will be available
-              after beta ends.
+        {isAdmin ? (
+          <PricingTable for={isOrg ? billingType : 'user'} />
+        ) : (
+          <div className="mx-auto max-w-md rounded-xl border border-border bg-muted/30 p-8 text-center">
+            <p className="text-sm font-medium text-foreground">Ask an admin to upgrade</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Members cannot start checkout. Existing tickets and meetings stay visible.
             </p>
+            <Button asChild className="mt-4">
+              <a href="/settings?tab=billing">Open billing</a>
+            </Button>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

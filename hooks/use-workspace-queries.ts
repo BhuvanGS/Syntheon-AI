@@ -223,13 +223,18 @@ export function useInvalidateWorkspace() {
 export type UsageSummary = {
   meetingsUsed: number;
   meetingsLimit: number;
+  writePaused?: boolean;
+  plan?: string;
 };
 
 export type TrialStatus = {
   isTrial: boolean;
   daysLeft: number | null;
   expired: boolean;
+  writePaused?: boolean;
+  isPaid?: boolean;
   trialDays?: number;
+  betaActive?: boolean;
 };
 
 export type IntegrationsStatus = {

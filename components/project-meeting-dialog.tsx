@@ -11,9 +11,11 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Video, Sparkles, Link2, CalendarDays, AlertCircle, Settings, Lock } from 'lucide-react';
+import { Video, Sparkles, Link2, CalendarDays, AlertCircle, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIntegrationsStatusQuery } from '@/hooks/use-workspace-queries';
+import { PlanLimitBlock } from '@/components/billing-paused';
+import { useBillingAccess } from '@/hooks/use-billing-access';
 
 type Mode = 'paste' | 'create';
 
@@ -38,7 +40,12 @@ export function ProjectMeetingDialog({
   const [hasJoined, setHasJoined] = useState(false);
   const [createdMeetUrl, setCreatedMeetUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [limitReached, setLimitReached] = useState<{ used: number; limit: number } | null>(null);
+  const [limitReached, setLimitReached] = useState<{
+    used: number;
+    limit: number;
+    code?: string;
+  } | null>(null);
+  const { writePaused } = useBillingAccess();
 
   const { data: integrationsStatus, isLoading: checkingGoogle } = useIntegrationsStatusQuery(open);
   const googleConnected = Boolean(integrationsStatus?.googleConnected);
@@ -75,7 +82,7 @@ export function ProjectMeetingDialog({
 
       if (res.status === 403) {
         const data = await res.json().catch(() => ({}));
-        setLimitReached({ used: data.used ?? 0, limit: data.limit ?? 2 });
+        setLimitReached({ used: data.used ?? 0, limit: data.limit ?? 2, code: data.code });
         return;
       }
 
@@ -135,7 +142,11 @@ export function ProjectMeetingDialog({
         });
         if (botRes.status === 403) {
           const botData = await botRes.json().catch(() => ({}));
-          setLimitReached({ used: botData.used ?? 0, limit: botData.limit ?? 2 });
+          setLimitReached({
+            used: botData.used ?? 0,
+            limit: botData.limit ?? 2,
+            code: botData.code,
+          });
           return;
         }
       } catch {
@@ -170,31 +181,13 @@ export function ProjectMeetingDialog({
         </DialogHeader>
 
         {/* Limit reached */}
-        {limitReached ? (
-          <div className="space-y-4 rounded-2xl border border-primary/10 bg-primary/5 p-6 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <Lock className="h-7 w-7" />
-            </div>
-            <div className="space-y-2">
-              <p className="font-playfair text-2xl text-foreground">
-                You've hit the beta testing limit
-              </p>
-              <p className="text-sm text-muted-foreground">
-                You've used all {limitReached.limit} meetings during the beta. Limits will be lifted
-                after the beta period ends.
-              </p>
-            </div>
-            <div className="flex items-center justify-center gap-2 pt-2">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => onOpenChange(false)}
-                className="rounded-full"
-              >
-                Maybe later
-              </Button>
-            </div>
-          </div>
+        {limitReached || writePaused ? (
+          <PlanLimitBlock
+            code={limitReached?.code ?? (writePaused ? 'trial_expired' : undefined)}
+            resource="meetings"
+            limit={limitReached?.limit ?? 0}
+            onDismiss={() => onOpenChange(false)}
+          />
         ) : !hasJoined ? (
           <div className="flex items-center rounded-full border border-border bg-card p-0.5 w-fit">
             <button

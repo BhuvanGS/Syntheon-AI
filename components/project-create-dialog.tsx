@@ -13,7 +13,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { FolderPlus, Lock, X } from 'lucide-react';
+import { FolderPlus, X } from 'lucide-react';
+import { PlanLimitBlock } from '@/components/billing-paused';
+import { useBillingAccess } from '@/hooks/use-billing-access';
 
 export interface BoardColumn {
   id: string;
@@ -37,7 +39,9 @@ export function ProjectCreateDialog({ open, onOpenChange, onCreate }: ProjectCre
     resource: string;
     used: number;
     limit: number;
+    code?: string;
   } | null>(null);
+  const { writePaused } = useBillingAccess();
 
   useEffect(() => {
     if (!open) return;
@@ -65,8 +69,8 @@ export function ProjectCreateDialog({ open, onOpenChange, onCreate }: ProjectCre
       onOpenChange(false);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to create project';
-      if (msg.includes('limit')) {
-        setLimitReached({ resource: 'projects', used: 0, limit: 1 });
+      if (msg.includes('limit') || msg.toLowerCase().includes('trial')) {
+        setLimitReached({ resource: 'projects', used: 0, limit: 1, code: 'trial_expired' });
       } else {
         setError(msg);
       }
@@ -81,31 +85,13 @@ export function ProjectCreateDialog({ open, onOpenChange, onCreate }: ProjectCre
         className="sm:max-w-2xl border-border bg-background shadow-2xl"
         showCloseButton={false}
       >
-        {limitReached ? (
-          <div className="space-y-4 rounded-2xl border border-primary/10 bg-primary/5 p-6 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <Lock className="h-7 w-7" />
-            </div>
-            <div className="space-y-2">
-              <p className="font-playfair text-2xl text-foreground">
-                You've hit the beta testing limit
-              </p>
-              <p className="text-sm text-muted-foreground">
-                You've used all {limitReached.limit} {limitReached.resource} during the beta. Limits
-                will be lifted after the beta period ends.
-              </p>
-            </div>
-            <div className="flex items-center justify-center gap-2 pt-2">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => onOpenChange(false)}
-                className="rounded-full"
-              >
-                Maybe later
-              </Button>
-            </div>
-          </div>
+        {limitReached || writePaused ? (
+          <PlanLimitBlock
+            code={limitReached?.code ?? (writePaused ? 'trial_expired' : undefined)}
+            resource={limitReached?.resource ?? 'projects'}
+            limit={limitReached?.limit ?? 0}
+            onDismiss={() => onOpenChange(false)}
+          />
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <DialogHeader>

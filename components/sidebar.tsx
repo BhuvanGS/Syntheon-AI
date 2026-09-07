@@ -27,6 +27,7 @@ import { useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { apiGet, unwrapPaginated } from '@/lib/query/fetcher';
 import { queryKeys } from '@/lib/query/keys';
+import { useBillingAccess } from '@/hooks/use-billing-access';
 
 interface SidebarProps {
   currentView?: string;
@@ -110,6 +111,7 @@ export function Sidebar({
   const [collapsed, setCollapsed] = useState(false);
 
   const isAdmin = membership?.role === 'org:admin';
+  const { writePaused } = useBillingAccess();
   const navItems = isAdmin ? ADMIN_NAV : MEMBER_NAV;
 
   const prefetchProject = useCallback(
@@ -221,7 +223,7 @@ export function Sidebar({
           )}
         >
           {!collapsed && <span className="app-eyebrow">Projects</span>}
-          {isAdmin && (!collapsed ? projects.length > 0 : true) && (
+          {isAdmin && !writePaused && (!collapsed ? projects.length > 0 : true) && (
             <button
               onClick={onCreateProject}
               className="rounded-md p-0.5 text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
@@ -235,15 +237,21 @@ export function Sidebar({
         <ScrollArea className="-mx-1 max-h-[35vh] px-1">
           {projects.length === 0 ? (
             isAdmin && !collapsed ? (
-              <div className="mx-1">
-                <button
-                  onClick={onCreateProject}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border px-3 py-2.5 text-[12px] font-medium text-muted-foreground transition-colors hover:border-foreground/20 hover:bg-white/[0.03] hover:text-foreground"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  Create project
-                </button>
-              </div>
+              writePaused ? (
+                <p className="px-2 py-4 text-center text-[12px] text-muted-foreground">
+                  Trial expired — upgrade to add projects
+                </p>
+              ) : (
+                <div className="mx-1">
+                  <button
+                    onClick={onCreateProject}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border px-3 py-2.5 text-[12px] font-medium text-muted-foreground transition-colors hover:border-foreground/20 hover:bg-white/[0.03] hover:text-foreground"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Create project
+                  </button>
+                </div>
+              )
             ) : collapsed ? null : (
               <p className="px-2 py-4 text-center text-[12px] text-muted-foreground">
                 No projects yet

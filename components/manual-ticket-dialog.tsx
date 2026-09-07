@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { CirclePlus, Sparkles, Lock } from 'lucide-react';
+import { CirclePlus, Sparkles } from 'lucide-react';
 import { AssigneePicker, type AssigneeValue } from '@/components/assignee-picker';
 import { TicketMetadataEditor } from '@/components/ticket-metadata-editor';
 import {
@@ -28,6 +28,8 @@ import {
   type TicketEstimate,
 } from '@/components/ticket-badges';
 import { useLabels } from '@/hooks/use-labels';
+import { PlanLimitBlock } from '@/components/billing-paused';
+import { useBillingAccess } from '@/hooks/use-billing-access';
 
 interface MeetingOption {
   id: string;
@@ -71,7 +73,9 @@ export function ManualTicketDialog({
     resource: string;
     used: number;
     limit: number;
+    code?: string;
   } | null>(null);
+  const { writePaused } = useBillingAccess();
   const wasOpenRef = useRef(false);
   const submittingRef = useRef(false);
 
@@ -147,6 +151,7 @@ export function ManualTicketDialog({
           resource: data.resource ?? 'tickets',
           used: data.used ?? 0,
           limit: data.limit ?? 25,
+          code: data.code,
         });
         return;
       }
@@ -184,31 +189,13 @@ export function ManualTicketDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {limitReached ? (
-          <div className="space-y-4 rounded-2xl border border-primary/10 bg-primary/5 p-6 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <Lock className="h-7 w-7" />
-            </div>
-            <div className="space-y-2">
-              <p className="font-playfair text-2xl text-foreground">
-                You've hit the beta testing limit
-              </p>
-              <p className="text-sm text-muted-foreground">
-                You've used all {limitReached.limit} {limitReached.resource} during the beta. Limits
-                will be lifted after the beta period ends.
-              </p>
-            </div>
-            <div className="flex items-center justify-center gap-2 pt-2">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => onOpenChange(false)}
-                className="rounded-full"
-              >
-                Maybe later
-              </Button>
-            </div>
-          </div>
+        {limitReached || writePaused ? (
+          <PlanLimitBlock
+            code={limitReached?.code ?? (writePaused ? 'trial_expired' : undefined)}
+            resource={limitReached?.resource ?? 'tickets'}
+            limit={limitReached?.limit ?? 0}
+            onDismiss={() => onOpenChange(false)}
+          />
         ) : (
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="app-field">

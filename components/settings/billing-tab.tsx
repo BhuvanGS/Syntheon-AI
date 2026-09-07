@@ -1,9 +1,11 @@
 'use client';
 
-import { useAuth, useOrganization } from '@clerk/nextjs';
+import { PricingTable, useAuth, useOrganization } from '@clerk/nextjs';
 import { Check } from 'lucide-react';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { LoadingMessage } from '@/components/loading-message';
+import { Button } from '@/components/ui/button';
 import {
   SettingsBody,
   SettingsCallout,
@@ -13,18 +15,16 @@ import {
   SettingsSectionLabel,
 } from '@/components/settings/settings-chrome';
 import { cn } from '@/lib/utils';
+import { useBillingAccess } from '@/hooks/use-billing-access';
 
 const PLAN_FEATURES: Record<string, string[]> = {
-  Beta: ['10 meetings/mo', '50 tickets', '3 projects', 'All features unlocked'],
-  Free: ['2 meetings/mo', '25 tickets', '1 project', 'Basic board'],
+  Free: ['7-day trial', 'Then paused until upgrade', 'Existing work stays readable'],
   Pro: ['Unlimited meetings', '500 tickets', '10 projects', 'Dependencies', 'API access'],
   Max: ['Everything unlimited', 'Analytics', 'Sprint-stones', 'Roadmap', 'Priority support'],
-  Enterprise: ['SSO', 'Audit logs', 'Data residency', 'Dedicated support'],
 };
 
 const PLAN_LIMITS: Record<string, { meetings: number; tickets: number; projects: number }> = {
-  Beta: { meetings: 10, tickets: 50, projects: 3 },
-  Free: { meetings: 2, tickets: 25, projects: 1 },
+  Free: { meetings: 10, tickets: 50, projects: 3 },
   Pro: { meetings: Infinity, tickets: 500, projects: 10 },
   Max: { meetings: Infinity, tickets: Infinity, projects: Infinity },
 };
@@ -33,6 +33,7 @@ interface UsageData {
   meetingsUsed: number;
   ticketsUsed: number;
   projectsUsed: number;
+  writePaused?: boolean;
 }
 
 function UsageBar({ label, used, limit }: { label: string; used: number; limit: number }) {
@@ -71,37 +72,19 @@ function UsageBar({ label, used, limit }: { label: string; used: number; limit: 
   );
 }
 
-function isBetaActiveClient(): boolean {
-  const enabled = ['1', 'true', 'yes', 'on'].includes(
-    (process.env.NEXT_PUBLIC_BETA_MODE ?? '').trim().toLowerCase()
-  );
-  if (!enabled) return false;
-  const startAtStr = process.env.NEXT_PUBLIC_BETA_START_AT;
-  if (!startAtStr) return false;
-  const startAt = new Date(startAtStr);
-  if (Number.isNaN(startAt.getTime())) return false;
-  const durationRaw = process.env.NEXT_PUBLIC_BETA_DURATION_DAYS;
-  const durationDays = Number.parseInt(durationRaw ?? '', 10) || 15;
-  const endAt = new Date(startAt.getTime() + durationDays * 24 * 60 * 60 * 1000);
-  const now = new Date();
-  return now >= startAt && now < endAt;
-}
-
 export function BillingTab() {
   const { isLoaded, has } = useAuth();
   const { organization } = useOrganization();
+  const { isAdmin, writePaused, isPaid } = useBillingAccess();
   const [usage, setUsage] = useState<UsageData | null>(null);
 
-  const betaActive = isBetaActiveClient();
-
-  const clerkPlan =
+  const currentPlan =
     has?.({ plan: 'user_max' }) || has?.({ plan: 'org:org_max' })
       ? 'Max'
       : has?.({ plan: 'user_pro' }) || has?.({ plan: 'org:org_pro' })
         ? 'Pro'
         : 'Free';
 
-  const currentPlan = betaActive ? 'Beta' : clerkPlan;
   const limits = PLAN_LIMITS[currentPlan] ?? PLAN_LIMITS.Free;
 
   useEffect(() => {
@@ -112,14 +95,17 @@ export function BillingTab() {
       try {
         const [usageRes, projectsRes] = await Promise.all([
           fetch('/api/usage').then((r) => r.json().catch(() => ({}))),
-          fetch('/api/projects?limit=100').then((r) => r.json().catch(() => ({ projects: [] }))),
+          fetch('/api/projects').then((r) => r.json().catch(() => [])),
         ]);
+
+        const projectList = Array.isArray(projectsRes) ? projectsRes : (projectsRes.projects ?? []);
 
         if (!cancelled) {
           setUsage({
             meetingsUsed: usageRes.meetingsUsed ?? 0,
             ticketsUsed: usageRes.ticketsUsed ?? 0,
-            projectsUsed: (projectsRes.projects ?? []).length,
+            projectsUsed: projectList.length,
+            writePaused: Boolean(usageRes.writePaused),
           });
         }
       } catch {
@@ -141,6 +127,7 @@ export function BillingTab() {
   }
 
   const isOrg = Boolean(organization);
+  const paused = writePaused || Boolean(usage?.writePaused);
 
   return (
     <SettingsBody>
@@ -151,13 +138,35 @@ export function BillingTab() {
         }
       />
 
+      {paused && (
+        <SettingsCallout tone="danger">
+          <p className="font-medium text-foreground">Trial expired — paid actions are paused</p>
+          <p className="mt-1">
+            {isAdmin
+              ? 'The meeting bot, new tickets, and new projects stay off until you subscribe. Existing meetings and tickets remain readable.'
+              : 'Ask an organization admin to upgrade. You can still open existing meetings and tickets.'}
+          </p>
+          {isAdmin ? (
+            <Button asChild className="mt-3">
+              <Link href="/pricing">Choose a plan</Link>
+            </Button>
+          ) : null}
+        </SettingsCallout>
+      )}
+
       <SettingsPanel>
         <SettingsPanelHead
           title="Current plan"
-          hint={isOrg ? 'Billed per seat for this organization' : 'Personal subscription'}
+          hint={
+            paused
+              ? 'Trial ended'
+              : isOrg
+                ? 'Billed per seat for this organization'
+                : 'Personal subscription'
+          }
           action={
             <span className="rounded-md border border-border bg-white/[0.04] px-2.5 py-1 text-[12px] font-semibold tracking-[-0.01em] text-foreground">
-              {currentPlan}
+              {paused && !isPaid ? 'Expired' : currentPlan}
             </span>
           }
         />
@@ -181,10 +190,24 @@ export function BillingTab() {
         )}
       </SettingsPanel>
 
-      <SettingsCallout>
-        <p className="font-medium text-foreground">All features unlocked during beta</p>
-        <p className="mt-1">Paid subscriptions will open after the beta period ends.</p>
-      </SettingsCallout>
+      {isAdmin ? (
+        <SettingsPanel>
+          <SettingsPanelHead
+            title="Upgrade"
+            hint={isOrg ? 'Organization plans apply to every member' : 'Personal checkout'}
+          />
+          <div className="mt-4">
+            <PricingTable for={isOrg ? 'organization' : 'user'} />
+          </div>
+        </SettingsPanel>
+      ) : (
+        <SettingsCallout>
+          <p className="font-medium text-foreground">Only admins can change the plan</p>
+          <p className="mt-1">
+            Contact an organization admin if you need meetings, tickets, or projects unlocked.
+          </p>
+        </SettingsCallout>
+      )}
     </SettingsBody>
   );
 }
