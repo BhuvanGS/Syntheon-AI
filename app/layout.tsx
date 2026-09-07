@@ -19,6 +19,7 @@ import {
   SOFTWARE_JSON_LD,
   WEBSITE_JSON_LD,
 } from '@/components/seo/json-ld';
+import { HOME_KEYWORDS, HOME_SEO, SITE_ORIGIN } from '@/lib/site-seo';
 import './globals.css';
 
 const _geist = Geist({
@@ -70,47 +71,35 @@ const _bricolage = Bricolage_Grotesque({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://syntheonhub.com'),
+  metadataBase: new URL(SITE_ORIGIN),
   title: {
-    default: 'Syntheon Hub — Turn meetings into tickets, automatically',
+    default: HOME_SEO.title,
     template: '%s | Syntheon Hub',
   },
-  description:
-    'Syntheon Hub joins your meetings, extracts action items, and creates organized tickets automatically. AI-powered project management that works while you talk.',
-  keywords: [
-    'meeting notes',
-    'ticket management',
-    'project management',
-    'AI meeting assistant',
-    'automatic ticket creation',
-    'sprint planning',
-    'kanban board',
-    'team productivity',
-  ],
+  description: HOME_SEO.description,
+  keywords: [...HOME_KEYWORDS],
   authors: [{ name: 'Syntheon Hub' }],
   creator: 'Syntheon Hub',
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://syntheonhub.com',
+    url: SITE_ORIGIN,
     siteName: 'Syntheon Hub',
-    title: 'Syntheon Hub — Turn meetings into tickets, automatically',
-    description:
-      'Syntheon Hub joins your meetings, extracts action items, and creates organized tickets automatically. AI-powered project management that works while you talk.',
+    title: HOME_SEO.title,
+    description: HOME_SEO.description,
     images: [
       {
         url: '/og-image.png',
         width: 1200,
         height: 630,
-        alt: 'Syntheon Hub — Turn meetings into tickets, automatically',
+        alt: HOME_SEO.ogAlt,
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Syntheon Hub — Turn meetings into tickets, automatically',
-    description:
-      'AI-powered project management that joins your meetings and creates tickets automatically.',
+    title: HOME_SEO.title,
+    description: HOME_SEO.description,
     images: ['/og-image.png'],
   },
   robots: {
@@ -134,7 +123,7 @@ export const metadata: Metadata = {
   },
   manifest: '/site.webmanifest',
   alternates: {
-    canonical: 'https://syntheonhub.com',
+    canonical: SITE_ORIGIN,
   },
 };
 

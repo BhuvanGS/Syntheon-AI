@@ -1,15 +1,20 @@
 import type { Metadata } from 'next';
+import { HOW_IT_WORKS_SEO, SITE_ORIGIN } from '@/lib/site-seo';
 
 export const metadata: Metadata = {
-  title: 'How It Works',
-  description:
-    'Syntheon Hub joins your meetings, extracts action items, and creates organized tickets automatically. See the full workflow in action.',
-  alternates: { canonical: 'https://syntheonhub.com/how-it-works' },
+  title: HOW_IT_WORKS_SEO.title,
+  description: HOW_IT_WORKS_SEO.description,
+  alternates: { canonical: `${SITE_ORIGIN}/how-it-works` },
   openGraph: {
-    title: 'How Syntheon Hub Works — Meetings to tickets, automatically',
-    description:
-      'AI joins your meetings, extracts action items, creates tickets. See the workflow.',
-    url: 'https://syntheonhub.com/how-it-works',
+    title: `${HOW_IT_WORKS_SEO.title} | Syntheon Hub`,
+    description: HOW_IT_WORKS_SEO.description,
+    url: `${SITE_ORIGIN}/how-it-works`,
+    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: HOW_IT_WORKS_SEO.title }],
+  },
+  twitter: {
+    title: `${HOW_IT_WORKS_SEO.title} | Syntheon Hub`,
+    description: HOW_IT_WORKS_SEO.description,
+    images: ['/og-image.png'],
   },
 };
 

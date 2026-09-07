@@ -13,7 +13,7 @@ export const ORGANIZATION_JSON_LD = {
   logo: `${BASE}/syntheon-logo.png`,
   image: `${BASE}/og-image.png`,
   description:
-    'Syntheon Hub joins your meetings, extracts action items, and creates organized tickets automatically — with Kanban, dependencies, sprints, join links, and verified company domains.',
+    'Syntheon Hub sends a meeting bot into Google Meet, Zoom, or Microsoft Teams and turns the call into structured tickets on a board — no Chrome extension.',
   email: 'support@syntheonhub.com',
   foundingDate: '2025',
   founder: {
@@ -48,7 +48,7 @@ export const SOFTWARE_JSON_LD = {
   image: `${BASE}/og-image.png`,
   screenshot: `${BASE}/og-image.png`,
   description:
-    'AI-powered project management that joins Google Meet, Zoom, and Microsoft Teams meetings, transcribes them, and extracts structured tickets onto a Kanban board with dependencies, sprints, and analytics.',
+    'Meeting bot for Google Meet, Zoom, and Microsoft Teams. Transcripts become titled, assigned tickets with dependencies. No browser extension. 7-day free trial.',
   offers: {
     '@type': 'Offer',
     price: '0',
@@ -83,7 +83,8 @@ export const WEBSITE_JSON_LD = {
   '@type': 'WebSite',
   name: 'Syntheon Hub',
   url: BASE,
-  description: 'Turn meetings into tickets automatically with AI-powered project management.',
+  description:
+    'Meetings become tickets before the call ends. Bot joins Meet, Zoom, or Teams — no extension.',
   publisher: {
     '@type': 'Organization',
     name: 'Syntheon Hub',
@@ -91,11 +92,6 @@ export const WEBSITE_JSON_LD = {
       '@type': 'ImageObject',
       url: `${BASE}/syntheon-logo.png`,
     },
-  },
-  potentialAction: {
-    '@type': 'SearchAction',
-    target: `${BASE}/docs/{search_term_string}`,
-    'query-input': 'required name=search_term_string',
   },
 };
 

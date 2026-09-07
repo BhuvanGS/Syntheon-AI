@@ -1,7 +1,7 @@
 {
   "name": "Syntheon Hub",
   "short_name": "Syntheon Hub",
-  "description": "Turn meetings into tickets, automatically.",
+  "description": "Meetings become tickets before the call ends.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000000",

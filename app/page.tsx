@@ -165,20 +165,28 @@ function Hero() {
           >
             Stop wasting your best hours after the meeting ends.
           </p>
-          <TrueFocus
-            sentence="Speak. Shape. Ship."
-            blurAmount={5}
-            borderColor="rgba(255,255,255,0.85)"
-            animationDuration={0.5}
-            pauseBetweenAnimations={1}
+          <h1
             style={{
-              ...display,
-              fontSize: 'clamp(2.75rem, 8vw, 5.5rem)',
+              margin: 0,
+              font: 'inherit',
               fontWeight: 700,
-              lineHeight: 1.02,
-              color: '#fff',
             }}
-          />
+          >
+            <TrueFocus
+              sentence="Speak. Shape. Ship."
+              blurAmount={5}
+              borderColor="rgba(255,255,255,0.85)"
+              animationDuration={0.5}
+              pauseBetweenAnimations={1}
+              style={{
+                ...display,
+                fontSize: 'clamp(2.75rem, 8vw, 5.5rem)',
+                fontWeight: 700,
+                lineHeight: 1.02,
+                color: '#fff',
+              }}
+            />
+          </h1>
           <p
             style={{
               margin: '1.35rem auto 0',
@@ -188,7 +196,8 @@ function Hero() {
               color: 'rgba(255,255,255,0.55)',
             }}
           >
-            Leave the cleanup behind. Commitments crystallize into tickets before the call hangs up.
+            Bot joins Google Meet, Zoom, or Teams. Tickets land on the board before hang-up. No
+            extension.
           </p>
           <div
             style={{

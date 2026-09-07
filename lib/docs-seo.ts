@@ -1,12 +1,11 @@
 import type { Metadata } from 'next';
-
-const BASE = 'https://syntheonhub.com';
+import { DOCS_INDEX_SEO, SITE_ORIGIN } from '@/lib/site-seo';
 
 export const DOC_SEO: Record<string, { title: string; description: string }> = {
   'getting-started': {
     title: 'Getting Started',
     description:
-      'Create an account, start a meeting, and turn transcripts into structured tickets with Syntheon Hub.',
+      'Create a Syntheon Hub account, connect a meeting, and review the first extracted tickets — setup walkthrough.',
   },
   trial: {
     title: 'Free Trial',
@@ -34,7 +33,7 @@ export const DOC_SEO: Record<string, { title: string; description: string }> = {
   meetings: {
     title: 'Meetings',
     description:
-      'Send the Syntheon Hub bot to Google Meet, Zoom, or Teams and capture action items automatically.',
+      'How to send the Syntheon Hub bot to a Google Meet, Zoom, or Teams call and what happens after it leaves.',
   },
   'meeting-states': {
     title: 'Meeting States',
@@ -47,7 +46,8 @@ export const DOC_SEO: Record<string, { title: string; description: string }> = {
   },
   'ticket-extraction': {
     title: 'AI Ticket Extraction',
-    description: 'How Syntheon Hub AI turns meeting speech into implementation-ready tickets.',
+    description:
+      'How Syntheon Hub reads a meeting transcript and fills ticket title, description, priority, labels, and dependencies.',
   },
   'ticket-fields': {
     title: 'Ticket Fields',
@@ -176,12 +176,10 @@ export const DOC_SEO: Record<string, { title: string; description: string }> = {
 
 export function docsMetadata(slug?: string): Metadata {
   const entry = slug ? DOC_SEO[slug] : undefined;
-  const title = entry?.title ?? 'Docs';
-  const description =
-    entry?.description ??
-    'Syntheon Hub documentation — meetings, tickets, boards, dependencies, sprints, and more.';
+  const title = entry?.title ?? DOCS_INDEX_SEO.title;
+  const description = entry?.description ?? DOCS_INDEX_SEO.description;
   const path = slug ? `/docs/${slug}` : '/docs';
-  const url = `${BASE}${path}`;
+  const url = `${SITE_ORIGIN}${path}`;
 
   return {
     title,
