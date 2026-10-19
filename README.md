@@ -162,16 +162,13 @@ AI-powered project management that turns meeting conversations into tickets, the
 
 ### Deployment
 
-```bash
-# Deploy to AWS via SST
-AWS_PROFILE=your_profile npx sst deploy
+**Production (recommended):** push to `main`. GitHub Actions runs [Deploy Production](.github/workflows/deploy-production.yml) (SST → AWS).
 
-# Deploy to production stage
-AWS_PROFILE=your_profile npx sst deploy --stage production
+**Before the first deploy after adding a new SST secret**, add the matching value under **Settings → Secrets and variables → Actions**. Required repo secrets include `GROQ_API_KEY`, `CLERK_SECRET_KEY`, `TOKEN_ENCRYPTION_KEY`, `PRIVACY_DELETION_SECRET`, and the other vars listed in `.github/scripts/ci-set-sst-secrets.sh`.
 
-# Remove deployment
-AWS_PROFILE=your_profile npx sst remove
-```
+**Staging:** open a PR to `main` or run [Deploy Staging](.github/workflows/deploy-staging.yml) manually (`workflow_dispatch`).
+
+**Local SST (optional):** `AWS_PROFILE=your_profile pnpm exec sst deploy --stage production`
 
 ## Project Structure
 

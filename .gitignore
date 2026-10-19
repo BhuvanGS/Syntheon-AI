@@ -16,7 +16,7 @@ ideas.txt
 sql/
 *.tsbuildinfo
 *.bak
-scripts/
+/scripts/
 .agents
 DB-changes.txt
 .cursor
