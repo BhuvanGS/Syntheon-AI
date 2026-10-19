@@ -86,6 +86,12 @@ function redirectToOnboarding(request: NextRequest) {
   return NextResponse.redirect(new URL('/onboarding', request.url));
 }
 
+/** App host pages should not compete with syntheonhub.com in search results. */
+function withAppNoIndex(response: NextResponse) {
+  response.headers.set('X-Robots-Tag', 'noindex, follow');
+  return response;
+}
+
 function requireOrgOrRedirect(
   request: NextRequest,
   session: { userId: string | null | undefined; orgId: string | null | undefined }
@@ -149,12 +155,12 @@ export default clerkMiddleware(async (auth, request) => {
       return NextResponse.redirect(`${PROTOCOL}://${APP_DOMAIN}/sign-in`);
     }
 
-    if (isPublicAppRoute(request)) return NextResponse.next();
+    if (isPublicAppRoute(request)) return withAppNoIndex(NextResponse.next());
 
     // Pending session tasks (choose-organization) must render Clerk's task UI.
     // Do not treat them as signed-out or bounce them to /onboarding in a loop.
     if (isClerkSessionTask(request) || isOnboardingRoute(request)) {
-      return NextResponse.next();
+      return withAppNoIndex(NextResponse.next());
     }
 
     const session = await auth();
@@ -173,7 +179,7 @@ export default clerkMiddleware(async (auth, request) => {
     const orgGate = requireOrgOrRedirect(request, session);
     if (orgGate) return orgGate;
 
-    return NextResponse.next();
+    return withAppNoIndex(NextResponse.next());
   }
 
   // ─── Fallback for unknown domains (localhost, preview URLs, etc.) ───

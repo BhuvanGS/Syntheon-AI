@@ -46,10 +46,10 @@ export function TrialBanner() {
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive"
+          className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-1.5 text-xs font-medium text-foreground"
         >
-          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-          <span>Trial expired</span>
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <span>Plan limit hit — consider upgrading</span>
           <BillingUpgradeCtas compact />
         </motion.div>
       </AnimatePresence>

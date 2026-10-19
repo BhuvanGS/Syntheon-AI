@@ -62,14 +62,10 @@ function Dropdown({
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors w-full justify-between ${
-          active
-            ? 'bg-primary/10 text-primary border border-primary/20'
-            : 'text-muted-foreground hover:text-foreground hover:bg-muted/60 border border-transparent'
-        }`}
+        className="flex h-10 w-full items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 text-sm text-foreground transition-colors hover:bg-white/[0.03]"
       >
-        {label}
-        <ChevronDown className="h-4 w-4 shrink-0" />
+        <span className="truncate text-left">{label}</span>
+        <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-50" />
       </button>
       {active && onClear && (
         <button
@@ -253,14 +249,10 @@ export function FilterDialog({
                           onChange({ ...filters, priority: p });
                           close();
                         }}
-                        className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted/60 transition-colors ${
-                          filters.priority === p ? 'text-primary font-medium' : 'text-foreground'
+                        className={`w-full px-3 py-2 text-left text-sm hover:bg-white/[0.06] transition-colors ${
+                          filters.priority === p ? 'text-foreground' : 'text-muted-foreground'
                         }`}
                       >
-                        <span
-                          className="inline-block w-2.5 h-2.5 rounded-full"
-                          style={{ backgroundColor: PRIORITY_CONFIG[p].color }}
-                        />
                         {PRIORITY_CONFIG[p].label}
                       </button>
                     ))}
@@ -276,25 +268,20 @@ export function FilterDialog({
               >
                 {(close) => (
                   <>
-                    {(Object.keys(TYPE_CONFIG) as TicketType[]).map((t) => {
-                      const config = TYPE_CONFIG[t];
-                      const Icon = config.icon;
-                      return (
-                        <button
-                          key={t}
-                          onClick={() => {
-                            onChange({ ...filters, type: t });
-                            close();
-                          }}
-                          className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted/60 transition-colors ${
-                            filters.type === t ? 'text-primary font-medium' : 'text-foreground'
-                          }`}
-                        >
-                          <Icon className="h-4 w-4" style={{ color: config.color }} />
-                          {config.label}
-                        </button>
-                      );
-                    })}
+                    {(Object.keys(TYPE_CONFIG) as TicketType[]).map((t) => (
+                      <button
+                        key={t}
+                        onClick={() => {
+                          onChange({ ...filters, type: t });
+                          close();
+                        }}
+                        className={`w-full px-3 py-2 text-left text-sm hover:bg-white/[0.06] transition-colors ${
+                          filters.type === t ? 'text-foreground' : 'text-muted-foreground'
+                        }`}
+                      >
+                        {TYPE_CONFIG[t].label}
+                      </button>
+                    ))}
                   </>
                 )}
               </Dropdown>
@@ -314,13 +301,10 @@ export function FilterDialog({
                           onChange({ ...filters, estimate: e });
                           close();
                         }}
-                        className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted/60 transition-colors ${
-                          filters.estimate === e ? 'text-primary font-medium' : 'text-foreground'
+                        className={`w-full px-3 py-2 text-left text-sm hover:bg-white/[0.06] transition-colors ${
+                          filters.estimate === e ? 'text-foreground' : 'text-muted-foreground'
                         }`}
                       >
-                        <span className="text-[10px] tracking-tighter">
-                          {ESTIMATE_CONFIG[e].symbol}
-                        </span>
                         {ESTIMATE_CONFIG[e].label}
                       </button>
                     ))}
@@ -354,16 +338,11 @@ export function FilterDialog({
                               onChange({ ...filters, labelIds: [...filters.labelIds, label.id] });
                             }
                           }}
-                          className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted/60 transition-colors ${
-                            selected ? 'text-primary font-medium' : 'text-foreground'
+                          className={`w-full px-3 py-2 text-left text-sm hover:bg-white/[0.06] transition-colors ${
+                            selected ? 'text-foreground' : 'text-muted-foreground'
                           }`}
                         >
-                          <span
-                            className="inline-block w-2.5 h-2.5 rounded-full"
-                            style={{ backgroundColor: label.color }}
-                          />
                           {label.name}
-                          {selected && <X className="h-3.5 w-3.5 ml-auto" />}
                         </button>
                       );
                     })}

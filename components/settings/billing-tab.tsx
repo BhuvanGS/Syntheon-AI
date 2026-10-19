@@ -140,11 +140,11 @@ export function BillingTab() {
 
       {paused && (
         <SettingsCallout tone="danger">
-          <p className="font-medium text-foreground">Trial expired — paid actions are paused</p>
+          <p className="font-medium text-foreground">Plan limit hit</p>
           <p className="mt-1">
             {isAdmin
-              ? 'The meeting bot, new tickets, and new projects stay off until you subscribe. Existing meetings and tickets remain readable.'
-              : 'Ask an organization admin to upgrade. You can still open existing meetings and tickets.'}
+              ? 'Consider upgrading to keep starting meetings and creating tickets or projects.'
+              : 'Ask an organization admin about upgrading. Existing meetings and tickets stay available.'}
           </p>
           {isAdmin ? (
             <Button asChild className="mt-3">
@@ -166,7 +166,7 @@ export function BillingTab() {
           }
           action={
             <span className="rounded-md border border-border bg-white/[0.04] px-2.5 py-1 text-[12px] font-semibold tracking-[-0.01em] text-foreground">
-              {paused && !isPaid ? 'Expired' : currentPlan}
+              {paused && !isPaid ? 'Limit hit' : currentPlan}
             </span>
           }
         />

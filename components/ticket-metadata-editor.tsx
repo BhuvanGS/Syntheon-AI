@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { ChevronDown, X, Plus, Tag } from 'lucide-react';
+import { ChevronDown, X, Plus } from 'lucide-react';
 import {
   PRIORITY_CONFIG,
   TYPE_CONFIG,
@@ -40,7 +40,7 @@ function FieldDropdown({
   children,
 }: {
   label: string;
-  current: React.ReactNode;
+  current: string;
   children: (close: () => void) => React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -56,20 +56,20 @@ function FieldDropdown({
   }, [open]);
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative app-field">
+      <div className="app-field-head">
+        <span className="app-field-label">{label}</span>
+      </div>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-border bg-background text-sm hover:bg-white/[0.04] transition-colors h-10"
+        className="flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 text-sm text-foreground outline-none transition-colors hover:bg-white/[0.03]"
       >
-        <span className="text-muted-foreground text-xs">{label}</span>
-        <span className="flex items-center gap-1.5 text-foreground text-xs font-medium">
-          {current}
-          <ChevronDown className="h-3 w-3 text-muted-foreground" />
-        </span>
+        <span className="truncate text-left">{current}</span>
+        <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-50" />
       </button>
       {open && (
-        <div className="absolute top-full left-0 right-0 mt-1.5 z-50 bg-popover border border-border rounded-xl shadow-lg py-1 max-h-[280px] overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 mt-1 z-50 rounded-lg border border-border bg-popover py-1 shadow-md max-h-[280px] overflow-y-auto">
           {children(() => setOpen(false))}
         </div>
       )}
@@ -113,18 +113,7 @@ export function TicketMetadataEditor({
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {/* Priority */}
-        <FieldDropdown
-          label="Priority"
-          current={
-            <span className="flex items-center gap-1.5">
-              <span
-                className="inline-block w-2.5 h-2.5 rounded-full"
-                style={{ backgroundColor: PRIORITY_CONFIG[priority].color }}
-              />
-              {PRIORITY_CONFIG[priority].label}
-            </span>
-          }
-        >
+        <FieldDropdown label="Priority" current={PRIORITY_CONFIG[priority].label}>
           {(close) => (
             <>
               {(Object.keys(PRIORITY_CONFIG) as TicketPriority[]).map((p) => (
@@ -135,14 +124,10 @@ export function TicketMetadataEditor({
                     onPriorityChange(p);
                     close();
                   }}
-                  className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted/60 transition-colors ${
-                    priority === p ? 'text-primary font-medium' : 'text-foreground'
+                  className={`w-full px-3 py-2 text-left text-sm transition-colors hover:bg-white/[0.06] ${
+                    priority === p ? 'text-foreground' : 'text-muted-foreground'
                   }`}
                 >
-                  <span
-                    className="inline-block w-2.5 h-2.5 rounded-full"
-                    style={{ backgroundColor: PRIORITY_CONFIG[p].color }}
-                  />
                   {PRIORITY_CONFIG[p].label}
                 </button>
               ))}
@@ -150,58 +135,29 @@ export function TicketMetadataEditor({
           )}
         </FieldDropdown>
 
-        {/* Type */}
-        <FieldDropdown
-          label="Type"
-          current={
-            <span className="flex items-center gap-1.5">
-              {(() => {
-                const config = TYPE_CONFIG[type];
-                const Icon = config.icon;
-                return <Icon className="h-3.5 w-3.5" style={{ color: config.color }} />;
-              })()}
-              {TYPE_CONFIG[type].label}
-            </span>
-          }
-        >
+        <FieldDropdown label="Type" current={TYPE_CONFIG[type].label}>
           {(close) => (
             <>
-              {(Object.keys(TYPE_CONFIG) as TicketType[]).map((t) => {
-                const config = TYPE_CONFIG[t];
-                const Icon = config.icon;
-                return (
-                  <button
-                    type="button"
-                    key={t}
-                    onClick={() => {
-                      onTypeChange(t);
-                      close();
-                    }}
-                    className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted/60 transition-colors ${
-                      type === t ? 'text-primary font-medium' : 'text-foreground'
-                    }`}
-                  >
-                    <Icon className="h-3.5 w-3.5" style={{ color: config.color }} />
-                    {config.label}
-                  </button>
-                );
-              })}
+              {(Object.keys(TYPE_CONFIG) as TicketType[]).map((t) => (
+                <button
+                  type="button"
+                  key={t}
+                  onClick={() => {
+                    onTypeChange(t);
+                    close();
+                  }}
+                  className={`w-full px-3 py-2 text-left text-sm transition-colors hover:bg-white/[0.06] ${
+                    type === t ? 'text-foreground' : 'text-muted-foreground'
+                  }`}
+                >
+                  {TYPE_CONFIG[t].label}
+                </button>
+              ))}
             </>
           )}
         </FieldDropdown>
 
-        {/* Estimate */}
-        <FieldDropdown
-          label="Estimate"
-          current={
-            <span className="flex items-center gap-1.5">
-              <span className="text-[8px] tracking-tighter">
-                {ESTIMATE_CONFIG[estimate].symbol}
-              </span>
-              {ESTIMATE_CONFIG[estimate].label}
-            </span>
-          }
-        >
+        <FieldDropdown label="Estimate" current={ESTIMATE_CONFIG[estimate].label}>
           {(close) => (
             <>
               {(Object.keys(ESTIMATE_CONFIG) as TicketEstimate[]).map((e) => (
@@ -212,11 +168,10 @@ export function TicketMetadataEditor({
                     onEstimateChange(e);
                     close();
                   }}
-                  className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted/60 transition-colors ${
-                    estimate === e ? 'text-primary font-medium' : 'text-foreground'
+                  className={`w-full px-3 py-2 text-left text-sm transition-colors hover:bg-white/[0.06] ${
+                    estimate === e ? 'text-foreground' : 'text-muted-foreground'
                   }`}
                 >
-                  <span className="text-[8px] tracking-tighter">{ESTIMATE_CONFIG[e].symbol}</span>
                   {ESTIMATE_CONFIG[e].label}
                 </button>
               ))}
@@ -228,8 +183,8 @@ export function TicketMetadataEditor({
       {/* Time tracking */}
       {onTimeEstimateChange && onTimeSpentChange && (
         <div className="grid grid-cols-3 gap-3">
-          <div className="flex h-10 items-center justify-between gap-2 rounded-xl border border-border bg-background px-3.5">
-            <span className="shrink-0 text-[11px] text-muted-foreground">Estimate (h)</span>
+          <div className="flex h-10 items-center justify-between gap-2 rounded-lg border border-border bg-background px-3">
+            <span className="shrink-0 text-sm text-muted-foreground">Estimate (h)</span>
             <input
               type="number"
               min={0}
@@ -240,8 +195,8 @@ export function TicketMetadataEditor({
               placeholder="0"
             />
           </div>
-          <div className="flex h-10 items-center justify-between gap-2 rounded-xl border border-border bg-background px-3.5">
-            <span className="shrink-0 text-[11px] text-muted-foreground">Spent (h)</span>
+          <div className="flex h-10 items-center justify-between gap-2 rounded-lg border border-border bg-background px-3">
+            <span className="shrink-0 text-sm text-muted-foreground">Spent (h)</span>
             <input
               type="number"
               min={0}
@@ -252,8 +207,8 @@ export function TicketMetadataEditor({
               placeholder="0"
             />
           </div>
-          <div className="flex h-10 items-center justify-between gap-2 rounded-xl border border-border bg-background px-3.5">
-            <span className="shrink-0 text-[11px] text-muted-foreground">Remaining</span>
+          <div className="flex h-10 items-center justify-between gap-2 rounded-lg border border-border bg-background px-3">
+            <span className="shrink-0 text-sm text-muted-foreground">Remaining</span>
             <span
               className={`text-xs font-medium tabular-nums ${
                 (timeEstimate ?? 0) - (timeSpent ?? 0) < 0 ? 'text-red-400' : 'text-foreground'
@@ -271,8 +226,7 @@ export function TicketMetadataEditor({
 
       {/* Labels */}
       <div ref={labelRef} className="relative">
-        <div className="flex min-h-10 items-center gap-2 flex-wrap rounded-xl border border-border bg-background px-3.5 py-2">
-          <Tag className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        <div className="flex min-h-10 items-center gap-2 flex-wrap rounded-lg border border-border bg-background px-3 py-2">
           {selectedLabels.map((label) => (
             <span
               key={label.id}

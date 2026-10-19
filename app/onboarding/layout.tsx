@@ -1,5 +1,9 @@
+import type { Metadata } from 'next';
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
+import { noindexMetadata } from '@/lib/seo-robots';
+
+export const metadata: Metadata = noindexMetadata('Onboarding');
 
 export default async function OnboardingLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();

@@ -1149,7 +1149,7 @@ export function TicketsBoard({ onSelectMeeting, onSelectProject, onSaved }: Tick
                             }))
                           }
                         >
-                          <SelectTrigger className="h-10 w-full rounded-xl border-border bg-background dark:bg-background hover:bg-white/[0.04] dark:hover:bg-white/[0.04]">
+                          <SelectTrigger>
                             <SelectValue placeholder="Select status" />
                           </SelectTrigger>
                           <SelectContent>

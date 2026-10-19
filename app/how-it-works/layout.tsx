@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
+import { ROBOTS_INDEX } from '@/lib/seo-robots';
 import { HOW_IT_WORKS_SEO, SITE_ORIGIN } from '@/lib/site-seo';
 
 export const metadata: Metadata = {
   title: HOW_IT_WORKS_SEO.title,
   description: HOW_IT_WORKS_SEO.description,
+  robots: ROBOTS_INDEX,
   alternates: { canonical: `${SITE_ORIGIN}/how-it-works` },
   openGraph: {
     title: `${HOW_IT_WORKS_SEO.title} | Syntheon Hub`,

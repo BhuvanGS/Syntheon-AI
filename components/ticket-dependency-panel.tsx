@@ -390,7 +390,7 @@ export function TicketDependencyPanel({
                   setEditDep((p) => ({ ...p, dependency_type: value as DependencyType }))
                 }
               >
-                <SelectTrigger className="text-xs h-8">
+                <SelectTrigger size="sm">
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -410,7 +410,7 @@ export function TicketDependencyPanel({
                   setEditDep((p) => ({ ...p, strength: value as DependencyStrength }))
                 }
               >
-                <SelectTrigger className="text-xs h-8">
+                <SelectTrigger size="sm">
                   <SelectValue placeholder="Select strength" />
                 </SelectTrigger>
                 <SelectContent>
@@ -480,7 +480,7 @@ export function TicketDependencyPanel({
                     setNewDep((p) => ({ ...p, depends_on_ticket_id: value }))
                   }
                 >
-                  <SelectTrigger className="text-xs h-8">
+                  <SelectTrigger size="sm">
                     <SelectValue placeholder="Select ticket…" />
                   </SelectTrigger>
                   <SelectContent>
@@ -505,7 +505,7 @@ export function TicketDependencyPanel({
                       }))
                     }
                   >
-                    <SelectTrigger className="text-xs h-8">
+                    <SelectTrigger size="sm">
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -525,7 +525,7 @@ export function TicketDependencyPanel({
                       setNewDep((p) => ({ ...p, strength: value as DependencyStrength }))
                     }
                   >
-                    <SelectTrigger className="text-xs h-8">
+                    <SelectTrigger size="sm">
                       <SelectValue placeholder="Select strength" />
                     </SelectTrigger>
                     <SelectContent>

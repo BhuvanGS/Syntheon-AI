@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { ROBOTS_INDEX } from '@/lib/seo-robots';
 import { DOCS_INDEX_SEO, SITE_ORIGIN } from '@/lib/site-seo';
 
 export const DOC_SEO: Record<string, { title: string; description: string }> = {
@@ -184,6 +185,7 @@ export function docsMetadata(slug?: string): Metadata {
   return {
     title,
     description,
+    robots: ROBOTS_INDEX,
     alternates: { canonical: url },
     openGraph: {
       title: `${title} | Syntheon Hub Docs`,

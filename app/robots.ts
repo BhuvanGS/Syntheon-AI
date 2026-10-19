@@ -15,6 +15,7 @@ const AI_BOTS = [
 
 const DISALLOW = [
   '/api/',
+  '/promo',
   '/dashboard',
   '/project',
   '/settings',

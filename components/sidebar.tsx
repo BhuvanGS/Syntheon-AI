@@ -239,7 +239,7 @@ export function Sidebar({
             isAdmin && !collapsed ? (
               writePaused ? (
                 <p className="px-2 py-4 text-center text-[12px] text-muted-foreground">
-                  Trial expired — upgrade to add projects
+                  Plan limit hit — upgrade to add projects
                 </p>
               ) : (
                 <div className="mx-1">

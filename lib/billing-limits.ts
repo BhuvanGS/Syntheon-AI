@@ -237,9 +237,9 @@ export function limitErrorResponse(check: LimitCheck): Response {
   if (check.code === 'trial_expired' || check.plan === 'expired') {
     return Response.json(
       {
-        error: 'Trial expired',
+        error: 'Plan limit reached',
         message:
-          'Your trial has ended. Upgrade to keep starting meetings, creating tickets, and adding projects. Existing work stays available.',
+          'This plan’s limit was hit. Consider upgrading to keep starting meetings, creating tickets, and adding projects.',
         used: check.used,
         limit: check.limit,
         resource: check.resource,

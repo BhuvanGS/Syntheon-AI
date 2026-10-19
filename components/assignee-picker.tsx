@@ -1,16 +1,16 @@
 'use client';
 
 import { useOrganization, useUser } from '@clerk/nextjs';
-import { UserCircle2, Pencil } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
+import { selectTriggerClassName } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 
 export interface AssigneeValue {
   displayName: string;
@@ -35,7 +35,6 @@ export function AssigneePicker({ value, onChange, disabled }: AssigneePickerProp
     return {
       userId: m.publicUserData?.userId ?? '',
       displayName,
-      imageUrl: m.publicUserData?.imageUrl,
     };
   });
 
@@ -47,52 +46,19 @@ export function AssigneePicker({ value, onChange, disabled }: AssigneePickerProp
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild disabled={disabled}>
-        <Button
-          variant="outline"
-          className="w-full justify-start gap-2 font-normal text-sm rounded-xl h-10 bg-background border-border hover:bg-white/[0.04]"
-        >
-          <UserCircle2 className="h-4 w-4 text-muted-foreground shrink-0" />
+        <button type="button" className={cn(selectTriggerClassName, 'text-left')}>
           <span className="truncate">{value ? value.displayName : 'Unassigned'}</span>
-          {value && (
-            <span
-              role="button"
-              tabIndex={0}
-              className="ml-auto text-muted-foreground hover:text-foreground"
-              onClick={(e) => {
-                e.stopPropagation();
-                onChange(null);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.stopPropagation();
-                  onChange(null);
-                }
-              }}
-            >
-              <Pencil className="h-3.5 w-3.5" />
-            </span>
-          )}
-        </Button>
+          <ChevronDown />
+        </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-56">
-        <DropdownMenuLabel className="text-xs text-muted-foreground">Assign to</DropdownMenuLabel>
-
+      <DropdownMenuContent align="start" className="w-[var(--radix-dropdown-menu-trigger-width)]">
         {user && (
           <>
             <DropdownMenuItem
               onClick={() => onChange({ userId: user.id, displayName: myDisplayName })}
-              className="gap-2 cursor-pointer"
+              className="cursor-pointer"
             >
-              {user.imageUrl ? (
-                <img
-                  src={user.imageUrl}
-                  alt={myDisplayName}
-                  className="h-5 w-5 rounded-full object-cover"
-                />
-              ) : (
-                <UserCircle2 className="h-5 w-5 text-muted-foreground" />
-              )}
-              <span className="truncate">{myDisplayName}</span>
+              {myDisplayName}
               <span className="ml-auto text-xs text-muted-foreground">Me</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
@@ -105,17 +71,8 @@ export function AssigneePicker({ value, onChange, disabled }: AssigneePickerProp
             <DropdownMenuItem
               key={m.userId}
               onClick={() => onChange({ userId: m.userId, displayName: m.displayName })}
-              className="gap-2 cursor-pointer"
+              className="cursor-pointer"
             >
-              {m.imageUrl ? (
-                <img
-                  src={m.imageUrl}
-                  alt={m.displayName}
-                  className="h-5 w-5 rounded-full object-cover"
-                />
-              ) : (
-                <UserCircle2 className="h-5 w-5 text-muted-foreground" />
-              )}
               <span className="truncate">{m.displayName}</span>
             </DropdownMenuItem>
           ))}
@@ -129,10 +86,9 @@ export function AssigneePicker({ value, onChange, disabled }: AssigneePickerProp
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={() => onChange(null)}
-          className="gap-2 cursor-pointer text-muted-foreground"
+          className="cursor-pointer text-muted-foreground"
         >
-          <UserCircle2 className="h-4 w-4" />
-          Unassign
+          Unassigned
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

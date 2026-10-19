@@ -1,11 +1,13 @@
 import type { Metadata } from 'next';
 import { JsonLd, buildFaqJsonLd } from '@/components/seo/json-ld';
 import { FAQ_ITEMS } from '@/lib/faq-content';
+import { ROBOTS_INDEX } from '@/lib/seo-robots';
 import { FAQ_SEO, SITE_ORIGIN } from '@/lib/site-seo';
 
 export const metadata: Metadata = {
   title: FAQ_SEO.title,
   description: FAQ_SEO.description,
+  robots: ROBOTS_INDEX,
   alternates: { canonical: `${SITE_ORIGIN}/faq` },
   openGraph: {
     title: `${FAQ_SEO.title} | Syntheon Hub`,

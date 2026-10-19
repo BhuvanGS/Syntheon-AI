@@ -2,10 +2,10 @@
 
 import * as React from 'react';
 import { format, parseISO } from 'date-fns';
-import { Calendar as CalendarIcon, Clock, X } from 'lucide-react';
+import { ChevronDown, Clock, X } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
+import { selectTriggerClassName } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
@@ -49,28 +49,23 @@ export function DateRangePicker({
       }}
     >
       <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          className={cn(
-            'w-full justify-start text-left font-normal rounded-xl h-10 bg-background border-border hover:bg-white/[0.04]',
-            !dueDate && 'text-muted-foreground'
-          )}
+        <button
+          type="button"
+          className={cn(selectTriggerClassName, !dueDate && 'text-muted-foreground')}
           disabled={disabled}
         >
-          <CalendarIcon className="mr-2 h-4 w-4" />
-          <span className="flex-1">
+          <span className="truncate text-left">
             {dueDate ? (
               <>
-                Due {format(parseISO(dueDate), 'MMM d')}
-                {deadlineTime && (
-                  <span className="ml-1 text-muted-foreground">at {deadlineTime}</span>
-                )}
+                {format(parseISO(dueDate), 'MMM d')}
+                {deadlineTime ? ` at ${deadlineTime}` : ''}
               </>
             ) : (
               'Set due date'
             )}
           </span>
-        </Button>
+          <ChevronDown />
+        </button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
         <div className="bg-popover rounded-md border shadow-md">

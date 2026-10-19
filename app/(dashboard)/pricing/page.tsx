@@ -65,7 +65,7 @@ export default function PricingPage() {
             <div>
               <p className="text-xs uppercase tracking-wide opacity-70">Your current plan</p>
               <p className="text-lg font-bold">
-                {writePaused && currentPlan === 'Free' ? 'Trial expired' : currentPlan}
+                {writePaused && currentPlan === 'Free' ? 'Plan limit hit' : currentPlan}
               </p>
             </div>
           </div>

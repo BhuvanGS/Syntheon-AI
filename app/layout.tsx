@@ -20,6 +20,7 @@ import {
   WEBSITE_JSON_LD,
 } from '@/components/seo/json-ld';
 import { HOME_KEYWORDS, HOME_SEO, SITE_ORIGIN } from '@/lib/site-seo';
+import { ROBOTS_INDEX } from '@/lib/seo-robots';
 import './globals.css';
 
 const _geist = Geist({
@@ -102,17 +103,7 @@ export const metadata: Metadata = {
     description: HOME_SEO.description,
     images: ['/og-image.png'],
   },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
-      'max-video-preview': -1,
-    },
-  },
+  robots: ROBOTS_INDEX,
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: 'any' },
@@ -122,9 +113,6 @@ export const metadata: Metadata = {
     apple: [{ url: '/apple-icon.png', sizes: '180x180' }],
   },
   manifest: '/site.webmanifest',
-  alternates: {
-    canonical: SITE_ORIGIN,
-  },
 };
 
 export default function RootLayout({
